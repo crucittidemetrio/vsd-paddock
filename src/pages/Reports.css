@@ -1,0 +1,224 @@
+/* ========== CONTROLS ========== */
+.reports-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-5);
+  align-items: flex-end;
+  padding: var(--sp-4);
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+}
+
+.reports-controls .filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+/* ========== RACE GROUP ========== */
+.race-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  margin-bottom: var(--sp-5);
+}
+
+.race-group-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: var(--sp-3) var(--sp-4);
+  background: linear-gradient(90deg, rgba(0, 212, 255, 0.06), transparent);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--vsd-cyan);
+  border-radius: var(--r-md);
+}
+
+.rg-context {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.rg-titles { display: flex; flex-direction: column; gap: 2px; }
+
+.rg-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+}
+
+.rg-meta {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+/* ========== RATING STARS ========== */
+.rating-stars {
+  display: inline-flex;
+  gap: 2px;
+  letter-spacing: 0;
+}
+
+.star {
+  color: var(--color-border-strong);
+  font-size: var(--fs-sm);
+  line-height: 1;
+}
+
+.star.is-on { color: var(--vsd-orange); text-shadow: 0 0 6px rgba(245, 166, 35, 0.5); }
+
+/* ========== FLAT VIEW ========== */
+.reports-flat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.report-card {
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.rc-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.rc-driver-block { display: flex; flex-direction: column; gap: 2px; }
+
+.rc-driver-name {
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+}
+
+.rc-race-context {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.rc-race-title {
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}
+
+.rc-finish {
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.rc-finish-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.rc-pos {
+  font-size: var(--fs-2xl);
+}
+
+.rc-grid {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text-dim);
+  letter-spacing: 0.1em;
+}
+
+.rc-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: var(--sp-4);
+}
+
+.rc-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rc-stat-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.rc-stat-value {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
+  color: var(--color-text);
+}
+
+.rc-notes {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.rc-note-block {
+  padding: var(--sp-3);
+  background: var(--vsd-bg);
+  border-left: 2px solid var(--color-border-strong);
+  border-radius: var(--r-sm);
+}
+
+.rc-note-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  margin-bottom: 4px;
+}
+
+.rc-note-text {
+  font-size: var(--fs-sm);
+  color: var(--color-text);
+  line-height: 1.5;
+}
+
+.rc-staff-notes {
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+  font-style: italic;
+  padding: var(--sp-3);
+  background: rgba(245, 166, 35, 0.06);
+  border: 1px dashed var(--vsd-orange);
+  border-radius: var(--r-sm);
+}
+
+.staff-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.25em;
+  color: var(--vsd-orange);
+  margin-right: 8px;
+  font-style: normal;
+}
+
+/* ========== REPORTS TABLE OVERRIDES ========== */
+.reports-table .cell-notes {
+  max-width: 360px;
+}

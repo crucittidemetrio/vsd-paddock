@@ -1,0 +1,24 @@
+.sim-badge {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  border-radius: var(--r-sm);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.sim-badge-md { font-size: 11px; padding: 3px 8px; }
+.sim-badge-sm { font-size: 10px; padding: 2px 6px; }
+
+/* Outline (default) */
+.sim-badge-outline.sim-lmu { color: var(--sim-lmu); border: 1px solid var(--sim-lmu); background: rgba(0,180,255,0.08); }
+.sim-badge-outline.sim-irc { color: var(--sim-irc); border: 1px solid var(--sim-irc); background: rgba(200,16,46,0.10); }
+.sim-badge-outline.sim-ace { color: var(--sim-ace); border: 1px solid var(--sim-ace); background: rgba(245,166,35,0.10); }
+
+/* Solid */
+.sim-badge-solid.sim-lmu { color: var(--vsd-bg); background: var(--sim-lmu); }
+.sim-badge-solid.sim-irc { color: #fff; background: var(--sim-irc); }
+.sim-badge-solid.sim-ace { color: var(--vsd-bg); background: var(--sim-ace); }

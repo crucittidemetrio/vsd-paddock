@@ -1,0 +1,18 @@
+.lap-time {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.lap-time-sm { font-size: var(--fs-sm); }
+.lap-time-md { font-size: var(--fs-base); }
+.lap-time-lg { font-size: var(--fs-xl); font-weight: var(--fw-semibold); }
+
+.lap-time-normal { color: var(--color-text); }
+.lap-time-dim    { color: var(--color-text-muted); }
+.lap-time-best {
+  color: var(--vsd-cyan);
+  font-weight: var(--fw-semibold);
+  text-shadow: 0 0 12px rgba(0, 212, 255, 0.4);
+}

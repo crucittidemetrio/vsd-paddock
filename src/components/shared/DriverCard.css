@@ -1,0 +1,100 @@
+.driver-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+  text-decoration: none;
+  color: inherit;
+  transition: all var(--t-base);
+  position: relative;
+  overflow: hidden;
+}
+
+.driver-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--vsd-cyan), var(--vsd-blue), transparent);
+  opacity: 0;
+  transition: opacity var(--t-base);
+}
+
+.driver-card:hover {
+  border-color: var(--vsd-cyan);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 212, 255, 0.12);
+}
+
+.driver-card:hover::before {
+  opacity: 1;
+}
+
+.driver-card-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.driver-card-id-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--sp-2);
+}
+
+.driver-card-id {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--color-text-dim);
+}
+
+.driver-card-name {
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+  line-height: 1.2;
+}
+
+.driver-card-role {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.25em;
+  color: var(--vsd-orange);
+  margin-top: -4px;
+}
+
+.driver-card-sims {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.driver-card-specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-top: var(--sp-2);
+  border-top: 1px dashed var(--color-border);
+}
+
+.driver-card-spec {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  padding: 2px 6px;
+  background: var(--vsd-bg);
+  border-radius: var(--r-sm);
+}
+
+.driver-card-compact {
+  padding: var(--sp-3);
+}
+.driver-card-compact .driver-card-name { font-size: var(--fs-sm); }

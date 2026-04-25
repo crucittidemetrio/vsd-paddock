@@ -1,0 +1,364 @@
+.profile-back {
+  margin-bottom: -8px;
+}
+
+.back-link {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  letter-spacing: 0.1em;
+  color: var(--color-text-muted);
+}
+
+.back-link:hover {
+  color: var(--vsd-cyan);
+}
+
+/* ========== HERO ========== */
+.profile-hero {
+  position: relative;
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-xl);
+  padding: var(--sp-6);
+  overflow: hidden;
+}
+
+.hero-bg-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 0% 0%, rgba(0, 212, 255, 0.10), transparent 50%),
+    radial-gradient(ellipse at 100% 100%, rgba(245, 166, 35, 0.06), transparent 50%);
+  pointer-events: none;
+}
+
+.hero-content {
+  position: relative;
+  display: flex;
+  gap: var(--sp-6);
+  align-items: flex-start;
+}
+
+.hero-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.hero-meta-line {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.hero-id {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.3em;
+  color: var(--vsd-cyan);
+}
+
+.hero-divider {
+  width: 1px;
+  height: 12px;
+  background: var(--color-border-strong);
+}
+
+.hero-role-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.25em;
+  color: var(--vsd-orange);
+  padding: 2px 8px;
+  border: 1px solid var(--vsd-orange);
+  border-radius: var(--r-sm);
+  background: rgba(245, 166, 35, 0.08);
+}
+
+.hero-name {
+  font-size: var(--fs-3xl);
+  background: linear-gradient(90deg, var(--vsd-cyan), var(--vsd-blue));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1.1;
+}
+
+.hero-realname {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--color-text-dim);
+  letter-spacing: 0.05em;
+  margin-top: -8px;
+}
+
+.hero-bio {
+  color: var(--color-text-muted);
+  font-size: var(--fs-md);
+  line-height: 1.6;
+  max-width: 720px;
+  margin-top: var(--sp-2);
+}
+
+.hero-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-5);
+  margin-top: var(--sp-3);
+}
+
+.tags-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.tags-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.tags-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.hero-spec {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  padding: 3px 8px;
+  background: var(--vsd-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-sm);
+}
+
+/* ========== STATS ========== */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: var(--sp-4);
+}
+
+.stat-card {
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-left-width: 3px;
+  border-radius: var(--r-lg);
+  padding: var(--sp-4) var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+}
+
+.stat-accent-cyan { border-left-color: var(--vsd-cyan); }
+.stat-accent-blue { border-left-color: var(--vsd-blue); }
+.stat-accent-orange { border-left-color: var(--vsd-orange); }
+.stat-accent-red { border-left-color: var(--vsd-red); }
+
+.stat-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.stat-value {
+  font-family: var(--font-display);
+  font-size: var(--fs-3xl);
+  font-weight: var(--fw-bold);
+  color: var(--color-text);
+  line-height: 1;
+}
+
+.stat-sub {
+  font-size: var(--fs-xs);
+  color: var(--color-text-muted);
+  letter-spacing: 0.05em;
+}
+
+/* skeleton block placeholder */
+.skeleton-block {
+  min-height: 280px;
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-xl);
+  position: relative;
+  overflow: hidden;
+}
+.skeleton-block::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(0,212,255,0.06), transparent);
+  animation: skeleton-shimmer 1.6s infinite;
+}
+/* ========== SEZIONI ========== */
+.profile-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.section-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+}
+
+.section-meta {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.2em;
+  color: var(--color-text-dim);
+  text-transform: uppercase;
+}
+
+/* ========== DATA TABLE ========== */
+.data-table-wrap {
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+.data-table thead th {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  font-weight: var(--fw-medium);
+  text-align: left;
+  padding: var(--sp-3) var(--sp-4);
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.data-table th.num,
+.data-table td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.data-table tbody td {
+  padding: var(--sp-3) var(--sp-4);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+  vertical-align: middle;
+}
+
+.data-table tbody tr:last-child td { border-bottom: none; }
+
+.data-table tbody tr {
+  transition: background var(--t-fast);
+}
+.data-table tbody tr:hover {
+  background: rgba(0, 212, 255, 0.04);
+}
+
+.cell-track { font-weight: var(--fw-medium); }
+.cell-car { color: var(--color-text-muted); }
+.cell-date {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--color-text-dim);
+  letter-spacing: 0.05em;
+}
+.cell-race {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.1em;
+  color: var(--vsd-cyan);
+}
+.cell-notes {
+  color: var(--color-text-muted);
+  font-size: var(--fs-xs);
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Conditions tags */
+.cond-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+}
+.cond-dry   { color: var(--vsd-orange); background: rgba(245, 166, 35, 0.10); }
+.cond-wet   { color: var(--vsd-cyan); background: rgba(0, 212, 255, 0.10); }
+.cond-mixed { color: var(--vsd-blue); background: rgba(59, 139, 255, 0.10); }
+
+/* Verify */
+.verify-yes {
+  color: var(--color-success);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.05em;
+}
+.verify-no {
+  color: var(--color-text-dim);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-style: italic;
+}
+
+/* Race results */
+.finish-pos {
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-md);
+  margin-right: 4px;
+}
+.finish-pos.is-podium {
+  color: var(--vsd-orange);
+}
+
+.pos-delta {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  padding: 2px 4px;
+  border-radius: var(--r-sm);
+}
+.pos-delta.is-gain { color: var(--color-success); background: rgba(52, 211, 153, 0.10); }
+.pos-delta.is-loss { color: var(--vsd-red);       background: rgba(239, 51, 64, 0.10); }
+
+.inc-clean { color: var(--color-success); font-weight: var(--fw-semibold); }
+.inc-bad   { color: var(--vsd-red);       font-weight: var(--fw-semibold); }
+
+.empty-state {
+  padding: var(--sp-5);
+  text-align: center;
+  color: var(--color-text-dim);
+  font-style: italic;
+  background: var(--vsd-bg-elevated);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--r-lg);
+}

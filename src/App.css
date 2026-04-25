@@ -1,0 +1,69 @@
+.paddock-bootscreen {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-6);
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(0, 212, 255, 0.10), transparent 60%),
+    radial-gradient(ellipse at 70% 80%, rgba(239, 51, 64, 0.08), transparent 60%),
+    var(--vsd-bg);
+}
+
+.boot-card {
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-xl);
+  padding: var(--sp-7) var(--sp-7);
+  max-width: 520px;
+  width: 100%;
+  box-shadow: var(--shadow-lg);
+  padding-left: calc(var(--sp-7) + var(--sp-3));
+}
+
+.boot-eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.25em;
+  color: var(--vsd-cyan);
+  margin-bottom: var(--sp-3);
+}
+
+.boot-title {
+  font-size: var(--fs-4xl);
+  background: linear-gradient(90deg, var(--vsd-cyan), var(--vsd-blue));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: var(--sp-2);
+}
+
+.boot-tagline {
+  color: var(--color-text-muted);
+  font-size: var(--fs-md);
+  margin-bottom: var(--sp-6);
+}
+
+.boot-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--color-text-dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.boot-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-success);
+  box-shadow: 0 0 8px var(--color-success);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}

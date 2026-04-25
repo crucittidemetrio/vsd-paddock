@@ -1,0 +1,14 @@
+.category-pill {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border: 1px solid;
+  border-radius: var(--r-pill);
+  background: rgba(255,255,255,0.02);
+  white-space: nowrap;
+}

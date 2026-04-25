@@ -1,0 +1,85 @@
+.roster-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-5);
+  padding: var(--sp-4);
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.filter-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.filter-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.filter-pill {
+  background: var(--vsd-bg);
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-muted);
+  padding: 6px 12px;
+  border-radius: var(--r-pill);
+  font-size: var(--fs-sm);
+  font-family: var(--font-body);
+  transition: all var(--t-fast);
+  cursor: pointer;
+}
+
+.filter-pill:hover {
+  border-color: var(--color-text-muted);
+  color: var(--color-text);
+}
+
+.filter-pill.is-active {
+  background: linear-gradient(90deg, rgba(0,212,255,0.15), rgba(59,139,255,0.05));
+  border-color: var(--vsd-cyan);
+  color: var(--vsd-cyan);
+}
+
+.roster-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--sp-4);
+}
+
+/* Skeleton loading */
+.skeleton-card {
+  min-height: 200px;
+  background: var(--vsd-bg-elevated);
+  border-color: var(--color-border);
+  position: relative;
+  overflow: hidden;
+}
+
+.skeleton-card::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(0, 212, 255, 0.06),
+    transparent
+  );
+  animation: skeleton-shimmer 1.6s infinite;
+}
+
+@keyframes skeleton-shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
