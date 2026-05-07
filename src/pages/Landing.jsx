@@ -1,9 +1,10 @@
 import { Link } from 'react-router-dom';
 import { useMemo } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { useUpcomingRaces, useReports } from '../hooks/useRaces';
 import { useBestLaps } from '../hooks/useBestLaps';
 import { useDrivers } from '../hooks/useRoster';
+import { useTracks } from '../hooks/useLookups';
 import SimBadge from '../components/shared/SimBadge';
 import CountdownLive from '../components/shared/CountdownLive';
 import LapTime from '../components/shared/LapTime';
@@ -21,10 +22,10 @@ export default function Landing() {
   const { data: upcoming } = useUpcomingRaces();
   const { data: myLaps } = useBestLaps({ driver_id: driver?.driver_id });
   const { data: myReports } = useReports({ driver_id: driver?.driver_id });
-  const { data: drivers } = useDrivers();
+ const { data: drivers } = useDrivers();
   const { data: allLaps } = useBestLaps();
   const { data: allReports } = useReports();
-
+  const { data: tracks = [] } = useTracks();
   const driverMap = useMemo(() => {
     const m = {};
     (drivers || []).forEach(d => { m[d.driver_id] = d; });
@@ -38,7 +39,9 @@ export default function Landing() {
   const totalLaps = myLaps?.length || 0;
   const verifiedLaps = myLaps?.filter(l => !!l.verified_by).length || 0;
   const racesCount = new Set((myReports || []).map(r => r.race_id)).size;
-  const podiums = (myReports || []).filter(r => r.finish_position <= 3).length;
+  const podiums = (myReports || []).filter(r =>
+    typeof r.finish_position === 'number' && r.finish_position <= 3
+  ).length;
 
   // Activity feed: fonde laps + reports in ordine cronologico
   const feed = useMemo(() => {
@@ -121,25 +124,27 @@ export default function Landing() {
             </div>
 
             <div className="mc-next-info">
-              <MiniInfo label="Tracciato" value={formatTrack(nextRace.track_id)} />
+              <MiniInfo label="Tracciato" value={formatTrack(nextRace.track_id, tracks)} />
               <MiniInfo label="Inizio" value={formatRaceDateTime(nextRace.date)} />
-              <MiniInfo label="Durata" value={formatDuration(nextRace.duration_min)} />
+              <MiniInfo label="Durata" value={formatDuration(nextRace.duration_minutes)} />
               <MiniInfo label="Meteo" value={nextRace.weather || '—'} />
             </div>
 
-            <div className="mc-next-entries">
-              <span className="mc-entries-label">{nextRace.entries?.length || 0} iscritti</span>
-              <div className="entries-stack">
-                {(nextRace.entries || []).slice(0, 6).map(id => {
-                  const d = driverMap[id];
-                  return (
-                    <div key={id} className="entry-avatar" title={d?.display_name || id}>
-                      <Avatar name={d?.display_name || id} driverId={id} size={32} />
-                    </div>
-                  );
-                })}
+            {(nextRace.entries?.length || 0) > 0 && (
+              <div className="mc-next-entries">
+                <span className="mc-entries-label">{nextRace.entries.length} iscritti</span>
+                <div className="entries-stack">
+                  {nextRace.entries.slice(0, 6).map(id => {
+                    const d = driverMap[id];
+                    return (
+                      <div key={id} className="entry-avatar" title={d?.display_name || id}>
+                        <Avatar name={d?.display_name || id} driverId={id} size={32} />
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
           </Link>
         </section>
       )}
@@ -159,7 +164,7 @@ export default function Landing() {
                   <SimBadge sim={lap.sim} size="sm" />
                   {lap.verified_by && <span className="verify-yes-mini">✓</span>}
                 </div>
-                <div className="mc-lap-track">{formatTrack(lap.track_id)}</div>
+                <div className="mc-lap-track">{formatTrack(lap.track_id, tracks)}</div>
                 <div className="mc-lap-time">
                   <LapTime
                     ms={lap.lap_time_ms}
@@ -196,6 +201,7 @@ export default function Landing() {
                   key={`${item.type}-${idx}`}
                   item={item}
                   driverMap={driverMap}
+                  tracks={tracks}
                 />
               ))}
             </div>
@@ -286,7 +292,7 @@ function MiniInfo({ label, value }) {
   );
 }
 
-function FeedItem({ item, driverMap }) {
+function FeedItem({ item, driverMap, tracks }) {
   if (item.type === 'lap') {
     const lap = item.data;
     const d = driverMap[lap.driver_id];
@@ -306,7 +312,7 @@ function FeedItem({ item, driverMap }) {
           </div>
           <div className="feed-meta">
             <SimBadge sim={lap.sim} size="sm" />
-            <span>{formatTrack(lap.track_id)}</span>
+            <span>{formatTrack(lap.track_id, tracks)}</span>
             <span className="feed-dot">·</span>
             <span className="feed-date">{formatDate(lap.set_date)}</span>
           </div>

@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useRaces } from '../hooks/useRaces';
 import { useDrivers } from '../hooks/useRoster';
+import { useTracks } from '../hooks/useLookups';
 import SimBadge from '../components/shared/SimBadge';
 import CategoryPill from '../components/shared/CategoryPill';
 import Avatar from '../components/shared/Avatar';
@@ -23,6 +24,7 @@ export default function Race() {
   const [tab, setTab] = useState('scheduled');
   const { data: races, isLoading } = useRaces();
   const { data: drivers } = useDrivers();
+  const { data: tracks = [] } = useTracks();
 
   const driverMap = useMemo(() => {
     const m = {};
@@ -95,6 +97,7 @@ export default function Race() {
               key={race.race_id}
               race={race}
               driverMap={driverMap}
+              tracks={tracks}
               isPast={tab === 'completed'}
             />
           ))}
@@ -104,7 +107,7 @@ export default function Race() {
   );
 }
 
-function RaceCard({ race, driverMap, isPast }) {
+function RaceCard({ race, driverMap, tracks, isPast }) {
   const categories = (race.car_categories || '').split(',').filter(Boolean);
   const entries = race.entries || [];
   const visibleEntries = entries.slice(0, 5);
@@ -133,9 +136,9 @@ function RaceCard({ race, driverMap, isPast }) {
 
       {/* INFO ROW */}
       <div className="race-info-grid">
-        <InfoCell label="Tracciato" value={formatTrack(race.track_id)} />
+        <InfoCell label="Tracciato" value={formatTrack(race.track_id, tracks)} />
         <InfoCell label="Data" value={formatRaceDateTime(race.date)} />
-        <InfoCell label="Durata" value={formatDuration(race.duration_min)} />
+        <InfoCell label="Durata" value={formatDuration(race.duration_minutes)} />
         <InfoCell label="Meteo" value={race.weather || '—'} />
       </div>
 

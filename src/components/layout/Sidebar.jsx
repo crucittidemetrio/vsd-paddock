@@ -1,6 +1,6 @@
 import { NavLink } from 'react-router-dom';
 import { LABELS } from '../../utils/constants';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../hooks/useAuth';
 import Logo from '../shared/Logo';
 import './Sidebar.css';
 

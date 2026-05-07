@@ -29,12 +29,100 @@ const CAR_NAMES = {
   'mercedes-w13': 'Mercedes W13',
 };
 
-export function formatTrack(track_id) {
-  return TRACK_NAMES[track_id] || track_id || '—';
+/**
+ * Formatta un track_id in display name.
+ * 
+ * @param {string} track_id - Slug del tracciato (es. 'lmu-monza-gp')
+ * @param {Array} [tracks] - Lista live dei tracks dal backend (opzionale)
+ * @returns {string} Display name (legacy single-string mode)
+ * 
+ * Se vuoi anche il sim (per badge separato), usa formatTrackInfo() invece.
+ */
+export function formatTrack(track_id, tracks) {
+  if (!track_id) return '—';
+  
+  // Modo data-driven: cerca il record live dal sheet
+  if (Array.isArray(tracks)) {
+    const t = tracks.find(t => t.track_id === track_id);
+    if (t) return t.track_name || track_id;
+  }
+  
+  // Fallback legacy: mappa hardcoded
+  return TRACK_NAMES[track_id] || track_id;
 }
 
-export function formatCar(car_id) {
-  return CAR_NAMES[car_id] || car_id || '—';
+/**
+ * Versione "ricca" di formatTrack: restituisce nome + sim per badge separati.
+ * 
+ * @param {string} track_id
+ * @param {Array} [tracks] - Lista live dei tracks dal backend
+ * @returns {{ name: string, sim: string|null }}
+ * 
+ * Esempio:
+ *   const { name, sim } = formatTrackInfo('lmu-monza-gp', tracks);
+ *   // → { name: 'Monza', sim: 'LMU' }
+ */
+export function formatTrackInfo(track_id, tracks) {
+  if (!track_id) return { name: '—', sim: null };
+  
+  if (Array.isArray(tracks)) {
+    const t = tracks.find(t => t.track_id === track_id);
+    if (t) return { name: t.track_name || track_id, sim: t.sim || null };
+  }
+  
+  // Fallback: cerca nel hardcoded e prova a estrarre il sim dallo slug
+  const name = TRACK_NAMES[track_id] || track_id;
+  const simMatch = String(track_id).match(/^(lmu|irc|ace)-/i);
+  const sim = simMatch ? simMatch[1].toUpperCase() : null;
+  return { name, sim };
+}
+
+/**
+ * Formatta un car_id in display name.
+ * 
+ * @param {string} car_id - Slug auto (es. 'lmu-ferrari-296-gt3')
+ * @param {Array} [cars] - Lista live delle cars dal backend (opzionale)
+ * @returns {string} Display name (legacy single-string mode)
+ */
+export function formatCar(car_id, cars) {
+  if (!car_id) return '—';
+  
+  if (Array.isArray(cars)) {
+    const c = cars.find(c => c.car_id === car_id);
+    if (c) return c.car_name || car_id;
+  }
+  
+  return CAR_NAMES[car_id] || car_id;
+}
+
+/**
+ * Versione "ricca" di formatCar: restituisce nome + categoria.
+ * 
+ * @param {string} car_id
+ * @param {Array} [cars] - Lista live delle cars dal backend
+ * @returns {{ name: string, category: string|null, sim: string|null }}
+ */
+export function formatCarInfo(car_id, cars) {
+  if (!car_id) return { name: '—', category: null, sim: null };
+  
+  if (Array.isArray(cars)) {
+    const c = cars.find(c => c.car_id === car_id);
+    if (c) {
+      return {
+        name: c.car_name || car_id,
+        category: c.category || null,
+        sim: c.sim || null,
+      };
+    }
+  }
+  
+  const name = CAR_NAMES[car_id] || car_id;
+  const simMatch = String(car_id).match(/^(lmu|irc|ace)-/i);
+  return {
+    name,
+    category: null,
+    sim: simMatch ? simMatch[1].toUpperCase() : null,
+  };
 }
 
 export function formatDate(iso) {

@@ -1,6 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../api/client';
 
+// Re-export dei lookup hooks: single source of truth in useLookups.js.
+// Mantiene retrocompatibilità con import esistenti da './useBestLaps'.
+export { useTracks, useCars } from './useLookups';
+
 export function useBestLaps(filters = {}, limit) {
   return useQuery({
     queryKey: ['laps', filters, limit],
@@ -13,21 +17,5 @@ export function useLeaderboard(sim, trackId, carId) {
     queryKey: ['leaderboard', sim, trackId, carId],
     queryFn: () => api.laps.leaderboard(sim, trackId, carId),
     enabled: !!sim && !!trackId,
-  });
-}
-
-export function useTracks(sim) {
-  return useQuery({
-    queryKey: ['tracks', sim],
-    queryFn: () => api.lookups.tracks(sim),
-    staleTime: 5 * 60_000, // tracks cambiano raramente
-  });
-}
-
-export function useCars(sim) {
-  return useQuery({
-    queryKey: ['cars', sim],
-    queryFn: () => api.lookups.cars(sim),
-    staleTime: 5 * 60_000,
   });
 }

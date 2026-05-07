@@ -144,7 +144,7 @@ function Filters({
           <option value="all">Tutti i tracciati</option>
           {trackOptions.map(t => (
             <option key={`${t.sim}-${t.track_id}`} value={t.track_id}>
-              {formatTrack(t.track_id)}
+              {formatTrack(t.track_id, tracks)}
             </option>
           ))}
         </select>
@@ -160,7 +160,7 @@ function Filters({
           <option value="all">Tutte le auto</option>
           {carOptions.map(c => (
             <option key={`${c.sim}-${c.car_id}`} value={c.car_id}>
-              {formatCar(c.car_id)} · {c.category}
+              {formatCar(c.car_id, cars)} · {c.category}
             </option>
           ))}
         </select>
@@ -193,6 +193,8 @@ function Filters({
 function AllLapsView({ simFilter, trackFilter, carFilter, verifiedOnly }) {
   const { data: laps, isLoading } = useBestLaps();
   const { data: drivers } = useDrivers();
+  const { data: tracks = [] } = useTracks();
+  const { data: cars = [] } = useCars();
 
   const driverMap = useMemo(() => {
     const m = {};
@@ -264,8 +266,8 @@ function AllLapsView({ simFilter, trackFilter, carFilter, verifiedOnly }) {
                     </Link>
                   ) : lap.driver_id}
                 </td>
-                <td className="cell-track">{formatTrack(lap.track_id)}</td>
-                <td className="cell-car">{formatCar(lap.car_id)}</td>
+                <td className="cell-track">{formatTrack(lap.track_id, tracks)}</td>
+                <td className="cell-car">{formatCar(lap.car_id, cars)}</td>
                 <td className="num">
                   <LapTime ms={lap.lap_time_ms} emphasis={idx === 0 ? 'best' : 'normal'} size="md" />
                 </td>
@@ -302,6 +304,8 @@ function LeaderboardView({ sim, trackId, carId }) {
     carId === 'all' ? null : carId,
   );
   const { data: drivers } = useDrivers();
+  const { data: tracks = [] } = useTracks();
+  const { data: cars = [] } = useCars();
 
   const driverMap = useMemo(() => {
     const m = {};
@@ -349,11 +353,11 @@ function LeaderboardView({ sim, trackId, carId }) {
       <div className="leaderboard-header">
         <div className="lh-context">
           <SimBadge sim={sim} variant="solid" />
-          <span className="lh-track">{formatTrack(trackId)}</span>
+          <span className="lh-track">{formatTrack(trackId, tracks)}</span>
           {carId !== 'all' && (
             <>
               <span className="lh-divider">·</span>
-              <span className="lh-car">{formatCar(carId)}</span>
+              <span className="lh-car">{formatCar(carId, cars)}</span>
             </>
           )}
         </div>
@@ -389,7 +393,7 @@ function LeaderboardView({ sim, trackId, carId }) {
                       </Link>
                     ) : lap.driver_id}
                   </td>
-                  {carId === 'all' && <td className="cell-car">{formatCar(lap.car_id)}</td>}
+                  {carId === 'all' && <td className="cell-car">{formatCar(lap.car_id, cars)}</td>}
                   <td className="num">
                     <LapTime ms={lap.lap_time_ms} emphasis={idx === 0 ? 'best' : 'normal'} size="md" />
                   </td>

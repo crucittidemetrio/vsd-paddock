@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import { LABELS } from '../utils/constants';
 import './Login.css';
 import Logo from '../components/shared/Logo';
@@ -13,11 +13,20 @@ export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  if (isAuthenticated) {
-    const dest = location.state?.from?.pathname || '/';
-    navigate(dest, { replace: true });
-    return null;
-  }
+  // Redirect post-login: se l'utente è già autenticato (es. ricarica la pagina
+  // di login mentre ha già un token valido in localStorage), lo mandiamo
+  // alla destinazione richiesta o alla home.
+  // Lo facciamo in useEffect perché navigate() durante il render produce
+  // warning React (setState in render).
+  useEffect(() => {
+    if (isAuthenticated) {
+      const dest = location.state?.from?.pathname || '/';
+      navigate(dest, { replace: true });
+    }
+  }, [isAuthenticated, location, navigate]);
+
+  // Mentre il redirect è in volo, evitiamo di flashare la form di login
+  if (isAuthenticated) return null;
 
   async function onSubmit(e) {
     e.preventDefault();
@@ -29,8 +38,7 @@ export default function Login() {
       setError(res.error || LABELS.auth_error);
       return;
     }
-    const dest = location.state?.from?.pathname || '/';
-    navigate(dest, { replace: true });
+    // Niente navigate qui: lo gestisce l'useEffect quando isAuthenticated cambia
   }
 
   return (
@@ -60,11 +68,7 @@ export default function Login() {
         </button>
 
         <div className="login-hint">
-          <span>Demo:</span>
-          <code>STAFF</code>
-          <span>→ vista staff ·</span>
-          <code>qualsiasi codice</code>
-          <span>→ pilota</span>
+          <span>Inserisci il codice di accesso fornito dallo staff.</span>
         </div>
       </form>
     </div>

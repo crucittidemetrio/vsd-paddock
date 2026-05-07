@@ -1,8 +1,7 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useState, useEffect } from 'react';
 import { STORAGE, ROLES } from '../utils/constants';
-import { DRIVERS } from '../api/mockData';
-
-const AuthContext = createContext(null);
+import { api } from '../api/client';
+export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const [driver, setDriver] = useState(null);
@@ -25,40 +24,28 @@ export function AuthProvider({ children }) {
   }, []);
 
   /**
-   * Mock login — autentica contro il roster reale.
-   * Codice "STAFF*"/"ADMIN*" → primo staff/admin del roster
-   * Codice numerico/altro → mappa al driver_id se esiste, altrimenti
-   *   primo driver attivo del roster (per la demo)
+   /**
+   * Login reale: chiama il backend Apps Script tramite api.auth.login.
+   * Salva token HMAC e driver in localStorage per persistere la sessione.
    */
-  async function login(code) {
-    const trimmed = (code || '').trim().toUpperCase();
-    if (!trimmed) return { ok: false, error: 'Codice mancante' };
+    async function login(code) {
+  const trimmed = (code || '').trim();
+  if (!trimmed) return { ok: false, error: 'Codice mancante' };
 
-    let target;
-    if (trimmed.startsWith('STAFF')) {
-      target = DRIVERS.find(d => d.role === ROLES.STAFF) ||
-               DRIVERS.find(d => d.role === ROLES.ADMIN);
-    } else if (trimmed.startsWith('ADMIN')) {
-      target = DRIVERS.find(d => d.role === ROLES.ADMIN);
-    } else if (trimmed.startsWith('VSD')) {
-      // Codici tipo VSD003 → driver specifico
-      target = DRIVERS.find(d => d.driver_id === trimmed);
-    }
-
-    // Fallback: primo driver attivo (per la demo "qualsiasi codice")
-    if (!target) {
-      target = DRIVERS.find(d => d.role === ROLES.DRIVER && d.status === 'active');
-    }
-
-    if (!target) return { ok: false, error: 'Codice non riconosciuto' };
-
-    const mockToken = `mock.${target.driver_id}.${Date.now()}`;
-    setToken(mockToken);
-    setDriver(target);
-    localStorage.setItem(STORAGE.TOKEN, mockToken);
-    localStorage.setItem(STORAGE.DRIVER, JSON.stringify(target));
+  try {
+    const data = await api.auth.login(trimmed);
+    // data = { token, driver }
+    setToken(data.token);
+    setDriver(data.driver);
+    localStorage.setItem(STORAGE.TOKEN, data.token);
+    localStorage.setItem(STORAGE.DRIVER, JSON.stringify(data.driver));
     return { ok: true };
+  } catch (e) {
+    console.error('[AuthContext] login failed', e);
+    return { ok: false, error: e.message || 'Errore di login' };
   }
+}
+  
 
   function logout() {
     setToken(null);
@@ -83,10 +70,4 @@ export function AuthProvider({ children }) {
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext);
-  if (!ctx) throw new Error('useAuth must be used inside <AuthProvider>');
-  return ctx;
 }

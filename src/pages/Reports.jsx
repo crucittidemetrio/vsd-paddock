@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useReports, useRaces } from '../hooks/useRaces';
 import { useDrivers } from '../hooks/useRoster';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../hooks/useAuth';
 import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
 import LapTime from '../components/shared/LapTime';
