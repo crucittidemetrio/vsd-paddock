@@ -34,7 +34,7 @@ export const DRIVER_STATUS = {
 export const CONDITIONS = ['dry', 'wet', 'mixed'];
 
 // Tipo sessione
-export const SESSION_TYPES = ['practice', 'quali', 'race', 'hotlap'];
+
 
 // Storage keys (localStorage)
 export const STORAGE = {
@@ -61,4 +61,29 @@ export const LABELS = {
   auth_code_placeholder: 'CODICE-PILOTA',
   auth_submit: 'Entra',
   auth_error: 'Codice non riconosciuto',
+};
+// ===========================================
+// SESSION TYPES (BestLaps)
+// ===========================================
+// Tipo di sessione in cui il lap è stato registrato.
+// Valori validi: practice, qualifying, race.
+// Convenzione: lowercase, snake_case (allineato a sim/conditions).
+// ===========================================
+
+export const SESSION_TYPES = {
+  PRACTICE: 'practice',
+  QUALIFYING: 'qualifying',
+  RACE: 'race',
+};
+
+export const SESSION_TYPE_LIST = [
+  { id: 'practice', label: 'Practice', short: 'P' },
+  { id: 'qualifying', label: 'Qualifica', short: 'Q' },
+  { id: 'race', label: 'Gara', short: 'R' },
+];
+
+export const SESSION_TYPE_LABELS = {
+  practice: 'Practice',
+  qualifying: 'Qualifica',
+  race: 'Gara',
 };

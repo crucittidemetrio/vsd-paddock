@@ -5,7 +5,7 @@ import { useDrivers } from '../hooks/useRoster';
 import SimBadge from '../components/shared/SimBadge';
 import LapTime from '../components/shared/LapTime';
 import Avatar from '../components/shared/Avatar';
-import { SIM_LIST } from '../utils/constants';
+import { SIM_LIST, SESSION_TYPE_LIST, SESSION_TYPE_LABELS } from '../utils/constants';
 import { formatTrack, formatCar, formatDate, formatLapDelta } from '../utils/format';
 import './BestLaps.css';
 import './Page.css';
@@ -19,7 +19,8 @@ export default function BestLaps() {
   const [viewMode, setViewMode] = useState('all');
   const [simFilter, setSimFilter] = useState('all');
   const [trackFilter, setTrackFilter] = useState('all');
-  const [carFilter, setCarFilter] = useState('all');
+const [carFilter, setCarFilter] = useState('all');
+  const [sessionFilter, setSessionFilter] = useState('all');
   const [verifiedOnly, setVerifiedOnly] = useState(false);
 
   return (
@@ -46,10 +47,12 @@ export default function BestLaps() {
       </div>
 
       {/* FILTRI */}
-      <Filters
+  
+<Filters
         simFilter={simFilter} setSimFilter={setSimFilter}
         trackFilter={trackFilter} setTrackFilter={setTrackFilter}
         carFilter={carFilter} setCarFilter={setCarFilter}
+        sessionFilter={sessionFilter} setSessionFilter={setSessionFilter}
         verifiedOnly={verifiedOnly} setVerifiedOnly={setVerifiedOnly}
         showVerified={viewMode === 'all'}
         leaderboardMode={viewMode === 'leaderboard'}
@@ -57,10 +60,11 @@ export default function BestLaps() {
 
       {/* CONTENUTO */}
       {viewMode === 'all' ? (
-        <AllLapsView
+<AllLapsView
           simFilter={simFilter}
           trackFilter={trackFilter}
           carFilter={carFilter}
+          sessionFilter={sessionFilter}
           verifiedOnly={verifiedOnly}
         />
       ) : (
@@ -81,6 +85,7 @@ function Filters({
   simFilter, setSimFilter,
   trackFilter, setTrackFilter,
   carFilter, setCarFilter,
+  sessionFilter, setSessionFilter,
   verifiedOnly, setVerifiedOnly,
   showVerified, leaderboardMode,
 }) {
@@ -99,15 +104,16 @@ function Filters({
     return Array.from(m.values());
   }, [cars]);
 
-  function reset() {
+function reset() {
     setSimFilter('all');
     setTrackFilter('all');
     setCarFilter('all');
+    setSessionFilter('all');
     setVerifiedOnly(false);
   }
 
   const hasFilters =
-    simFilter !== 'all' || trackFilter !== 'all' || carFilter !== 'all' || verifiedOnly;
+    simFilter !== 'all' || trackFilter !== 'all' || carFilter !== 'all' || sessionFilter !== 'all' || verifiedOnly;
 
   return (
     <div className="laps-filters">
@@ -150,7 +156,7 @@ function Filters({
         </select>
       </div>
 
-      <div className="filter-group">
+<div className="filter-group">
         <div className="filter-label">Auto</div>
         <select
           className="filter-select"
@@ -164,6 +170,25 @@ function Filters({
             </option>
           ))}
         </select>
+      </div>
+
+      <div className="filter-group">
+        <div className="filter-label">Tipo</div>
+        <div className="filter-pills">
+          <button
+            className={`filter-pill${sessionFilter === 'all' ? ' is-active' : ''}`}
+            onClick={() => setSessionFilter('all')}
+          >Tutti</button>
+          {SESSION_TYPE_LIST.map(s => (
+            <button
+              key={s.id}
+              className={`filter-pill${sessionFilter === s.id ? ' is-active' : ''}`}
+              onClick={() => setSessionFilter(s.id)}
+            >
+              {s.short}
+            </button>
+          ))}
+        </div>
       </div>
 
       {showVerified && (
@@ -190,7 +215,7 @@ function Filters({
 // ========================================================
 // VIEW: TUTTI I TEMPI
 // ========================================================
-function AllLapsView({ simFilter, trackFilter, carFilter, verifiedOnly }) {
+function AllLapsView({ simFilter, trackFilter, carFilter, sessionFilter, verifiedOnly }) {
   const { data: laps, isLoading } = useBestLaps();
   const { data: drivers } = useDrivers();
   const { data: tracks = [] } = useTracks();
@@ -202,16 +227,17 @@ function AllLapsView({ simFilter, trackFilter, carFilter, verifiedOnly }) {
     return m;
   }, [drivers]);
 
-  const filtered = useMemo(() => {
+const filtered = useMemo(() => {
     if (!laps) return [];
     return laps.filter(l => {
       if (simFilter !== 'all' && l.sim !== simFilter) return false;
       if (trackFilter !== 'all' && l.track_id !== trackFilter) return false;
       if (carFilter !== 'all' && l.car_id !== carFilter) return false;
+      if (sessionFilter !== 'all' && l.session_type !== sessionFilter) return false;
       if (verifiedOnly && !l.verified_by) return false;
       return true;
     });
-  }, [laps, simFilter, trackFilter, carFilter, verifiedOnly]);
+  }, [laps, simFilter, trackFilter, carFilter, sessionFilter, verifiedOnly]);
 
   const referenceMs = filtered[0]?.lap_time_ms;
 
@@ -245,6 +271,7 @@ function AllLapsView({ simFilter, trackFilter, carFilter, verifiedOnly }) {
             <th>Auto</th>
             <th className="num">Tempo</th>
             <th className="num">Gap</th>
+            <th>Tipo</th>
             <th>Cond.</th>
             <th>Verifica</th>
             <th>Data</th>
@@ -273,6 +300,11 @@ function AllLapsView({ simFilter, trackFilter, carFilter, verifiedOnly }) {
                 </td>
                 <td className="num cell-gap">
                   {idx === 0 ? '—' : formatLapDelta(lap.lap_time_ms, referenceMs)}
+                </td>
+                <td>
+                  <span className={`session-tag session-${lap.session_type}`}>
+                    {SESSION_TYPE_LABELS[lap.session_type] || '—'}
+                  </span>
                 </td>
                 <td>
                   <span className={`cond-tag cond-${lap.conditions}`}>{lap.conditions}</span>
