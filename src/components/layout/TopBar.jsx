@@ -2,7 +2,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { LABELS } from '../../utils/constants';
 import './TopBar.css';
 
-export default function TopBar() {
+export default function TopBar({ onHamburgerClick = () => {} }) {
   const { driver, logout } = useAuth();
 
   const initials = (driver?.display_name || '?')
@@ -15,6 +15,13 @@ export default function TopBar() {
   return (
     <header className="topbar">
       <div className="topbar-left">
+        <button
+          className="hamburger-btn"
+          onClick={onHamburgerClick}
+          aria-label="Apri menu"
+        >
+          <span /><span /><span />
+        </button>
         <div className="status-strip">
           <span className="status-dot" />
           <span className="status-text">SYSTEM ONLINE</span>

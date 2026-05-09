@@ -17,3 +17,23 @@
   width: 100%;
   margin: 0 auto;
 }
+
+.app-shell-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(2px);
+  z-index: 90;
+  animation: appShellFadeIn 0.2s ease;
+}
+
+@keyframes appShellFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@media (max-width: 767px) {
+  .app-shell-content {
+    padding: var(--sp-4);
+  }
+}

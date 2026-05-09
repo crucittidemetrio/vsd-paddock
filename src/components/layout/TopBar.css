@@ -91,3 +91,66 @@
   border-color: var(--vsd-red);
   color: var(--vsd-red);
 }
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.hamburger-btn {
+  display: none;
+  background: transparent;
+  border: none;
+  padding: 8px;
+  cursor: pointer;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  border-radius: var(--r-sm);
+}
+
+.hamburger-btn span {
+  width: 22px;
+  height: 2px;
+  background: var(--color-text);
+  border-radius: 1px;
+  transition: all var(--t-fast);
+}
+
+.hamburger-btn:hover span {
+  background: var(--vsd-cyan);
+}
+
+@media (max-width: 767px) {
+  .hamburger-btn {
+    display: flex;
+  }
+
+  .topbar {
+    padding: 0 var(--sp-4);
+  }
+
+  .status-strip {
+    display: none;
+  }
+
+  .user-meta {
+    display: none;
+  }
+
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+  }
+
+  .user-card {
+    padding: var(--sp-1);
+    gap: 0;
+  }
+
+  .logout-btn {
+    padding: var(--sp-2) var(--sp-3);
+    font-size: var(--fs-xs);
+  }
+}

@@ -18,11 +18,11 @@ const FUTURE_ITEMS = [
   { to: '/endurance', label: LABELS.nav_endurance, icon: '◐' },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {} }) {
   const { isStaff } = useAuth();
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar${isMobileOpen ? ' is-mobile-open' : ''}`}>
       <div className="sidebar-brand">
         <Logo size={48} withWordmark />
       </div>
@@ -34,6 +34,7 @@ export default function Sidebar() {
             key={item.to}
             to={item.to}
             end={item.exact}
+            onClick={onMobileClose}
             className={({ isActive }) => `nav-item${isActive ? ' is-active' : ''}`}
           >
             <span className="nav-icon">{item.icon}</span>
@@ -46,6 +47,7 @@ export default function Sidebar() {
           <NavLink
             key={item.to}
             to={item.to}
+            onClick={onMobileClose}
             className={({ isActive }) => `nav-item is-soon${isActive ? ' is-active' : ''}`}
           >
             <span className="nav-icon">{item.icon}</span>
