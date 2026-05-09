@@ -8,6 +8,7 @@ import Landing from './pages/Landing';
 import Roster from './pages/Roster';
 import DriverProfile from './pages/DriverProfile';
 import Race from './pages/Race';
+import RaceDetail from './pages/RaceDetail';
 import Reports from './pages/Reports';
 import BestLaps from './pages/BestLaps';
 import Training from './pages/Training';
@@ -30,7 +31,7 @@ export default function App() {
             <Route path="/roster" element={<Roster />} />
             <Route path="/roster/:driverId" element={<DriverProfile />} />
             <Route path="/race" element={<Race />} />
-            <Route path="/race/:raceId" element={<Race />} />
+            <Route path="/race/:raceId" element={<RaceDetail />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/laps" element={<BestLaps />} />
             <Route path="/training" element={<Training />} />
