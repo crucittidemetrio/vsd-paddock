@@ -104,7 +104,7 @@ async function rosterListAdapter(payload, token) {
     );
   }
 
-  // mockApi restituiva l'array direttamente in `data`,
+  
   // realApi rispetta lo stesso contratto.
   return ok(drivers);
 }
@@ -145,16 +145,15 @@ async function authVerify(payload) {
 }
 
 // ─────────────────────────────────────────────
-// Entry point — stesso contratto di mockApi.callApi
+
 // ─────────────────────────────────────────────
 
 /**
  * @param action  es. 'roster.list'
  * @param payload oggetto parametri
- * @param ctx     mantenuto per compat con la firma di mockApi.
- *                In realtà non viene mai usato: il backend deduce il
- *                ctx dal token. ctx qui serve solo per estrarre il token
- *                quando il client.js lo passa.
+ * @param ctx     oggetto contesto. ctx.token (se valorizzato) viene
+ *                propagato al backend per autenticazione. Il ctx
+ *                completo è dedotto server-side dal token stesso.
  */
 export async function callApi(action, payload = {}, ctx = null) {
   // Il token vive nel localStorage, gestito da AuthContext.
@@ -264,7 +263,7 @@ async function lapsLeaderboardAdapter(payload, token) {
  * Backend:  races.list({ status? }) → { races: [...], count }
  *
  * Adapter: estrae l'array da data.races per allinearsi al contratto mock
- * (mockApi restituiva l'array direttamente).
+ 
  */
 async function racesListAdapter(payload, token) {
   const res = await postToBackend('races.list', payload, token);

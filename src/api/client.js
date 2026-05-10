@@ -1,7 +1,7 @@
 // ===========================================
 // VSD PADDOCK — API client
 // Facciata pubblica usata dai componenti.
-// Internamente delega a mockApi (Tappa 3) o realApi (Tappa 4).
+
 // ===========================================
 
 import { callApi } from './realApi';

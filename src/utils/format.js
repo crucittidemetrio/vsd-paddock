@@ -43,7 +43,7 @@ export function formatTrack(track_id, tracks) {
   
   // Modo data-driven: cerca il record live dal sheet
   if (Array.isArray(tracks)) {
-    const t = tracks.find(t => t.track_id === track_id);
+    const t = tracks.find(t => String(t.track_id).toLowerCase() === String(track_id).toLowerCase());
     if (t) return t.track_name || track_id;
   }
   
@@ -66,7 +66,7 @@ export function formatTrackInfo(track_id, tracks) {
   if (!track_id) return { name: '—', sim: null };
   
   if (Array.isArray(tracks)) {
-    const t = tracks.find(t => t.track_id === track_id);
+    const t = tracks.find(t => String(t.track_id).toLowerCase() === String(track_id).toLowerCase());
     if (t) return { name: t.track_name || track_id, sim: t.sim || null };
   }
   
@@ -88,7 +88,7 @@ export function formatCar(car_id, cars) {
   if (!car_id) return '—';
   
   if (Array.isArray(cars)) {
-    const c = cars.find(c => c.car_id === car_id);
+    const c = cars.find(c => String(c.car_id).toLowerCase() === String(car_id).toLowerCase());
     if (c) return c.car_name || car_id;
   }
   
@@ -106,7 +106,7 @@ export function formatCarInfo(car_id, cars) {
   if (!car_id) return { name: '—', category: null, sim: null };
   
   if (Array.isArray(cars)) {
-    const c = cars.find(c => c.car_id === car_id);
+    const c = cars.find(c => String(c.car_id).toLowerCase() === String(car_id).toLowerCase());
     if (c) {
       return {
         name: c.car_name || car_id,

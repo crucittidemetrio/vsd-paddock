@@ -13,7 +13,7 @@ import StatusDot from '../components/shared/StatusDot';
 import {
   formatTrack, formatRaceDateTime, formatDuration, formatDate,
 } from '../utils/format';
-import { ROLES, DRIVER_STATUS } from '../utils/constants';
+import { ROLES, DRIVER_STATUS, SESSION_TYPE_LABELS } from '../utils/constants';
 import './Landing.css';
 import './Page.css';
 
@@ -162,6 +162,9 @@ export default function Landing() {
               <div key={lap.lap_id} className={`mc-lap-card${idx === 0 ? ' is-best' : ''}`}>
                 <div className="mc-lap-head">
                   <SimBadge sim={lap.sim} size="sm" />
+                  {lap.session_type && SESSION_TYPE_LABELS[lap.session_type] && (
+                    <span className="mc-lap-session">{SESSION_TYPE_LABELS[lap.session_type]}</span>
+                  )}
                   {lap.verified_by && <span className="verify-yes-mini">✓</span>}
                 </div>
                 <div className="mc-lap-track">{formatTrack(lap.track_id, tracks)}</div>
@@ -313,6 +316,12 @@ function FeedItem({ item, driverMap, tracks }) {
           <div className="feed-meta">
             <SimBadge sim={lap.sim} size="sm" />
             <span>{formatTrack(lap.track_id, tracks)}</span>
+            {lap.session_type && SESSION_TYPE_LABELS[lap.session_type] && (
+              <>
+                <span className="feed-dot">·</span>
+                <span>{SESSION_TYPE_LABELS[lap.session_type]}</span>
+              </>
+            )}
             <span className="feed-dot">·</span>
             <span className="feed-date">{formatDate(lap.set_date)}</span>
           </div>
