@@ -187,6 +187,8 @@ export async function callApi(action, payload = {}, ctx = null) {
         return await reportsListAdapter(payload, token);
       case 'reports.recent':
         return await reportsRecentAdapter(payload, token);
+      case 'showcase.summary':
+        return await showcaseSummaryAdapter(payload);
       default:
         return fail(`Action non instradata: ${action}`);
     }
@@ -325,4 +327,16 @@ function readTokenFromStorage() {
   } catch {
     return null;
   }
+}
+
+/**
+ * Frontend: showcase.summary() → { stats, topDrivers, upcomingRaces, latestBestLap }
+ * Backend:  showcase.summary → stesso shape, già flat in res.data
+ *
+ * Endpoint PUBBLICO. Non passiamo token — è marketing, niente auth.
+ */
+async function showcaseSummaryAdapter(payload) {
+  const res = await postToBackend('showcase.summary', payload || {}, null);
+  if (!res.ok) return res;
+  return ok(res.data);
 }

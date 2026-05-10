@@ -76,4 +76,8 @@ export const api = {
     list: (filters = {}) => call('reports.list', filters),
     recent: (limit = 5) => call('reports.recent', { limit }),
   },
+
+  showcase: {
+    summary: () => call('showcase.summary'),
+  },
 };

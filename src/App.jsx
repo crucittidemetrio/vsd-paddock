@@ -4,6 +4,7 @@ import AppShell from './components/layout/AppShell';
 import ProtectedRoute from './components/layout/ProtectedRoute';
 
 import Login from './pages/Login';
+import JoinUs from './pages/JoinUs';
 import Landing from './pages/Landing';
 import Roster from './pages/Roster';
 import DriverProfile from './pages/DriverProfile';
@@ -22,8 +23,9 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* Pubblica */}
+          {/* Pubbliche */}
           <Route path="/login" element={<Login />} />
+          <Route path="/joinus" element={<JoinUs />} />
 
           {/* Protette: usano lo shell con sidebar+topbar */}
           <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
