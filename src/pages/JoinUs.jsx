@@ -32,7 +32,7 @@ function formatDuration(minutes) {
 }
 
 export default function JoinUs() {
-  const { data } = useShowcase();
+ const { data, isLoading } = useShowcase();
   
   // Debug per vedere cosa arriva dalle API
   
