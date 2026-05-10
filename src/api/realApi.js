@@ -104,7 +104,6 @@ async function rosterListAdapter(payload, token) {
     );
   }
 
-  
   // realApi rispetta lo stesso contratto.
   return ok(drivers);
 }
@@ -146,8 +145,6 @@ async function authVerify(payload) {
 
 // ─────────────────────────────────────────────
 
-// ─────────────────────────────────────────────
-
 /**
  * @param action  es. 'roster.list'
  * @param payload oggetto parametri
@@ -183,6 +180,8 @@ export async function callApi(action, payload = {}, ctx = null) {
         return await racesUpcomingAdapter(payload, token);
       case 'races.get':
         return await racesGetAdapter(payload, token);
+      case 'raceResults.list':
+        return await raceResultsListAdapter(payload, token);
       case 'reports.list':
         return await reportsListAdapter(payload, token);
       case 'reports.recent':
@@ -220,6 +219,7 @@ async function lookupsCarsAdapter(payload, token) {
   if (!res.ok) return res;
   return ok(res.data.cars);
 }
+
 /**
  * Frontend: laps.list({ filters?, limit? }) → array di lap
  * Backend:  laps.list({}) → { laps: [...], count }
@@ -251,21 +251,16 @@ async function lapsListAdapter(payload, token) {
 /**
  * Frontend: laps.leaderboard(sim, track_id, car_id?) → array di best per pilota
  * Backend:  laps.leaderboard({ sim, track_id, car_id? }) → { laps: [...], count }
- *
- * Adapter: il mock chiama leaderboard con argomenti positional via client.js,
- * il client passa già un payload object → mappiamo direttamente.
  */
 async function lapsLeaderboardAdapter(payload, token) {
   const res = await postToBackend('laps.leaderboard', payload, token);
   if (!res.ok) return res;
   return ok(res.data.laps);
 }
+
 /**
  * Frontend: races.list({ status? }) → array of races
  * Backend:  races.list({ status? }) → { races: [...], count }
- *
- * Adapter: estrae l'array da data.races per allinearsi al contratto mock
- 
  */
 async function racesListAdapter(payload, token) {
   const res = await postToBackend('races.list', payload, token);
@@ -294,11 +289,24 @@ async function racesGetAdapter(payload, token) {
 }
 
 /**
+ * Frontend: raceResults.list({ race_id?, session_type? }) → { results, count }
+ * Backend:  raceResults.list({ race_id?, session_type? })
+ *
+ * Tollera due shape di risposta dal backend:
+ *  1. wrapped:   { ok: true, data: { results, count } }
+ *  2. unwrapped: { results, count }
+ */
+async function raceResultsListAdapter(payload, token) {
+  const res = await postToBackend('raceResults.list', payload || {}, token);
+  if (!res) return fail('Nessuna risposta dal backend');
+  if (res.ok === false) return res;
+  const data = (res.ok === true && res.data) ? res.data : res;
+  return ok(data);
+}
+
+/**
  * Frontend: reports.list({ race_id?, driver_id? }) → array of reports
  * Backend:  reports.list({ race_id?, driver_id? }) → { reports: [...], count }
- *
- * NB: la privacy è applicata server-side. Il driver vede solo i propri,
- * staff/admin vedono tutto. Il client non deve filtrare per privacy.
  */
 async function reportsListAdapter(payload, token) {
   const res = await postToBackend('reports.list', payload, token);
@@ -315,14 +323,15 @@ async function reportsRecentAdapter(payload, token) {
   if (!res.ok) return res;
   return ok(res.data.reports);
 }
+
 /**
  * Legge il token da localStorage senza dipendere da AuthContext
  * (questo file deve poter essere importato da client.js).
  */
 function readTokenFromStorage() {
   try {
- // STORAGE.TOKEN = 'vsd_paddock_token' (vedi src/utils/constants.js)
-// Hardcoded qui per evitare un import circolare con client.js
+    // STORAGE.TOKEN = 'vsd_paddock_token' (vedi src/utils/constants.js)
+    // Hardcoded qui per evitare un import circolare con client.js
     return localStorage.getItem('vsd_paddock_token');
   } catch {
     return null;

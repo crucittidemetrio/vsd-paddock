@@ -1,7 +1,6 @@
 // ===========================================
 // VSD PADDOCK — API client
 // Facciata pubblica usata dai componenti.
-
 // ===========================================
 
 import { callApi } from './realApi';
@@ -70,6 +69,10 @@ export const api = {
     list: (status) => call('races.list', { status }),
     upcoming: () => call('races.upcoming'),
     get: (race_id) => call('races.get', { race_id }),
+  },
+
+  raceResults: {
+    list: (params = {}) => call('raceResults.list', params),
   },
 
   reports: {

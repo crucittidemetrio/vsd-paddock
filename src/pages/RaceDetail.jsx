@@ -1,8 +1,10 @@
 import { useParams, Link } from 'react-router-dom';
 import { useRace, useReports } from '../hooks/useRaces';
+import { useRaceResults } from '../hooks/useRaceResults';
 import { useTracks, useCars } from '../hooks/useLookups';
 import { useDrivers } from '../hooks/useRoster';
 import { formatTrackInfo, formatCarInfo } from '../utils/format';
+import RaceResultsSection from '../components/race/RaceResultsSection';
 import './Page.css';
 import './RaceDetail.css';
 
@@ -115,7 +117,7 @@ function ReportCard({ report, drivers }) {
           <div className="rd-staff-header">
             <span className="rd-staff-label">Staff Feedback</span>
             {hasStaffRating && (
-            <span className="rd-staff-rating">Rating {report.staff_rating}/10</span>
+              <span className="rd-staff-rating">Rating {report.staff_rating}/10</span>
             )}
           </div>
           {report.staff_notes && (
@@ -134,8 +136,10 @@ export default function RaceDetail() {
   const { data: cars } = useCars();
   const { data: reports } = useReports({ race_id: raceId });
   const { data: drivers } = useDrivers();
+  const { data: raceResultsData } = useRaceResults({ race_id: raceId });
 
-  
+  const hasOfficialResults = (raceResultsData?.results?.length || 0) > 0;
+
   if (isLoading) {
     return (
       <div className="page">
@@ -180,7 +184,6 @@ export default function RaceDetail() {
         .filter(r => !isNaN(r._pos) && r._pos > 0)
         .sort((a, b) => a._pos - b._pos)
     : [];
-
 
   return (
     <div className="page">
@@ -251,7 +254,7 @@ export default function RaceDetail() {
           )}
         </div>
 
-   {race.notes && (
+        {race.notes && (
           <div className="rd-notes">
             <div className="rd-info-label">Note</div>
             <div className="rd-notes-text">{race.notes}</div>
@@ -259,7 +262,11 @@ export default function RaceDetail() {
         )}
       </section>
 
-      {statusKey === 'completed' && (
+      {/* Risultati Ufficiali — appare solo se ci sono righe in RaceResults */}
+      <RaceResultsSection raceId={raceId} drivers={drivers} />
+
+      {/* Classifica derivata dai reports — fallback per gare senza risultati ufficiali */}
+      {statusKey === 'completed' && !hasOfficialResults && (
         <section className="rd-section">
           <h2 className="rd-section-title">Classifica</h2>
           {classification.length === 0 ? (
@@ -281,7 +288,7 @@ export default function RaceDetail() {
                     </tr>
                   ))}
                 </tbody>
-             </table>
+              </table>
             </div>
           )}
         </section>
@@ -300,4 +307,3 @@ export default function RaceDetail() {
     </div>
   );
 }
-
