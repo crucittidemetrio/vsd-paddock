@@ -5,11 +5,11 @@ import { useUpcomingRaces, useReports } from '../hooks/useRaces';
 import { useBestLaps } from '../hooks/useBestLaps';
 import { useDrivers } from '../hooks/useRoster';
 import { useTracks } from '../hooks/useLookups';
+import { useMyRecentRaceResults, useRecentTeamRaceResults } from '../hooks/useRaceResults';
 import SimBadge from '../components/shared/SimBadge';
 import CountdownLive from '../components/shared/CountdownLive';
 import LapTime from '../components/shared/LapTime';
 import Avatar from '../components/shared/Avatar';
-import StatusDot from '../components/shared/StatusDot';
 import {
   formatTrack, formatRaceDateTime, formatDuration, formatDate,
 } from '../utils/format';
@@ -22,10 +22,19 @@ export default function Landing() {
   const { data: upcoming } = useUpcomingRaces();
   const { data: myLaps } = useBestLaps({ driver_id: driver?.driver_id });
   const { data: myReports } = useReports({ driver_id: driver?.driver_id });
- const { data: drivers } = useDrivers();
+  const { data: drivers } = useDrivers();
   const { data: allLaps } = useBestLaps();
   const { data: allReports } = useReports();
   const { data: tracks = [] } = useTracks();
+
+  // NEW: race results
+  const { data: myRaceResultsData } = useMyRecentRaceResults(driver?.driver_id, 5);
+  const myRaceResults = myRaceResultsData?.results || [];
+  const lastResult = myRaceResults[0];
+
+  const { data: allRaceResultsData } = useRecentTeamRaceResults(20);
+  const allRaceResults = allRaceResultsData?.results || [];
+
   const driverMap = useMemo(() => {
     const m = {};
     (drivers || []).forEach(d => { m[d.driver_id] = d; });
@@ -38,12 +47,20 @@ export default function Landing() {
   // My stats
   const totalLaps = myLaps?.length || 0;
   const verifiedLaps = myLaps?.filter(l => !!l.verified_by).length || 0;
-  const racesCount = new Set((myReports || []).map(r => r.race_id)).size;
-  const podiums = (myReports || []).filter(r =>
+  // Conta gare disputate da RaceResults se disponibile, altrimenti fallback su reports
+  const racesFromResults = new Set(myRaceResults.map(r => r.race_id)).size;
+  const racesFromReports = new Set((myReports || []).map(r => r.race_id)).size;
+  const racesCount = Math.max(racesFromResults, racesFromReports);
+  // Podi da RaceResults se disponibile, altrimenti fallback su reports
+  const podiumsFromResults = myRaceResults.filter(r =>
+    !r.dns && !r.dnf && typeof r.finish_position === 'number' && r.finish_position <= 3
+  ).length;
+  const podiumsFromReports = (myReports || []).filter(r =>
     typeof r.finish_position === 'number' && r.finish_position <= 3
   ).length;
+  const podiums = Math.max(podiumsFromResults, podiumsFromReports);
 
-  // Activity feed: fonde laps + reports in ordine cronologico
+  // Activity feed: laps + reports + raceResults, dedup report/result sulla stessa gara+pilota
   const feed = useMemo(() => {
     const items = [];
     (allLaps || []).forEach(l => {
@@ -53,15 +70,31 @@ export default function Landing() {
         data: l,
       });
     });
+
+    // Dedup: se esiste un RaceResult per la stessa coppia race_id+driver_id, skippiamo il report
+    const resultsKeySet = new Set(
+      (allRaceResults || []).map(rr => `${rr.race_id}__${rr.driver_id}`)
+    );
     (allReports || []).forEach(r => {
+      const key = `${r.race_id}__${r.driver_id}`;
+      if (resultsKeySet.has(key)) return; // hidden in favor of RaceResult event
       items.push({
         type: 'report',
         ts: new Date(r.created_at).getTime(),
         data: r,
       });
     });
+
+    (allRaceResults || []).forEach(rr => {
+      items.push({
+        type: 'raceResult',
+        ts: new Date(rr.set_date).getTime(),
+        data: rr,
+      });
+    });
+
     return items.sort((a, b) => b.ts - a.ts).slice(0, 8);
-  }, [allLaps, allReports]);
+  }, [allLaps, allReports, allRaceResults]);
 
   // Staff metrics
   const pendingLaps = useMemo(
@@ -149,6 +182,17 @@ export default function Landing() {
         </section>
       )}
 
+      {/* ULTIMO RISULTATO (NEW) */}
+      {lastResult && (
+        <section className="mc-last-result">
+          <div className="mc-section-head">
+            <div className="mc-section-eyebrow">ULTIMO RISULTATO</div>
+            <Link to={`/race/${lastResult.race_id}`} className="mc-section-link">Vedi gara →</Link>
+          </div>
+          <LastResultCard result={lastResult} tracks={tracks} />
+        </section>
+      )}
+
       {/* LE MIE BEST LAPS */}
       {myLaps && myLaps.length > 0 && (
         <section className="mc-my-laps">
@@ -218,7 +262,6 @@ export default function Landing() {
               <div className="mc-section-eyebrow staff-eyebrow">STAFF DESK</div>
             </div>
 
-            {/* Lap pendenti */}
             <Link
               to="/laps"
               className={`staff-action${pendingLaps.length > 0 ? ' has-action' : ''}`}
@@ -237,7 +280,6 @@ export default function Landing() {
               {pendingLaps.length > 0 && <div className="staff-action-arrow">→</div>}
             </Link>
 
-            {/* Trial drivers */}
             <Link
               to="/roster"
               className={`staff-action${trialDrivers.length > 0 ? ' has-action' : ''}`}
@@ -256,7 +298,6 @@ export default function Landing() {
               {trialDrivers.length > 0 && <div className="staff-action-arrow">→</div>}
             </Link>
 
-            {/* Quick stat: roster size */}
             <div className="staff-mini-stats">
               <MiniInfo
                 label="Roster attivo"
@@ -291,6 +332,44 @@ function MiniInfo({ label, value }) {
     <div className="mini-info">
       <div className="mini-info-label">{label}</div>
       <div className="mini-info-value">{value}</div>
+    </div>
+  );
+}
+
+function LastResultCard({ result, tracks }) {
+  const isDns = result.dns;
+  const isDnf = result.dnf;
+  const pos = result.finish_position;
+  const isWin = !isDns && !isDnf && pos === 1;
+  const isPodium = !isDns && !isDnf && pos && pos <= 3;
+
+  let cardClass = 'mc-lr-card';
+  if (isWin) cardClass += ' is-win';
+  else if (isPodium) cardClass += ' is-podium';
+  if (isDns || isDnf) cardClass += ' is-dnx';
+
+  const posLabel = isDns ? 'DNS' : isDnf ? 'DNF' : `P${pos}`;
+
+  return (
+    <div className={cardClass}>
+      <div className="mc-lr-position">
+        <div className={`mc-lr-pos-num${(isDns || isDnf) ? ' is-dnx' : ''}`}>{posLabel}</div>
+        <div className="mc-lr-pos-class">{result.car_class}</div>
+      </div>
+      <div className="mc-lr-info">
+        <div className="mc-lr-track-row">
+          <span className="mc-lr-track">{formatTrack(result.track_id, tracks)}</span>
+          {result.sim && <SimBadge sim={result.sim} size="sm" />}
+        </div>
+        <div className="mc-lr-date">{formatDate(result.set_date)}</div>
+        {!isDns && (
+          <div className="mc-lr-stats">
+            <MiniInfo label="Best Lap" value={result.best_lap_display || '—'} />
+            <MiniInfo label="Tempo Totale" value={result.total_time_display || '—'} />
+            <MiniInfo label="Giri" value={result.total_laps ?? '—'} />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -356,6 +435,50 @@ function FeedItem({ item, driverMap, tracks }) {
             <span className="feed-race">{r.race_id}</span>
             <span className="feed-dot">·</span>
             <span className="feed-date">{formatDate(r.created_at)}</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (item.type === 'raceResult') {
+    const rr = item.data;
+    const d = driverMap[rr.driver_id];
+    const pos = rr.finish_position;
+    const isWin = !rr.dns && !rr.dnf && pos === 1;
+    const isPodium = !rr.dns && !rr.dnf && pos && pos <= 3;
+
+    let actionText;
+    if (rr.dns) actionText = 'non è partito';
+    else if (rr.dnf) actionText = 'si è ritirato';
+    else if (isWin) actionText = 'ha vinto';
+    else if (isPodium) actionText = 'è salito sul podio';
+    else actionText = 'ha chiuso';
+
+    return (
+      <div className="feed-item">
+        <div className={`feed-icon feed-icon-result${isPodium ? ' is-podium' : ''}`}>⬢</div>
+        <div className="feed-body">
+          <div className="feed-line">
+            {d ? (
+              <Link to={`/roster/${d.driver_id}`} className="feed-driver">
+                <Avatar name={d.display_name} driverId={d.driver_id} size={20} />
+                <span>{d.display_name}</span>
+              </Link>
+            ) : (
+              <span className="feed-driver-external">{rr.driver_name_external}</span>
+            )}
+            <span className="feed-action">{actionText}</span>
+            {!rr.dns && !rr.dnf && (
+              <span className={`feed-pos${isPodium ? ' is-podium' : ''}`}>P{pos}</span>
+            )}
+            {rr.car_class && <span className="feed-class">{rr.car_class}</span>}
+          </div>
+          <div className="feed-meta">
+            {rr.sim && <SimBadge sim={rr.sim} size="sm" />}
+            <span>{formatTrack(rr.track_id, tracks)}</span>
+            <span className="feed-dot">·</span>
+            <span className="feed-date">{formatDate(rr.set_date)}</span>
           </div>
         </div>
       </div>

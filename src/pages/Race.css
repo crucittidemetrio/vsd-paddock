@@ -270,3 +270,62 @@
   font-style: normal;
   margin-right: 4px;
 }
+
+/* ========== MY RESULT BADGE (Wave 9.7) ========== */
+.race-card-tags {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.race-mine-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border-radius: var(--r-sm);
+  background: rgba(59, 139, 255, 0.10);
+  border: 1px solid rgba(59, 139, 255, 0.3);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--vsd-blue);
+  text-transform: uppercase;
+}
+
+.race-mine-badge.is-podium {
+  background: rgba(245, 166, 35, 0.10);
+  border-color: rgba(245, 166, 35, 0.4);
+  color: var(--vsd-orange);
+}
+
+.race-mine-badge.is-win {
+  background: rgba(245, 166, 35, 0.18);
+  border-color: var(--vsd-orange);
+  color: var(--vsd-orange);
+  font-weight: var(--fw-bold);
+}
+
+.race-mine-badge.is-dnx {
+  background: var(--vsd-bg-hover);
+  border-color: var(--color-border);
+  color: var(--color-text-dim);
+}
+
+.race-mine-label {
+  font-weight: var(--fw-semibold);
+  opacity: 0.75;
+}
+
+.race-mine-pos {
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-sm);
+}
+
+.race-mine-class {
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  opacity: 0.85;
+}
