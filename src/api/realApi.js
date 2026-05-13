@@ -174,6 +174,8 @@ export async function callApi(action, payload = {}, ctx = null) {
         return await lapsListAdapter(payload, token);
       case 'laps.leaderboard':
         return await lapsLeaderboardAdapter(payload, token);
+      case 'laps.raceLaps':
+  return await lapsRaceLapsAdapter(payload, token);  
       case 'races.list':
         return await racesListAdapter(payload, token);
       case 'races.upcoming':
@@ -258,6 +260,16 @@ async function lapsListAdapter(payload, token) {
  */
 async function lapsLeaderboardAdapter(payload, token) {
   const res = await postToBackend('laps.leaderboard', payload, token);
+  if (!res.ok) return res;
+  return ok(res.data.laps);
+}
+
+/**
+ * Frontend: laps.raceLaps() → array of race-derived laps
+ * Backend:  laps.raceLaps → { laps: [...], count }
+ */
+async function lapsRaceLapsAdapter(payload, token) {
+  const res = await postToBackend('laps.raceLaps', {}, token);
   if (!res.ok) return res;
   return ok(res.data.laps);
 }

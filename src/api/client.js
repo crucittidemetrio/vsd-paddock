@@ -63,6 +63,7 @@ export const api = {
     list: (filters = {}, limit) => call('laps.list', { filters, limit }),
     leaderboard: (sim, track_id, car_id) =>
       call('laps.leaderboard', { sim, track_id, car_id }),
+    raceLaps: () => call('laps.raceLaps'),
   },
 
   races: {
