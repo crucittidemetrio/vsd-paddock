@@ -15,6 +15,8 @@ import BestLaps from './pages/BestLaps';
 import Training from './pages/Training';
 import Academy from './pages/Academy';
 import Endurance from './pages/Endurance';
+import AdminImportResults from './pages/AdminImportResults';
+import AdminRoute from './components/layout/AdminRoute';
 
 import './App.css';
 
@@ -39,6 +41,12 @@ export default function App() {
             <Route path="/training" element={<Training />} />
             <Route path="/academy" element={<Academy />} />
             <Route path="/endurance" element={<Endurance />} />
+            
+            {/* Admin only — Wave 9.8 */}
+            <Route
+              path="/admin/import-results"
+              element={<AdminRoute><AdminImportResults /></AdminRoute>}
+            />
           </Route>
 
           {/* Fallback */}

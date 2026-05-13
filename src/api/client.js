@@ -73,8 +73,14 @@ export const api = {
 
   raceResults: {
     list: (params = {}) => call('raceResults.list', params),
+    import: ({ race_id, json_data }) =>
+      call('raceResults.import', { race_id, json_data }),
   },
 
+  championships: {
+    list: (filters = {}) => call('championships.list', filters),
+  },
+  
   reports: {
     list: (filters = {}) => call('reports.list', filters),
     recent: (limit = 5) => call('reports.recent', { limit }),

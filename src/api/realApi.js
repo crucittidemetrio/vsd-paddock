@@ -182,6 +182,10 @@ export async function callApi(action, payload = {}, ctx = null) {
         return await racesGetAdapter(payload, token);
       case 'raceResults.list':
         return await raceResultsListAdapter(payload, token);
+      case 'raceResults.import':                                    // ← NEW
+        return await raceResultsImportAdapter(payload, token);      // ← NEW
+      case 'championships.list':                                    // ← NEW
+        return await championshipsListAdapter(payload, token);      // ← NEW
       case 'reports.list':
         return await reportsListAdapter(payload, token);
       case 'reports.recent':
@@ -313,7 +317,25 @@ async function reportsListAdapter(payload, token) {
   if (!res.ok) return res;
   return ok(res.data.reports);
 }
+/**
+ * Frontend: raceResults.import({ race_id, json_data }) → stats object
+ * Backend:  raceResults.import → { imported, vsd_matched, external, dns, dnf, session_type }
+ */
+async function raceResultsImportAdapter(payload, token) {
+  const res = await postToBackend('raceResults.import', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
 
+/**
+ * Frontend: championships.list({ sim?, status?, season? }) → array of championships
+ * Backend:  championships.list({...}) → { championships: [...], count }
+ */
+async function championshipsListAdapter(payload, token) {
+  const res = await postToBackend('championships.list', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data.championships);
+}
 /**
  * Frontend: reports.recent({ limit? = 5 }) → array of recent reports
  * Backend:  reports.recent({ limit? }) → { reports: [...], count }

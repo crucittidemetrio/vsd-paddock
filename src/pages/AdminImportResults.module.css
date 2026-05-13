@@ -1,0 +1,183 @@
+/* ===========================================
+   VSD PADDOCK — Admin Import Results
+   =========================================== */
+
+.container {
+  max-width: 768px;
+  margin: 0 auto;
+  padding: var(--sp-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+.header h1 {
+  font-size: var(--fs-2xl);
+  color: var(--color-text);
+}
+.header p {
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+  margin-top: var(--sp-2);
+}
+
+.section {
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-md);
+  padding: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.sectionLabel {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.select,
+.textarea {
+  width: 100%;
+  background: var(--vsd-bg);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--r-sm);
+  padding: var(--sp-2) var(--sp-3);
+  color: var(--color-text);
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  transition: border-color var(--t-fast);
+}
+.select:focus,
+.textarea:focus {
+  outline: none;
+  border-color: var(--vsd-cyan);
+  box-shadow: var(--glow-cyan);
+}
+
+.textarea {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  resize: vertical;
+  min-height: 280px;
+  line-height: 1.4;
+}
+
+.raceMeta {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--color-text-dim);
+}
+
+.loadingText { font-size: var(--fs-sm); color: var(--color-text-dim); }
+.errorText   { font-size: var(--fs-sm); color: var(--color-danger); }
+
+.previewOk    { color: var(--color-success); font-size: var(--fs-sm); }
+.previewError { color: var(--color-danger);  font-size: var(--fs-sm); }
+
+.previewBody {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+  color: var(--color-text);
+}
+.previewClasses {
+  margin: 0;
+  padding-left: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  list-style: none;
+}
+.previewTotal {
+  font-weight: var(--fw-semibold);
+  padding-top: var(--sp-1);
+}
+.detected {
+  color: var(--vsd-cyan);
+  font-weight: var(--fw-semibold);
+}
+
+.actions {
+  display: flex;
+  gap: var(--sp-3);
+}
+
+.btnPrimary,
+.btnSecondary {
+  padding: var(--sp-2) var(--sp-5);
+  border: none;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  font-family: inherit;
+  letter-spacing: 0.02em;
+  transition: background-color var(--t-fast), box-shadow var(--t-fast);
+}
+.btnPrimary {
+  background: var(--vsd-red);
+  color: white;
+}
+.btnPrimary:hover:not(:disabled) {
+  background: #d62b37;
+  box-shadow: var(--glow-red);
+}
+.btnPrimary:disabled {
+  background: var(--color-border-strong);
+  color: var(--color-text-dim);
+  cursor: not-allowed;
+}
+.btnSecondary {
+  background: var(--vsd-bg-hover);
+  color: var(--color-text);
+}
+.btnSecondary:hover {
+  background: var(--color-border-strong);
+}
+
+.resultSuccess,
+.resultError {
+  border: 1px solid;
+  border-radius: var(--r-md);
+  padding: var(--sp-4);
+}
+.resultSuccess {
+  background: rgba(52, 211, 153, 0.08);
+  border-color: var(--color-success);
+}
+.resultError {
+  background: rgba(239, 51, 64, 0.08);
+  border-color: var(--color-danger);
+}
+
+.resultTitleOk    { color: var(--color-success); font-size: var(--fs-md); font-weight: var(--fw-bold); }
+.resultTitleError { color: var(--color-danger);  font-size: var(--fs-md); font-weight: var(--fw-bold); }
+
+.statsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+  font-size: var(--fs-sm);
+  color: var(--color-text);
+}
+
+.openRaceLink {
+  display: inline-block;
+  margin-top: var(--sp-3);
+  color: var(--color-success);
+  font-size: var(--fs-sm);
+  text-decoration: underline;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+}
+.openRaceLink:hover {
+  color: var(--vsd-cyan);
+}
