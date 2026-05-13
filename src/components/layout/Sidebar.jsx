@@ -18,8 +18,12 @@ const FUTURE_ITEMS = [
   { to: '/endurance', label: LABELS.nav_endurance, icon: '◐' },
 ];
 
+const ADMIN_ITEMS = [
+  { to: '/admin/import-results', label: 'Importa risultati', icon: '⊞' },
+];
+
 export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {} }) {
-  const { isStaff } = useAuth();
+  const { isStaff, isAdmin } = useAuth();
 
   return (
     <aside className={`sidebar${isMobileOpen ? ' is-mobile-open' : ''}`}>
@@ -43,7 +47,7 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
         ))}
 
         <div className="nav-section-label">In arrivo</div>
-        {FUTURE_ITEMS.map(item => (
+       {FUTURE_ITEMS.map(item => (
           <NavLink
             key={item.to}
             to={item.to}
@@ -55,6 +59,23 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
             <span className="nav-tag">soon</span>
           </NavLink>
         ))}
+
+        {isAdmin && (
+          <>
+            <div className="nav-section-label">Admin</div>
+            {ADMIN_ITEMS.map(item => (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                onClick={onMobileClose}
+                className={({ isActive }) => `nav-item${isActive ? ' is-active' : ''}`}
+              >
+                <span className="nav-icon">{item.icon}</span>
+                <span className="nav-label">{item.label}</span>
+              </NavLink>
+            ))}
+          </>
+        )}
       </nav>
 
       <div className="sidebar-footer">
