@@ -17,6 +17,8 @@ import Academy from './pages/Academy';
 import Endurance from './pages/Endurance';
 import AdminImportResults from './pages/AdminImportResults';
 import AdminRoute from './components/layout/AdminRoute';
+import ChampionshipDetail from './pages/ChampionshipDetail';
+import AdminImportStandings from './pages/AdminImportStandings';
 
 import './App.css';
 
@@ -47,8 +49,17 @@ export default function App() {
               path="/admin/import-results"
               element={<AdminRoute><AdminImportResults /></AdminRoute>}
             />
+<Route
+          path="/admin/import-standings"
+          element={<AdminRoute><AdminImportStandings /></AdminRoute>}
+        />
+            {/* Championships — Wave 9.9 */}
+            <Route
+              path="/championships/:championshipId"
+              element={<ChampionshipDetail />}
+            />
           </Route>
-
+          
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -19,7 +19,8 @@ const FUTURE_ITEMS = [
 ];
 
 const ADMIN_ITEMS = [
-  { to: '/admin/import-results', label: 'Importa risultati', icon: '⊞' },
+  { to: '/admin/import-results', label: 'Import Risultati', icon: '📥' },
+  { to: '/admin/import-standings', label: 'Import Standings', icon: '🏆' },
 ];
 
 export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {} }) {

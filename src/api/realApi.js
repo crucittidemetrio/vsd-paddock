@@ -184,10 +184,15 @@ export async function callApi(action, payload = {}, ctx = null) {
         return await racesGetAdapter(payload, token);
       case 'raceResults.list':
         return await raceResultsListAdapter(payload, token);
-      case 'raceResults.import':                                    // ← NEW
-        return await raceResultsImportAdapter(payload, token);      // ← NEW
-      case 'championships.list':                                    // ← NEW
-        return await championshipsListAdapter(payload, token);      // ← NEW
+     case 'raceResults.import':                              // ← NEW
+        return await raceResultsImportAdapter(payload, token); // ← NEW
+      case 'championships.list':                              // ← NEW
+        return await championshipsListAdapter(payload, token); // ← NEW
+       // Aggiungi questo case nello switch, dopo 'championships.list':
+case 'championships.importStandings':
+  return championshipsImportStandingsAdapter(payload); 
+      case 'standings.byChampionship':                                       // ← NEW Wave 9.9
+        return await standingsByChampionshipAdapter(payload, token);         // ← NEW Wave 9.9
       case 'reports.list':
         return await reportsListAdapter(payload, token);
       case 'reports.recent':
@@ -348,6 +353,17 @@ async function championshipsListAdapter(payload, token) {
   if (!res.ok) return res;
   return ok(res.data.championships);
 }
+
+/**
+ * Frontend: standings.byChampionship({ championship_id }) → standings payload
+ * Backend:  standings.byChampionship → { championship, classes, rounds, points_configured }
+ */
+async function standingsByChampionshipAdapter(payload, token) {
+  const res = await postToBackend('standings.byChampionship', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
 /**
  * Frontend: reports.recent({ limit? = 5 }) → array of recent reports
  * Backend:  reports.recent({ limit? }) → { reports: [...], count }
@@ -382,4 +398,11 @@ async function showcaseSummaryAdapter(payload) {
   const res = await postToBackend('showcase.summary', payload || {}, null);
   if (!res.ok) return res;
   return ok(res.data);
+}
+
+function championshipsImportStandingsAdapter(payload) {
+  return {
+    championship_id: payload.championship_id,
+    json_data: payload.json_data,
+  };
 }

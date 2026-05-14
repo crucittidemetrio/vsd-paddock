@@ -78,8 +78,15 @@ export const api = {
       call('raceResults.import', { race_id, json_data }),
   },
 
-  championships: {
+ championships: {
     list: (filters = {}) => call('championships.list', filters),
+    importStandings: ({ championship_id, json_data }) =>
+      call('championships.importStandings', { championship_id, json_data }),
+  },
+
+  standings: {                                                              // ← NEW BLOCK
+    byChampionship: (championship_id) =>
+      call('standings.byChampionship', { championship_id }),
   },
   
   reports: {
