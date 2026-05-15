@@ -404,10 +404,7 @@ async function showcaseSummaryAdapter(payload) {
  * Backend:  championships.importStandings → { championship_id, classes_count, drivers_count, vsd_matched, external }
  */
 async function championshipsImportStandingsAdapter(payload, token) {
-  console.log('[importStandings] payload keys:', Object.keys(payload || {}));
-  console.log('[importStandings] token present:', !!token);
   const res = await postToBackend('championships.importStandings', payload || {}, token);
-  console.log('[importStandings] response from backend:', res);
   if (!res.ok) return res;
   return ok(res.data);
 }
