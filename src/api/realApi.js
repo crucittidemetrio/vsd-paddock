@@ -188,9 +188,8 @@ export async function callApi(action, payload = {}, ctx = null) {
         return await raceResultsImportAdapter(payload, token); // ← NEW
       case 'championships.list':                              // ← NEW
         return await championshipsListAdapter(payload, token); // ← NEW
-       // Aggiungi questo case nello switch, dopo 'championships.list':
-case 'championships.importStandings':
-  return championshipsImportStandingsAdapter(payload); 
+      case 'championships.importStandings':
+        return await championshipsImportStandingsAdapter(payload, token);
       case 'standings.byChampionship':                                       // ← NEW Wave 9.9
         return await standingsByChampionshipAdapter(payload, token);         // ← NEW Wave 9.9
       case 'reports.list':
@@ -334,7 +333,7 @@ async function reportsListAdapter(payload, token) {
   if (!res.ok) return res;
   return ok(res.data.reports);
 }
-/**
+/**F
  * Frontend: raceResults.import({ race_id, json_data }) → stats object
  * Backend:  raceResults.import → { imported, vsd_matched, external, dns, dnf, session_type }
  */
@@ -400,9 +399,15 @@ async function showcaseSummaryAdapter(payload) {
   return ok(res.data);
 }
 
-function championshipsImportStandingsAdapter(payload) {
-  return {
-    championship_id: payload.championship_id,
-    json_data: payload.json_data,
-  };
+/**
+ * Frontend: championships.importStandings({ championship_id, json_data }) → import stats
+ * Backend:  championships.importStandings → { championship_id, classes_count, drivers_count, vsd_matched, external }
+ */
+async function championshipsImportStandingsAdapter(payload, token) {
+  console.log('[importStandings] payload keys:', Object.keys(payload || {}));
+  console.log('[importStandings] token present:', !!token);
+  const res = await postToBackend('championships.importStandings', payload || {}, token);
+  console.log('[importStandings] response from backend:', res);
+  if (!res.ok) return res;
+  return ok(res.data);
 }
