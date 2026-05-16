@@ -26,6 +26,7 @@ export default function Race() {
   const [tab, setTab] = useState('scheduled');
   const { driver } = useAuth();
   const { data: races, isLoading } = useRaces();
+  console.log('[Race Hub] races:', races);
   const { data: drivers } = useDrivers();
   const { data: tracks = [] } = useTracks();
   const { data: myRaceResultsData } = useMyRecentRaceResults(driver?.driver_id, 50);
@@ -127,6 +128,15 @@ function RaceCard({ race, driverMap, tracks, isPast, myResult }) {
 
   return (
     <Link to={`/race/${race.race_id}`} className="race-card">
+      {race.poster_url && (
+        <div className="race-card-poster">
+          <img
+            src={race.poster_url}
+            alt=""
+            onError={(e) => { e.currentTarget.parentElement.style.display = 'none'; }}
+          />
+        </div>
+      )}
       <div className="race-card-head">
         <div className="race-card-meta">
           <SimBadge sim={race.sim} variant="solid" size="sm" />

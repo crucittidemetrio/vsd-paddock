@@ -211,6 +211,16 @@ export default function RaceDetail() {
             </div>
           </div>
 
+         {race.poster_url && (
+        <div className="rd-hero">
+          <img
+            src={race.poster_url}
+            alt=""
+            onError={(e) => { e.currentTarget.parentElement.style.display = 'none'; }}
+          />
+        </div>
+      )}
+
           <div className="rd-info-item">
             <div className="rd-info-label">Vettura</div>
             <div className="rd-info-value">

@@ -263,3 +263,28 @@
   font-weight: 700;
   color: #aab0ff;
 }
+
+.rd-hero {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 420px;
+  overflow: hidden;
+  border-radius: 14px;
+  margin-bottom: 1.5rem;
+  background: var(--vsd-bg);
+  border: 1px solid var(--vsd-border);
+}
+.rd-hero img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.rd-hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 60%, rgba(0, 0, 0, 0.3) 100%);
+  pointer-events: none;
+}
