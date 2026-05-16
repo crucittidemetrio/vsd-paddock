@@ -19,6 +19,7 @@ import AdminImportResults from './pages/AdminImportResults';
 import AdminRoute from './components/layout/AdminRoute';
 import ChampionshipDetail from './pages/ChampionshipDetail';
 import AdminImportStandings from './pages/AdminImportStandings';
+import ChampionshipsList from './pages/ChampionshipsList';
 
 import './App.css';
 
@@ -54,6 +55,12 @@ export default function App() {
           element={<AdminRoute><AdminImportStandings /></AdminRoute>}
         />
             {/* Championships — Wave 9.9 */}
+            {/* Championships — Wave 9.9 */}
+        <Route path="/championships" element={<ChampionshipsList />} />
+        <Route
+          path="/championships/:championshipId"
+          element={<ChampionshipDetail />}
+        />
             <Route
               path="/championships/:championshipId"
               element={<ChampionshipDetail />}
