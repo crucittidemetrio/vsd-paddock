@@ -1,0 +1,321 @@
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1rem 4rem;
+  color: var(--vsd-text);
+}
+
+.header { margin-bottom: 1.5rem; }
+.eyebrow {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--vsd-text-muted);
+  text-transform: uppercase;
+  margin-bottom: 0.25rem;
+}
+.header h1 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  color: var(--vsd-cyan);
+}
+.subtitle { color: var(--vsd-text-muted); margin: 0; font-size: 0.9rem; }
+
+.controlsBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.viewToggle {
+  display: flex;
+  background: var(--vsd-surface);
+  border: 1px solid var(--vsd-border);
+  border-radius: 8px;
+  padding: 3px;
+  gap: 2px;
+}
+.toggleBtn {
+  padding: 0.45rem 1rem;
+  background: transparent;
+  border: none;
+  color: var(--vsd-text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.15s ease;
+}
+.toggleBtn:hover { color: var(--vsd-text); }
+.toggleActive { background: var(--vsd-cyan); color: var(--vsd-bg); }
+.toggleActive:hover { color: var(--vsd-bg); }
+
+.monthNav { display: flex; align-items: center; gap: 0.5rem; }
+.navBtn {
+  width: 32px;
+  height: 32px;
+  background: var(--vsd-surface);
+  border: 1px solid var(--vsd-border);
+  border-radius: 8px;
+  color: var(--vsd-text);
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.navBtn:hover { border-color: var(--vsd-cyan); color: var(--vsd-cyan); }
+
+.currentMonth {
+  font-size: 1.05rem;
+  font-weight: 600;
+  min-width: 180px;
+  text-align: center;
+  color: var(--vsd-text);
+}
+
+.todayBtn {
+  padding: 0.4rem 0.9rem;
+  background: var(--vsd-surface);
+  border: 1px solid var(--vsd-border);
+  border-radius: 8px;
+  color: var(--vsd-text-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 0.5rem;
+}
+.todayBtn:hover { color: var(--vsd-cyan); border-color: var(--vsd-cyan); }
+
+/* Month grid */
+.monthGrid {
+  background: var(--vsd-surface);
+  border: 1px solid var(--vsd-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.dayLabels {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  background: var(--vsd-bg);
+  border-bottom: 1px solid var(--vsd-border);
+}
+.dayLabel {
+  padding: 0.65rem;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--vsd-text-muted);
+}
+
+.cellGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+}
+
+.dayCell {
+  min-height: 110px;
+  padding: 0.4rem 0.5rem;
+  border-right: 1px solid var(--vsd-border);
+  border-bottom: 1px solid var(--vsd-border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  background: var(--vsd-surface);
+}
+.dayCell:nth-child(7n) { border-right: none; }
+.dayCellOutMonth { background: transparent; opacity: 0.4; }
+.dayCellWeekend { background: rgba(0, 217, 255, 0.02); }
+.dayCellToday { background: rgba(0, 217, 255, 0.08); }
+.dayCellToday .dayNumber { color: var(--vsd-cyan); font-weight: 700; }
+
+.dayNumber {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--vsd-text);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.dayRaces {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1;
+  overflow: hidden;
+}
+
+.raceChip {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.18rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  text-decoration: none;
+  cursor: pointer;
+  background: var(--vsd-bg);
+  border: 1px solid var(--vsd-border);
+  color: var(--vsd-text);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  overflow: hidden;
+}
+.raceChip:hover { transform: translateX(2px); }
+.raceChip_lmu { border-left: 3px solid #00d9ff; }
+.raceChip_irc { border-left: 3px solid #fbbf24; }
+.raceChip_ace { border-left: 3px solid #f87171; }
+.raceChip_default { border-left: 3px solid var(--vsd-text-muted); }
+
+.chipSim {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.6rem;
+  font-weight: 700;
+  color: var(--vsd-text-muted);
+}
+.chipName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+}
+
+.raceOverflow {
+  font-size: 0.65rem;
+  color: var(--vsd-text-muted);
+  text-align: center;
+  margin-top: 0.1rem;
+  font-weight: 600;
+}
+
+/* List view */
+.list { display: flex; flex-direction: column; gap: 1.5rem; }
+
+.listMonthTitle {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--vsd-text-muted);
+  margin: 0 0 0.75rem;
+  padding-left: 0.5rem;
+}
+
+.listItems { display: flex; flex-direction: column; gap: 0.5rem; }
+
+.listItem {
+  display: grid;
+  grid-template-columns: 70px 1fr auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.9rem 1rem;
+  background: var(--vsd-surface);
+  border: 1px solid var(--vsd-border);
+  border-radius: 10px;
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.15s ease;
+}
+.listItem:hover { border-color: var(--vsd-cyan); transform: translateX(2px); }
+.listItemPast { opacity: 0.6; }
+
+.listDate {
+  text-align: center;
+  padding: 0.4rem;
+  background: var(--vsd-bg);
+  border-radius: 8px;
+  border: 1px solid var(--vsd-border);
+}
+.listDay {
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  color: var(--vsd-text);
+}
+.listTime {
+  font-size: 0.7rem;
+  color: var(--vsd-text-muted);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+.listInfo { display: flex; flex-direction: column; gap: 0.25rem; }
+.listName { font-size: 0.95rem; font-weight: 600; color: var(--vsd-text); }
+.listMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--vsd-text-muted);
+  flex-wrap: wrap;
+}
+
+.listSim {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 3px;
+  background: var(--vsd-bg);
+}
+.listSim_lmu { color: #00d9ff; }
+.listSim_irc { color: #fbbf24; }
+.listSim_ace { color: #f87171; }
+.listSim_default { color: var(--vsd-text-muted); }
+
+.listStatus {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+.statusScheduled {
+  color: var(--vsd-cyan);
+  padding: 0.2rem 0.55rem;
+  background: rgba(0, 217, 255, 0.1);
+  border: 1px solid rgba(0, 217, 255, 0.3);
+  border-radius: 999px;
+}
+.statusCompleted {
+  color: var(--vsd-text-muted);
+  padding: 0.2rem 0.55rem;
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 999px;
+}
+.statusLive {
+  color: #4ade80;
+  padding: 0.2rem 0.55rem;
+  background: rgba(74, 222, 128, 0.15);
+  border: 1px solid rgba(74, 222, 128, 0.4);
+  border-radius: 999px;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+.statusCancelled {
+  color: #f87171;
+  padding: 0.2rem 0.55rem;
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: 999px;
+}
+
+.empty {
+  text-align: center;
+  padding: 3rem;
+  color: var(--vsd-text-muted);
+  background: var(--vsd-surface);
+  border: 1px solid var(--vsd-border);
+  border-radius: 10px;
+}
+
+@media (max-width: 768px) {
+  .dayCell { min-height: 80px; padding: 0.25rem; }
+  .raceChip { font-size: 0.6rem; padding: 0.15rem 0.3rem; }
+  .chipName { display: none; }
+  .currentMonth { font-size: 0.9rem; min-width: 140px; }
+}

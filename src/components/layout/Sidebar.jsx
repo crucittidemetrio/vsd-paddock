@@ -8,6 +8,7 @@ const ITEMS = [
   { to: '/', label: LABELS.nav_landing, icon: '◉', exact: true },
   { to: '/roster', label: LABELS.nav_roster, icon: '◢' },
   { to: '/race', label: LABELS.nav_race, icon: '◤' },
+  { to: '/calendar', label: 'Calendario', icon: '📅' }, 
   { to: '/championships', label: 'Campionati', icon: '🏆' },
   { to: '/reports', label: LABELS.nav_reports, icon: '▣' },
   { to: '/laps', label: LABELS.nav_laps, icon: '◈' },
