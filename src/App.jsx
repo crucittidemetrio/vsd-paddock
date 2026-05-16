@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import AppShell from './components/layout/AppShell';
 import ProtectedRoute from './components/layout/ProtectedRoute';
+import AdminPosters from './pages/AdminPosters';
 
 import Login from './pages/Login';
 import JoinUs from './pages/JoinUs';
@@ -53,6 +54,8 @@ export default function App() {
 <Route
           path="/admin/import-standings"
           element={<AdminRoute><AdminImportStandings /></AdminRoute>}
+          path="/admin/posters"
+          element={<AdminRoute><AdminPosters /></AdminRoute>}
         />
             {/* Championships — Wave 9.9 */}
             {/* Championships — Wave 9.9 */}

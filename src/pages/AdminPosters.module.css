@@ -1,0 +1,212 @@
+.page {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1rem 4rem;
+  color: var(--vsd-text);
+}
+
+.header { margin-bottom: 1.5rem; }
+.header h1 {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem;
+  color: var(--vsd-cyan);
+}
+.subtitle {
+  color: var(--vsd-text-muted);
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.statsBar {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+.stat {
+  background: var(--vsd-surface);
+  border: 1px solid var(--vsd-border);
+  border-radius: 10px;
+  padding: 0.9rem 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.2rem;
+}
+.statMissing { border-color: rgba(251, 191, 36, 0.5); }
+.statValue {
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  color: var(--vsd-cyan);
+}
+.statMissing .statValue { color: #fbbf24; }
+.statLabel {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--vsd-text-muted);
+}
+
+.list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 1rem;
+  background: var(--vsd-surface);
+  border: 1px solid var(--vsd-border);
+  border-radius: 10px;
+  padding: 0.9rem;
+  align-items: stretch;
+}
+.rowMissing { border-color: rgba(251, 191, 36, 0.3); }
+
+.thumbCol {
+  position: relative;
+  width: 120px;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 6px;
+  background: var(--vsd-bg);
+}
+.thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.thumbPlaceholder {
+  position: absolute;
+  inset: 0;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  color: var(--vsd-text-muted);
+  background: repeating-linear-gradient(
+    45deg,
+    var(--vsd-bg),
+    var(--vsd-bg) 8px,
+    rgba(255,255,255,0.02) 8px,
+    rgba(255,255,255,0.02) 16px
+  );
+}
+
+.info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.raceName {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--vsd-text);
+}
+
+.raceMeta {
+  display: flex;
+  gap: 0.4rem;
+  font-size: 0.8rem;
+  color: var(--vsd-text-muted);
+  align-items: center;
+}
+.status {
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  font-size: 0.7rem;
+}
+
+.urlDisplay {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.3rem;
+}
+.urlLink {
+  color: var(--vsd-cyan);
+  text-decoration: none;
+  font-size: 0.82rem;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+.urlLink:hover { text-decoration: underline; }
+.urlMissing {
+  font-size: 0.85rem;
+  color: var(--vsd-text-muted);
+  font-style: italic;
+  flex: 1;
+}
+
+.editor {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.4rem;
+  align-items: stretch;
+}
+.urlInput {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  background: var(--vsd-bg);
+  border: 1px solid var(--vsd-border);
+  border-radius: 6px;
+  color: var(--vsd-text);
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.85rem;
+}
+.urlInput:focus { outline: 2px solid var(--vsd-cyan); outline-offset: 1px; }
+
+.btnEdit,
+.btnSave,
+.btnCancel {
+  padding: 0.4rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: 1px solid var(--vsd-border);
+  background: var(--vsd-bg);
+  color: var(--vsd-text);
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.btnEdit:hover { border-color: var(--vsd-cyan); color: var(--vsd-cyan); }
+.btnSave {
+  background: var(--vsd-cyan);
+  color: var(--vsd-bg);
+  border-color: var(--vsd-cyan);
+}
+.btnSave:hover:not(:disabled) { filter: brightness(1.1); }
+.btnSave:disabled { opacity: 0.5; cursor: not-allowed; }
+.btnCancel:hover { color: #fca5a5; border-color: rgba(239,68,68,0.4); }
+
+.success {
+  color: #4ade80;
+  font-size: 0.8rem;
+  margin-top: 0.3rem;
+}
+
+.error {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  color: #fca5a5;
+  font-size: 0.9rem;
+}

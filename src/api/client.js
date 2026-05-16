@@ -70,6 +70,8 @@ export const api = {
     list: (status) => call('races.list', { status }),
     upcoming: () => call('races.upcoming'),
     get: (race_id) => call('races.get', { race_id }),
+     updatePoster: ({ race_id, poster_url }) =>
+      call('races.updatePoster', { race_id, poster_url }),
   },
 
   raceResults: {

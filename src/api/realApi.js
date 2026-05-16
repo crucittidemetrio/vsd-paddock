@@ -198,6 +198,8 @@ export async function callApi(action, payload = {}, ctx = null) {
         return await reportsRecentAdapter(payload, token);
       case 'showcase.summary':
         return await showcaseSummaryAdapter(payload);
+      case 'races.updatePoster':
+        return await racesUpdatePosterAdapter(payload, token);
       default:
         return fail(`Action non instradata: ${action}`);
     }
@@ -405,6 +407,15 @@ async function showcaseSummaryAdapter(payload) {
  */
 async function championshipsImportStandingsAdapter(payload, token) {
   const res = await postToBackend('championships.importStandings', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: races.updatePoster({ race_id, poster_url }) → { race_id, poster_url }
+ */
+async function racesUpdatePosterAdapter(payload, token) {
+  const res = await postToBackend('races.updatePoster', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
 }

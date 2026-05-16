@@ -22,6 +22,7 @@ const FUTURE_ITEMS = [
 const ADMIN_ITEMS = [
   { to: '/admin/import-results', label: 'Import Risultati', icon: '📥' },
   { to: '/admin/import-standings', label: 'Import Standings', icon: '🏆' },
+  { to: '/admin/posters', label: 'Race Posters', icon: '🖼️' },
 ];
 
 export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {} }) {
