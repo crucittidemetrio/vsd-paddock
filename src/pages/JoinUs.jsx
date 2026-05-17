@@ -2,6 +2,7 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { useShowcase } from '../hooks/useShowcase';
 import './JoinUs.css';
+import Logo from '../components/shared/Logo';
 
 const DISCORD_INVITE = 'https://discord.gg/gs5rR3DQay';
 
@@ -57,7 +58,11 @@ export default function JoinUs() {
       <section className="joinus-hero">
         <div className="joinus-hero-glow" />
         <div className="joinus-hero-content">
-          <div className="joinus-hero-eyebrow">SIM RACING TEAM ITALIANO</div>
+  <div className="joinus-hero-logo-wrap">
+    <Logo size={140} withWordmark />
+  </div>
+  <div className="joinus-hero-eyebrow">...</div>
+  ...
           <h1 className="joinus-hero-title">
             La community italiana<br />
             di <span className="joinus-hero-accent">sim racing</span>

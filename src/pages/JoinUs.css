@@ -89,7 +89,24 @@
   max-width: 800px;
   margin: 0 auto;
 }
+.joinus-hero-logo-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--sp-5);
+  filter: drop-shadow(0 0 32px rgba(0, 212, 255, 0.3));
+  animation: joinus-logo-fade-in 0.7s ease-out;
+}
 
+@keyframes joinus-logo-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 .joinus-hero-eyebrow {
   font-family: var(--font-mono);
   font-size: var(--fs-xs);
@@ -586,11 +603,13 @@
     padding: var(--sp-3) var(--sp-4);
   }
   .joinus-brand-name {
+    margin-bottom: var(--sp-4);
     display: none;
   }
   .joinus-hero {
     padding: 60px var(--sp-4) 50px;
   }
+  .joinus-hero-logo-wrap
   .joinus-hero-cta {
     flex-direction: column;
   }
