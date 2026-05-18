@@ -197,7 +197,7 @@ export default function JoinUs() {
               Apri invito Discord ↗
             </a>
           </Step>
-          <Step n={2} title="Vai al canale #iscrizioni-e-presentazioni" />
+          <Step n={2} title="Vai al canale #accesso-come-pilota-vsd" />
           <Step n={3} title="Apri un nuovo post seguendo questo template:">
             <ul className="joinus-template">
               <li>Nome e Cognome</li>
