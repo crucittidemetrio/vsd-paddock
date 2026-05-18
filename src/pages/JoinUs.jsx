@@ -4,7 +4,7 @@ import { useShowcase } from '../hooks/useShowcase';
 import './JoinUs.css';
 import Logo from '../components/shared/Logo';
 
-const DISCORD_INVITE = 'https://discord.gg/gs5rR3DQay';
+const DISCORD_INVITE = 'https://discord.gg/W4yWkU3YAd';
 
 // Funzione per formattare la data della gara
 function formatRaceDate(iso) {
