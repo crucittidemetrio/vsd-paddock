@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useShowcase } from '../hooks/useShowcase';
 import './JoinUs.css';
 import Logo from '../components/shared/Logo';
+import totalPaintLogo from '../assets/total-paint-logo.png';
 
 const DISCORD_INVITE = 'https://discord.gg/W4yWkU3YAd';
 
@@ -95,6 +96,27 @@ export default function JoinUs() {
         <Stat value={data?.stats?.podiums_count} label="Podi conquistati" />
         <Stat value={data?.stats?.verified_laps_count} label="Best lap verificate" />
       </section>
+
+{/* PARTNER UFFICIALE */}
+        <section className="joinus-section">
+          <div className="joinus-section-head">
+            <div className="joinus-section-eyebrow">PARTNER UFFICIALE</div>
+            <h2 className="joinus-section-title">Sostenuti da</h2>
+          </div>
+          <a 
+            href="https://www.totalpaint.it"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="joinus-partner-card"
+            title="Total Paint — Sponsor ufficiale VSD"
+          >
+            <img
+              src={totalPaintLogo}
+              alt="Total Paint"
+              className="joinus-partner-logo"
+            />
+          </a>
+        </section>
 
       {/* TOP PILOTI */}
       {data?.topDrivers?.length > 0 && (

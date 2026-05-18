@@ -155,3 +155,45 @@
     transform: translateX(0);
   }
 }
+
+.sidebar-sponsor {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: var(--sp-3) 0;
+  padding: var(--sp-2);
+  text-decoration: none;
+  transition: transform 0.15s ease;
+}
+
+.sidebar-sponsor:hover {
+  transform: translateY(-2px);
+}
+
+.sidebar-sponsor-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.sidebar-sponsor-logo {
+  width: 52px;
+  height: 52px;
+  background: white;
+  border-radius: 50%;
+  padding: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.sidebar-sponsor-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}

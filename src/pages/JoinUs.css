@@ -646,3 +646,40 @@
   font-family: var(--font-mono);
   letter-spacing: 0.1em;
 }
+
+/* PARTNER */
+
+.joinus-partner-card {
+  display: block;
+  max-width: 360px;
+  margin: 0 auto;
+  padding: var(--sp-6);
+  background: white;
+  border-radius: var(--r-lg, 12px);
+  text-decoration: none;
+  transition: transform var(--t-fast), box-shadow var(--t-fast);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.joinus-partner-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 32px rgba(0, 212, 255, 0.15), 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.joinus-partner-logo {
+  width: 100%;
+  height: auto;
+  display: block;
+  max-width: 280px;
+  margin: 0 auto;
+}
+
+@media (max-width: 599px) {
+  .joinus-partner-card {
+    max-width: 280px;
+    padding: var(--sp-5);
+  }
+  .joinus-partner-logo {
+    max-width: 220px;
+  }
+}

@@ -2,15 +2,16 @@ import { NavLink } from 'react-router-dom';
 import { LABELS } from '../../utils/constants';
 import { useAuth } from '../../hooks/useAuth';
 import Logo from '../shared/Logo';
+import totalPaintLogo from '../../assets/total-paint-logo.png';
 import './Sidebar.css';
 
 const ITEMS = [
   { to: '/', label: LABELS.nav_landing, icon: '◉', exact: true },
   { to: '/roster', label: LABELS.nav_roster, icon: '◢' },
   { to: '/race', label: LABELS.nav_race, icon: '◤' },
-  { to: '/calendar', label: 'Calendario', icon: '📅' }, 
+  { to: '/calendar', label: 'Calendario', icon: '📅' },
   { to: '/championships', label: 'Campionati', icon: '🏆' },
-  { to: '/reports', label: LABELS.nav_reports, icon: '▣' },
+  { to: '/reports', label: LABELS.nav_reports, icon: '◣' },
   { to: '/laps', label: LABELS.nav_laps, icon: '◈' },
 ];
 
@@ -51,7 +52,7 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
         ))}
 
         <div className="nav-section-label">In arrivo</div>
-       {FUTURE_ITEMS.map(item => (
+        {FUTURE_ITEMS.map(item => (
           <NavLink
             key={item.to}
             to={item.to}
@@ -84,6 +85,20 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
 
       <div className="sidebar-footer">
         {isStaff && <div className="staff-badge">STAFF MODE</div>}
+        
+        {/* CORREZIONE: Aggiunto il tag di apertura <a */}
+        <a
+          href="https://www.totalpaint.it"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="sidebar-sponsor"
+          title="Total Paint — Sponsor ufficiale VSD"
+        >
+          <div className="sidebar-sponsor-label">Sponsor</div>
+          <div className="sidebar-sponsor-logo">
+            <img src={totalPaintLogo} alt="Total Paint" />
+          </div>
+        </a>
         <div className="version">v0.1 · Phase 1</div>
       </div>
     </aside>
