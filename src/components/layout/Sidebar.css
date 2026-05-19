@@ -1,13 +1,16 @@
 .sidebar {
   width: var(--sidebar-width);
-  min-height: 100vh;
+  height: 100vh;
+  max-height: 100vh;
   background: var(--vsd-bg-elevated);
   border-right: 1px solid var(--color-border);
   display: flex;
   flex-direction: column;
   position: sticky;
   top: 0;
+  align-self: flex-start;
   flex-shrink: 0;
+  overflow-y: auto;
 }
 
 .sidebar-brand {
