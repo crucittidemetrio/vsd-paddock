@@ -17,14 +17,13 @@ function useRaceLaps() {
 }
 
 /**
- * useBestLaps — best laps unificati: manuali (BestLaps tab) + race-derivati
- * (RaceResults). Il merge avviene client-side. Filtri e limit applicati
- * a valle dal componente, NON passati al backend.
+ * useBestLaps — best laps unificati: manuali (BestLaps tab) + race-derivati (RaceResults).
+ * Merge client-side, filtering client-side.
  *
- * @param {Object} [_filters] - ignorato, mantenuto per retrocompatibilità di firma
- * @param {number} [_limit]   - ignorato
+ * @param {Object} [filters] - { driver_id?, sim?, track_id?, car_id? }
+ * @param {number} [limit]   - numero massimo di righe da ritornare (dopo filtri e sort)
  */
-export function useBestLaps(_filters = {}, _limit) {
+export function useBestLaps(filters = {}, limit) {
   const manualQuery = useQuery({
     queryKey: ['laps', 'manual'],
     queryFn: () => api.laps.list({}, undefined),
@@ -38,10 +37,30 @@ export function useBestLaps(_filters = {}, _limit) {
       source: l.source || 'manual',
     }));
     const race = raceQuery.data || [];
-    return [...manual, ...race].sort(
+    let all = [...manual, ...race].sort(
       (a, b) => Number(a.lap_time_ms) - Number(b.lap_time_ms)
     );
-  }, [manualQuery.data, raceQuery.data]);
+
+    // Apply filters
+    if (filters && filters.driver_id) {
+      all = all.filter(l => l.driver_id === filters.driver_id);
+    }
+    if (filters && filters.sim) {
+      all = all.filter(l => l.sim === filters.sim);
+    }
+    if (filters && filters.track_id) {
+      all = all.filter(l => l.track_id === filters.track_id);
+    }
+    if (filters && filters.car_id) {
+      all = all.filter(l => l.car_id === filters.car_id);
+    }
+
+    if (limit && limit > 0) {
+      all = all.slice(0, limit);
+    }
+
+    return all;
+  }, [manualQuery.data, raceQuery.data, filters, limit]);
 
   return {
     data: merged,
@@ -53,9 +72,8 @@ export function useBestLaps(_filters = {}, _limit) {
 
 /**
  * useLeaderboard — best per pilota su (sim, track, [car]).
- * Derivato client-side da useBestLaps, quindi include race laps.
- * L'endpoint backend laps.leaderboard non viene più chiamato (resta a backend
- * come dormant ma non rimosso).
+ * Derivato client-side da useBestLaps senza filtri (volutamente:
+ * la leaderboard è team-wide, il filtro driver_id annullerebbe lo scope).
  */
 export function useLeaderboard(sim, trackId, carId) {
   const lapsQuery = useBestLaps();
