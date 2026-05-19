@@ -5,6 +5,24 @@ import { api } from '../api/client';
 import { useImportRaceResults } from '../hooks/useImportRaceResults';
 import styles from './AdminImportResults.module.css';
 
+// Sessioni iRacing che importiamo (Wave 9.12, A1)
+const IRACING_IMPORTABLE_SESSIONS = ['QUALIFY', 'HEAT 1', 'FEATURE'];
+
+/**
+ * Detect formato JSON:
+ *  - 'lmu'     → array [{carClass, result: [...]}]
+ *  - 'iracing' → object {type:'event_result', data:{session_results:[...]}}
+ *  - null se non riconosciuto
+ */
+function detectFormat(data) {
+  if (!data) return null;
+  if (Array.isArray(data) && data.length > 0 && data[0].carClass) return 'lmu';
+  if (data.type === 'event_result' && data.data && Array.isArray(data.data.session_results)) {
+    return 'iracing';
+  }
+  return null;
+}
+
 export default function AdminImportResults() {
   const navigate = useNavigate();
   const [selectedRaceId, setSelectedRaceId] = useState('');
@@ -21,14 +39,26 @@ export default function AdminImportResults() {
 
   const preview = useMemo(() => {
     if (!jsonText.trim()) return null;
+
+    let parsed;
     try {
-      const parsed = JSON.parse(jsonText);
-      if (!Array.isArray(parsed) || parsed.length === 0) {
-        return { error: 'JSON deve essere un array non vuoto di carClass groups' };
-      }
+      parsed = JSON.parse(jsonText);
+    } catch (e) {
+      return { error: 'JSON non parsabile: ' + e.message };
+    }
+
+    const format = detectFormat(parsed);
+    if (!format) {
+      return {
+        error:
+          'Formato non riconosciuto. Atteso: array LMU [{carClass,result}] o oggetto iRacing {type:"event_result",data:{...}}',
+      };
+    }
+
+    if (format === 'lmu') {
       const firstGroup = parsed[0];
       if (!firstGroup.result || !Array.isArray(firstGroup.result)) {
-        return { error: 'Manca il campo "result" nel primo carClass group' };
+        return { error: 'LMU: manca campo "result" nel primo carClass group' };
       }
       const hasPosition = firstGroup.result.some((r) => r.position != null);
       const sessionType = hasPosition ? 'race' : 'qualifying';
@@ -37,10 +67,54 @@ export default function AdminImportResults() {
         count: (g.result || []).length,
       }));
       const totalDrivers = classes.reduce((sum, c) => sum + c.count, 0);
-      return { ok: true, sessionType, classes, totalDrivers };
-    } catch (e) {
-      return { error: 'JSON non parsabile: ' + e.message };
+      return {
+        ok: true,
+        format: 'lmu',
+        sessionType,
+        classes,
+        totalDrivers,
+      };
     }
+
+    // iRacing
+    const data = parsed.data;
+    const sessions = data.session_results || [];
+    const allSessionNames = sessions.map((s) => s.simsession_name || '?');
+    const importableSessions = sessions.filter((s) =>
+      IRACING_IMPORTABLE_SESSIONS.includes((s.simsession_name || '').toUpperCase())
+    );
+    if (importableSessions.length === 0) {
+      return {
+        error:
+          'iRacing: nessuna sessione importabile trovata (cerco QUALIFY, HEAT 1, FEATURE). Sessioni nel JSON: ' +
+          allSessionNames.join(', '),
+      };
+    }
+    const driversPerSession = importableSessions[0].results
+      ? importableSessions[0].results.length
+      : 0;
+    const totalDrivers = importableSessions.reduce(
+      (sum, s) => sum + (s.results ? s.results.length : 0),
+      0
+    );
+    const trackName = (data.track && data.track.track_name) || '?';
+    const trackConfig = (data.track && data.track.config_name) || '';
+    const startTime = data.start_time || '';
+    const leagueSeason = data.league_season_name || '';
+
+    return {
+      ok: true,
+      format: 'iracing',
+      trackName,
+      trackConfig,
+      startTime,
+      leagueSeason,
+      allSessions: allSessionNames,
+      importableSessions: importableSessions.map((s) => s.simsession_name),
+      driversPerSession,
+      totalDrivers,
+      skippedCount: sessions.length - importableSessions.length,
+    };
   }, [jsonText]);
 
   const selectedRace = useMemo(() => {
@@ -48,8 +122,7 @@ export default function AdminImportResults() {
     return racesQuery.data.find((r) => r.race_id === selectedRaceId);
   }, [selectedRaceId, racesQuery.data]);
 
-  const canSubmit =
-    selectedRaceId && preview?.ok && !importMutation.isPending;
+  const canSubmit = selectedRaceId && preview?.ok && !importMutation.isPending;
 
   function handleImport() {
     if (!canSubmit) return;
@@ -69,13 +142,16 @@ export default function AdminImportResults() {
     setImportResult(null);
   }
 
+  // Il result ha shape diverse per LMU/iRacing
+  const resultIsIRacing = importResult?.ok && importResult.stats?.by_session;
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
         <h1>Admin · Importa risultati gara</h1>
         <p>
-          Incolla il JSON esportato da LMU. Session type (qualifying/race)
-          rilevato automaticamente.
+          Incolla il JSON dei risultati. Formato LMU (array di carClass groups)
+          o iRacing (oggetto event_result) — rilevato automaticamente.
         </p>
       </header>
 
@@ -113,11 +189,11 @@ export default function AdminImportResults() {
 
       {/* Step 2: JSON */}
       <section className={styles.section}>
-        <label className={styles.sectionLabel}>2. JSON risultati LMU</label>
+        <label className={styles.sectionLabel}>2. JSON risultati</label>
         <textarea
           className={styles.textarea}
           rows={12}
-          placeholder='[{"carClass": "Hypercar", "result": [...]}, ...]'
+          placeholder='[{"carClass":"..."}] (LMU) oppure {"type":"event_result","data":{...}} (iRacing)'
           value={jsonText}
           onChange={(e) => setJsonText(e.target.value)}
         />
@@ -129,9 +205,9 @@ export default function AdminImportResults() {
           <label className={styles.sectionLabel}>Preview</label>
           {preview.error ? (
             <p className={styles.previewError}>❌ {preview.error}</p>
-          ) : (
+          ) : preview.format === 'lmu' ? (
             <div className={styles.previewBody}>
-              <p className={styles.previewOk}>✓ JSON valido</p>
+              <p className={styles.previewOk}>✓ Formato LMU riconosciuto</p>
               <p>
                 Sessione rilevata:{' '}
                 <span className={styles.detected}>{preview.sessionType}</span>
@@ -146,6 +222,47 @@ export default function AdminImportResults() {
               </ul>
               <p className={styles.previewTotal}>
                 Totale: {preview.totalDrivers} risultati da importare
+              </p>
+            </div>
+          ) : (
+            <div className={styles.previewBody}>
+              <p className={styles.previewOk}>
+                ✓ Formato iRacing event_result riconosciuto
+              </p>
+              <p>
+                Track: <strong>{preview.trackName}</strong>
+                {preview.trackConfig ? ` (${preview.trackConfig})` : ''}
+              </p>
+              {preview.leagueSeason && (
+                <p>
+                  Lega/Stagione: <em>{preview.leagueSeason}</em>
+                </p>
+              )}
+              {preview.startTime && (
+                <p>
+                  Inizio: <span className={styles.detected}>{preview.startTime}</span>
+                </p>
+              )}
+              <p>
+                Sessioni nel JSON ({preview.allSessions.length}):{' '}
+                {preview.allSessions.join(', ')}
+              </p>
+              <p>
+                Sessioni importabili (
+                <span className={styles.detected}>
+                  {preview.importableSessions.length}
+                </span>
+                ): {preview.importableSessions.join(', ')}
+              </p>
+              {preview.skippedCount > 0 && (
+                <p className={styles.previewSkipped}>
+                  Skipped: {preview.skippedCount} sessioni (Practice/Warmup non importate)
+                </p>
+              )}
+              <p>Piloti per sessione: {preview.driversPerSession}</p>
+              <p className={styles.previewTotal}>
+                Totale: {preview.totalDrivers} righe da importare ({preview.driversPerSession} ×{' '}
+                {preview.importableSessions.length} sessioni)
               </p>
             </div>
           )}
@@ -170,16 +287,31 @@ export default function AdminImportResults() {
       {importResult &&
         (importResult.ok ? (
           <section className={styles.resultSuccess}>
-            <h3 className={styles.resultTitleOk}>
-              ✓ Importazione completata
-            </h3>
+            <h3 className={styles.resultTitleOk}>✓ Importazione completata</h3>
             <div className={styles.statsGrid}>
               <div>
-                Importati: <strong>{importResult.stats.imported}</strong>
+                Importati totali: <strong>{importResult.stats.imported}</strong>
               </div>
-              <div>
-                Sessione: <strong>{importResult.stats.session_type}</strong>
-              </div>
+              {resultIsIRacing ? (
+                <>
+                  <div>
+                    Qualifying:{' '}
+                    <strong>{importResult.stats.by_session.qualifying || 0}</strong>
+                  </div>
+                  <div>
+                    Heat:{' '}
+                    <strong>{importResult.stats.by_session.heat || 0}</strong>
+                  </div>
+                  <div>
+                    Race:{' '}
+                    <strong>{importResult.stats.by_session.race || 0}</strong>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  Sessione: <strong>{importResult.stats.session_type}</strong>
+                </div>
+              )}
               <div>
                 VSD matched: <strong>{importResult.stats.vsd_matched}</strong>
               </div>
@@ -192,6 +324,12 @@ export default function AdminImportResults() {
               <div>
                 DNS: <strong>{importResult.stats.dns}</strong>
               </div>
+              {resultIsIRacing && importResult.stats.sessions_skipped > 0 && (
+                <div>
+                  Sessioni skipped:{' '}
+                  <strong>{importResult.stats.sessions_skipped}</strong>
+                </div>
+              )}
             </div>
             <button
               onClick={() => navigate(`/race/${selectedRaceId}`)}

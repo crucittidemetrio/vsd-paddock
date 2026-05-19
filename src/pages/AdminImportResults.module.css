@@ -181,3 +181,10 @@
 .openRaceLink:hover {
   color: var(--vsd-cyan);
 }
+
+.previewSkipped {
+  color: #fbbf24;
+  font-size: 0.85rem;
+  font-style: italic;
+  margin: 0.3rem 0;
+}
