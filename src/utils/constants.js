@@ -83,7 +83,7 @@ export const SESSION_TYPE_LIST = [
 ];
 
 export const SESSION_TYPE_LABELS = {
-  practice: 'Practice',
   qualifying: 'Qualifica',
+  heat: 'Heat',
   race: 'Gara',
 };
