@@ -29,98 +29,64 @@ const CAR_NAMES = {
   'mercedes-w13': 'Mercedes W13',
 };
 
-/**
- * Formatta un track_id in display name.
- * 
- * @param {string} track_id - Slug del tracciato (es. 'lmu-monza-gp')
- * @param {Array} [tracks] - Lista live dei tracks dal backend (opzionale)
- * @returns {string} Display name (legacy single-string mode)
- * 
- * Se vuoi anche il sim (per badge separato), usa formatTrackInfo() invece.
- */
 export function formatTrack(track_id, tracks) {
   if (!track_id) return '—';
-  
-  // Modo data-driven: cerca il record live dal sheet
   if (Array.isArray(tracks)) {
     const t = tracks.find(t => String(t.track_id).toLowerCase() === String(track_id).toLowerCase());
     if (t) return t.track_name || track_id;
   }
-  
-  // Fallback legacy: mappa hardcoded
   return TRACK_NAMES[track_id] || track_id;
 }
 
-/**
- * Versione "ricca" di formatTrack: restituisce nome + sim per badge separati.
- * 
- * @param {string} track_id
- * @param {Array} [tracks] - Lista live dei tracks dal backend
- * @returns {{ name: string, sim: string|null }}
- * 
- * Esempio:
- *   const { name, sim } = formatTrackInfo('lmu-monza-gp', tracks);
- *   // → { name: 'Monza', sim: 'LMU' }
- */
 export function formatTrackInfo(track_id, tracks) {
   if (!track_id) return { name: '—', sim: null };
-  
   if (Array.isArray(tracks)) {
     const t = tracks.find(t => String(t.track_id).toLowerCase() === String(track_id).toLowerCase());
     if (t) return { name: t.track_name || track_id, sim: t.sim || null };
   }
-  
-  // Fallback: cerca nel hardcoded e prova a estrarre il sim dallo slug
   const name = TRACK_NAMES[track_id] || track_id;
   const simMatch = String(track_id).match(/^(lmu|irc|ace)-/i);
   const sim = simMatch ? simMatch[1].toUpperCase() : null;
   return { name, sim };
 }
 
-/**
- * Formatta un car_id in display name.
- * 
- * @param {string} car_id - Slug auto (es. 'lmu-ferrari-296-gt3')
- * @param {Array} [cars] - Lista live delle cars dal backend (opzionale)
- * @returns {string} Display name (legacy single-string mode)
- */
 export function formatCar(car_id, cars) {
   if (!car_id) return '—';
-  
   if (Array.isArray(cars)) {
     const c = cars.find(c => String(c.car_id).toLowerCase() === String(car_id).toLowerCase());
     if (c) return c.car_name || car_id;
   }
-  
   return CAR_NAMES[car_id] || car_id;
 }
 
 /**
- * Versione "ricca" di formatCar: restituisce nome + categoria.
- * 
+ * Versione "ricca" di formatCar: restituisce nome + categoria + race_class.
+ *
  * @param {string} car_id
  * @param {Array} [cars] - Lista live delle cars dal backend
- * @returns {{ name: string, category: string|null, sim: string|null }}
+ * @returns {{ name: string, category: string|null, race_class: string|null, sim: string|null }}
  */
 export function formatCarInfo(car_id, cars) {
-  if (!car_id) return { name: '—', category: null, sim: null };
-  
+  if (!car_id) return { name: '—', category: null, race_class: null, sim: null };
+
   if (Array.isArray(cars)) {
     const c = cars.find(c => String(c.car_id).toLowerCase() === String(car_id).toLowerCase());
     if (c) {
       return {
         name: c.car_name || car_id,
         category: c.category || null,
+        race_class: (c.race_class && String(c.race_class).trim()) || null,
         sim: c.sim || null,
       };
     }
   }
-  
+
   const name = CAR_NAMES[car_id] || car_id;
   const simMatch = String(car_id).match(/^(lmu|irc|ace)-/i);
   return {
     name,
     category: null,
+    race_class: null,
     sim: simMatch ? simMatch[1].toUpperCase() : null,
   };
 }
@@ -152,10 +118,27 @@ export function formatLapDelta(ms, refMs) {
   const sec = (delta / 1000).toFixed(3);
   return delta > 0 ? `+${sec}` : sec;
 }
+
 /**
- * Countdown da una data ISO. Restituisce { days, hours, minutes, isPast }
- * Se la data è passata, isPast=true e i valori sono assoluti.
+ * Gap tempo in ms + percentuale relativa al record.
+ * 85394 vs 83000 → "+2.394s / +1.18%"
+ * 83000 vs 83000 → "—" (record holder, gestire badge separato in UI)
+ *
+ * Numeri negativi (caso impossibile se chiamato correttamente: il mio tempo
+ * non può essere migliore del record team) sono comunque gestiti.
  */
+export function formatGapPercent(myMs, recordMs) {
+  const my = Number(myMs);
+  const rec = Number(recordMs);
+  if (!Number.isFinite(my) || !Number.isFinite(rec) || rec <= 0) return '';
+  const gapMs = my - rec;
+  if (gapMs === 0) return '—';
+  const gapS = (gapMs / 1000).toFixed(3);
+  const gapPct = ((gapMs / rec) * 100).toFixed(2);
+  const sign = gapMs > 0 ? '+' : '';
+  return `${sign}${gapS}s / ${sign}${gapPct}%`;
+}
+
 export function countdown(iso) {
   if (!iso) return null;
   const target = new Date(iso).getTime();
@@ -168,9 +151,6 @@ export function countdown(iso) {
   return { days, hours, minutes, isPast: diff < 0 };
 }
 
-/**
- * Formato breve countdown: "14g 3h" / "3h 22m" / "22m"
- */
 export function formatCountdown(iso) {
   const c = countdown(iso);
   if (!c) return '—';
@@ -180,9 +160,6 @@ export function formatCountdown(iso) {
   return `${c.minutes}m`;
 }
 
-/**
- * Data + ora con timezone locale: "8 nov 25 · 19:00"
- */
 export function formatRaceDateTime(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
@@ -191,9 +168,6 @@ export function formatRaceDateTime(iso) {
   return `${date} · ${time}`;
 }
 
-/**
- * Durata in minuti → "6h" / "4h 30min" / "60min"
- */
 export function formatDuration(minutes) {
   if (!minutes) return '—';
   if (minutes < 60) return `${minutes}min`;

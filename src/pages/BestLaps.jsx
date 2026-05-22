@@ -1,450 +1,373 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { useBestLaps, useTracks, useCars, useLeaderboard } from '../hooks/useBestLaps';
+import {
+  useTeamLeaderboard,
+  useMyBestLaps,
+  useTracks,
+  useCars,
+} from '../hooks/useBestLaps';
 import { useDrivers } from '../hooks/useRoster';
+import { useAuth } from '../hooks/useAuth';
 import SimBadge from '../components/shared/SimBadge';
 import LapTime from '../components/shared/LapTime';
 import Avatar from '../components/shared/Avatar';
-import { SIM_LIST, SESSION_TYPE_LIST, SESSION_TYPE_LABELS } from '../utils/constants';
-import { formatTrack, formatCar, formatDate, formatLapDelta } from '../utils/format';
+import { SIM_LIST } from '../utils/constants';
+import { formatTrack, formatCar, formatGapPercent } from '../utils/format';
 import './BestLaps.css';
 import './Page.css';
 
 const VIEW_MODES = [
-  { id: 'all', label: 'Tutti i tempi' },
   { id: 'leaderboard', label: 'Leaderboard' },
+  { id: 'mine', label: 'I miei tempi' },
 ];
 
 export default function BestLaps() {
-  const [viewMode, setViewMode] = useState('all');
+  const { driver } = useAuth();
+  const [viewMode, setViewMode] = useState('leaderboard');
   const [simFilter, setSimFilter] = useState('all');
   const [trackFilter, setTrackFilter] = useState('all');
-const [carFilter, setCarFilter] = useState('all');
-  const [sessionFilter, setSessionFilter] = useState('all');
-  const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [raceClassFilter, setRaceClassFilter] = useState('all');
+
+  const filters = {
+    sim: simFilter,
+    track_id: trackFilter,
+    race_class: raceClassFilter,
+  };
+
+  const { data: drivers } = useDrivers();
+  const { data: tracks } = useTracks();
+  const { data: cars } = useCars();
+
+  const driverMap = useMemo(() => {
+    const m = {};
+    (drivers || []).forEach(d => { m[d.driver_id] = d; });
+    return m;
+  }, [drivers]);
+
+  // Opzioni race_class dinamiche dal sheet Cars
+  const raceClassOptions = useMemo(() => {
+    if (!cars) return [];
+    const set = new Set();
+    cars.forEach(c => {
+      const rc = c.race_class && String(c.race_class).trim();
+      if (!rc) return;
+      if (simFilter === 'all' || c.sim === simFilter) {
+        set.add(rc);
+      }
+    });
+    return Array.from(set).sort();
+  }, [cars, simFilter]);
+
+  // Opzioni track filtrate per sim
+ const trackOptions = useMemo(() => {
+    if (!tracks) return [];
+    const filtered = tracks.filter(t => simFilter === 'all' || t.sim === simFilter);
+    // Dedup per track_id (il sheet Tracks può contenere duplicati: la UI ne mostra una sola)
+    const seen = new Set();
+    const unique = [];
+    filtered.forEach(t => {
+      if (!seen.has(t.track_id)) {
+        seen.add(t.track_id);
+        unique.push(t);
+      }
+    });
+    return unique.sort((a, b) =>
+      String(a.track_name || '').localeCompare(String(b.track_name || ''))
+    );
+  }, [tracks, simFilter]);
+
+  function handleSimChange(newSim) {
+    setSimFilter(newSim);
+    setTrackFilter('all');
+    setRaceClassFilter('all');
+  }
+
+  function resetFilters() {
+    setSimFilter('all');
+    setTrackFilter('all');
+    setRaceClassFilter('all');
+  }
 
   return (
     <div className="page">
       <div className="page-header">
-        <div className="page-eyebrow">BEST LAPS</div>
+        <div className="page-eyebrow">BEST LAPS · STAGIONE 2026</div>
         <h1 className="page-title">Database Tempi</h1>
-        <p className="page-sub">
-          Tempi sul giro registrati dal team. Filtra per simulatore, tracciato, auto.
-        </p>
       </div>
 
-      {/* SWITCH VISTA */}
-      <div className="view-switch">
-        {VIEW_MODES.map(m => (
+      <div className="view-switch" style={{ marginBottom: 'var(--sp-4)' }}>
+        {VIEW_MODES.map(v => (
           <button
-            key={m.id}
-            className={`view-switch-btn${viewMode === m.id ? ' is-active' : ''}`}
-            onClick={() => setViewMode(m.id)}
+            key={v.id}
+            className={`view-switch-btn ${viewMode === v.id ? 'is-active' : ''}`}
+            onClick={() => setViewMode(v.id)}
           >
-            {m.label}
+            {v.label}
           </button>
         ))}
       </div>
 
-      {/* FILTRI */}
-  
-<Filters
-        simFilter={simFilter} setSimFilter={setSimFilter}
-        trackFilter={trackFilter} setTrackFilter={setTrackFilter}
-        carFilter={carFilter} setCarFilter={setCarFilter}
-        sessionFilter={sessionFilter} setSessionFilter={setSessionFilter}
-        verifiedOnly={verifiedOnly} setVerifiedOnly={setVerifiedOnly}
-        showVerified={viewMode === 'all'}
-        leaderboardMode={viewMode === 'leaderboard'}
-      />
+      <div className="laps-filters" style={{ marginBottom: 'var(--sp-5)' }}>
+        <div className="filter-group">
+          <label className="filter-label">Sim</label>
+          <select
+            className="filter-select"
+            value={simFilter}
+            onChange={e => handleSimChange(e.target.value)}
+          >
+            <option value="all">Tutti</option>
+            {SIM_LIST.map(s => (
+              <option key={s.id} value={s.id}>{s.short || s.name || s.id}</option>
+            ))}
+          </select>
+        </div>
 
-      {/* CONTENUTO */}
-      {viewMode === 'all' ? (
-<AllLapsView
-          simFilter={simFilter}
-          trackFilter={trackFilter}
-          carFilter={carFilter}
-          sessionFilter={sessionFilter}
-          verifiedOnly={verifiedOnly}
+        <div className="filter-group">
+          <label className="filter-label">Classe</label>
+          <select
+            className="filter-select"
+            value={raceClassFilter}
+            onChange={e => setRaceClassFilter(e.target.value)}
+          >
+            <option value="all">Tutte</option>
+            {raceClassOptions.map(rc => (
+              <option key={rc} value={rc}>{rc}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="filter-group">
+          <label className="filter-label">Tracciato</label>
+          <select
+            className="filter-select"
+            value={trackFilter}
+            onChange={e => setTrackFilter(e.target.value)}
+          >
+            <option value="all">Tutti</option>
+            {trackOptions.map(t => (
+              <option key={t.track_id} value={t.track_id}>
+                {t.track_name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <button className="reset-btn" onClick={resetFilters}>
+          Reset filtri
+        </button>
+      </div>
+
+      {viewMode === 'leaderboard' ? (
+        <LeaderboardView
+          filters={filters}
+          driverMap={driverMap}
+          tracks={tracks}
+          cars={cars}
         />
       ) : (
-        <LeaderboardView
-          sim={simFilter}
-          trackId={trackFilter}
-          carId={carFilter}
+        <MineView
+          driver={driver}
+          filters={filters}
+          tracks={tracks}
+          cars={cars}
         />
       )}
     </div>
   );
 }
 
-// ========================================================
-// FILTERS
-// ========================================================
-function Filters({
-  simFilter, setSimFilter,
-  trackFilter, setTrackFilter,
-  carFilter, setCarFilter,
-  sessionFilter, setSessionFilter,
-  verifiedOnly, setVerifiedOnly,
-  showVerified, leaderboardMode,
-}) {
-  const { data: tracks } = useTracks(simFilter !== 'all' ? simFilter : undefined);
-  const { data: cars } = useCars(simFilter !== 'all' ? simFilter : undefined);
 
-  const trackOptions = useMemo(() => {
-    const m = new Map();
-    (tracks || []).forEach(t => m.set(t.track_id, t));
-    return Array.from(m.values());
-  }, [tracks]);
-
-  const carOptions = useMemo(() => {
-    const m = new Map();
-    (cars || []).forEach(c => m.set(c.car_id, c));
-    return Array.from(m.values());
-  }, [cars]);
-
-function reset() {
-    setSimFilter('all');
-    setTrackFilter('all');
-    setCarFilter('all');
-    setSessionFilter('all');
-    setVerifiedOnly(false);
-  }
-
-  const hasFilters =
-    simFilter !== 'all' || trackFilter !== 'all' || carFilter !== 'all' || sessionFilter !== 'all' || verifiedOnly;
-
-  return (
-    <div className="laps-filters">
-      <div className="filter-group">
-        <div className="filter-label">
-          Sim {leaderboardMode && <span className="req">*</span>}
-        </div>
-        <div className="filter-pills">
-          <button
-            className={`filter-pill${simFilter === 'all' ? ' is-active' : ''}`}
-            onClick={() => { setSimFilter('all'); setTrackFilter('all'); setCarFilter('all'); }}
-          >Tutte</button>
-          {SIM_LIST.map(s => (
-            <button
-              key={s.id}
-              className={`filter-pill${simFilter === s.id ? ' is-active' : ''}`}
-              onClick={() => { setSimFilter(s.id); setTrackFilter('all'); setCarFilter('all'); }}
-            >
-              {s.short}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="filter-group">
-        <div className="filter-label">
-          Tracciato {leaderboardMode && <span className="req">*</span>}
-        </div>
-        <select
-          className="filter-select"
-          value={trackFilter}
-          onChange={e => setTrackFilter(e.target.value)}
-        >
-          <option value="all">Tutti i tracciati</option>
-          {trackOptions.map(t => (
-            <option key={`${t.sim}-${t.track_id}`} value={t.track_id}>
-              {formatTrack(t.track_id, tracks)}
-            </option>
-          ))}
-        </select>
-      </div>
-
-<div className="filter-group">
-        <div className="filter-label">Auto</div>
-        <select
-          className="filter-select"
-          value={carFilter}
-          onChange={e => setCarFilter(e.target.value)}
-        >
-          <option value="all">Tutte le auto</option>
-          {carOptions.map(c => (
-            <option key={`${c.sim}-${c.car_id}`} value={c.car_id}>
-              {formatCar(c.car_id, cars)} · {c.category}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div className="filter-group">
-        <div className="filter-label">Tipo</div>
-        <div className="filter-pills">
-          <button
-            className={`filter-pill${sessionFilter === 'all' ? ' is-active' : ''}`}
-            onClick={() => setSessionFilter('all')}
-          >Tutti</button>
-          {SESSION_TYPE_LIST.map(s => (
-            <button
-              key={s.id}
-              className={`filter-pill${sessionFilter === s.id ? ' is-active' : ''}`}
-              onClick={() => setSessionFilter(s.id)}
-            >
-              {s.short}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {showVerified && (
-        <div className="filter-group">
-          <div className="filter-label">Verifica</div>
-          <label className="toggle">
-            <input
-              type="checkbox"
-              checked={verifiedOnly}
-              onChange={e => setVerifiedOnly(e.target.checked)}
-            />
-            <span>Solo verificati</span>
-          </label>
-        </div>
-      )}
-
-      {hasFilters && (
-        <button className="reset-btn" onClick={reset}>✕ Reset</button>
-      )}
-    </div>
-  );
-}
-
-// ========================================================
-// VIEW: TUTTI I TEMPI
-// ========================================================
-function AllLapsView({ simFilter, trackFilter, carFilter, sessionFilter, verifiedOnly }) {
-  const { data: laps, isLoading } = useBestLaps();
-  const { data: drivers } = useDrivers();
-  const { data: tracks = [] } = useTracks();
-  const { data: cars = [] } = useCars();
-
-  const driverMap = useMemo(() => {
-    const m = {};
-    (drivers || []).forEach(d => { m[d.driver_id] = d; });
-    return m;
-  }, [drivers]);
-
-const filtered = useMemo(() => {
-    if (!laps) return [];
-    return laps.filter(l => {
-      if (simFilter !== 'all' && l.sim !== simFilter) return false;
-      if (trackFilter !== 'all' && l.track_id !== trackFilter) return false;
-      if (carFilter !== 'all' && l.car_id !== carFilter) return false;
-      if (sessionFilter !== 'all' && l.session_type !== sessionFilter) return false;
-      if (verifiedOnly && !l.verified_by) return false;
-      return true;
-    });
-  }, [laps, simFilter, trackFilter, carFilter, sessionFilter, verifiedOnly]);
-
-  const referenceMs = filtered[0]?.lap_time_ms;
+function LeaderboardView({ filters, driverMap, tracks, cars }) {
+  const { data, isLoading, isError } = useTeamLeaderboard(filters);
 
   if (isLoading) {
-    return (
-      <div className="data-table-wrap">
-        <div className="skeleton-block" style={{ minHeight: 320 }} />
-      </div>
-    );
-  }
-
-  if (filtered.length === 0) {
-    return (
-      <div className="page-stub">
-        <div className="page-stub-icon">∅</div>
-        <div className="page-stub-title">Nessun tempo trovato</div>
-        <div className="page-stub-text">Allenta i filtri per vedere più risultati.</div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="data-table-wrap">
-      <table className="data-table laps-table">
-        <thead>
-          <tr>
-            <th className="col-pos">#</th>
-            <th>Sim</th>
-            <th>Pilota</th>
-            <th>Tracciato</th>
-            <th>Auto</th>
-            <th className="num">Tempo</th>
-            <th className="num">Gap</th>
-            <th>Tipo</th>
-            <th>Cond.</th>
-            <th>Verifica</th>
-            <th>Data</th>
-          </tr>
-        </thead>
-        <tbody>
-          {filtered.map((lap, idx) => {
-            const driver = driverMap[lap.driver_id];
-            const podium = idx < 3;
-            return (
-              <tr key={lap.lap_id} className={podium ? `is-podium pos-${idx + 1}` : ''}>
-                <td className="col-pos"><span className="pos-badge">{idx + 1}</span></td>
-                <td><SimBadge sim={lap.sim} size="sm" /></td>
-                <td>
-                  {driver ? (
-                    <Link to={`/roster/${driver.driver_id}`} className="driver-link">
-                      <Avatar name={driver.display_name} driverId={driver.driver_id} size={28} />
-                      <span className="driver-link-name">{driver.display_name}</span>
-                    </Link>
-                  ) : lap.driver_id}
-                </td>
-                <td className="cell-track">{formatTrack(lap.track_id, tracks)}</td>
-                <td className="cell-car">{formatCar(lap.car_id, cars)}</td>
-                <td className="num">
-                  <LapTime ms={lap.lap_time_ms} emphasis={idx === 0 ? 'best' : 'normal'} size="md" />
-                </td>
-                <td className="num cell-gap">
-                  {idx === 0 ? '—' : formatLapDelta(lap.lap_time_ms, referenceMs)}
-                </td>
-                <td>
-                  <span className={`session-tag session-${lap.session_type}`}>
-                    {SESSION_TYPE_LABELS[lap.session_type] || '—'}
-                  </span>
-                </td>
-                <td>
-                  <span className={`cond-tag cond-${lap.conditions}`}>{lap.conditions}</span>
-                </td>
-                <td>
-                  {lap.verified_by ? <span className="verify-yes">✓</span> : <span className="verify-no">—</span>}
-                </td>
-                <td className="cell-date">{formatDate(lap.set_date)}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-// ========================================================
-// VIEW: LEADERBOARD
-// ========================================================
-function LeaderboardView({ sim, trackId, carId }) {
-  const needsSim = sim === 'all';
-  const needsTrack = trackId === 'all';
-  const needsSelection = needsSim || needsTrack;
-
-  const { data: leaderboard, isLoading } = useLeaderboard(
-    needsSim ? null : sim,
-    needsTrack ? null : trackId,
-    carId === 'all' ? null : carId,
-  );
-  const { data: drivers } = useDrivers();
-  const { data: tracks = [] } = useTracks();
-  const { data: cars = [] } = useCars();
-
-  const driverMap = useMemo(() => {
-    const m = {};
-    (drivers || []).forEach(d => { m[d.driver_id] = d; });
-    return m;
-  }, [drivers]);
-
-  if (needsSelection) {
     return (
       <div className="leaderboard-prompt">
-        <div className="leaderboard-prompt-icon">◈</div>
-        <div className="leaderboard-prompt-title">Seleziona un combo per il leaderboard</div>
+        <div className="leaderboard-prompt-text">Caricamento…</div>
+      </div>
+    );
+  }
+  if (isError) {
+    return (
+      <div className="leaderboard-prompt">
+        <div className="leaderboard-prompt-text">Errore nel caricamento</div>
+      </div>
+    );
+  }
+  if (!data || data.length === 0) {
+    return (
+      <div className="leaderboard-prompt">
+        <div className="leaderboard-prompt-icon">⚡</div>
+        <div className="leaderboard-prompt-title">Nessun record</div>
         <div className="leaderboard-prompt-text">
-          Scegli almeno {needsSim && 'un simulatore'}{needsSim && needsTrack && ' e '}
-          {needsTrack && 'un tracciato'}.
-          <br />
-          Suggerito: aggiungi anche un'auto per confronti significativi (es. solo GT3).
+          Nessun giro trovato per i filtri selezionati. Prova ad allargare i criteri o rimuoverli.
         </div>
       </div>
     );
   }
 
+  return (
+    <table className="laps-table">
+      <thead>
+        <tr>
+          <th className="col-pos">#</th>
+          <th>Sim</th>
+          <th>Tracciato</th>
+          <th>Classe</th>
+          <th>Auto</th>
+          <th>Pilota</th>
+          <th>Tempo</th>
+        </tr>
+      </thead>
+      <tbody>
+        {data.map(rec => {
+          const driver = driverMap[rec.driver_id];
+          return (
+            <tr
+              key={`${rec.sim}-${rec.track_id}-${rec.race_class}`}
+              className="is-podium pos-1"
+            >
+              <td className="col-pos"><span className="pos-badge">1</span></td>
+              <td><SimBadge sim={rec.sim} /></td>
+              <td>{formatTrack(rec.track_id, tracks)}</td>
+              <td><span className="lap-badge-record">{rec.race_class}</span></td>
+              <td>{formatCar(rec.car_id, cars)}</td>
+              <td>
+                {driver ? (
+                  <Link to={`/roster/${driver.driver_id}`} className="driver-link">
+                    <Avatar
+                      name={driver.display_name}
+                      driverId={driver.driver_id}
+                      size={28}
+                    />
+                    <span className="driver-link-name">{driver.display_name}</span>
+                  </Link>
+                ) : rec.driver_id}
+              </td>
+              <td><LapTime ms={rec.lap_time_ms} /></td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+
+function MineView({ driver, filters, tracks, cars }) {
+  const { data, isLoading, isError } = useMyBestLaps(driver?.driver_id, filters);
+
+  if (!driver) {
+    return (
+      <div className="leaderboard-prompt">
+        <div className="leaderboard-prompt-title">Accesso richiesto</div>
+        <div className="leaderboard-prompt-text">
+          Effettua il login per vedere i tuoi tempi.
+        </div>
+      </div>
+    );
+  }
   if (isLoading) {
     return (
-      <div className="data-table-wrap">
-        <div className="skeleton-block" style={{ minHeight: 240 }} />
+      <div className="leaderboard-prompt">
+        <div className="leaderboard-prompt-text">Caricamento…</div>
       </div>
     );
   }
-
-  if (!leaderboard || leaderboard.length === 0) {
+  if (isError) {
     return (
-      <div className="page-stub">
-        <div className="page-stub-icon">∅</div>
-        <div className="page-stub-title">Nessun tempo per questo combo</div>
-        <div className="page-stub-text">Prova un'altra combinazione.</div>
+      <div className="leaderboard-prompt">
+        <div className="leaderboard-prompt-text">Errore nel caricamento</div>
+      </div>
+    );
+  }
+  if (!data || data.length === 0) {
+    return (
+      <div className="leaderboard-prompt">
+        <div className="leaderboard-prompt-icon">🏁</div>
+        <div className="leaderboard-prompt-title">Nessun giro registrato</div>
+        <div className="leaderboard-prompt-text">
+          Non risultano tuoi giri per i filtri selezionati.
+        </div>
       </div>
     );
   }
 
-  const referenceMs = leaderboard[0].lap_time_ms;
+  const classified = data.filter(r => r.race_class);
+  const unclassified = data.filter(r => !r.race_class);
 
   return (
     <>
-      <div className="leaderboard-header">
-        <div className="lh-context">
-          <SimBadge sim={sim} variant="solid" />
-          <span className="lh-track">{formatTrack(trackId, tracks)}</span>
-          {carId !== 'all' && (
-            <>
-              <span className="lh-divider">·</span>
-              <span className="lh-car">{formatCar(carId, cars)}</span>
-            </>
-          )}
-        </div>
-        <div className="lh-meta">{leaderboard.length} piloti</div>
-      </div>
-
-      <div className="data-table-wrap">
-        <table className="data-table laps-table">
+      {classified.length > 0 && (
+        <table className="laps-table">
           <thead>
             <tr>
-              <th className="col-pos">#</th>
-              <th>Pilota</th>
-              {carId === 'all' && <th>Auto</th>}
-              <th className="num">Best Lap</th>
-              <th className="num">Gap</th>
-              <th>Cond.</th>
-              <th>Verifica</th>
-              <th>Data</th>
+              <th>Sim</th>
+              <th>Tracciato</th>
+              <th>Classe</th>
+              <th>Auto</th>
+              <th>Mio tempo</th>
+              <th>Gap dal record team</th>
             </tr>
           </thead>
           <tbody>
-            {leaderboard.map((lap, idx) => {
-              const driver = driverMap[lap.driver_id];
-              const podium = idx < 3;
-              return (
-                <tr key={lap.lap_id} className={podium ? `is-podium pos-${idx + 1}` : ''}>
-                  <td className="col-pos"><span className="pos-badge">{idx + 1}</span></td>
-                  <td>
-                    {driver ? (
-                      <Link to={`/roster/${driver.driver_id}`} className="driver-link">
-                        <Avatar name={driver.display_name} driverId={driver.driver_id} size={32} />
-                        <span className="driver-link-name">{driver.display_name}</span>
-                      </Link>
-                    ) : lap.driver_id}
-                  </td>
-                  {carId === 'all' && <td className="cell-car">{formatCar(lap.car_id, cars)}</td>}
-                  <td className="num">
-                    <LapTime ms={lap.lap_time_ms} emphasis={idx === 0 ? 'best' : 'normal'} size="md" />
-                  </td>
-                  <td className="num cell-gap">
-                    {idx === 0 ? '—' : formatLapDelta(lap.lap_time_ms, referenceMs)}
-                  </td>
-                  <td>
-                    <span className={`cond-tag cond-${lap.conditions}`}>{lap.conditions}</span>
-                  </td>
-                  <td>
-                    {lap.verified_by ? <span className="verify-yes">✓</span> : <span className="verify-no">—</span>}
-                  </td>
-                  <td className="cell-date">{formatDate(lap.set_date)}</td>
-                </tr>
-              );
-            })}
+            {classified.map(rec => (
+              <tr key={`${rec.sim}-${rec.track_id}-${rec.race_class}`}>
+                <td><SimBadge sim={rec.sim} /></td>
+                <td>{formatTrack(rec.track_id, tracks)}</td>
+                <td>{rec.race_class}</td>
+                <td>{formatCar(rec.car_id, cars)}</td>
+                <td><LapTime ms={rec.lap_time_ms} /></td>
+                <td>
+                  {rec.is_record_holder ? (
+                    <span className="lap-badge-record">★ RECORD</span>
+                  ) : rec.gap_ms != null && rec.team_record_ms != null ? (
+                    <span className="cell-gap">
+                      {formatGapPercent(rec.lap_time_ms, rec.team_record_ms)}
+                    </span>
+                  ) : (
+                    <span className="cell-gap">—</span>
+                  )}
+                </td>
+              </tr>
+            ))}
           </tbody>
         </table>
-      </div>
+      )}
+
+      {unclassified.length > 0 && (
+        <div className="section-unclassified">
+          <div className="section-unclassified-title">
+            Da classificare ({unclassified.length})
+          </div>
+          <table className="laps-table">
+            <thead>
+              <tr>
+                <th>Sim</th>
+                <th>Tracciato</th>
+                <th>Auto</th>
+                <th>Mio tempo</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {unclassified.map(rec => (
+                <tr key={`${rec.sim}-${rec.track_id}-${rec.car_id}-unclassified`}>
+                  <td><SimBadge sim={rec.sim} /></td>
+                  <td>{formatTrack(rec.track_id, tracks)}</td>
+                  <td>{formatCar(rec.car_id, cars)}</td>
+                  <td><LapTime ms={rec.lap_time_ms} /></td>
+                  <td>
+                    <span className="lap-badge-unclassified">
+                      Race class non assegnata
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </>
   );
 }
