@@ -3,12 +3,29 @@ import { useMemo } from 'react';
 import { api } from '../api/client';
 import { useCars as useCarsInternal } from './useLookups';
 
-// Re-export dei lookup hooks: single source of truth in useLookups.js.
 export { useTracks, useCars } from './useLookups';
 
+const SEASON_2026_START = '2026-01-01';
+
 /**
- * Race laps interni — derivati da RaceResults.
+ * True se il giro è avvenuto a partire dal 1 gennaio 2026.
+ * Tollerante sui nomi del campo data (lap_date, created_at, date).
  */
+function isInSeason2026(lap) {
+  const raw = lap.set_date || lap.race_date || lap.lap_date || lap.created_at || lap.date;
+  if (!raw) return false;
+  const d = new Date(raw);
+  if (Number.isNaN(d.getTime())) return false;
+  return d >= new Date(SEASON_2026_START);
+}
+
+function lapTimestamp(lap) {
+  const raw = lap.set_date || lap.race_date || lap.lap_date || lap.created_at || lap.date;
+  if (!raw) return 0;
+  const d = new Date(raw);
+  return Number.isNaN(d.getTime()) ? 0 : d.getTime();
+}
+
 function useRaceLaps() {
   return useQuery({
     queryKey: ['raceLaps'],
@@ -18,11 +35,10 @@ function useRaceLaps() {
 }
 
 /**
- * useBestLaps — best laps unificati: manuali (BestLaps tab) + race-derivati (RaceResults).
- * Merge client-side, filtering client-side.
+ * useBestLaps — best laps unificati: manuali + race-derivati.
  *
  * @param {Object} [filters] - { driver_id?, sim?, track_id?, car_id? }
- * @param {number} [limit]   - numero massimo di righe da ritornare (dopo filtri e sort)
+ * @param {number} [limit]
  */
 export function useBestLaps(filters = {}, limit) {
   const manualQuery = useQuery({
@@ -71,9 +87,8 @@ export function useBestLaps(filters = {}, limit) {
 }
 
 /**
- * useLeaderboard — best per pilota su (sim, track, [car]).
- * LEGACY: usata da pagine pre-Wave 9.14. Lasciata intatta per backward compat.
- * Per la nuova leaderboard team-wide raggruppata per race_class, usare useTeamLeaderboard.
+ * useLeaderboard — LEGACY: best per pilota su (sim, track, [car]).
+ * Lasciata intatta per Landing/DriverProfile/Reports.
  */
 export function useLeaderboard(sim, trackId, carId) {
   const lapsQuery = useBestLaps();
@@ -115,14 +130,14 @@ export function useLeaderboard(sim, trackId, carId) {
 // ===========================================
 
 /**
- * useTeamLeaderboard — record team-wide per ogni combinazione (sim, track_id, race_class).
+ * useTeamLeaderboard — record team-wide per ogni (sim, track_id, race_class).
  * UNA SOLA riga per combo: il giro più veloce del team in quella classe su quel circuito.
+ * Include `lastLaps` = ultimi 10 giri del record holder in quella combo (per sparkline).
  *
- * Giri di auto SENZA race_class assegnato (es. ACE oggi, IRC fino a popolamento)
- * vengono ESCLUSI — non rappresentabili in una classe.
+ * Giri di auto SENZA race_class assegnato vengono ESCLUSI.
  *
- * @param {Object} [filters] - { sim?, track_id?, race_class? } filtri client-side
- *                              accetta 'all' come no-op per ciascun filtro
+ * @param {Object} [filters] - { sim?, track_id?, race_class?, season? }
+ *                              season: 'all' (default) | 'season2026'
  */
 export function useTeamLeaderboard(filters = {}) {
   const lapsQuery = useBestLaps();
@@ -131,16 +146,20 @@ export function useTeamLeaderboard(filters = {}) {
   const data = useMemo(() => {
     if (!lapsQuery.data || !carsQuery.data) return null;
 
-    // Build car_id → race_class lookup
     const carRaceClass = {};
     carsQuery.data.forEach(c => {
       carRaceClass[c.car_id] = (c.race_class && String(c.race_class).trim()) || null;
     });
 
-    // Annotate + scarta giri senza race_class
-    const annotated = lapsQuery.data
+    // Annotate + filtro race_class
+    let annotated = lapsQuery.data
       .map(l => ({ ...l, race_class: carRaceClass[l.car_id] || null }))
       .filter(l => l.race_class);
+
+    // Filtro stagione (PRIMA del raggruppamento, altrimenti il "record" sarebbe quello all-time poi escluso)
+    if (filters.season === 'season2026') {
+      annotated = annotated.filter(isInSeason2026);
+    }
 
     // Group by (sim, track_id, race_class), keep best lap
     const groups = {};
@@ -153,9 +172,23 @@ export function useTeamLeaderboard(filters = {}) {
       }
     });
 
-    let records = Object.values(groups);
+    // Per ogni record, calcola lastLaps del record holder in quella combo (ultimi 10, cronologico)
+    let records = Object.values(groups).map(rec => {
+      const lapsOfHolder = annotated
+        .filter(l =>
+          l.sim === rec.sim &&
+          l.track_id === rec.track_id &&
+          l.race_class === rec.race_class &&
+          l.driver_id === rec.driver_id
+        )
+        .sort((a, b) => lapTimestamp(a) - lapTimestamp(b))
+        .slice(-10)
+        .map(l => Number(l.lap_time_ms));
 
-    // Apply filters client-side
+      return { ...rec, lastLaps: lapsOfHolder };
+    });
+
+    // Filtri visualizzazione
     if (filters.sim && filters.sim !== 'all') {
       records = records.filter(r => r.sim === filters.sim);
     }
@@ -166,7 +199,6 @@ export function useTeamLeaderboard(filters = {}) {
       records = records.filter(r => r.race_class === filters.race_class);
     }
 
-    // Sort stable: sim → track_id → race_class
     records.sort((a, b) => {
       if (a.sim !== b.sim) return String(a.sim).localeCompare(String(b.sim));
       if (a.track_id !== b.track_id) return String(a.track_id).localeCompare(String(b.track_id));
@@ -174,7 +206,14 @@ export function useTeamLeaderboard(filters = {}) {
     });
 
     return records;
-  }, [lapsQuery.data, carsQuery.data, filters.sim, filters.track_id, filters.race_class]);
+  }, [
+    lapsQuery.data,
+    carsQuery.data,
+    filters.sim,
+    filters.track_id,
+    filters.race_class,
+    filters.season,
+  ]);
 
   return {
     data,
@@ -185,17 +224,14 @@ export function useTeamLeaderboard(filters = {}) {
 }
 
 /**
- * useMyBestLaps — i miei best per ogni (sim, track_id, race_class) con gap dal record team.
+ * useMyBestLaps — i miei best per ogni (sim, track_id, race_class) con gap dal team + lastLaps.
  *
- * Include anche i miei giri SENZA race_class — saranno mostrati in sezione "Da classificare"
- * nella UI. Logica di grouping per non classificati: una riga per car_id, evita merge errati.
- *
- * @param {string} driverId - VSD driver_id loggato
- * @param {Object} [filters] - { sim?, track_id?, race_class? }
+ * @param {string} driverId
+ * @param {Object} [filters] - { sim?, track_id?, race_class?, season? }
  */
 export function useMyBestLaps(driverId, filters = {}) {
   const myLapsQuery = useBestLaps({ driver_id: driverId });
-  const teamLeaderboard = useTeamLeaderboard();
+  const teamLeaderboard = useTeamLeaderboard({ season: filters.season });
   const carsQuery = useCarsInternal();
 
   const data = useMemo(() => {
@@ -207,13 +243,18 @@ export function useMyBestLaps(driverId, filters = {}) {
       carRaceClass[c.car_id] = (c.race_class && String(c.race_class).trim()) || null;
     });
 
-    // Annotate con race_class
-    const annotated = myLapsQuery.data.map(l => ({
+    // Annotate
+    let annotated = myLapsQuery.data.map(l => ({
       ...l,
       race_class: carRaceClass[l.car_id] || null,
     }));
 
-    // Group: classificati per (sim, track, race_class), non-classificati per (sim, track, car_id)
+    // Filtro stagione
+    if (filters.season === 'season2026') {
+      annotated = annotated.filter(isInSeason2026);
+    }
+
+    // Group by (sim, track_id, race_class). Non-classificati raggruppati per car_id
     const groups = {};
     annotated.forEach(l => {
       const rcKey = l.race_class || `__unclassified__${l.car_id}`;
@@ -225,22 +266,46 @@ export function useMyBestLaps(driverId, filters = {}) {
       }
     });
 
-    // Build team record lookup per (sim, track, race_class)
+    // Team record lookup
     const teamRecordByKey = {};
     teamLeaderboard.data.forEach(r => {
       const key = `${r.sim}__${r.track_id}__${r.race_class}`;
       teamRecordByKey[key] = r;
     });
 
-    // Annotate ogni mio best con team record + gap + flag is_record_holder
+    // Annotate ogni mio best con team record + gap + lastLaps
     let myRecords = Object.values(groups).map(l => {
+      // lastLaps personali in quella combo (per sparkline)
+      const myLapsInCombo = annotated
+        .filter(ll => {
+          if (ll.sim !== l.sim || ll.track_id !== l.track_id) return false;
+          // Per i classificati: stessa race_class. Per i non classificati: stessa car_id.
+          if (l.race_class) return ll.race_class === l.race_class;
+          return ll.car_id === l.car_id && !ll.race_class;
+        })
+        .sort((a, b) => lapTimestamp(a) - lapTimestamp(b))
+        .slice(-10)
+        .map(ll => Number(ll.lap_time_ms));
+
       if (!l.race_class) {
-        return { ...l, team_record_ms: null, gap_ms: null, is_record_holder: false };
+        return {
+          ...l,
+          team_record_ms: null,
+          gap_ms: null,
+          is_record_holder: false,
+          lastLaps: myLapsInCombo,
+        };
       }
       const teamKey = `${l.sim}__${l.track_id}__${l.race_class}`;
       const teamRecord = teamRecordByKey[teamKey];
       if (!teamRecord) {
-        return { ...l, team_record_ms: null, gap_ms: null, is_record_holder: false };
+        return {
+          ...l,
+          team_record_ms: null,
+          gap_ms: null,
+          is_record_holder: false,
+          lastLaps: myLapsInCombo,
+        };
       }
       const myMs = Number(l.lap_time_ms);
       const recMs = Number(teamRecord.lap_time_ms);
@@ -251,6 +316,7 @@ export function useMyBestLaps(driverId, filters = {}) {
         team_record_ms: recMs,
         gap_ms: gapMs,
         is_record_holder: isRecordHolder,
+        lastLaps: myLapsInCombo,
       };
     });
 
@@ -264,7 +330,6 @@ export function useMyBestLaps(driverId, filters = {}) {
       myRecords = myRecords.filter(r => r.race_class === filters.race_class);
     }
 
-    // Sort: classificati prima (per sim/track/gap asc), non-classificati in fondo
     myRecords.sort((a, b) => {
       if (a.race_class && !b.race_class) return -1;
       if (!a.race_class && b.race_class) return 1;
@@ -285,6 +350,7 @@ export function useMyBestLaps(driverId, filters = {}) {
     filters.sim,
     filters.track_id,
     filters.race_class,
+    filters.season,
   ]);
 
   return {

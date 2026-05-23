@@ -22,6 +22,7 @@ import ChampionshipDetail from './pages/ChampionshipDetail';
 import AdminImportResults from './pages/AdminImportResults';
 import AdminImportStandings from './pages/AdminImportStandings';
 import AdminPosters from './pages/AdminPosters';
+import LapsDrilldown from './pages/LapsDrilldown';
 
 import './App.css';
 
@@ -44,6 +45,7 @@ export default function App() {
             <Route path="/calendar" element={<Calendar />} />
             <Route path="/reports" element={<Reports />} />
             <Route path="/laps" element={<BestLaps />} />
+            <Route path="/laps/:sim/:track/:category" element={<LapsDrilldown />} />
             <Route path="/training" element={<Training />} />
             <Route path="/academy" element={<Academy />} />
             <Route path="/endurance" element={<Endurance />} />
