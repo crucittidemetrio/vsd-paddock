@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   useTeamLeaderboard,
   useMyBestLaps,
@@ -11,6 +11,7 @@ import { useAuth } from '../hooks/useAuth';
 import SimBadge from '../components/shared/SimBadge';
 import LapTime from '../components/shared/LapTime';
 import Avatar from '../components/shared/Avatar';
+import Sparkline from '../components/shared/Sparkline';
 import { SIM_LIST } from '../utils/constants';
 import { formatTrack, formatCar, formatGapPercent } from '../utils/format';
 import './BestLaps.css';
@@ -21,9 +22,15 @@ const VIEW_MODES = [
   { id: 'mine', label: 'I miei tempi' },
 ];
 
+const SEASON_OPTIONS = [
+  { id: 'season2026', label: 'Stagione 2026' },
+  { id: 'all', label: 'All-time' },
+];
+
 export default function BestLaps() {
   const { driver } = useAuth();
   const [viewMode, setViewMode] = useState('leaderboard');
+  const [seasonFilter, setSeasonFilter] = useState('season2026');
   const [simFilter, setSimFilter] = useState('all');
   const [trackFilter, setTrackFilter] = useState('all');
   const [raceClassFilter, setRaceClassFilter] = useState('all');
@@ -32,6 +39,7 @@ export default function BestLaps() {
     sim: simFilter,
     track_id: trackFilter,
     race_class: raceClassFilter,
+    season: seasonFilter,
   };
 
   const { data: drivers } = useDrivers();
@@ -44,7 +52,6 @@ export default function BestLaps() {
     return m;
   }, [drivers]);
 
-  // Opzioni race_class dinamiche dal sheet Cars
   const raceClassOptions = useMemo(() => {
     if (!cars) return [];
     const set = new Set();
@@ -58,11 +65,9 @@ export default function BestLaps() {
     return Array.from(set).sort();
   }, [cars, simFilter]);
 
-  // Opzioni track filtrate per sim
- const trackOptions = useMemo(() => {
+  const trackOptions = useMemo(() => {
     if (!tracks) return [];
     const filtered = tracks.filter(t => simFilter === 'all' || t.sim === simFilter);
-    // Dedup per track_id (il sheet Tracks può contenere duplicati: la UI ne mostra una sola)
     const seen = new Set();
     const unique = [];
     filtered.forEach(t => {
@@ -91,23 +96,37 @@ export default function BestLaps() {
   return (
     <div className="page">
       <div className="page-header">
-        <div className="page-eyebrow">BEST LAPS · STAGIONE 2026</div>
+        <div className="page-eyebrow">BEST LAPS</div>
         <h1 className="page-title">Database Tempi</h1>
       </div>
 
-      <div className="view-switch" style={{ marginBottom: 'var(--sp-4)' }}>
-        {VIEW_MODES.map(v => (
-          <button
-            key={v.id}
-            className={`view-switch-btn ${viewMode === v.id ? 'is-active' : ''}`}
-            onClick={() => setViewMode(v.id)}
-          >
-            {v.label}
-          </button>
-        ))}
+      <div className="laps-top-bar">
+        <div className="view-switch">
+          {VIEW_MODES.map(v => (
+            <button
+              key={v.id}
+              className={`view-switch-btn ${viewMode === v.id ? 'is-active' : ''}`}
+              onClick={() => setViewMode(v.id)}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="season-toggle">
+          {SEASON_OPTIONS.map(s => (
+            <button
+              key={s.id}
+              className={`season-btn ${seasonFilter === s.id ? 'is-active' : ''}`}
+              onClick={() => setSeasonFilter(s.id)}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="laps-filters" style={{ marginBottom: 'var(--sp-5)' }}>
+      <div className="laps-filters">
         <div className="filter-group">
           <label className="filter-label">Sim</label>
           <select
@@ -145,16 +164,12 @@ export default function BestLaps() {
           >
             <option value="all">Tutti</option>
             {trackOptions.map(t => (
-              <option key={t.track_id} value={t.track_id}>
-                {t.track_name}
-              </option>
+              <option key={t.track_id} value={t.track_id}>{t.track_name}</option>
             ))}
           </select>
         </div>
 
-        <button className="reset-btn" onClick={resetFilters}>
-          Reset filtri
-        </button>
+        <button className="reset-btn" onClick={resetFilters}>Reset filtri</button>
       </div>
 
       {viewMode === 'leaderboard' ? (
@@ -178,31 +193,25 @@ export default function BestLaps() {
 
 
 function LeaderboardView({ filters, driverMap, tracks, cars }) {
-  const { data, isLoading, isError } = useTeamLeaderboard(filters);
+  const navigate = useNavigate();
+  const { data, isLoading, isError, error } = useTeamLeaderboard(filters);
 
-  if (isLoading) {
-    return (
-      <div className="leaderboard-prompt">
-        <div className="leaderboard-prompt-text">Caricamento…</div>
-      </div>
-    );
+  function goToDrilldown(rec) {
+    const sim = String(rec.sim).toLowerCase();
+    const track = String(rec.track_id).toLowerCase();
+    const category = String(rec.race_class).toLowerCase();
+    navigate(`/laps/${encodeURIComponent(sim)}/${encodeURIComponent(track)}/${encodeURIComponent(category)}`);
   }
-  if (isError) {
-    return (
-      <div className="leaderboard-prompt">
-        <div className="leaderboard-prompt-text">Errore nel caricamento</div>
-      </div>
-    );
-  }
+
+  if (isLoading) return <Prompt text="Caricamento…" />;
+  if (isError) return <Prompt text={`Errore: ${error?.message || 'sconosciuto'}`} />;
   if (!data || data.length === 0) {
     return (
-      <div className="leaderboard-prompt">
-        <div className="leaderboard-prompt-icon">⚡</div>
-        <div className="leaderboard-prompt-title">Nessun record</div>
-        <div className="leaderboard-prompt-text">
-          Nessun giro trovato per i filtri selezionati. Prova ad allargare i criteri o rimuoverli.
-        </div>
-      </div>
+      <Prompt
+        icon="⚡"
+        title="Nessun record"
+        text="Nessun giro trovato per i filtri selezionati. Prova a rimuoverne o cambiare stagione."
+      />
     );
   }
 
@@ -217,6 +226,7 @@ function LeaderboardView({ filters, driverMap, tracks, cars }) {
           <th>Auto</th>
           <th>Pilota</th>
           <th>Tempo</th>
+          <th>Trend</th>
         </tr>
       </thead>
       <tbody>
@@ -225,7 +235,11 @@ function LeaderboardView({ filters, driverMap, tracks, cars }) {
           return (
             <tr
               key={`${rec.sim}-${rec.track_id}-${rec.race_class}`}
-              className="is-podium pos-1"
+              className="is-podium pos-1 is-clickable"
+              onClick={(e) => {
+                if (e.target.closest('a')) return;
+                goToDrilldown(rec);
+              }}
             >
               <td className="col-pos"><span className="pos-badge">1</span></td>
               <td><SimBadge sim={rec.sim} /></td>
@@ -235,16 +249,13 @@ function LeaderboardView({ filters, driverMap, tracks, cars }) {
               <td>
                 {driver ? (
                   <Link to={`/roster/${driver.driver_id}`} className="driver-link">
-                    <Avatar
-                      name={driver.display_name}
-                      driverId={driver.driver_id}
-                      size={28}
-                    />
+                    <Avatar name={driver.display_name} driverId={driver.driver_id} size={28} />
                     <span className="driver-link-name">{driver.display_name}</span>
                   </Link>
                 ) : rec.driver_id}
               </td>
               <td><LapTime ms={rec.lap_time_ms} /></td>
+              <td><Sparkline values={rec.lastLaps} /></td>
             </tr>
           );
         })}
@@ -255,41 +266,20 @@ function LeaderboardView({ filters, driverMap, tracks, cars }) {
 
 
 function MineView({ driver, filters, tracks, cars }) {
-  const { data, isLoading, isError } = useMyBestLaps(driver?.driver_id, filters);
+  const { data, isLoading, isError, error } = useMyBestLaps(driver?.driver_id, filters);
 
   if (!driver) {
-    return (
-      <div className="leaderboard-prompt">
-        <div className="leaderboard-prompt-title">Accesso richiesto</div>
-        <div className="leaderboard-prompt-text">
-          Effettua il login per vedere i tuoi tempi.
-        </div>
-      </div>
-    );
+    return <Prompt title="Accesso richiesto" text="Effettua il login per vedere i tuoi tempi." />;
   }
-  if (isLoading) {
-    return (
-      <div className="leaderboard-prompt">
-        <div className="leaderboard-prompt-text">Caricamento…</div>
-      </div>
-    );
-  }
-  if (isError) {
-    return (
-      <div className="leaderboard-prompt">
-        <div className="leaderboard-prompt-text">Errore nel caricamento</div>
-      </div>
-    );
-  }
+  if (isLoading) return <Prompt text="Caricamento…" />;
+  if (isError) return <Prompt text={`Errore: ${error?.message || 'sconosciuto'}`} />;
   if (!data || data.length === 0) {
     return (
-      <div className="leaderboard-prompt">
-        <div className="leaderboard-prompt-icon">🏁</div>
-        <div className="leaderboard-prompt-title">Nessun giro registrato</div>
-        <div className="leaderboard-prompt-text">
-          Non risultano tuoi giri per i filtri selezionati.
-        </div>
-      </div>
+      <Prompt
+        icon="🏁"
+        title="Nessun giro registrato"
+        text="Non risultano tuoi giri per i filtri selezionati."
+      />
     );
   }
 
@@ -308,6 +298,7 @@ function MineView({ driver, filters, tracks, cars }) {
               <th>Auto</th>
               <th>Mio tempo</th>
               <th>Gap dal record team</th>
+              <th>Trend</th>
             </tr>
           </thead>
           <tbody>
@@ -329,6 +320,7 @@ function MineView({ driver, filters, tracks, cars }) {
                     <span className="cell-gap">—</span>
                   )}
                 </td>
+                <td><Sparkline values={rec.lastLaps} /></td>
               </tr>
             ))}
           </tbody>
@@ -347,6 +339,7 @@ function MineView({ driver, filters, tracks, cars }) {
                 <th>Tracciato</th>
                 <th>Auto</th>
                 <th>Mio tempo</th>
+                <th>Trend</th>
                 <th></th>
               </tr>
             </thead>
@@ -357,10 +350,9 @@ function MineView({ driver, filters, tracks, cars }) {
                   <td>{formatTrack(rec.track_id, tracks)}</td>
                   <td>{formatCar(rec.car_id, cars)}</td>
                   <td><LapTime ms={rec.lap_time_ms} /></td>
+                  <td><Sparkline values={rec.lastLaps} color="var(--vsd-orange)" /></td>
                   <td>
-                    <span className="lap-badge-unclassified">
-                      Race class non assegnata
-                    </span>
+                    <span className="lap-badge-unclassified">Race class non assegnata</span>
                   </td>
                 </tr>
               ))}
@@ -369,5 +361,16 @@ function MineView({ driver, filters, tracks, cars }) {
         </div>
       )}
     </>
+  );
+}
+
+
+function Prompt({ icon, title, text }) {
+  return (
+    <div className="leaderboard-prompt">
+      {icon && <div className="leaderboard-prompt-icon">{icon}</div>}
+      {title && <div className="leaderboard-prompt-title">{title}</div>}
+      {text && <div className="leaderboard-prompt-text">{text}</div>}
+    </div>
   );
 }
