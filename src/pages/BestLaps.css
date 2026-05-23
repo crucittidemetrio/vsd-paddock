@@ -236,3 +236,48 @@
   margin: 0 auto;
   line-height: 1.6;
 }
+
+/* ========== WAVE 9.14 — BADGE & SEZIONI ========== */
+.lap-badge-record {
+  display: inline-block;
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.15em;
+  padding: 3px 10px;
+  border-radius: var(--r-sm);
+  background: rgba(0, 212, 255, 0.15);
+  color: var(--vsd-cyan);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.lap-badge-unclassified {
+  display: inline-block;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 3px 10px;
+  border-radius: var(--r-sm);
+  background: rgba(245, 166, 35, 0.10);
+  color: var(--vsd-orange);
+  border: 1px solid rgba(245, 166, 35, 0.30);
+  white-space: nowrap;
+}
+
+.section-unclassified {
+  margin-top: var(--sp-6);
+  padding-top: var(--sp-4);
+  border-top: 1px dashed var(--color-border);
+}
+
+.section-unclassified-title {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--vsd-orange);
+  margin-bottom: var(--sp-3);
+}
