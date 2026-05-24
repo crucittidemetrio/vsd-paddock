@@ -4,7 +4,7 @@ import { useDriver } from '../hooks/useRoster';
 import { useBestLaps } from '../hooks/useBestLaps';
 import { useReports } from '../hooks/useRaces';
 import { useMyRecentRaceResults } from '../hooks/useRaceResults';
-import { useTracks } from '../hooks/useLookups';
+import { useTracks, useCars } from '../hooks/useLookups';
 import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
 import StatusDot from '../components/shared/StatusDot';
@@ -21,6 +21,7 @@ export default function DriverProfile() {
   const { data: laps } = useBestLaps({ driver_id: driverId });
 const { data: reports } = useReports({ driver_id: driverId });
 const { data: tracks = [] } = useTracks();
+const { data: cars = [] } = useCars();
   const { data: raceResultsData } = useMyRecentRaceResults(driverId, 200);
   const raceResults = raceResultsData?.results || [];
 
@@ -185,7 +186,7 @@ const totalLaps = uniqueLaps.length;
                   <tr key={lap.lap_id}>
                     <td><SimBadge sim={lap.sim} size="sm" /></td>
                     <td className="cell-track">{formatTrack(lap.track_id, tracks)}</td>
-                    <td className="cell-car">{formatCar(lap.car_id)}</td>
+                    <td className="cell-car">{formatCar(lap.car_id, cars)}</td>
                     <td className="num">
                       <LapTime
                         ms={lap.lap_time_ms}
