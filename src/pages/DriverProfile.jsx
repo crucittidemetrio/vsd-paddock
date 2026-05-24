@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { useDriver } from '../hooks/useRoster';
 import { useBestLaps } from '../hooks/useBestLaps';
 import { useReports } from '../hooks/useRaces';
+import { useMyRecentRaceResults } from '../hooks/useRaceResults';
+import { useTracks } from '../hooks/useLookups';
 import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
 import StatusDot from '../components/shared/StatusDot';
@@ -18,6 +20,9 @@ export default function DriverProfile() {
   const { data: driver, isLoading, error } = useDriver(driverId);
   const { data: laps } = useBestLaps({ driver_id: driverId });
 const { data: reports } = useReports({ driver_id: driverId });
+const { data: tracks = [] } = useTracks();
+  const { data: raceResultsData } = useMyRecentRaceResults(driverId, 200);
+  const raceResults = raceResultsData?.results || [];
 
   // Dedup per (sim, track_id, car_id): i raceLaps generano entries multiple
   // (qualifying + race) sulla stessa combo. Deve stare PRIMA degli early return
@@ -68,9 +73,24 @@ const { data: reports } = useReports({ driver_id: driverId });
 
 const totalLaps = uniqueLaps.length;
   const verifiedLaps = uniqueLaps.filter(l => !!l.verified_by).length;
-  const racesCount = new Set((reports || []).map(r => r.race_id)).size;
-  const podiums = (reports || []).filter(r => r.finish_position <= 3).length;
-  const wins = (reports || []).filter(r => r.finish_position === 1).length;
+  // Gare/podi/vittorie: max tra RaceResults (autoritative) e RaceReports (legacy)
+  const racesFromResults = new Set(raceResults.map(r => r.race_id)).size;
+  const racesFromReports = new Set((reports || []).map(r => r.race_id)).size;
+  const racesCount = Math.max(racesFromResults, racesFromReports);
+
+  const podiumsFromResults = raceResults.filter(r =>
+    !r.dns && !r.dnf && typeof r.finish_position === 'number' && r.finish_position <= 3
+  ).length;
+  const podiumsFromReports = (reports || []).filter(r =>
+    typeof r.finish_position === 'number' && r.finish_position <= 3
+  ).length;
+  const podiums = Math.max(podiumsFromResults, podiumsFromReports);
+
+  const winsFromResults = raceResults.filter(r =>
+    !r.dns && !r.dnf && r.finish_position === 1
+  ).length;
+  const winsFromReports = (reports || []).filter(r => r.finish_position === 1).length;
+  const wins = Math.max(winsFromResults, winsFromReports);
 
   return (
     <div className="page">
@@ -164,7 +184,7 @@ const totalLaps = uniqueLaps.length;
                 {uniqueLaps.slice(0, 10).map((lap, idx) => (
                   <tr key={lap.lap_id}>
                     <td><SimBadge sim={lap.sim} size="sm" /></td>
-                    <td className="cell-track">{formatTrack(lap.track_id)}</td>
+                    <td className="cell-track">{formatTrack(lap.track_id, tracks)}</td>
                     <td className="cell-car">{formatCar(lap.car_id)}</td>
                     <td className="num">
                       <LapTime
