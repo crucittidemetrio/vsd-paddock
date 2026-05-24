@@ -45,9 +45,24 @@ export default function Landing() {
   const nextRace = upcoming?.[0];
   const isUserInNextRace = nextRace?.entries?.includes(driver?.driver_id);
 
-  // My stats
-  const totalLaps = myLaps?.length || 0;
-  const verifiedLaps = myLaps?.filter(l => !!l.verified_by).length || 0;
+// My stats — dedup per (sim, track_id, car_id): un raceLap genera entries multiple
+  // (qualifying + race) sulla stessa combo, vanno contate come una sola best lap.
+  const myUniqueLaps = useMemo(() => {
+    const map = {};
+    (myLaps || []).forEach(l => {
+      const key = `${l.sim}__${l.track_id}__${l.car_id}`;
+      const t = Number(l.lap_time_ms);
+      const current = map[key];
+      if (!current || Number(current.lap_time_ms) > t) {
+        map[key] = l;
+      }
+    });
+    return Object.values(map).sort(
+      (a, b) => Number(a.lap_time_ms) - Number(b.lap_time_ms)
+    );
+  }, [myLaps]);
+  const totalLaps = myUniqueLaps.length;
+  const verifiedLaps = myUniqueLaps.filter(l => !!l.verified_by).length;
   // Conta gare disputate da RaceResults se disponibile, altrimenti fallback su reports
   const racesFromResults = new Set(myRaceResults.map(r => r.race_id)).size;
   const racesFromReports = new Set((myReports || []).map(r => r.race_id)).size;
@@ -198,7 +213,7 @@ export default function Landing() {
       <MyDominantClassesWidget />
 
       {/* LE MIE BEST LAPS */}
-      {myLaps && myLaps.length > 0 && (
+      {myUniqueLaps.length > 0 && (
         <section className="mc-my-laps">
           <div className="mc-section-head">
             <div className="mc-section-eyebrow">LE TUE BEST LAPS</div>
@@ -206,7 +221,7 @@ export default function Landing() {
           </div>
 
           <div className="mc-laps-row">
-            {myLaps.slice(0, 3).map((lap, idx) => (
+            {myUniqueLaps.slice(0, 3).map((lap, idx) => (
               <div key={lap.lap_id} className={`mc-lap-card${idx === 0 ? ' is-best' : ''}`}>
                 <div className="mc-lap-head">
                   <SimBadge sim={lap.sim} size="sm" />
