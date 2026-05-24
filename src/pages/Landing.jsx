@@ -10,6 +10,7 @@ import SimBadge from '../components/shared/SimBadge';
 import CountdownLive from '../components/shared/CountdownLive';
 import LapTime from '../components/shared/LapTime';
 import Avatar from '../components/shared/Avatar';
+import MyDominantClassesWidget from '../components/dashboard/MyDominantClassesWidget';
 import {
   formatTrack, formatRaceDateTime, formatDuration, formatDate,
 } from '../utils/format';
@@ -192,6 +193,9 @@ export default function Landing() {
           <LastResultCard result={lastResult} tracks={tracks} />
         </section>
       )}
+
+      {/* LE TUE CLASSI DOMINANTI */}
+      <MyDominantClassesWidget />
 
       {/* LE MIE BEST LAPS */}
       {myLaps && myLaps.length > 0 && (

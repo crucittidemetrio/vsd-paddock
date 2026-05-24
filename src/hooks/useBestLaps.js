@@ -360,3 +360,33 @@ export function useMyBestLaps(driverId, filters = {}) {
     error: myLapsQuery.error || carsQuery.error || teamLeaderboard.error,
   };
 }
+
+/**
+ * useMyDominantClasses — combo (sim, track, race_class) dove il driver è team record holder.
+ * Restituisce array filtrato di useTeamLeaderboard. Default all-time.
+ *
+ * @param {string} driverId
+ * @param {Object} [options] - { season? } season: 'all' | 'season2026'
+ */
+export function useMyDominantClasses(driverId, options = {}) {
+  const teamLeaderboard = useTeamLeaderboard({ season: options.season });
+
+  const data = useMemo(() => {
+    if (!driverId || !teamLeaderboard.data) return null;
+
+    return teamLeaderboard.data
+      .filter(rec => rec.driver_id === driverId)
+      .sort((a, b) => {
+        if (a.sim !== b.sim) return String(a.sim).localeCompare(String(b.sim));
+        if (a.track_id !== b.track_id) return String(a.track_id).localeCompare(String(b.track_id));
+        return String(a.race_class).localeCompare(String(b.race_class));
+      });
+  }, [teamLeaderboard.data, driverId]);
+
+  return {
+    data,
+    isLoading: teamLeaderboard.isLoading,
+    isError: teamLeaderboard.isError,
+    error: teamLeaderboard.error,
+  };
+}

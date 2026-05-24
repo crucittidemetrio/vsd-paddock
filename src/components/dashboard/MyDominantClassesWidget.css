@@ -1,0 +1,102 @@
+.mc-dominant-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mc-dominant-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+  outline: none;
+}
+
+.mc-dominant-item:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 183, 3, 0.35);
+  transform: translateX(2px);
+}
+
+.mc-dominant-item:focus-visible {
+  box-shadow: 0 0 0 2px rgba(255, 183, 3, 0.6);
+}
+
+.mc-dominant-trophy {
+  font-size: 22px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.mc-dominant-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.mc-dominant-line1 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.mc-dominant-track {
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.mc-dominant-class {
+  font-size: 12px;
+  font-weight: 600;
+  color: #ffb703;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(255, 183, 3, 0.12);
+  flex-shrink: 0;
+}
+
+.mc-dominant-time {
+  flex-shrink: 0;
+}
+
+.mc-dominant-more {
+  margin-top: 12px;
+  text-align: center;
+}
+
+.mc-dominant-more-btn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-family: inherit;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.mc-dominant-more-btn:hover {
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+@media (max-width: 600px) {
+  .mc-dominant-item { gap: 10px; padding: 10px 12px; }
+  .mc-dominant-trophy { font-size: 18px; }
+  .mc-dominant-line1 { gap: 8px; flex-wrap: wrap; }
+  .mc-dominant-track { font-size: 13px; }
+}
