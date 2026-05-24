@@ -29,7 +29,8 @@ export default function Landing() {
   const { data: tracks = [] } = useTracks();
 
   // NEW: race results
-  const { data: myRaceResultsData } = useMyRecentRaceResults(driver?.driver_id, 5);
+  // limit alto per counter accurato (il feed "Ultimo risultato" usa solo [0])
+  const { data: myRaceResultsData } = useMyRecentRaceResults(driver?.driver_id, 200);
   const myRaceResults = myRaceResultsData?.results || [];
   const lastResult = myRaceResults[0];
 
