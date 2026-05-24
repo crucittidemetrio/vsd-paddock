@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useDriver } from '../hooks/useRoster';
 import { useBestLaps } from '../hooks/useBestLaps';
@@ -6,6 +7,7 @@ import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
 import StatusDot from '../components/shared/StatusDot';
 import LapTime from '../components/shared/LapTime';
+import MyDominantClassesWidget from '../components/dashboard/MyDominantClassesWidget';
 import { ROLES } from '../utils/constants';
 import { formatTrack, formatCar, formatDate } from '../utils/format';
 import './DriverProfile.css';
@@ -15,7 +17,25 @@ export default function DriverProfile() {
   const { driverId } = useParams();
   const { data: driver, isLoading, error } = useDriver(driverId);
   const { data: laps } = useBestLaps({ driver_id: driverId });
-  const { data: reports } = useReports({ driver_id: driverId });
+const { data: reports } = useReports({ driver_id: driverId });
+
+  // Dedup per (sim, track_id, car_id): i raceLaps generano entries multiple
+  // (qualifying + race) sulla stessa combo. Deve stare PRIMA degli early return
+  // per rispettare le React hooks rules.
+  const uniqueLaps = useMemo(() => {
+    const map = {};
+    (laps || []).forEach(l => {
+      const key = `${l.sim}__${l.track_id}__${l.car_id}`;
+      const t = Number(l.lap_time_ms);
+      const current = map[key];
+      if (!current || Number(current.lap_time_ms) > t) {
+        map[key] = l;
+      }
+    });
+    return Object.values(map).sort(
+      (a, b) => Number(a.lap_time_ms) - Number(b.lap_time_ms)
+    );
+  }, [laps]);
 
   if (isLoading) {
     return (
@@ -46,8 +66,8 @@ export default function DriverProfile() {
     driver.role === ROLES.ADMIN ? 'Team Principal' :
     driver.role === ROLES.STAFF ? 'Staff' : 'Pilota';
 
-  const totalLaps = laps?.length || 0;
-  const verifiedLaps = laps?.filter(l => !!l.verified_by).length || 0;
+const totalLaps = uniqueLaps.length;
+  const verifiedLaps = uniqueLaps.filter(l => !!l.verified_by).length;
   const racesCount = new Set((reports || []).map(r => r.race_id)).size;
   const podiums = (reports || []).filter(r => r.finish_position <= 3).length;
   const wins = (reports || []).filter(r => r.finish_position === 1).length;
@@ -116,14 +136,17 @@ export default function DriverProfile() {
         <StatCard label="Membro dal" value={driver.join_date?.split('-')[0] || '—'} sub="anno entrata" />
       </div>
 
+      {/* CLASSI DOMINANTI */}
+      <MyDominantClassesWidget driverId={driverId} />
+
       {/* BEST LAPS PERSONALI */}
       <section className="profile-section">
         <div className="section-head">
           <h3 className="section-title">Best Laps Personali</h3>
-          <span className="section-meta">{laps?.length || 0} tempi registrati</span>
+          <span className="section-meta">{uniqueLaps.length} tempi registrati</span>
         </div>
 
-        {laps && laps.length > 0 ? (
+        {uniqueLaps.length > 0 ? (
           <div className="data-table-wrap">
             <table className="data-table">
               <thead>
@@ -138,7 +161,7 @@ export default function DriverProfile() {
                 </tr>
               </thead>
               <tbody>
-                {laps.slice(0, 10).map((lap, idx) => (
+                {uniqueLaps.slice(0, 10).map((lap, idx) => (
                   <tr key={lap.lap_id}>
                     <td><SimBadge sim={lap.sim} size="sm" /></td>
                     <td className="cell-track">{formatTrack(lap.track_id)}</td>

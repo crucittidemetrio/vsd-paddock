@@ -9,9 +9,15 @@ import './MyDominantClassesWidget.css';
 
 const VISIBLE_LIMIT = 5;
 
-export default function MyDominantClassesWidget() {
+/**
+ * Widget "classi dominanti" — combo dove il pilota è team record holder.
+ * @param {Object} props
+ * @param {string} [props.driverId] - Se omesso, usa il pilota loggato.
+ */
+export default function MyDominantClassesWidget({ driverId: driverIdProp } = {}) {
   const { driver } = useAuth();
-  const driverId = driver?.driver_id;
+  const driverId = driverIdProp || driver?.driver_id;
+  const isOwn = !driverIdProp || driverIdProp === driver?.driver_id;
   const navigate = useNavigate();
 
   const { data: records, isLoading } = useMyDominantClasses(driverId);
@@ -31,12 +37,13 @@ export default function MyDominantClassesWidget() {
   };
 
   return (
-    <section className="mc-dominant">
+    // FISSARE QUI: Aggiunto il tag d'apertura <section className="..."> coerente con il </section> finale
+    <section className="mc-dominant-widget"> 
       <div className="mc-section-head">
-        <div className="mc-section-eyebrow">LE TUE CLASSI DOMINANTI</div>
-        <span className="mc-section-link">
-          {records.length} {records.length === 1 ? 'record team' : 'record team'}
-        </span>
+        <div className="mc-section-eyebrow">
+          {isOwn ? 'LE TUE CLASSI DOMINANTI' : 'CLASSI DOMINANTI'}
+        </div>
+        <span className="mc-section-link">{records.length} record team</span>
       </div>
 
       <ul className="mc-dominant-list">
