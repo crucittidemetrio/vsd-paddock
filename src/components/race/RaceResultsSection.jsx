@@ -24,7 +24,9 @@ function readCurrentDriverId() {
 }
 
 function getDriverName(result, drivers) {
-    return result.driver_name_external || '—';
+  return result.driver_name_external || '—';
+}
+
 }
 
 function StatusBadge({ result }) {
