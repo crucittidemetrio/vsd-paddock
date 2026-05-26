@@ -244,34 +244,37 @@ function handleDiscordAuthStart_(payload) {
 }
 
 /**
- * Discord OAuth callback. Discord redirige qui dopo il consenso con
- *   ?action=discordCallback&code=XXX&state=YYY
+ * POST auth.discordCallback handler.
+ * Frontend Vercel /auth/discord-callback riceve ?code=XXX&state=YYY da Discord,
+ * poi POSTa qui per scambiare il code con il token sessione.
  *
- * @param {string} code  authorization code da Discord
- * @param {string} state CSRF state token (verificato contro CacheService)
- * @returns {GoogleAppsScript.HTML.HtmlOutput} redirect verso il frontend
+ * @param {{code: string, state: string}} payload
+ * @param {Object} ctx - non usato (chiamata pre-auth)
+ * @returns {{ok: boolean, data?: {token, tier, sims, driver_id}, error?: string}}
  */
-function handleDiscordCallback(code, state) {
-  // 0. Validation
+function handleDiscordCallback(payload, ctx) {
+  const code = (payload && payload.code) || '';
+  const state = (payload && payload.state) || '';
+
   if (!code) {
     Logger.log('handleDiscordCallback: code mancante');
-    return htmlRedirectToFrontend_('#auth_error=missing_code');
+    return fail('missing_code');
   }
   if (!state) {
     Logger.log('handleDiscordCallback: state mancante (possibile CSRF)');
-    return htmlRedirectToFrontend_('#auth_error=missing_state');
+    return fail('missing_state');
   }
 
-  // 1. Verifica CSRF state (one-shot, removed dopo lettura)
+  // 1. Verifica CSRF state (one-shot)
   const cache = CacheService.getScriptCache();
   const cacheKey = 'oauth_state_' + state;
   if (!cache.get(cacheKey)) {
     Logger.log('handleDiscordCallback: state non valido o scaduto: ' + state);
-    return htmlRedirectToFrontend_('#auth_error=invalid_state');
+    return fail('invalid_state');
   }
   cache.remove(cacheKey);
 
-  // 2. Read Script Properties
+  // 2. Script Properties
   const props = PropertiesService.getScriptProperties();
   const clientId = props.getProperty('DISCORD_CLIENT_ID');
   const clientSecret = props.getProperty('DISCORD_CLIENT_SECRET');
@@ -280,10 +283,10 @@ function handleDiscordCallback(code, state) {
 
   if (!clientId || !clientSecret || !redirectUri || !guildId) {
     Logger.log('handleDiscordCallback: Script Properties Discord incomplete');
-    return htmlRedirectToFrontend_('#auth_error=server_misconfigured');
+    return fail('server_misconfigured');
   }
 
-  // 3. Exchange authorization code → access_token
+  // 3. Exchange code → access_token
   let accessToken;
   try {
     const tokenRes = UrlFetchApp.fetch(DISCORD_API_BASE + '/oauth2/token', {
@@ -304,20 +307,20 @@ function handleDiscordCallback(code, state) {
         'Discord token exchange failed: HTTP ' + tokenRes.getResponseCode() +
         ' body: ' + tokenRes.getContentText()
       );
-      return htmlRedirectToFrontend_('#auth_error=discord_token_exchange');
+      return fail('discord_token_exchange');
     }
 
     accessToken = JSON.parse(tokenRes.getContentText()).access_token;
     if (!accessToken) {
       Logger.log('Discord token response missing access_token');
-      return htmlRedirectToFrontend_('#auth_error=discord_no_access_token');
+      return fail('discord_no_access_token');
     }
   } catch (e) {
     Logger.log('Discord token exchange exception: ' + e.message);
-    return htmlRedirectToFrontend_('#auth_error=discord_unreachable');
+    return fail('discord_unreachable');
   }
 
-  // 4. Fetch user info (snowflake user ID)
+  // 4. Fetch user info
   let user;
   try {
     const userRes = UrlFetchApp.fetch(DISCORD_API_BASE + '/users/@me', {
@@ -327,16 +330,16 @@ function handleDiscordCallback(code, state) {
 
     if (userRes.getResponseCode() !== 200) {
       Logger.log('Discord /users/@me failed: HTTP ' + userRes.getResponseCode());
-      return htmlRedirectToFrontend_('#auth_error=discord_user_fetch');
+      return fail('discord_user_fetch');
     }
 
     user = JSON.parse(userRes.getContentText());
   } catch (e) {
     Logger.log('Discord /users/@me exception: ' + e.message);
-    return htmlRedirectToFrontend_('#auth_error=discord_unreachable');
+    return fail('discord_unreachable');
   }
 
-  // 5. Fetch guild membership + roles
+  // 5. Guild membership + roles
   let memberRoles = [];
   let isMember = false;
   try {
@@ -354,7 +357,7 @@ function handleDiscordCallback(code, state) {
       memberRoles = member.roles || [];
       isMember = true;
     } else if (memberStatus === 404) {
-      isMember = false;  // utente non nel server VSD
+      isMember = false;
     } else {
       Logger.log(
         'Discord guild member fetch unexpected: HTTP ' + memberStatus +
@@ -367,7 +370,7 @@ function handleDiscordCallback(code, state) {
     isMember = false;
   }
 
-  // 6. Classify user → tier + sims + driver_id
+  // 6. Classify
   const classification = classifyDiscordUser_(user.id, memberRoles, isMember);
   Logger.log(
     'Discord auth complete: discord_user=' + user.id +
@@ -376,16 +379,17 @@ function handleDiscordCallback(code, state) {
     ', sims=[' + classification.sims.join(',') + ']'
   );
 
-  // 7. Generate HMAC token con tier+sims dentro il payload firmato
+  // 7. Token
   const token = generateTokenWithClassification_(classification);
 
-  // 8. Redirect a frontend via FRAGMENT (#) — non finisce in server log/Referer header
-  const fragment =
-    '#token=' + encodeURIComponent(token) +
-    '&tier=' + encodeURIComponent(classification.tier);
-  return htmlRedirectToFrontend_(fragment);
+  // 8. Return JSON (no more HTML redirect — frontend Vercel handles UX)
+  return ok({
+    token: token,
+    tier: classification.tier,
+    sims: classification.sims,
+    driver_id: classification.driver_id,
+  });
 }
-
 /**
  * Genera token HMAC con classification (tier+sims) nel payload firmato.
  * Formato new (5 parti): base64(driver_id|tier|sims_csv|expiresAt|signature)
@@ -405,22 +409,6 @@ function generateTokenWithClassification_(classification) {
   const payload = `${driverId}|${tier}|${simsCsv}|${expiresAt}`;
   const signature = signHmac(payload, getAuthSecret());
   return Utilities.base64EncodeWebSafe(`${payload}|${signature}`);
-}
-
-/**
- * Helper: HtmlOutput che redirige il browser a FRONTEND_URL/auth/callback + suffix.
- *
- * @param {string} suffix - es. '#token=XXX&tier=YYY' oppure '#auth_error=xxx'
- * @returns {GoogleAppsScript.HTML.HtmlOutput}
- */
-function htmlRedirectToFrontend_(suffix) {
-  const frontendUrl = PropertiesService.getScriptProperties().getProperty('FRONTEND_URL');
-  const target = (frontendUrl || '/') + '/auth/callback' + (suffix || '');
-  const safeTarget = JSON.stringify(target);  // escape JS injection-safe
-  return HtmlService.createHtmlOutput(
-    '<script>window.location.replace(' + safeTarget + ');</script>' +
-    '<noscript>Redirect a <a href=' + safeTarget + '>' + target + '</a></noscript>'
-  );
 }
 
 // =====================================================================

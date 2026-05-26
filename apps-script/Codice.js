@@ -44,14 +44,7 @@ const DRIVER_PRIVATE_EXTRA_FIELDS = [
 // ═══════════════════════════════════════════════════════════
 
 function doGet(e) {
-  const action = (e && e.parameter && e.parameter.action) || '';
-
-  // Wave 10: Discord OAuth callback
-  if (action === 'discordCallback') {
-    return handleDiscordCallback(e.parameter.code, e.parameter.state);
-  }
-
-  // Default: health check
+  // Health check via GET. Usato per verificare che lo script sia online.
   return jsonResponse({ ok: true, data: { service: 'VSD Paddock API', time: new Date().toISOString() } });
 }
 
@@ -132,6 +125,7 @@ const ACTIONS = {
   'auth.login': handleAuthLogin,
   'auth.verify': handleAuthVerify,
   'auth.discordStart': handleDiscordAuthStart_,   // ← NUOVA RIGA (Wave 10)
+  'auth.discordCallback': handleDiscordCallback,
 
   // Roster
   'roster.list': handleRosterList,
