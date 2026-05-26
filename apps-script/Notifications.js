@@ -1,0 +1,126 @@
+// ═══════════════════════════════════════════════════════════
+// DISCORD WEBHOOK NOTIFICATIONS
+// Posta messaggi al canale Discord configurato.
+// Fault-tolerant: try/catch ovunque, non blocca mai l'operazione chiamante.
+// ═══════════════════════════════════════════════════════════
+
+const VSD_COLORS = {
+  cyan:    0x00d9ff,   // brand primary
+  green:   0x4ade80,   // success / podio
+  orange:  0xfbbf24,   // warning
+  red:     0xf87171,   // error
+  blue:    0x3b82f6,   // info
+  purple:  0xa855f7,   // best lap
+};
+
+const PADDOCK_URL = 'https://vsd-paddock.vercel.app';
+
+/**
+ * Posta un messaggio JSON a Discord.
+ * Mai blocca il chiamante: cattura errori, logga e ritorna.
+ */
+function postToDiscord_(payload) {
+  try {
+    const url = PropertiesService.getScriptProperties().getProperty('DISCORD_WEBHOOK_URL');
+    if (!url) {
+      Logger.log('⚠️  DISCORD_WEBHOOK_URL non configurato in Script Properties');
+      return { ok: false, error: 'webhook_not_configured' };
+    }
+    
+    const response = UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true,
+    });
+    
+    const status = response.getResponseCode();
+    if (status >= 200 && status < 300) {
+      Logger.log('✅ Discord notification posted');
+      return { ok: true };
+    }
+    Logger.log('⚠️  Discord webhook returned ' + status + ': ' + response.getContentText());
+    return { ok: false, error: 'http_' + status };
+  } catch (e) {
+    Logger.log('⚠️  Discord webhook error: ' + e.message);
+    return { ok: false, error: e.message };
+  }
+}
+
+/**
+ * Notifica: nuova gara importata con i suoi risultati.
+ * 
+ * @param {Object} race - record Race con race_id, race_name, sim, championship_id?
+ * @param {Object} stats - { imported, vsd_matched, external, dnf, dns }
+ */
+function notifyRaceImported_(race, stats) {
+  if (!race) return;
+  
+  const totalDrivers = stats.imported || 0;
+  const vsdCount = stats.vsd_matched || 0;
+  
+  const payload = {
+    embeds: [{
+      author: { name: 'VSD Paddock' },
+      title: '🏁 Nuovo risultato gara importato',
+      description: '**' + (race.race_name || race.race_id) + '**',
+      color: VSD_COLORS.cyan,
+      fields: [
+        { name: 'Sim',         value: race.sim || '?',              inline: true },
+        { name: 'Risultati',   value: String(totalDrivers),         inline: true },
+        { name: 'VSD',         value: String(vsdCount),             inline: true },
+      ],
+      timestamp: new Date().toISOString(),
+      footer: { text: 'Apri Race Hub per dettagli' },
+      url: PADDOCK_URL + '/race/' + race.race_id,
+    }],
+  };
+  
+  postToDiscord_(payload);
+}
+
+/**
+ * Notifica: podio VSD in una sessione race (NON heat, NON qualifying).
+ * Chiamata UNA volta per podio.
+ */
+function notifyVsdPodium_(driverName, position, race, sessionType) {
+  if (!driverName || !position || !race) return;
+  if (sessionType !== 'race') return; // skip heat e qualifying
+  if (position > 3) return;
+  
+  const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
+  const posLabels = { 1: 'P1 — VITTORIA', 2: 'P2', 3: 'P3' };
+  
+  const payload = {
+    embeds: [{
+      author: { name: 'VSD Paddock' },
+      title: medals[position] + ' Podio VSD!',
+      description: '**' + driverName + '** ' + posLabels[position] + '\n' +
+                   (race.race_name || race.race_id),
+      color: position === 1 ? VSD_COLORS.green : VSD_COLORS.cyan,
+      fields: [
+        { name: 'Sim',  value: race.sim || '?', inline: true },
+      ],
+      timestamp: new Date().toISOString(),
+      url: PADDOCK_URL + '/race/' + race.race_id,
+    }],
+  };
+  
+  postToDiscord_(payload);
+}
+
+/**
+ * Helper test — esegui manualmente per verificare che il webhook funzioni.
+ * Dropdown function → test_notification → ▶ Esegui
+ */
+function test_notification() {
+  postToDiscord_({
+    embeds: [{
+      author: { name: 'VSD Paddock' },
+      title: '🧪 Test notifica',
+      description: 'Se vedi questo messaggio, il webhook funziona correttamente.',
+      color: VSD_COLORS.cyan,
+      timestamp: new Date().toISOString(),
+    }],
+  });
+}
