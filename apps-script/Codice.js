@@ -44,7 +44,14 @@ const DRIVER_PRIVATE_EXTRA_FIELDS = [
 // ═══════════════════════════════════════════════════════════
 
 function doGet(e) {
-  // Health check via GET. Usato per verificare che lo script sia online.
+  const action = (e && e.parameter && e.parameter.action) || '';
+
+  // Wave 10: Discord OAuth callback
+  if (action === 'discordCallback') {
+    return handleDiscordCallback(e.parameter.code, e.parameter.state);
+  }
+
+  // Default: health check
   return jsonResponse({ ok: true, data: { service: 'VSD Paddock API', time: new Date().toISOString() } });
 }
 
@@ -124,6 +131,7 @@ const ACTIONS = {
   // Auth
   'auth.login': handleAuthLogin,
   'auth.verify': handleAuthVerify,
+  'auth.discordStart': handleDiscordAuthStart_,   // ← NUOVA RIGA (Wave 10)
 
   // Roster
   'roster.list': handleRosterList,
@@ -183,39 +191,84 @@ function generateToken(driverId) {
 }
 
 /**
- * Verifica un token e restituisce { driver_id, expiresAt } se valido, null se invalido.
+ * Verifica un token HMAC e restituisce il context auth se valido, null se invalido.
+ *
+ * Supporta due formati (backward compatible):
+ *  - Legacy 3 parti: driver_id|expiresAt|signature        (admin via access_code)
+ *  - New 5 parti:    driver_id|tier|sims_csv|exp|signature (Discord OAuth, Wave 10+)
+ *
+ * Per token legacy il tier è derivato dal driver.role nel sheet.
+ * Per token new il tier+sims sono dentro il payload firmato (non manipolabili).
  */
 function verifyToken(token) {
   if (!token) return null;
   try {
     const decoded = Utilities.newBlob(Utilities.base64DecodeWebSafe(token)).getDataAsString();
     const parts = decoded.split('|');
-    if (parts.length !== 3) return null;
 
-    const [driverId, expiresAtStr, signature] = parts;
-    const payload = `${driverId}|${expiresAtStr}`;
-    const expectedSig = signHmac(payload, getAuthSecret());
+    // ── Legacy format: driver_id|expiresAt|signature ──
+    if (parts.length === 3) {
+      const [driverId, expiresAtStr, signature] = parts;
+      const payload = `${driverId}|${expiresAtStr}`;
+      const expectedSig = signHmac(payload, getAuthSecret());
+      if (signature !== expectedSig) return null;
+      if (Date.now() > parseInt(expiresAtStr, 10)) return null;
 
-    if (signature !== expectedSig) return null;
-    if (Date.now() > parseInt(expiresAtStr, 10)) return null;
+      const drivers = sheetToObjects(SHEETS.DRIVERS);
+      const driver = drivers.find(d => d.driver_id === driverId);
+      if (!driver) return null;
 
-    // Trova il pilota nel foglio
-    const drivers = sheetToObjects(SHEETS.DRIVERS);
-    const driver = drivers.find(d => d.driver_id === driverId);
-    if (!driver) return null;
+      // Derive tier from sheet role (legacy tokens predate tier concept)
+      let tier;
+      if (driver.role === 'admin') tier = 'admin';
+      else if (driver.role === 'staff') tier = 'staff';
+      else tier = 'pilot_vsd';
 
-    return {
-      driver_id: driver.driver_id,
-      role: driver.role,
-      isStaff: driver.role === 'staff' || driver.role === 'admin',
-      isAdmin: driver.role === 'admin',
-      driver: driver,
-    };
+      return {
+        driver_id: driver.driver_id,
+        role: driver.role,
+        tier: tier,
+        sims: [],  // legacy: unknown
+        isStaff: driver.role === 'staff' || driver.role === 'admin',
+        isAdmin: driver.role === 'admin',
+        driver: driver,
+      };
+    }
+
+    // ── New format (Wave 10+): driver_id|tier|sims_csv|expiresAt|signature ──
+    if (parts.length === 5) {
+      const [driverIdRaw, tier, simsCsv, expiresAtStr, signature] = parts;
+      const payload = `${driverIdRaw}|${tier}|${simsCsv}|${expiresAtStr}`;
+      const expectedSig = signHmac(payload, getAuthSecret());
+      if (signature !== expectedSig) return null;
+      if (Date.now() > parseInt(expiresAtStr, 10)) return null;
+
+      const sims = simsCsv ? simsCsv.split(',') : [];
+      const driverId = (driverIdRaw && driverIdRaw !== 'null') ? driverIdRaw : null;
+
+      // Driver lookup: null per tier='guest' (non corrisponde a un pilota nel sheet)
+      let driver = null;
+      if (driverId) {
+        const drivers = sheetToObjects(SHEETS.DRIVERS);
+        driver = drivers.find(d => d.driver_id === driverId) || null;
+      }
+
+      return {
+        driver_id: driverId,
+        role: driver ? driver.role : '',
+        tier: tier,
+        sims: sims,
+        isStaff: tier === 'staff' || tier === 'admin',
+        isAdmin: tier === 'admin',
+        driver: driver,
+      };
+    }
+
+    return null;  // formato non riconosciuto
   } catch (e) {
     return null;
   }
 }
-
 function signHmac(text, secret) {
   const bytes = Utilities.computeHmacSha256Signature(text, secret);
   return bytes.map(b => {
@@ -250,7 +303,7 @@ function handleAuthVerify(payload, ctx) {
   // Il token è già stato verificato in doPost (prima dell'invocazione di handler).
   // ctx = null se invalid, altrimenti contiene il driver.
   if (!ctx) return fail('Token invalido o scaduto');
-  return ok({ valid: true, driver: sanitizeDriver(ctx.driver, private) });
+  return ok({ valid: true, driver: sanitizeDriver(ctx.driver, 'private') });
 }
 
 /**

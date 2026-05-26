@@ -205,3 +205,288 @@ function test_classify_with_lmu_role_unknown_member() {
     Logger.log('❌ FAIL — atteso tier=guest con sims=[LMU]');
   }
 }
+
+// =====================================================================
+// WAVE 10.1 — DISCORD OAUTH FLOW (callback + start + token)
+// =====================================================================
+
+const OAUTH_STATE_TTL_SEC = 600;                       // 10 minuti
+const DISCORD_API_BASE = 'https://discord.com/api/v10';
+
+/**
+ * POST auth.discordStart → genera URL OAuth Discord con CSRF state.
+ * Frontend chiama questo endpoint per ottenere l'URL a cui redirigere
+ * l'utente per il consenso Discord.
+ *
+ * @returns {{ok: boolean, data?: {url: string}, error?: string}}
+ */
+function handleDiscordAuthStart_(payload) {
+  const props = PropertiesService.getScriptProperties();
+  const clientId = props.getProperty('DISCORD_CLIENT_ID');
+  const redirectUri = props.getProperty('DISCORD_REDIRECT_URI');
+
+  if (!clientId || !redirectUri) {
+    return { ok: false, error: 'Discord OAuth non configurato sul server' };
+  }
+
+  // CSRF state random (UUID v4 = CSPRNG)
+  const state = Utilities.getUuid().replace(/-/g, '');
+  CacheService.getScriptCache().put('oauth_state_' + state, '1', OAUTH_STATE_TTL_SEC);
+
+  const url = 'https://discord.com/oauth2/authorize' +
+    '?client_id=' + encodeURIComponent(clientId) +
+    '&redirect_uri=' + encodeURIComponent(redirectUri) +
+    '&response_type=code' +
+    '&scope=' + encodeURIComponent('identify guilds.members.read') +
+    '&state=' + state;
+
+  return { ok: true, data: { url: url } };
+}
+
+/**
+ * Discord OAuth callback. Discord redirige qui dopo il consenso con
+ *   ?action=discordCallback&code=XXX&state=YYY
+ *
+ * @param {string} code  authorization code da Discord
+ * @param {string} state CSRF state token (verificato contro CacheService)
+ * @returns {GoogleAppsScript.HTML.HtmlOutput} redirect verso il frontend
+ */
+function handleDiscordCallback(code, state) {
+  // 0. Validation
+  if (!code) {
+    Logger.log('handleDiscordCallback: code mancante');
+    return htmlRedirectToFrontend_('#auth_error=missing_code');
+  }
+  if (!state) {
+    Logger.log('handleDiscordCallback: state mancante (possibile CSRF)');
+    return htmlRedirectToFrontend_('#auth_error=missing_state');
+  }
+
+  // 1. Verifica CSRF state (one-shot, removed dopo lettura)
+  const cache = CacheService.getScriptCache();
+  const cacheKey = 'oauth_state_' + state;
+  if (!cache.get(cacheKey)) {
+    Logger.log('handleDiscordCallback: state non valido o scaduto: ' + state);
+    return htmlRedirectToFrontend_('#auth_error=invalid_state');
+  }
+  cache.remove(cacheKey);
+
+  // 2. Read Script Properties
+  const props = PropertiesService.getScriptProperties();
+  const clientId = props.getProperty('DISCORD_CLIENT_ID');
+  const clientSecret = props.getProperty('DISCORD_CLIENT_SECRET');
+  const redirectUri = props.getProperty('DISCORD_REDIRECT_URI');
+  const guildId = props.getProperty('DISCORD_GUILD_ID');
+
+  if (!clientId || !clientSecret || !redirectUri || !guildId) {
+    Logger.log('handleDiscordCallback: Script Properties Discord incomplete');
+    return htmlRedirectToFrontend_('#auth_error=server_misconfigured');
+  }
+
+  // 3. Exchange authorization code → access_token
+  let accessToken;
+  try {
+    const tokenRes = UrlFetchApp.fetch(DISCORD_API_BASE + '/oauth2/token', {
+      method: 'post',
+      contentType: 'application/x-www-form-urlencoded',
+      payload: {
+        client_id: clientId,
+        client_secret: clientSecret,
+        grant_type: 'authorization_code',
+        code: code,
+        redirect_uri: redirectUri,
+      },
+      muteHttpExceptions: true,
+    });
+
+    if (tokenRes.getResponseCode() !== 200) {
+      Logger.log(
+        'Discord token exchange failed: HTTP ' + tokenRes.getResponseCode() +
+        ' body: ' + tokenRes.getContentText()
+      );
+      return htmlRedirectToFrontend_('#auth_error=discord_token_exchange');
+    }
+
+    accessToken = JSON.parse(tokenRes.getContentText()).access_token;
+    if (!accessToken) {
+      Logger.log('Discord token response missing access_token');
+      return htmlRedirectToFrontend_('#auth_error=discord_no_access_token');
+    }
+  } catch (e) {
+    Logger.log('Discord token exchange exception: ' + e.message);
+    return htmlRedirectToFrontend_('#auth_error=discord_unreachable');
+  }
+
+  // 4. Fetch user info (snowflake user ID)
+  let user;
+  try {
+    const userRes = UrlFetchApp.fetch(DISCORD_API_BASE + '/users/@me', {
+      headers: { 'Authorization': 'Bearer ' + accessToken },
+      muteHttpExceptions: true,
+    });
+
+    if (userRes.getResponseCode() !== 200) {
+      Logger.log('Discord /users/@me failed: HTTP ' + userRes.getResponseCode());
+      return htmlRedirectToFrontend_('#auth_error=discord_user_fetch');
+    }
+
+    user = JSON.parse(userRes.getContentText());
+  } catch (e) {
+    Logger.log('Discord /users/@me exception: ' + e.message);
+    return htmlRedirectToFrontend_('#auth_error=discord_unreachable');
+  }
+
+  // 5. Fetch guild membership + roles
+  let memberRoles = [];
+  let isMember = false;
+  try {
+    const memberRes = UrlFetchApp.fetch(
+      DISCORD_API_BASE + '/users/@me/guilds/' + guildId + '/member',
+      {
+        headers: { 'Authorization': 'Bearer ' + accessToken },
+        muteHttpExceptions: true,
+      }
+    );
+
+    const memberStatus = memberRes.getResponseCode();
+    if (memberStatus === 200) {
+      const member = JSON.parse(memberRes.getContentText());
+      memberRoles = member.roles || [];
+      isMember = true;
+    } else if (memberStatus === 404) {
+      isMember = false;  // utente non nel server VSD
+    } else {
+      Logger.log(
+        'Discord guild member fetch unexpected: HTTP ' + memberStatus +
+        ' body: ' + memberRes.getContentText() + ' (treating as non-member)'
+      );
+      isMember = false;
+    }
+  } catch (e) {
+    Logger.log('Discord guild member exception (treating as non-member): ' + e.message);
+    isMember = false;
+  }
+
+  // 6. Classify user → tier + sims + driver_id
+  const classification = classifyDiscordUser_(user.id, memberRoles, isMember);
+  Logger.log(
+    'Discord auth complete: discord_user=' + user.id +
+    ', tier=' + classification.tier +
+    ', driver_id=' + classification.driver_id +
+    ', sims=[' + classification.sims.join(',') + ']'
+  );
+
+  // 7. Generate HMAC token con tier+sims dentro il payload firmato
+  const token = generateTokenWithClassification_(classification);
+
+  // 8. Redirect a frontend via FRAGMENT (#) — non finisce in server log/Referer header
+  const fragment =
+    '#token=' + encodeURIComponent(token) +
+    '&tier=' + encodeURIComponent(classification.tier);
+  return htmlRedirectToFrontend_(fragment);
+}
+
+/**
+ * Genera token HMAC con classification (tier+sims) nel payload firmato.
+ * Formato new (5 parti): base64(driver_id|tier|sims_csv|expiresAt|signature)
+ *
+ * Nota: per tier='guest' driver_id è null → serializzato come stringa 'null',
+ * verifyToken la riconverte a null al parse.
+ *
+ * @param {{tier: string, driver_id: string|null, sims: string[]}} classification
+ * @returns {string} token base64WebSafe
+ */
+function generateTokenWithClassification_(classification) {
+  const expiresAt = Date.now() + TOKEN_TTL_MS;
+  const driverId = classification.driver_id || 'null';
+  const tier = classification.tier;
+  const simsCsv = (classification.sims || []).join(',');
+
+  const payload = `${driverId}|${tier}|${simsCsv}|${expiresAt}`;
+  const signature = signHmac(payload, getAuthSecret());
+  return Utilities.base64EncodeWebSafe(`${payload}|${signature}`);
+}
+
+/**
+ * Helper: HtmlOutput che redirige il browser a FRONTEND_URL/auth/callback + suffix.
+ *
+ * @param {string} suffix - es. '#token=XXX&tier=YYY' oppure '#auth_error=xxx'
+ * @returns {GoogleAppsScript.HTML.HtmlOutput}
+ */
+function htmlRedirectToFrontend_(suffix) {
+  const frontendUrl = PropertiesService.getScriptProperties().getProperty('FRONTEND_URL');
+  const target = (frontendUrl || '/') + '/auth/callback' + (suffix || '');
+  const safeTarget = JSON.stringify(target);  // escape JS injection-safe
+  return HtmlService.createHtmlOutput(
+    '<script>window.location.replace(' + safeTarget + ');</script>' +
+    '<noscript>Redirect a <a href=' + safeTarget + '>' + target + '</a></noscript>'
+  );
+}
+
+// =====================================================================
+// TEST FUNCTIONS (extension)
+// =====================================================================
+
+/**
+ * Test 4 — HAPPY PATH (era mancante in parte 1).
+ * Pilota VSD reale nel sheet con discord_id + ruolo Discord LMU.
+ * Atteso: { tier: 'pilot_vsd', driver_id: <target>, sims: ['LMU'] }
+ *
+ * Cambia targetDriverId con un VSDxxx che sia: (a) attivo, (b) ha discord_id
+ * popolato nel sheet, (c) role !== 'admin'/'staff'.
+ */
+function test_classify_pilot_vsd_lmu() {
+  Logger.log('=== test_classify_pilot_vsd_lmu (HAPPY PATH) ===');
+
+  const targetDriverId = 'VSD019';  // ⚠️ cambia se necessario
+
+  // Lookup dinamico (convention da test_classify_me)
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(DRIVERS_SHEET_NAME);
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const driverIdCol = headers.indexOf('driver_id');
+  const discordIdCol = headers.indexOf('discord_id');
+  const roleCol = headers.indexOf('role');
+
+  let targetDiscordId = null;
+  let targetRole = null;
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][driverIdCol] === targetDriverId) {
+      targetDiscordId = String(data[i][discordIdCol]).trim();
+      targetRole = data[i][roleCol];
+      break;
+    }
+  }
+
+  if (!targetDiscordId) {
+    Logger.log('❌ FAIL: discord_id di ' + targetDriverId + ' vuoto. Aggiorna sheet o cambia targetDriverId.');
+    return;
+  }
+  if (targetRole === 'admin' || targetRole === 'staff') {
+    Logger.log('❌ FAIL: ' + targetDriverId + ' è ' + targetRole + '. Serve un pilota normale per testare il path pilot_vsd. Cambia targetDriverId.');
+    return;
+  }
+
+  const ROLE_LMU = PropertiesService.getScriptProperties().getProperty('DISCORD_ROLE_PILOT_LMU');
+  if (!ROLE_LMU) {
+    Logger.log('❌ FAIL: DISCORD_ROLE_PILOT_LMU mancante nelle Script Properties');
+    return;
+  }
+
+  Logger.log('Input: discordId=' + targetDiscordId + ', roles=[LMU], isMember=true');
+  const result = classifyDiscordUser_(targetDiscordId, [ROLE_LMU], true);
+  Logger.log('Output: ' + JSON.stringify(result));
+
+  const ok =
+    result.tier === 'pilot_vsd' &&
+    result.driver_id === targetDriverId &&
+    result.sims.length === 1 &&
+    result.sims[0] === 'LMU';
+
+  if (ok) {
+    Logger.log('✅ PASS — tier=pilot_vsd, driver_id=' + targetDriverId + ', sims=[LMU]');
+  } else {
+    Logger.log('❌ FAIL — atteso tier=pilot_vsd, driver_id=' + targetDriverId + ', sims=[LMU]');
+  }
+}
