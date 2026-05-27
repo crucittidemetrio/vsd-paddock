@@ -52,8 +52,10 @@ export const CONDITIONS = ['dry', 'wet', 'mixed'];
 export const STORAGE = {
   TOKEN: 'vsd_paddock_token',
   DRIVER: 'vsd_paddock_driver',
-  TIER: 'vsd_paddock_tier',         // Wave 10
-  SIMS: 'vsd_paddock_sims',         // Wave 10
+  TIER: 'vsd_paddock_tier',                       // Wave 10
+  SIMS: 'vsd_paddock_sims',                       // Wave 10
+  DISCORD_AVATAR_URL: 'vsd_paddock_discord_avatar_url',  // Wave 10.2.Y
+  DISCORD_USERNAME: 'vsd_paddock_discord_username',      // Wave 10.2.Y
 };
 
 // Etichette UI italiane
