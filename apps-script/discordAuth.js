@@ -250,7 +250,7 @@ function handleDiscordAuthStart_(payload) {
  *
  * @param {{code: string, state: string}} payload
  * @param {Object} ctx - non usato (chiamata pre-auth)
- * @returns {{ok: boolean, data?: {token, tier, sims, driver_id}, error?: string}}
+ * @returns {{ok: boolean, data?: {token, tier, sims, driver_id, driver, discord_username, discord_avatar_url}, error?: string}}
  */
 function handleDiscordCallback(payload, ctx) {
   const code = (payload && payload.code) || '';
@@ -379,17 +379,36 @@ function handleDiscordCallback(payload, ctx) {
     ', sims=[' + classification.sims.join(',') + ']'
   );
 
+  // 6b. (Wave 10.2.X) Lookup driver completo dal sheet per popolare display_name/role
+  let fullDriver = null;
+  if (classification.driver_id) {
+    const drivers = sheetToObjects(SHEETS.DRIVERS);
+    const found = drivers.find(d => d.driver_id === classification.driver_id);
+    if (found) {
+      fullDriver = sanitizeDriver(found, 'private');
+    }
+  }
+
+  // 6c. Discord avatar URL (può essere null se l'utente non ha avatar custom)
+  const discordAvatarUrl = user.avatar
+    ? 'https://cdn.discordapp.com/avatars/' + user.id + '/' + user.avatar + '.png?size=128'
+    : null;
+
   // 7. Token
   const token = generateTokenWithClassification_(classification);
 
-  // 8. Return JSON (no more HTML redirect — frontend Vercel handles UX)
+  // 8. Return JSON (Wave 10.2.X: include driver completo + Discord info)
   return ok({
     token: token,
     tier: classification.tier,
     sims: classification.sims,
     driver_id: classification.driver_id,
+    driver: fullDriver,
+    discord_username: user.global_name || user.username,
+    discord_avatar_url: discordAvatarUrl,
   });
 }
+
 /**
  * Genera token HMAC con classification (tier+sims) nel payload firmato.
  * Formato new (5 parti): base64(driver_id|tier|sims_csv|expiresAt|signature)
