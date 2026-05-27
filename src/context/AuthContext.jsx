@@ -72,16 +72,16 @@ export function AuthProvider({ children }) {
     setToken(authData.token);
     setTier(authData.tier);
     setSims(authData.sims || []);
-    // Per pilot_vsd/staff/admin salviamo {driver_id} minimale;
-    // i dettagli completi sono in sheet, recuperabili via useRoster.get()
-    const minimalDriver = authData.driver_id ? { driver_id: authData.driver_id } : null;
-    setDriver(minimalDriver);
+    // Wave 10.2.X: prefer full driver dal sheet, fallback al minimal {driver_id}
+    const driverToSave = authData.driver
+      || (authData.driver_id ? { driver_id: authData.driver_id } : null);
+    setDriver(driverToSave);
 
     localStorage.setItem(STORAGE.TOKEN, authData.token);
     localStorage.setItem(STORAGE.TIER, authData.tier);
     localStorage.setItem(STORAGE.SIMS, JSON.stringify(authData.sims || []));
-    if (minimalDriver) {
-      localStorage.setItem(STORAGE.DRIVER, JSON.stringify(minimalDriver));
+    if (driverToSave) {
+      localStorage.setItem(STORAGE.DRIVER, JSON.stringify(driverToSave));
     } else {
       localStorage.removeItem(STORAGE.DRIVER);
     }
