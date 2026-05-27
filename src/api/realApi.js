@@ -142,7 +142,13 @@ async function authVerify(payload) {
   const tokenToVerify = payload && payload.token;
   return postToBackend('auth.verify', {}, tokenToVerify);
 }
+async function authDiscordStart(payload) {
+  return postToBackend('auth.discordStart', {}, null);
+}
 
+async function authDiscordCallback(payload) {
+  return postToBackend('auth.discordCallback', payload, null);
+}
 // ─────────────────────────────────────────────
 
 /**
@@ -162,6 +168,10 @@ export async function callApi(action, payload = {}, ctx = null) {
         return await authLogin(payload);
       case 'auth.verify':
         return await authVerify(payload);
+        case 'auth.discordStart':
+        return await authDiscordStart(payload);
+      case 'auth.discordCallback':
+        return await authDiscordCallback(payload);
       case 'roster.list':
         return await rosterListAdapter(payload, token);
       case 'roster.get':

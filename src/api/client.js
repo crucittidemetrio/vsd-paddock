@@ -4,22 +4,28 @@
 // ===========================================
 
 import { callApi } from './realApi';
-import { STORAGE, ROLES } from '../utils/constants';
+import { STORAGE, ROLES, TIERS } from '../utils/constants';
 
 /**
  * Recupera il contesto auth corrente da localStorage.
  * Iniettato automaticamente in ogni chiamata API.
+ *
+ * Wave 10: ora legge anche tier dal localStorage. isStaff/isAdmin derivano
+ * dal tier (non più da driver.role) perché Discord OAuth salva un driver
+ * minimale {driver_id} senza role.
  */
 function getAuthContext() {
   try {
-    const raw = localStorage.getItem(STORAGE.DRIVER);
-    if (!raw) return null;
-    const driver = JSON.parse(raw);
+    const savedTier = localStorage.getItem(STORAGE.TIER);
+    const savedDriver = localStorage.getItem(STORAGE.DRIVER);
+    const driver = savedDriver ? JSON.parse(savedDriver) : null;
+    if (!savedTier && !driver) return null;
     return {
-      driver_id: driver.driver_id,
-      role: driver.role,
-      isStaff: driver.role === ROLES.STAFF || driver.role === ROLES.ADMIN,
-      isAdmin: driver.role === ROLES.ADMIN,
+      driver_id: driver?.driver_id || null,
+      role: driver?.role || null,
+      tier: savedTier || null,
+      isStaff: savedTier === TIERS.STAFF || savedTier === TIERS.ADMIN,
+      isAdmin: savedTier === TIERS.ADMIN,
     };
   } catch {
     return null;
@@ -44,9 +50,11 @@ async function call(action, payload = {}) {
  * Esempio uso: const drivers = await api.roster.list({ status: 'active' });
  */
 export const api = {
-  auth: {
+ auth: {
     login: (code) => call('auth.login', { code }),
     verify: (token) => call('auth.verify', { token }),
+    discordStart: () => call('auth.discordStart', {}),                            // Wave 10
+    discordCallback: (code, state) => call('auth.discordCallback', { code, state }),  // Wave 10
   },
 
   roster: {

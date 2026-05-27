@@ -23,6 +23,18 @@ export const ROLES = {
   DRIVER: 'driver',
 };
 
+// Tier auth (Wave 10 — Discord OAuth + multi-tier)
+export const TIERS = {
+  ANONYMOUS: 'anonymous',
+  GUEST: 'guest',
+  PILOT_VSD: 'pilot_vsd',
+  STAFF: 'staff',
+  ADMIN: 'admin',
+};
+
+// Ordine gerarchico per helper hasAtLeast(tier)
+export const TIER_ORDER = ['anonymous', 'guest', 'pilot_vsd', 'staff', 'admin'];
+
 // Stati pilota
 export const DRIVER_STATUS = {
   ACTIVE: 'active',
@@ -40,6 +52,8 @@ export const CONDITIONS = ['dry', 'wet', 'mixed'];
 export const STORAGE = {
   TOKEN: 'vsd_paddock_token',
   DRIVER: 'vsd_paddock_driver',
+  TIER: 'vsd_paddock_tier',         // Wave 10
+  SIMS: 'vsd_paddock_sims',         // Wave 10
 };
 
 // Etichette UI italiane
@@ -61,6 +75,13 @@ export const LABELS = {
   auth_code_placeholder: 'CODICE-PILOTA',
   auth_submit: 'Entra',
   auth_error: 'Codice non riconosciuto',
+  // Auth Discord (Wave 10)
+  auth_discord_button: 'Accedi con Discord',
+  auth_discord_loading: 'Reindirizzamento a Discord...',
+  auth_or_separator: 'oppure',
+  auth_callback_processing: 'Completamento accesso...',
+  auth_callback_error: 'Errore durante l\'autenticazione',
+  auth_callback_retry: 'Torna al login',
 };
 // ===========================================
 // SESSION TYPES (BestLaps)
