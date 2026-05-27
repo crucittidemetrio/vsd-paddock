@@ -23,6 +23,7 @@ import AdminImportResults from './pages/AdminImportResults';
 import AdminImportStandings from './pages/AdminImportStandings';
 import AdminPosters from './pages/AdminPosters';
 import LapsDrilldown from './pages/LapsDrilldown';
+import AuthCallback from './pages/AuthCallback';
 
 import './App.css';
 
@@ -34,6 +35,7 @@ export default function App() {
           {/* Pubbliche */}
           <Route path="/login" element={<Login />} />
           <Route path="/joinus" element={<JoinUs />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
 
           {/* Protette: usano lo shell con sidebar+topbar */}
           <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>

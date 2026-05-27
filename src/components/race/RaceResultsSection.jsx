@@ -27,8 +27,6 @@ function getDriverName(result, drivers) {
   return result.driver_name_external || '—';
 }
 
-}
-
 function StatusBadge({ result }) {
   if (result.dns) return <span className="rrs-status rrs-status--dns">DNS</span>;
   if (result.dnf) return <span className="rrs-status rrs-status--dnf">DNF</span>;
