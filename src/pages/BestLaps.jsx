@@ -6,6 +6,7 @@ import {
   useTracks,
   useCars,
 } from '../hooks/useBestLaps';
+import { useRaceResults } from '../hooks/useRaceResults';
 import { useDrivers } from '../hooks/useRoster';
 import { useAuth } from '../hooks/useAuth';
 import SimBadge from '../components/shared/SimBadge';
@@ -19,6 +20,7 @@ import './Page.css';
 
 const VIEW_MODES = [
   { id: 'leaderboard', label: 'Leaderboard' },
+  { id: 'raceLaps', label: 'Race Laps' },
   { id: 'mine', label: 'I miei tempi' },
 ];
 
@@ -172,14 +174,24 @@ export default function BestLaps() {
         <button className="reset-btn" onClick={resetFilters}>Reset filtri</button>
       </div>
 
-      {viewMode === 'leaderboard' ? (
+      {viewMode === 'leaderboard' && (
         <LeaderboardView
           filters={filters}
           driverMap={driverMap}
           tracks={tracks}
           cars={cars}
         />
-      ) : (
+      )}
+
+      {viewMode === 'raceLaps' && (
+        <RaceLapsView
+          filters={filters}
+          driverMap={driverMap}
+          tracks={tracks}
+        />
+      )}
+
+      {viewMode === 'mine' && (
         <MineView
           driver={driver}
           filters={filters}
@@ -256,6 +268,88 @@ function LeaderboardView({ filters, driverMap, tracks, cars }) {
               </td>
               <td><LapTime ms={rec.lap_time_ms} /></td>
               <td><Sparkline values={rec.lastLaps} /></td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+
+function RaceLapsView({ filters, driverMap, tracks }) {
+  const { data, isLoading, isError, error } = useRaceResults({ session_type: 'race' });
+
+  const records = useMemo(() => {
+    const rows = (data?.results || []).filter(
+      r => r.is_vsd_driver && r.best_lap_ms != null && r.best_lap_ms > 0
+    );
+    const filtered = rows.filter(r => {
+      if (filters.sim !== 'all' && r.sim !== filters.sim) return false;
+      if (filters.track_id !== 'all' && r.track_id !== filters.track_id) return false;
+      if (filters.race_class !== 'all' && r.car_class !== filters.race_class) return false;
+      return true;
+    });
+    // Record di gara per (sim | track | class): tieni il best_lap_ms minimo
+    const map = {};
+    for (const r of filtered) {
+      const key = `${r.sim}|${r.track_id}|${r.car_class}`;
+      if (!map[key] || r.best_lap_ms < map[key].best_lap_ms) {
+        map[key] = r;
+      }
+    }
+    return Object.values(map).sort((a, b) => {
+      if (a.track_id !== b.track_id) {
+        return String(a.track_id).localeCompare(String(b.track_id));
+      }
+      return String(a.car_class).localeCompare(String(b.car_class));
+    });
+  }, [data, filters]);
+
+  if (isLoading) return <Prompt text="Caricamento…" />;
+  if (isError) return <Prompt text={`Errore: ${error?.message || 'sconosciuto'}`} />;
+  if (records.length === 0) {
+    return (
+      <Prompt
+        icon="🏁"
+        title="Nessun giro di gara"
+        text="Nessun best lap di gara trovato per i filtri selezionati. I race lap appaiono quando importi i risultati di una gara."
+      />
+    );
+  }
+
+  return (
+    <table className="laps-table">
+      <thead>
+        <tr>
+          <th>Sim</th>
+          <th>Tracciato</th>
+          <th>Classe</th>
+          <th>Auto</th>
+          <th>Pilota</th>
+          <th>Best lap gara</th>
+          <th>Data</th>
+        </tr>
+      </thead>
+      <tbody>
+        {records.map(rec => {
+          const drv = driverMap[rec.driver_id];
+          return (
+            <tr key={`${rec.sim}-${rec.track_id}-${rec.car_class}`}>
+              <td><SimBadge sim={rec.sim} /></td>
+              <td>{formatTrack(rec.track_id, tracks)}</td>
+              <td><span className="lap-badge-record">{rec.car_class}</span></td>
+              <td>{rec.car_external_name || '—'}</td>
+              <td>
+                {drv ? (
+                  <Link to={`/roster/${drv.driver_id}`} className="driver-link">
+                    <Avatar name={drv.display_name} driverId={drv.driver_id} size={28} />
+                    <span className="driver-link-name">{drv.display_name}</span>
+                  </Link>
+                ) : (rec.driver_name_external || rec.driver_id)}
+              </td>
+              <td><LapTime ms={rec.best_lap_ms} /></td>
+              <td><span className="cell-gap">{String(rec.set_date).slice(0, 10)}</span></td>
             </tr>
           );
         })}
