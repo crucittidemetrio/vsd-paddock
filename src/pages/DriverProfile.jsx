@@ -19,9 +19,9 @@ export default function DriverProfile() {
   const { driverId } = useParams();
   const { data: driver, isLoading, error } = useDriver(driverId);
   const { data: laps } = useBestLaps({ driver_id: driverId });
-const { data: reports } = useReports({ driver_id: driverId });
-const { data: tracks = [] } = useTracks();
-const { data: cars = [] } = useCars();
+  const { data: reports } = useReports({ driver_id: driverId });
+  const { data: tracks = [] } = useTracks();
+  const { data: cars = [] } = useCars();
   const { data: raceResultsData } = useMyRecentRaceResults(driverId, 200);
   const raceResults = raceResultsData?.results || [];
 
@@ -72,7 +72,7 @@ const { data: cars = [] } = useCars();
     driver.role === ROLES.ADMIN ? 'Team Principal' :
     driver.role === ROLES.STAFF ? 'Staff' : 'Pilota';
 
-const totalLaps = uniqueLaps.length;
+  const totalLaps = uniqueLaps.length;
   const verifiedLaps = uniqueLaps.filter(l => !!l.verified_by).length;
   // Gare/podi/vittorie: max tra RaceResults (autoritative) e RaceReports (legacy)
   const racesFromResults = new Set(raceResults.map(r => r.race_id)).size;
@@ -92,6 +92,24 @@ const totalLaps = uniqueLaps.length;
   ).length;
   const winsFromReports = (reports || []).filter(r => r.finish_position === 1).length;
   const wins = Math.max(winsFromResults, winsFromReports);
+
+  // Wave 9.8 deliverable 2: posizione media + punti totali
+  // Posizione media calcolata SOLO da RaceResults (no fallback a reports legacy):
+  // i RaceResults sono il dato autoritativo, e usare le due fonti darebbe
+  // medie incoerenti se i counts non combaciano.
+  const validRaces = raceResults.filter(r =>
+    !r.dns && !r.dnf && typeof r.finish_position === 'number'
+  );
+  const avgPosition = validRaces.length > 0
+    ? (validRaces.reduce((sum, r) => sum + r.finish_position, 0) / validRaces.length).toFixed(1)
+    : '—';
+
+  // Punti totali: somma di point_total (già netto di penalty_points dal sheet).
+  // Include DNS/DNF perché possono avere penalty_points (point_total negativo).
+  const totalPoints = raceResults.reduce(
+    (sum, r) => sum + (typeof r.point_total === 'number' ? r.point_total : 0),
+    0
+  );
 
   return (
     <div className="page">
@@ -154,6 +172,17 @@ const totalLaps = uniqueLaps.length;
         <StatCard label="Best Laps" value={totalLaps} sub={`${verifiedLaps} verificati`} />
         <StatCard label="Gare disputate" value={racesCount} sub="totali" />
         <StatCard label="Podi" value={podiums} sub={`${wins} vittorie`} accent="orange" />
+        <StatCard
+          label="Posizione media"
+          value={avgPosition}
+          sub={`${validRaces.length} gare valide`}
+        />
+        <StatCard
+          label="Punti totali"
+          value={totalPoints}
+          sub="stagione corrente"
+          accent="orange"
+        />
         <StatCard label="Membro dal" value={driver.join_date?.split('-')[0] || '—'} sub="anno entrata" />
       </div>
 
