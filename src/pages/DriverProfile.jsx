@@ -43,6 +43,56 @@ export default function DriverProfile() {
     );
   }, [laps]);
 
+  // Wave 9.8.X: Storico Gare unificato da raceResults (autoritativo) + reports (legacy)
+  // - raceResults: tutte le righe non-DNS (gare effettivamente disputate, incluse DNF)
+  // - reports: legacy, hanno info extra (grid_position, incidents, strategy_notes)
+  // - Dedup per race_id: reports ha precedenza se esiste (più info), ma set_date e dnf
+  //   dal raceResult (autoritativo)
+  // - Sort per set_date desc
+  const historyRaces = useMemo(() => {
+    const fromResults = raceResults
+      .filter(r => !r.dns)
+      .map(r => ({
+        race_id: r.race_id,
+        set_date: r.set_date,
+        finish_position: r.finish_position,
+        best_lap_ms: r.best_lap_ms,
+        dnf: r.dnf,
+        grid_position: null,
+        incidents: null,
+        strategy_notes: null,
+        source: 'result',
+      }));
+
+    const fromReports = (reports || []).map(r => ({
+      race_id: r.race_id,
+      set_date: r.set_date || null,
+      finish_position: r.finish_position,
+      best_lap_ms: r.best_lap_ms,
+      dnf: false,
+      grid_position: r.grid_position,
+      incidents: r.incidents,
+      strategy_notes: r.strategy_notes,
+      source: 'report',
+    }));
+
+    const map = new Map();
+    fromResults.forEach(r => map.set(r.race_id, r));
+    fromReports.forEach(r => {
+      const existing = map.get(r.race_id);
+      if (existing) {
+        // Mantieni set_date e dnf dal raceResult (autoritativo), il resto dal report
+        r.set_date = existing.set_date || r.set_date;
+        r.dnf = existing.dnf;
+      }
+      map.set(r.race_id, r);
+    });
+
+    return Array.from(map.values()).sort(
+      (a, b) => String(b.set_date || '').localeCompare(String(a.set_date || ''))
+    );
+  }, [raceResults, reports]);
+
   if (isLoading) {
     return (
       <div className="page">
@@ -250,10 +300,10 @@ export default function DriverProfile() {
       <section className="profile-section">
         <div className="section-head">
           <h3 className="section-title">Storico Gare</h3>
-          <span className="section-meta">{reports?.length || 0} report</span>
+          <span className="section-meta">{historyRaces.length} gare</span>
         </div>
 
-        {reports && reports.length > 0 ? (
+        {historyRaces.length > 0 ? (
           <div className="data-table-wrap">
             <table className="data-table">
               <thead>
@@ -267,29 +317,41 @@ export default function DriverProfile() {
                 </tr>
               </thead>
               <tbody>
-                {reports.slice(0, 5).map(r => {
-                  const delta = r.grid_position - r.finish_position;
+                {historyRaces.slice(0, 10).map(r => {
+                  const delta = r.grid_position != null && r.finish_position != null
+                    ? r.grid_position - r.finish_position
+                    : null;
                   return (
-                    <tr key={r.report_id}>
+                    <tr key={r.race_id}>
                       <td className="cell-race">{r.race_id}</td>
-                      <td className="num">{r.grid_position}</td>
                       <td className="num">
-                        <span className={`finish-pos${r.finish_position <= 3 ? ' is-podium' : ''}`}>
-                          P{r.finish_position}
-                        </span>
-                        {delta !== 0 && (
-                          <span className={`pos-delta${delta > 0 ? ' is-gain' : ' is-loss'}`}>
-                            {delta > 0 ? `+${delta}` : delta}
-                          </span>
-                        )}
+                        {r.grid_position != null ? r.grid_position : '—'}
+                      </td>
+                      <td className="num">
+                        {r.dnf ? (
+                          <span className="finish-pos">DNF</span>
+                        ) : r.finish_position != null ? (
+                          <>
+                            <span className={`finish-pos${r.finish_position <= 3 ? ' is-podium' : ''}`}>
+                              P{r.finish_position}
+                            </span>
+                            {delta != null && delta !== 0 && (
+                              <span className={`pos-delta${delta > 0 ? ' is-gain' : ' is-loss'}`}>
+                                {delta > 0 ? `+${delta}` : delta}
+                              </span>
+                            )}
+                          </>
+                        ) : '—'}
                       </td>
                       <td className="num">
                         <LapTime ms={r.best_lap_ms} size="sm" />
                       </td>
                       <td className="num">
-                        <span className={r.incidents > 0 ? 'inc-bad' : 'inc-clean'}>
-                          {r.incidents}
-                        </span>
+                        {r.incidents != null ? (
+                          <span className={r.incidents > 0 ? 'inc-bad' : 'inc-clean'}>
+                            {r.incidents}
+                          </span>
+                        ) : '—'}
                       </td>
                       <td className="cell-notes">{r.strategy_notes || '—'}</td>
                     </tr>
