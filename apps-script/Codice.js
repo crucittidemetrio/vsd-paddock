@@ -175,6 +175,10 @@ function getAuthSecret() {
 /**
  * Genera un token firmato HMAC-SHA256.
  * Formato: base64(driver_id|expiresAt|signature)
+ *
+ * Wave 10.X: Funzione conservata solo per compatibilità storica con
+ * `handleAuthLogin` (ora deprecato). I nuovi token sono generati da
+ * `generateTokenWithClassification_` nel formato 5-parti (Wave 10+).
  */
 function generateToken(driverId) {
   const expiresAt = Date.now() + TOKEN_TTL_MS;
@@ -187,12 +191,12 @@ function generateToken(driverId) {
 /**
  * Verifica un token HMAC e restituisce il context auth se valido, null se invalido.
  *
- * Supporta due formati (backward compatible):
- *  - Legacy 3 parti: driver_id|expiresAt|signature        (admin via access_code)
- *  - New 5 parti:    driver_id|tier|sims_csv|exp|signature (Discord OAuth, Wave 10+)
+ * Wave 10.X: supporta SOLO il formato new 5 parti (Discord OAuth):
+ *   driver_id|tier|sims_csv|expiresAt|signature
  *
- * Per token legacy il tier è derivato dal driver.role nel sheet.
- * Per token new il tier+sims sono dentro il payload firmato (non manipolabili).
+ * Il branch legacy 3-parti (admin via access_code) è stato rimosso con la
+ * deprecazione di `auth.login`. I token legacy esistenti diventano invalidi:
+ * i piloti affetti devono ri-loggare via Discord.
  */
 function verifyToken(token) {
   if (!token) return null;
@@ -200,65 +204,34 @@ function verifyToken(token) {
     const decoded = Utilities.newBlob(Utilities.base64DecodeWebSafe(token)).getDataAsString();
     const parts = decoded.split('|');
 
-    // ── Legacy format: driver_id|expiresAt|signature ──
-    if (parts.length === 3) {
-      const [driverId, expiresAtStr, signature] = parts;
-      const payload = `${driverId}|${expiresAtStr}`;
-      const expectedSig = signHmac(payload, getAuthSecret());
-      if (signature !== expectedSig) return null;
-      if (Date.now() > parseInt(expiresAtStr, 10)) return null;
+    // Solo new format (Wave 10+): driver_id|tier|sims_csv|expiresAt|signature
+    if (parts.length !== 5) return null;
 
+    const [driverIdRaw, tier, simsCsv, expiresAtStr, signature] = parts;
+    const payload = `${driverIdRaw}|${tier}|${simsCsv}|${expiresAtStr}`;
+    const expectedSig = signHmac(payload, getAuthSecret());
+    if (signature !== expectedSig) return null;
+    if (Date.now() > parseInt(expiresAtStr, 10)) return null;
+
+    const sims = simsCsv ? simsCsv.split(',') : [];
+    const driverId = (driverIdRaw && driverIdRaw !== 'null') ? driverIdRaw : null;
+
+    // Driver lookup: null per tier='guest' (non corrisponde a un pilota nel sheet)
+    let driver = null;
+    if (driverId) {
       const drivers = sheetToObjects(SHEETS.DRIVERS);
-      const driver = drivers.find(d => d.driver_id === driverId);
-      if (!driver) return null;
-
-      // Derive tier from sheet role (legacy tokens predate tier concept)
-      let tier;
-      if (driver.role === 'admin') tier = 'admin';
-      else if (driver.role === 'staff') tier = 'staff';
-      else tier = 'pilot_vsd';
-
-      return {
-        driver_id: driver.driver_id,
-        role: driver.role,
-        tier: tier,
-        sims: [],  // legacy: unknown
-        isStaff: driver.role === 'staff' || driver.role === 'admin',
-        isAdmin: driver.role === 'admin',
-        driver: driver,
-      };
+      driver = drivers.find(d => d.driver_id === driverId) || null;
     }
 
-    // ── New format (Wave 10+): driver_id|tier|sims_csv|expiresAt|signature ──
-    if (parts.length === 5) {
-      const [driverIdRaw, tier, simsCsv, expiresAtStr, signature] = parts;
-      const payload = `${driverIdRaw}|${tier}|${simsCsv}|${expiresAtStr}`;
-      const expectedSig = signHmac(payload, getAuthSecret());
-      if (signature !== expectedSig) return null;
-      if (Date.now() > parseInt(expiresAtStr, 10)) return null;
-
-      const sims = simsCsv ? simsCsv.split(',') : [];
-      const driverId = (driverIdRaw && driverIdRaw !== 'null') ? driverIdRaw : null;
-
-      // Driver lookup: null per tier='guest' (non corrisponde a un pilota nel sheet)
-      let driver = null;
-      if (driverId) {
-        const drivers = sheetToObjects(SHEETS.DRIVERS);
-        driver = drivers.find(d => d.driver_id === driverId) || null;
-      }
-
-      return {
-        driver_id: driverId,
-        role: driver ? driver.role : '',
-        tier: tier,
-        sims: sims,
-        isStaff: tier === 'staff' || tier === 'admin',
-        isAdmin: tier === 'admin',
-        driver: driver,
-      };
-    }
-
-    return null;  // formato non riconosciuto
+    return {
+      driver_id: driverId,
+      role: driver ? driver.role : '',
+      tier: tier,
+      sims: sims,
+      isStaff: tier === 'staff' || tier === 'admin',
+      isAdmin: tier === 'admin',
+      driver: driver,
+    };
   } catch (e) {
     return null;
   }
@@ -273,24 +246,14 @@ function signHmac(text, secret) {
 
 // ─── ACTIONS ───
 
+/**
+ * Wave 10.X: endpoint deprecato.
+ * Login ora avviene esclusivamente via Discord OAuth (auth.discordStart →
+ * auth.discordCallback). I codici plaintext (access_code) non sono più
+ * credenziali valide: questo handler li rigetta sempre.
+ */
 function handleAuthLogin(payload) {
-  const code = (payload.code || '').trim();
-  if (!code) return fail('Codice mancante');
-
-  // Cerca il pilota con quell'access_code
-  const drivers = sheetToObjects(SHEETS.DRIVERS);
-  const driver = drivers.find(d => String(d.access_code).trim() === code);
-
-  if (!driver) return fail('Codice non riconosciuto');
-  if (driver.status !== 'active') return fail('Account non attivo. Contatta lo staff.');
-
-  // Genera token
-  const token = generateToken(driver.driver_id);
-
-  // Sanitize: non restituire l'access_code nel response
-  const safeDriver = sanitizeDriver(driver, 'private');
-
-  return ok({ token, driver: safeDriver });
+  return fail('endpoint_deprecated');
 }
 
 function handleAuthVerify(payload, ctx) {

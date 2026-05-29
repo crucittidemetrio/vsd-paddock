@@ -1,6 +1,5 @@
 import { createContext, useState, useEffect } from 'react';
-import { STORAGE, ROLES, TIERS, TIER_ORDER } from '../utils/constants';
-import { api } from '../api/client';
+import { STORAGE, TIERS, TIER_ORDER } from '../utils/constants';
 
 export const AuthContext = createContext(null);
 
@@ -42,39 +41,8 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  /**
-   * Login legacy via access_code admin.
-   * Token ritornato è formato 3-parti (no tier nel payload); deriviamo tier
-   * dal driver.role.
-   */
-  async function login(code) {
-    const trimmed = (code || '').trim();
-    if (!trimmed) return { ok: false, error: 'Codice mancante' };
-    try {
-      const data = await api.auth.login(trimmed);
-      const derivedTier = driverRoleToTier_(data.driver.role);
-
-      setToken(data.token);
-      setDriver(data.driver);
-      setTier(derivedTier);
-      setSims([]);
-      // Login legacy non ha info Discord
-      setDiscordAvatarUrl(null);
-      setDiscordUsername(null);
-
-      localStorage.setItem(STORAGE.TOKEN, data.token);
-      localStorage.setItem(STORAGE.DRIVER, JSON.stringify(data.driver));
-      localStorage.setItem(STORAGE.TIER, derivedTier);
-      localStorage.setItem(STORAGE.SIMS, JSON.stringify([]));
-      localStorage.removeItem(STORAGE.DISCORD_AVATAR_URL);
-      localStorage.removeItem(STORAGE.DISCORD_USERNAME);
-
-      return { ok: true };
-    } catch (e) {
-      console.error('[AuthContext] login failed', e);
-      return { ok: false, error: e.message || 'Errore di login' };
-    }
-  }
+  // Wave 10.X: funzione login() legacy (access_code) rimossa. L'unico
+  // metodo di autenticazione è ora Discord OAuth via setDiscordSession.
 
   /**
    * Imposta sessione dopo Discord OAuth callback.
@@ -159,19 +127,9 @@ export function AuthProvider({ children }) {
     isStaff,
     isAdmin,
     hasAtLeast,
-    login,
     setDiscordSession,
     logout,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-/**
- * Mappa driver.role (legacy access_code login) a tier (Wave 10).
- */
-function driverRoleToTier_(role) {
-  if (role === ROLES.ADMIN) return TIERS.ADMIN;
-  if (role === ROLES.STAFF) return TIERS.STAFF;
-  return TIERS.PILOT_VSD;
 }

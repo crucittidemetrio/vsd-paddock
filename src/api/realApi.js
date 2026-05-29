@@ -121,14 +121,8 @@ async function rosterGetAdapter(payload, token) {
   return ok(res.data.driver);
 }
 
-/**
- * Frontend: auth.login({ code })
- * Backend:  auth.login({ code }) → { token, driver }
- * Identico, nessun adapter necessario.
- */
-async function authLogin(payload) {
-  return postToBackend('auth.login', payload, null);
-}
+// Wave 10.X: authLogin() rimosso. auth.login è deprecato lato backend
+// e non è più chiamato dal frontend (Discord OAuth è l'unico flusso).
 
 /**
  * Frontend: auth.verify({ token })
@@ -164,8 +158,6 @@ export async function callApi(action, payload = {}, ctx = null) {
 
   try {
     switch (action) {
-      case 'auth.login':
-        return await authLogin(payload);
       case 'auth.verify':
         return await authVerify(payload);
         case 'auth.discordStart':

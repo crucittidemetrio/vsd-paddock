@@ -4,7 +4,7 @@
 // ===========================================
 
 import { callApi } from './realApi';
-import { STORAGE, ROLES, TIERS } from '../utils/constants';
+import { STORAGE, TIERS } from '../utils/constants';
 
 /**
  * Recupera il contesto auth corrente da localStorage.
@@ -50,8 +50,8 @@ async function call(action, payload = {}) {
  * Esempio uso: const drivers = await api.roster.list({ status: 'active' });
  */
 export const api = {
- auth: {
-    login: (code) => call('auth.login', { code }),
+  // Wave 10.X: auth.login legacy rimosso. L'unico metodo di login è Discord OAuth.
+  auth: {
     verify: (token) => call('auth.verify', { token }),
     discordStart: () => call('auth.discordStart', {}),                            // Wave 10
     discordCallback: (code, state) => call('auth.discordCallback', { code, state }),  // Wave 10

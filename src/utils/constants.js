@@ -71,16 +71,11 @@ export const LABELS = {
   nav_endurance: 'Endurance',
   nav_logout: 'Esci',
 
-  // Auth
+  // Auth (Wave 10.X: solo Discord OAuth, access_code legacy rimosso)
   auth_title: 'Accedi al Paddock',
-  auth_subtitle: 'Inserisci il tuo codice pilota',
-  auth_code_placeholder: 'CODICE-PILOTA',
-  auth_submit: 'Entra',
-  auth_error: 'Codice non riconosciuto',
   // Auth Discord (Wave 10)
   auth_discord_button: 'Accedi con Discord',
   auth_discord_loading: 'Reindirizzamento a Discord...',
-  auth_or_separator: 'oppure',
   auth_callback_processing: 'Completamento accesso...',
   auth_callback_error: 'Errore durante l\'autenticazione',
   auth_callback_retry: 'Torna al login',
