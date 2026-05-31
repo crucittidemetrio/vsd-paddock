@@ -275,6 +275,7 @@ export default function Landing() {
                   item={item}
                   driverMap={driverMap}
                   tracks={tracks}
+                  racesById={racesById}
                 />
               ))}
             </div>
@@ -400,7 +401,7 @@ function LastResultCard({ result, tracks }) {
   );
 }
 
-function FeedItem({ item, driverMap, tracks }) {
+function FeedItem({ item, driverMap, tracks, racesById }) {
   if (item.type === 'lap') {
     const lap = item.data;
     const d = driverMap[lap.driver_id];

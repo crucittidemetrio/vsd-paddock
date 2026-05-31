@@ -539,6 +539,7 @@ function handleRaceResultsImport(payload, ctx) {
       try {
         notifyRaceImported_(race, stats);
         checkAndNotifyIracingPodiums_(jsonData, race);
+        seedRaceReportsForRace(race.race_id);
       } catch (e) {
         Logger.log('⚠️  Notification error (non-blocking): ' + e.message);
       }
@@ -574,6 +575,7 @@ function handleRaceResultsImport(payload, ctx) {
       // Podi LMU notificati SOLO se sessione race (non qualifying)
       if (sessionType === 'race') {
         checkAndNotifyPodiums_(race, jsonData);
+        seedRaceReportsForRace(race.race_id);
       }
     } catch (e) {
       Logger.log('⚠️  Notification error (non-blocking): ' + e.message);

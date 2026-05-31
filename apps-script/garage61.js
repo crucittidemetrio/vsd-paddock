@@ -4,12 +4,14 @@
 // Auth: Script Properties GARAGE61_TOKEN + GARAGE61_TEAM_SLUG
 //
 // Operazioni:
-//   - garage61TestSync()         → dry-run del sync (editor)
-//   - garage61RunSync()          → sync reale in BestLaps (editor)
-//   - garage61BackfillCarIds()   → genera car_id per righe orfane
-//   - garage61BackfillRaceClass()→ copia category in race_class se vuoto
-//   - garage61PopulateIRacingIds()→ popola iracing_id in Drivers
-//   - garage61PopulateCarIds()   → auto-mapping garage61_id su Cars
+//   - garage61TestSync()              → dry-run del sync (editor)
+//   - garage61RunSync()               → sync reale in BestLaps (editor)
+//   - garage61InspectSessionTypes()   → distribuzione sessionType (debug)
+//   - garage61BackfillSessionType()   → aggiorna session_type su lap esistenti
+//   - garage61BackfillCarIds()        → genera car_id per righe orfane
+//   - garage61BackfillRaceClass()     → copia category in race_class
+//   - garage61PopulateIRacingIds()    → popola iracing_id in Drivers
+//   - garage61PopulateCarIds()        → auto-mapping garage61_id su Cars
 //
 // API exposed:
 //   - handleLapsSyncFromGarage61(payload, ctx) → action 'laps.syncFromGarage61'
@@ -18,10 +20,17 @@
 // Auto-draft delle cars unmapped (v10):
 //   Durante il sync reale, le auto Garage61 che non hanno mapping nel
 //   catalogo VSD vengono scritte automaticamente come DRAFT nel tab Cars
-//   con car_id, sim, car_name e garage61_id pre-popolati. Campi vuoti:
-//   manufacturer, category, race_class. L'admin completa quei campi nel
-//   sheet quando ha tempo. Al sync successivo le auto saranno matchate
-//   automaticamente.
+//   con car_id, sim, car_name e garage61_id pre-popolati.
+//
+// Session type detection (v11):
+//   Il sync ora usa il campo lap.sessionType di Garage61 per inferire
+//   il session_type del lap (practice/qualifying/race/time_trial),
+//   invece dell'hardcoded "practice" precedente.
+//
+// Session type backfill (v12):
+//   garage61BackfillSessionType() ri-fetch i lap già nel sheet (via
+//   garage61_lap_id) da Garage61 e aggiorna la cella session_type con
+//   il valore corretto. One-shot, idempotente.
 // ═══════════════════════════════════════════════════════════
 
 const GARAGE61_BASE_URL = 'https://garage61.net/api/v1';
@@ -98,8 +107,29 @@ function garage61ReadSheetRaw_(sheetName) {
   });
 }
 
+/**
+ * Mappa il sessionType numerico di Garage61 al valore stringa VSD.
+ *
+ * Mappatura verificata via garage61InspectSessionTypes (Maggio 2026):
+ *   1 = qualifying
+ *   2 = race
+ *   3 = time_trial
+ *   0 = practice (Garage61 filtra fuori, raro)
+ *
+ * Fallback safe: valori non riconosciuti → 'practice'.
+ */
+function garage61MapSessionType_(sessionTypeNum) {
+  switch (Number(sessionTypeNum)) {
+    case 1: return 'qualifying';
+    case 2: return 'race';
+    case 3: return 'time_trial';
+    case 0:
+    default: return 'practice';
+  }
+}
+
 // ═══════════════════════════════════════════════════════════
-// ESPLORATIVE
+// ESPLORATIVE / DEBUG
 // ═══════════════════════════════════════════════════════════
 
 function garage61ExploreMe() {
@@ -111,6 +141,54 @@ function garage61ExploreLaps() {
   const data = garage61Get_(`/laps?teams=${slug}&tracks=77&limit=3`);
   Logger.log(`total: ${data.total}`);
   Logger.log(JSON.stringify(data, null, 2));
+}
+
+function garage61InspectSessionTypes() {
+  const slug = PropertiesService.getScriptProperties().getProperty('GARAGE61_TEAM_SLUG');
+  const tracksRaw = garage61ReadSheetRaw_(SHEETS.TRACKS);
+  const mappedTracks = tracksRaw
+    .filter(t => String(t.sim || '').toUpperCase() === 'IRC' && t.garage61_id)
+    .map(t => Number(t.garage61_id));
+
+  if (mappedTracks.length === 0) {
+    Logger.log('⚠️ Nessun track IRC mappato.');
+    return;
+  }
+
+  Logger.log(`Inspect su ${mappedTracks.length} tracks IRC mappati...`);
+  const distribution = {};
+  const samples = {};
+
+  mappedTracks.forEach(g61TrackId => {
+    let data;
+    try {
+      data = garage61Get_(`/laps?teams=${slug}&tracks=${g61TrackId}&limit=100&offset=0`);
+    } catch (e) {
+      Logger.log(`  ✗ track g61=${g61TrackId}: ${e.message}`);
+      return;
+    }
+    (data.items || []).forEach(lap => {
+      const st = Number(lap.sessionType);
+      distribution[st] = (distribution[st] || 0) + 1;
+      if (!samples[st]) {
+        samples[st] = {
+          lap_time_ms: Math.round(lap.lapTime * 1000),
+          track: lap.track && lap.track.name,
+          driver: lap.driver && `${lap.driver.firstName} ${lap.driver.lastName}`,
+          mapped_to: garage61MapSessionType_(st),
+        };
+      }
+    });
+  });
+
+  Logger.log('───');
+  Logger.log('Distribuzione sessionType nei lap iRacing del team:');
+  Object.keys(distribution).sort().forEach(st => {
+    Logger.log(`  sessionType=${st} → ${distribution[st]} lap (mappato a "${garage61MapSessionType_(st)}")`);
+    if (samples[st]) {
+      Logger.log(`    es. ${samples[st].driver} @ ${samples[st].track} ${garage61FormatTime_(samples[st].lap_time_ms)}`);
+    }
+  });
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -264,22 +342,131 @@ function garage61BackfillRaceClass() {
   Logger.log(`✅ Backfilled: ${filled}, skip già popolato: ${skippedHasRC}, skip no category: ${skippedNoCategory}`);
 }
 
+/**
+ * Backfill session_type sui lap già presenti in BestLaps importati da Garage61.
+ *
+ * Per ogni lap nel sheet con garage61_lap_id valido, ri-fetch da Garage61
+ * e aggiorna la cella session_type col valore corretto. Necessario one-shot
+ * dopo il deploy v11 perché i lap importati prima avevano session_type
+ * hardcoded "practice".
+ *
+ * Strategia: itera solo sui tracks dove ci sono lap importati (per
+ * minimizzare le chiamate API). Per ognuno fetch in paginazione e match
+ * via garage61_lap_id. Batch write alla fine.
+ *
+ * Idempotente: se rieseguito, riscrive gli stessi valori (no-op effettivo).
+ */
+function garage61BackfillSessionType() {
+  Logger.log('[BACKFILL session_type] avviato...');
+
+  const slug = PropertiesService.getScriptProperties().getProperty('GARAGE61_TEAM_SLUG');
+  if (!slug) throw new Error('GARAGE61_TEAM_SLUG non configurato');
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.BEST_LAPS);
+  const values = sheet.getDataRange().getValues();
+  const headers = values[0];
+  const g61LapIdCol = headers.indexOf('garage61_lap_id');
+  const sessionTypeCol = headers.indexOf('session_type');
+  const trackIdCol = headers.indexOf('track_id');
+  if (g61LapIdCol === -1 || sessionTypeCol === -1) {
+    throw new Error('Colonne mancanti in BestLaps (garage61_lap_id, session_type)');
+  }
+
+  // Mappa: garage61_lap_id → rowNumber (1-indexed nel sheet)
+  // Inoltre: tracks VSD da considerare (solo dove abbiamo lap da Garage61)
+  const lapRowByG61Id = new Map();
+  const tracksWithG61Laps = new Set();
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+    const g61Id = String(row[g61LapIdCol] || '').trim();
+    if (!g61Id) continue;
+    lapRowByG61Id.set(g61Id, i + 1); // sheet rows sono 1-indexed
+    const trackId = String(row[trackIdCol] || '').trim();
+    if (trackId) tracksWithG61Laps.add(trackId);
+  }
+
+  Logger.log(`  Lap da Garage61 in BestLaps: ${lapRowByG61Id.size}`);
+  Logger.log(`  Tracks con lap Garage61: ${tracksWithG61Laps.size}`);
+  if (lapRowByG61Id.size === 0) {
+    Logger.log('Nessun lap Garage61 in BestLaps. Niente da backfillare.');
+    return { updated: 0 };
+  }
+
+  // Lookup: vsdTrackId → garage61_id
+  const tracksRaw = garage61ReadSheetRaw_(SHEETS.TRACKS);
+  const g61TrackByVsdId = new Map();
+  tracksRaw.forEach(t => {
+    if (t.track_id && t.garage61_id) {
+      g61TrackByVsdId.set(t.track_id, Number(t.garage61_id));
+    }
+  });
+
+  const stats = { updated: 0, notFound: 0, errors: 0, distribution: {} };
+  const updates = [];   // { row, value }
+
+  for (const vsdTrackId of tracksWithG61Laps) {
+    const g61TrackId = g61TrackByVsdId.get(vsdTrackId);
+    if (!g61TrackId) {
+      Logger.log(`  ⚠️  ${vsdTrackId}: track non più mappato in sheet, skippo`);
+      continue;
+    }
+
+    let offset = 0;
+    const perPage = 100;
+    for (let iter = 0; iter < 50; iter++) {
+      let data;
+      try {
+        data = garage61Get_(`/laps?teams=${slug}&tracks=${g61TrackId}&limit=${perPage}&offset=${offset}`);
+      } catch (e) {
+        Logger.log(`  ✗ ${vsdTrackId}: ${e.message}`);
+        stats.errors++;
+        break;
+      }
+      const laps = data.items || [];
+      if (laps.length === 0) break;
+
+      laps.forEach(lap => {
+        const rowNum = lapRowByG61Id.get(lap.id);
+        if (!rowNum) return; // questo lap non è nel nostro sheet
+        const sessionType = garage61MapSessionType_(lap.sessionType);
+        updates.push({ row: rowNum, value: sessionType });
+        stats.distribution[sessionType] = (stats.distribution[sessionType] || 0) + 1;
+        lapRowByG61Id.delete(lap.id); // marca come trovato
+      });
+
+      if (laps.length < perPage) break;
+      if (data.total !== undefined && offset + laps.length >= data.total) break;
+      offset += perPage;
+    }
+  }
+
+  stats.notFound = lapRowByG61Id.size;
+
+  // Batch write
+  if (updates.length > 0) {
+    updates.forEach(u => {
+      sheet.getRange(u.row, sessionTypeCol + 1).setValue(u.value);
+    });
+    stats.updated = updates.length;
+  }
+
+  Logger.log('───');
+  Logger.log(`[BACKFILL session_type] Riepilogo:`);
+  Logger.log(`  ✅ Aggiornati: ${stats.updated}`);
+  Logger.log(`  ⚠️  Non trovati su Garage61: ${stats.notFound} (lap potenzialmente eliminati o non più accessibili)`);
+  if (stats.errors > 0) Logger.log(`  ⚠️  Errori API: ${stats.errors}`);
+  Logger.log(`  Distribuzione session_type aggiornati:`);
+  Object.keys(stats.distribution).sort().forEach(st => {
+    Logger.log(`    - ${st}: ${stats.distribution[st]}`);
+  });
+
+  return stats;
+}
+
 // ═══════════════════════════════════════════════════════════
 // SYNC CORE
 // ═══════════════════════════════════════════════════════════
 
-/**
- * Auto-draft delle cars unmapped nel tab Cars (P1 polish).
- * Solo durante run reale. Scrive righe pre-popolate (sim, car_name,
- * garage61_id, active=TRUE), lasciando vuoti i campi che richiedono
- * giudizio (manufacturer, category, race_class).
- *
- * Idempotente: usa il Set existing per evitare collisioni di car_id.
- * Al sync successivo, la car ha garage61_id valido → match riuscito →
- * non triggera draft di nuovo. L'admin completa i campi vuoti nel sheet.
- *
- * Ritorna { drafted: number, draftedList: Array }.
- */
 function garage61DraftUnmappedCars_(unmappedCarsSeen, carsRaw) {
   const carsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.CARS);
   const carsHeaders = carsSheet.getRange(1, 1, 1, carsSheet.getLastColumn()).getValues()[0];
@@ -408,6 +595,7 @@ function garage61SyncLaps_(options) {
   const unmappedCarsSeen = new Map();
   const unmappedDriversSeen = new Map();
   const newRecords = [];
+  const sessionTypeDistribution = {};
   const now = new Date().toISOString();
 
   for (const [g61TrackId, vsdTrackId] of trackByG61Id) {
@@ -465,6 +653,8 @@ function garage61SyncLaps_(options) {
         const lapTimeMs = Math.round(lap.lapTime * 1000);
         const setDate = String(lap.startTime).split('T')[0];
         const conditions = (lap.precipitation > 0 || lap.trackWetness > 0) ? 'wet' : 'dry';
+        const sessionType = garage61MapSessionType_(lap.sessionType);
+        sessionTypeDistribution[sessionType] = (sessionTypeDistribution[sessionType] || 0) + 1;
         maxLapNum++;
         const lapId = 'LAP' + String(maxLapNum).padStart(3, '0');
 
@@ -478,7 +668,7 @@ function garage61SyncLaps_(options) {
           lap_time_display: garage61FormatTime_(lapTimeMs),
           set_date: setDate,
           conditions: conditions,
-          session_type: 'practice',
+          session_type: sessionType,
           setup_shared: 'FALSE',
           setup_link: '',
           replay_url: '',
@@ -513,6 +703,13 @@ function garage61SyncLaps_(options) {
   Logger.log(`  ⏭️  Skip driver non identificato: ${stats.skippedDriverUnmapped}`);
   if (stats.errors > 0) Logger.log(`  ⚠️  Errori API: ${stats.errors}`);
 
+  if (Object.keys(sessionTypeDistribution).length > 0) {
+    Logger.log(`  Session type distribution:`);
+    Object.keys(sessionTypeDistribution).sort().forEach(st => {
+      Logger.log(`    - ${st}: ${sessionTypeDistribution[st]}`);
+    });
+  }
+
   if (unmappedCarsSeen.size > 0) {
     Logger.log(`  Cars Garage61 senza mapping VSD:`);
     unmappedCarsSeen.forEach((name, id) => Logger.log(`    - g61=${id} "${name}"`));
@@ -522,13 +719,12 @@ function garage61SyncLaps_(options) {
     unmappedDriversSeen.forEach((name, slug) => Logger.log(`    - ${slug} "${name}"`));
   }
 
-  // Stats arricchite (utili al frontend)
   stats.unmappedCars = Array.from(unmappedCarsSeen.entries()).map(([id, name]) => ({ id, name }));
   stats.unmappedDrivers = Array.from(unmappedDriversSeen.entries()).map(([slug, name]) => ({ slug, name }));
   stats.unmappedCarsDrafted = 0;
   stats.unmappedCarsDraftedList = [];
+  stats.sessionTypeDistribution = sessionTypeDistribution;
 
-  // Scrittura lap in BestLaps
   if (writeToSheet) {
     if (newRecords.length > 0) {
       const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.BEST_LAPS);
@@ -540,7 +736,6 @@ function garage61SyncLaps_(options) {
       Logger.log('Nessun nuovo lap da scrivere.');
     }
 
-    // Auto-draft delle cars unmapped (P1)
     if (unmappedCarsSeen.size > 0) {
       Logger.log(`📝 Auto-draft cars unmapped:`);
       const draftResult = garage61DraftUnmappedCars_(unmappedCarsSeen, carsRaw);
@@ -574,13 +769,6 @@ function garage61RunSync() {
 // API HANDLER (action: laps.syncFromGarage61)
 // ═══════════════════════════════════════════════════════════
 
-/**
- * Action handler per il sync Garage61 chiamato dal frontend admin button.
- * Solo admin tier autorizzato. Esegue garage61SyncLaps_ con writeToSheet=true.
- *
- * Ritorna stats con tutte le metriche dell'operazione, che il frontend
- * mostra come toast/notification.
- */
 function handleLapsSyncFromGarage61(payload, ctx) {
   if (!ctx) return fail('Auth richiesto');
   if (!ctx.isAdmin) return fail('Operazione riservata agli admin');
