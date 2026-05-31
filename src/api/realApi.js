@@ -178,6 +178,8 @@ export async function callApi(action, payload = {}, ctx = null) {
         return await lapsLeaderboardAdapter(payload, token);
       case 'laps.raceLaps':
   return await lapsRaceLapsAdapter(payload, token);  
+  case 'laps.syncFromGarage61':
+        return await lapsSyncFromGarage61Adapter(payload, token);
       case 'races.list':
         return await racesListAdapter(payload, token);
       case 'races.upcoming':
@@ -280,6 +282,18 @@ async function lapsRaceLapsAdapter(payload, token) {
   const res = await postToBackend('laps.raceLaps', {}, token);
   if (!res.ok) return res;
   return ok(res.data.laps);
+}
+
+/**
+ * Frontend: laps.syncFromGarage61() → stats object
+ * Backend:  laps.syncFromGarage61() → { imported, skippedDedup, skippedCarUnmapped,
+ *                                       tracksProcessed, unmappedCars[], unmappedDrivers[], errors }
+ * Admin-only mutation. Ritorna le stats direttamente al hook.
+ */
+async function lapsSyncFromGarage61Adapter(payload, token) {
+  const res = await postToBackend('laps.syncFromGarage61', {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
 }
 
 /**
