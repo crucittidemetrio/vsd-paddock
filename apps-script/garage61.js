@@ -14,6 +14,14 @@
 // API exposed:
 //   - handleLapsSyncFromGarage61(payload, ctx) → action 'laps.syncFromGarage61'
 //     Admin-only. Chiamato dal frontend admin button.
+//
+// Auto-draft delle cars unmapped (v10):
+//   Durante il sync reale, le auto Garage61 che non hanno mapping nel
+//   catalogo VSD vengono scritte automaticamente come DRAFT nel tab Cars
+//   con car_id, sim, car_name e garage61_id pre-popolati. Campi vuoti:
+//   manufacturer, category, race_class. L'admin completa quei campi nel
+//   sheet quando ha tempo. Al sync successivo le auto saranno matchate
+//   automaticamente.
 // ═══════════════════════════════════════════════════════════
 
 const GARAGE61_BASE_URL = 'https://garage61.net/api/v1';
@@ -260,6 +268,62 @@ function garage61BackfillRaceClass() {
 // SYNC CORE
 // ═══════════════════════════════════════════════════════════
 
+/**
+ * Auto-draft delle cars unmapped nel tab Cars (P1 polish).
+ * Solo durante run reale. Scrive righe pre-popolate (sim, car_name,
+ * garage61_id, active=TRUE), lasciando vuoti i campi che richiedono
+ * giudizio (manufacturer, category, race_class).
+ *
+ * Idempotente: usa il Set existing per evitare collisioni di car_id.
+ * Al sync successivo, la car ha garage61_id valido → match riuscito →
+ * non triggera draft di nuovo. L'admin completa i campi vuoti nel sheet.
+ *
+ * Ritorna { drafted: number, draftedList: Array }.
+ */
+function garage61DraftUnmappedCars_(unmappedCarsSeen, carsRaw) {
+  const carsSheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.CARS);
+  const carsHeaders = carsSheet.getRange(1, 1, 1, carsSheet.getLastColumn()).getValues()[0];
+
+  const existingCarIds = new Set(
+    carsRaw.map(c => String(c.car_id || '').trim()).filter(Boolean)
+  );
+
+  const draftRows = [];
+  const draftedList = [];
+
+  unmappedCarsSeen.forEach((carName, g61CarId) => {
+    const slug = garage61Slugify_(carName);
+    let newCarId = `irc-${slug}`;
+    if (existingCarIds.has(newCarId)) {
+      let n = 2;
+      while (existingCarIds.has(`${newCarId}-${n}`)) n++;
+      newCarId = `${newCarId}-${n}`;
+    }
+    existingCarIds.add(newCarId);
+
+    const record = {
+      car_id: newCarId,
+      sim: 'IRC',
+      car_name: carName,
+      manufacturer: '',
+      category: '',
+      race_class: '',
+      active: 'TRUE',
+      garage61_id: g61CarId,
+    };
+    draftRows.push(carsHeaders.map(h => record[h] !== undefined ? record[h] : ''));
+    draftedList.push({ garage61_id: g61CarId, car_id: newCarId, name: carName });
+    Logger.log(`  ✏️  Draft: ${newCarId} ← g61=${g61CarId} "${carName}"`);
+  });
+
+  if (draftRows.length > 0) {
+    carsSheet.getRange(carsSheet.getLastRow() + 1, 1, draftRows.length, carsHeaders.length)
+      .setValues(draftRows);
+  }
+
+  return { drafted: draftRows.length, draftedList };
+}
+
 function garage61SyncLaps_(options) {
   options = options || {};
   const writeToSheet = options.writeToSheet === true;
@@ -319,7 +383,13 @@ function garage61SyncLaps_(options) {
 
   if (trackByG61Id.size === 0) {
     Logger.log('⚠️ Nessun track IRC mappato. Nulla da sincronizzare.');
-    return { imported: 0, tracksProcessed: 0, lapsTotal: 0, skippedDedup: 0, skippedQuality: 0, skippedCarUnmapped: 0, skippedDriverUnmapped: 0, errors: 0 };
+    return {
+      imported: 0, tracksProcessed: 0, lapsTotal: 0,
+      skippedDedup: 0, skippedQuality: 0, skippedCarUnmapped: 0,
+      skippedDriverUnmapped: 0, errors: 0,
+      unmappedCarsDrafted: 0, unmappedCarsDraftedList: [],
+      unmappedCars: [], unmappedDrivers: [],
+    };
   }
 
   const team = garage61Get_(`/teams/${slug}`);
@@ -452,29 +522,43 @@ function garage61SyncLaps_(options) {
     unmappedDriversSeen.forEach((name, slug) => Logger.log(`    - ${slug} "${name}"`));
   }
 
-  // Stats arricchite con liste unmapped (utili al frontend)
+  // Stats arricchite (utili al frontend)
   stats.unmappedCars = Array.from(unmappedCarsSeen.entries()).map(([id, name]) => ({ id, name }));
   stats.unmappedDrivers = Array.from(unmappedDriversSeen.entries()).map(([slug, name]) => ({ slug, name }));
+  stats.unmappedCarsDrafted = 0;
+  stats.unmappedCarsDraftedList = [];
 
-  if (!writeToSheet) {
+  // Scrittura lap in BestLaps
+  if (writeToSheet) {
+    if (newRecords.length > 0) {
+      const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.BEST_LAPS);
+      const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+      const rows = newRecords.map(r => headers.map(h => (r[h] !== undefined ? r[h] : '')));
+      sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, headers.length).setValues(rows);
+      Logger.log(`✅ ${rows.length} righe scritte in BestLaps.`);
+    } else {
+      Logger.log('Nessun nuovo lap da scrivere.');
+    }
+
+    // Auto-draft delle cars unmapped (P1)
+    if (unmappedCarsSeen.size > 0) {
+      Logger.log(`📝 Auto-draft cars unmapped:`);
+      const draftResult = garage61DraftUnmappedCars_(unmappedCarsSeen, carsRaw);
+      stats.unmappedCarsDrafted = draftResult.drafted;
+      stats.unmappedCarsDraftedList = draftResult.draftedList;
+      if (draftResult.drafted > 0) {
+        Logger.log(`✏️  ${draftResult.drafted} cars draftate nel tab Cars.`);
+        Logger.log(`    Completa manufacturer/category/race_class nel sheet per attivare il match al prossimo sync.`);
+      }
+    }
+  } else {
     Logger.log('🚫 DRY-RUN: nessuna riga scritta.');
     if (newRecords.length > 0) {
       Logger.log('Esempio primi 2 record:');
       newRecords.slice(0, 2).forEach(r => Logger.log(JSON.stringify(r, null, 2)));
     }
-    return stats;
   }
 
-  if (newRecords.length === 0) {
-    Logger.log('Nessun nuovo lap da scrivere.');
-    return stats;
-  }
-
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.BEST_LAPS);
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const rows = newRecords.map(r => headers.map(h => (r[h] !== undefined ? r[h] : '')));
-  sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, headers.length).setValues(rows);
-  Logger.log(`✅ ${rows.length} righe scritte in BestLaps.`);
   return stats;
 }
 

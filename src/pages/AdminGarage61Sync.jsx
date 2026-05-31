@@ -17,18 +17,22 @@ export default function AdminGarage61Sync() {
       <header className={styles.header}>
         <h1>Sync Garage61 — iRacing</h1>
         <p className={styles.subtitle}>
-          Importa i best lap iRacing pulli del team VSD da Garage61.
+          Importa i best lap iRacing puliti del team VSD da Garage61.
           Operazione idempotente: i lap già presenti vengono saltati via dedup.
+          Le auto non ancora a catalogo vengono aggiunte come bozza nel sheet.
           Può richiedere fino a 60 secondi.
         </p>
       </header>
 
       <section className={styles.card}>
         <p className={styles.label}>
-          Pull dei lap puliti per tutti i tracks IRC mappati. I lap su auto
-          fuori dal catalogo VSD (es. McLaren 720S GT3 EVO, BMW M2 CS Racing)
-          vengono skippati. In caso di network glitch transient, riesegui:
-          il dedup recupera i lap mancanti.
+          Pull dei lap puliti per tutti i tracks IRC mappati.
+          Quando incontra auto non presenti nel catalogo VSD,
+          il sync ne aggiunge una bozza al tab Cars del sheet
+          (car_id, sim, car_name, garage61_id pre-popolati).
+          Tu completi <code>manufacturer</code>, <code>category</code> e <code>race_class</code> nel sheet
+          quando hai 30 secondi. Al sync successivo le auto saranno
+          matchate automaticamente e i lap importati.
         </p>
 
         <div className={styles.actions}>
@@ -49,15 +53,15 @@ export default function AdminGarage61Sync() {
           <div className={styles.statsRow}>
             <div className={styles.stat}>
               <div className={styles.statValue}>{syncMutation.data.imported ?? 0}</div>
-              <div className={styles.statLabel}>Importati</div>
+              <div className={styles.statLabel}>Lap importati</div>
             </div>
             <div className={styles.stat}>
               <div className={styles.statValue}>{syncMutation.data.skippedDedup ?? 0}</div>
               <div className={styles.statLabel}>Già presenti</div>
             </div>
             <div className={styles.stat}>
-              <div className={styles.statValue}>{syncMutation.data.skippedCarUnmapped ?? 0}</div>
-              <div className={styles.statLabel}>Auto non mappate</div>
+              <div className={styles.statValue}>{syncMutation.data.unmappedCarsDrafted ?? 0}</div>
+              <div className={styles.statLabel}>Auto draftate</div>
             </div>
             <div className={styles.stat}>
               <div className={styles.statValue}>{syncMutation.data.tracksProcessed ?? 0}</div>
@@ -65,17 +69,22 @@ export default function AdminGarage61Sync() {
             </div>
           </div>
 
-          {syncMutation.data.unmappedCars?.length > 0 && (
+          {syncMutation.data.unmappedCarsDraftedList?.length > 0 && (
             <div className={styles.classBlock}>
               <h3 className={styles.className}>
-                Auto Garage61 senza mapping VSD
-                <span className={styles.muted}> · {syncMutation.data.unmappedCars.length}</span>
+                ✏️ Auto draftate nel catalogo
+                <span className={styles.muted}> · {syncMutation.data.unmappedCarsDraftedList.length}</span>
               </h3>
+              <p className={styles.muted}>
+                Aggiunte come bozza al tab Cars del sheet. Apri il sheet,
+                completa <code>manufacturer</code>, <code>category</code> e <code>race_class</code> per ognuna,
+                poi rilancia il sync per importare i lap.
+              </p>
               <ol className={styles.top3}>
-                {syncMutation.data.unmappedCars.map(c => (
-                  <li key={c.id}>
+                {syncMutation.data.unmappedCarsDraftedList.map(c => (
+                  <li key={c.garage61_id}>
                     <span className={styles.driverName}>{c.name}</span>
-                    <span className={styles.points}>g61={c.id}</span>
+                    <span className={styles.points}>{c.car_id}</span>
                   </li>
                 ))}
               </ol>
@@ -88,6 +97,11 @@ export default function AdminGarage61Sync() {
                 Pilots Garage61 senza mapping VSD
                 <span className={styles.muted}> · {syncMutation.data.unmappedDrivers.length}</span>
               </h3>
+              <p className={styles.muted}>
+                Pilots che hanno guidato in sessioni con il team ma non sono nel roster VSD,
+                oppure piloti VSD con <code>iracing_id</code> mancante o errato.
+                Verifica nel tab Drivers e correggi se necessario.
+              </p>
               <ol className={styles.top3}>
                 {syncMutation.data.unmappedDrivers.map(d => (
                   <li key={d.slug}>

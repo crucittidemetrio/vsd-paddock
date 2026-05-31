@@ -139,6 +139,7 @@ const ACTIONS = {
   'laps.list': handleLapsList,
   'laps.leaderboard': handleLapsLeaderboard,
   'laps.raceLaps': handleLapsRaceLaps,
+  'laps.syncFromGarage61': handleLapsSyncFromGarage61,
 
   // Races
   'races.list': handleRacesList,
