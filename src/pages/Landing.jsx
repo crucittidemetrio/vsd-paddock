@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { useUpcomingRaces, useReports } from '../hooks/useRaces';
+import { useRaces, useUpcomingRaces, useReports } from '../hooks/useRaces';
 import { useBestLaps } from '../hooks/useBestLaps';
 import { useDrivers } from '../hooks/useRoster';
 import { useTracks } from '../hooks/useLookups';
@@ -22,6 +22,12 @@ export default function Landing() {
   const { driver, isStaff } = useAuth();
   const { data: upcoming } = useUpcomingRaces();
   const { data: myLaps } = useBestLaps({ driver_id: driver?.driver_id });
+  const { data: allRaces } = useRaces();
+  const racesById = useMemo(() => {
+    const m = {};
+    (allRaces || []).forEach(r => { m[r.race_id] = r; });
+    return m;
+  }, [allRaces]);
   const { data: myReports } = useReports({ driver_id: driver?.driver_id });
   const { data: drivers } = useDrivers();
   const { data: allLaps } = useBestLaps();
@@ -452,7 +458,7 @@ function FeedItem({ item, driverMap, tracks }) {
             <span className={`feed-pos${isPodium ? ' is-podium' : ''}`}>P{r.finish_position}</span>
           </div>
           <div className="feed-meta">
-            <span className="feed-race">{r.race_id}</span>
+            <span className="feed-race">{racesById[r.race_id]?.race_name || r.race_id}</span>
             <span className="feed-dot">·</span>
             <span className="feed-date">{formatDate(r.created_at)}</span>
           </div>

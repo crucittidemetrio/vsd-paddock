@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useDriver } from '../hooks/useRoster';
 import { useBestLaps } from '../hooks/useBestLaps';
-import { useReports } from '../hooks/useRaces';
+import { useRaces, useReports } from '../hooks/useRaces';
 import { useMyRecentRaceResults } from '../hooks/useRaceResults';
 import { useTracks, useCars } from '../hooks/useLookups';
 import Avatar from '../components/shared/Avatar';
@@ -24,6 +24,12 @@ export default function DriverProfile() {
   const { data: cars = [] } = useCars();
   const { data: raceResultsData } = useMyRecentRaceResults(driverId, 200);
   const raceResults = raceResultsData?.results || [];
+  const { data: allRaces } = useRaces();
+  const racesById = useMemo(() => {
+    const m = {};
+    (allRaces || []).forEach(r => { m[r.race_id] = r; });
+    return m;
+  }, [allRaces]);
 
   // Dedup per (sim, track_id, car_id): i raceLaps generano entries multiple
   // (qualifying + race) sulla stessa combo. Deve stare PRIMA degli early return
@@ -323,7 +329,7 @@ export default function DriverProfile() {
                     : null;
                   return (
                     <tr key={r.race_id}>
-                      <td className="cell-race">{r.race_id}</td>
+                      <td className="cell-race">{racesById[r.race_id]?.race_name || r.race_id}</td>
                       <td className="num">
                         {r.grid_position != null ? r.grid_position : '—'}
                       </td>
