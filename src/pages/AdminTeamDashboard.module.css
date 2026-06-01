@@ -269,6 +269,18 @@
   cursor: not-allowed;
 }
 
+.select option {
+  background-color: #060d1f;
+  color: #ffffff;
+  padding: 8px;
+}
+
+.select option:hover,
+.select option:checked {
+  background-color: rgba(0, 212, 255, 0.15);
+  color: #00d4ff;
+}
+
 /* ═══════════════════════════════════════ Driver header ═══════ */
 
 .driverHeader {
