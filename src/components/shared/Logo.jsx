@@ -1,4 +1,4 @@
-import logoSrc from '../../assets/vsd-logo.png';
+import logoSrc from '../../assets/vsd-logo.webp';
 
 /**
  * Logo VSD ufficiale.

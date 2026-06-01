@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { LABELS } from '../../utils/constants';
 import { useAuth } from '../../hooks/useAuth';
 import Logo from '../shared/Logo';
-import totalPaintLogo from '../../assets/total-paint-logo.png';
+import totalPaintLogo from '../../assets/total-paint-logo.webp';
 import './Sidebar.css';
 
 const ITEMS = [

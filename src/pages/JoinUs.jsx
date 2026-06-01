@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useShowcase } from '../hooks/useShowcase';
 import './JoinUs.css';
 import Logo from '../components/shared/Logo';
-import totalPaintLogo from '../assets/total-paint-logo.png';
+import totalPaintLogo from '../assets/total-paint-logo.webp';
 
 const DISCORD_INVITE = 'https://discord.gg/hdt8uHEfsy';
 
