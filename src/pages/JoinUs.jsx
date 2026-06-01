@@ -5,7 +5,7 @@ import './JoinUs.css';
 import Logo from '../components/shared/Logo';
 import totalPaintLogo from '../assets/total-paint-logo.png';
 
-const DISCORD_INVITE = 'https://discord.gg/W4yWkU3YAd';
+const DISCORD_INVITE = 'https://discord.gg/hdt8uHEfsy';
 
 // Funzione per formattare la data della gara
 function formatRaceDate(iso) {
