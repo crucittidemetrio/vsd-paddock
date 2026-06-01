@@ -219,7 +219,7 @@ function testRacesGetNotFound() {
  */
 function handleRacesUpdatePoster(payload, ctx) {
   if (!ctx) return fail('Auth richiesto');
-  if (!ctx.isAdmin) return fail('Forbidden: solo admin può modificare le poster');
+  if (!ctx.isStaff) return fail('Forbidden: solo staff o admin può modificare le poster');
   if (!payload || !payload.race_id) return fail('race_id mancante');
 
   const posterUrl = normalizeDrivePosterUrl_((payload.poster_url || '').trim());

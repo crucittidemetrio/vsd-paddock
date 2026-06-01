@@ -7,10 +7,10 @@ import { useAuth } from '../../hooks/useAuth';
  * Se non admin, redirect a /.
  */
 export default function AdminRoute({ children }) {
-  const { isAdmin, loading } = useAuth();
+  const { isStaff, loading } = useAuth();
 
   if (loading) return null;
-  if (!isAdmin) return <Navigate to="/" replace />;
+  if (!isStaff) return <Navigate to="/" replace />;
 
   return children;
 }

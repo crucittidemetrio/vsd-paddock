@@ -67,7 +67,7 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
           </NavLink>
         ))}
 
-        {isAdmin && (
+        {isStaff && (
           <>
             <div className="nav-section-label">Admin</div>
             {ADMIN_ITEMS.map(item => (

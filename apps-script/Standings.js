@@ -256,7 +256,7 @@ function parseLmuStandingsJson_(rawJson) {
  */
 function handleChampionshipsImportStandings(payload, ctx) {
   if (!ctx) return fail('Auth richiesto');
-  if (!ctx.isAdmin) return fail('Forbidden: solo admin può importare standings');
+  if (!ctx.isStaff) return fail('Forbidden: solo staff o admin può importare standings');
   if (!payload) return fail('Payload mancante');
   if (!payload.championship_id) return fail('championship_id mancante');
   if (!payload.json_data) return fail('json_data mancante');

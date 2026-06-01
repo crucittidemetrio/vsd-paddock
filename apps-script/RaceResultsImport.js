@@ -504,7 +504,7 @@ function runImportRace() {
  */
 function handleRaceResultsImport(payload, ctx) {
   if (!ctx) return fail('Auth richiesto');
-  if (!ctx.isAdmin) return fail('Forbidden: solo admin può importare risultati');
+  if (!ctx.isStaff) return fail('Forbidden: solo staff può importare risultati');
 
   if (!payload) return fail('Payload mancante');
   if (!payload.race_id) return fail('race_id mancante');

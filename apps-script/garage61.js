@@ -771,7 +771,7 @@ function garage61RunSync() {
 
 function handleLapsSyncFromGarage61(payload, ctx) {
   if (!ctx) return fail('Auth richiesto');
-  if (!ctx.isAdmin) return fail('Operazione riservata agli admin');
+  if (!ctx.isStaff) return fail('Operazione riservata a staff e admin');
 
   try {
     const stats = garage61SyncLaps_({ writeToSheet: true });
