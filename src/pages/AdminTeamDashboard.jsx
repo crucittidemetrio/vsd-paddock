@@ -13,6 +13,7 @@ import styles from './AdminTeamDashboard.module.css';
 const DAYS_HEATMAP = 30;
 const DAYS_INACTIVE_ALERT = 14;
 const DAYS_WINDOW = 30;
+const DAYS_RUSTY_THRESHOLD = 30;
 
 function daysAgo(n) {
   const d = new Date();
@@ -40,6 +41,7 @@ function formatGap(deltaMs) {
 
 export default function AdminTeamDashboard() {
   const [selectedDriverId, setSelectedDriverId] = useState('');
+  const [raceConfig, setRaceConfig] = useState({ sim: '', track_id: '', car_id: '' });
 
   const { data: drivers, isLoading: driversLoading } = useDrivers();
   const { data: laps, isLoading: lapsLoading } = useBestLaps({});
@@ -156,7 +158,6 @@ export default function AdminTeamDashboard() {
 
   // ═════════════ SEZIONE B — Driver trend ═════════════
 
-  // Team best per ogni combo (sim, track, car): chi è il record holder
   const teamBestByCombo = useMemo(() => {
     const m = {};
     (laps || []).forEach(l => {
@@ -175,7 +176,6 @@ export default function AdminTeamDashboard() {
     return m;
   }, [laps]);
 
-  // Best del pilota selezionato per ogni combo
   const driverBestByCombo = useMemo(() => {
     if (!selectedDriverId) return {};
     const m = {};
@@ -191,8 +191,6 @@ export default function AdminTeamDashboard() {
     return m;
   }, [laps, selectedDriverId]);
 
-  // Righe trend: ogni combo girato dal pilota con delta vs team best
-  // Ordinate per gap decrescente (peggiori in alto = coaching opportunities)
   const driverTrendRows = useMemo(() => {
     return Object.keys(driverBestByCombo).map(key => {
       const myLap = driverBestByCombo[key];
@@ -217,7 +215,6 @@ export default function AdminTeamDashboard() {
     return m;
   }, [drivers]);
 
-  // Stats summary del pilota selezionato
   const driverStats = useMemo(() => {
     if (!selectedDriverId) return null;
     const totalCombos = driverTrendRows.length;
@@ -225,6 +222,80 @@ export default function AdminTeamDashboard() {
     const totalLaps = (laps || []).filter(l => l.driver_id === selectedDriverId).length;
     return { totalCombos, records, totalLaps };
   }, [selectedDriverId, driverTrendRows, laps]);
+
+  // ═════════════ SEZIONE D — Pianificazione gara ═════════════
+
+  const trackOptionsForRace = useMemo(() => {
+    if (!raceConfig.sim) return [];
+    return (tracks || [])
+      .filter(t => t.sim === raceConfig.sim && String(t.active || '').toUpperCase() !== 'FALSE')
+      .sort((a, b) => String(a.track_name || '').localeCompare(String(b.track_name || '')));
+  }, [tracks, raceConfig.sim]);
+
+  const carOptionsForRace = useMemo(() => {
+    if (!raceConfig.sim) return [];
+    return (cars || [])
+      .filter(c => c.sim === raceConfig.sim && String(c.active || '').toUpperCase() !== 'FALSE')
+      .sort((a, b) => String(a.car_name || '').localeCompare(String(b.car_name || '')));
+  }, [cars, raceConfig.sim]);
+
+  function handleRaceSimChange(newSim) {
+    setRaceConfig({ sim: newSim, track_id: '', car_id: '' });
+  }
+
+  function handleRaceTrackChange(newTrack) {
+    setRaceConfig(prev => ({ ...prev, track_id: newTrack }));
+  }
+
+  function handleRaceCarChange(newCar) {
+    setRaceConfig(prev => ({ ...prev, car_id: newCar }));
+  }
+
+  const raceConfigComplete = raceConfig.sim && raceConfig.track_id && raceConfig.car_id;
+
+  const teamBestForCombo = useMemo(() => {
+    if (!raceConfigComplete) return null;
+    const key = `${raceConfig.sim}|${raceConfig.track_id}|${raceConfig.car_id}`;
+    return teamBestByCombo[key] || null;
+  }, [raceConfig, raceConfigComplete, teamBestByCombo]);
+
+  const pilotRanking = useMemo(() => {
+    if (!raceConfigComplete) return [];
+
+    const bestByDriver = {};
+    (laps || []).forEach(l => {
+      if (l.sim !== raceConfig.sim) return;
+      if (l.track_id !== raceConfig.track_id) return;
+      if (l.car_id !== raceConfig.car_id) return;
+      if (!l.lap_time_ms) return;
+      const ms = Number(l.lap_time_ms);
+      if (!bestByDriver[l.driver_id] || ms < bestByDriver[l.driver_id].lap_time_ms) {
+        bestByDriver[l.driver_id] = l;
+      }
+    });
+
+    return activeDrivers
+      .map(driver => {
+        const myBest = bestByDriver[driver.driver_id];
+        const lastLapDate = myBest ? toDate(myBest.set_date) : null;
+        const daysSinceLastLap = lastLapDate ? daysBetween(lastLapDate, now) : null;
+
+        let readinessStatus = 'INESPLORATO';
+        if (myBest) {
+          readinessStatus = (daysSinceLastLap !== null && daysSinceLastLap > DAYS_RUSTY_THRESHOLD)
+            ? 'RUSTY'
+            : 'PRONTO';
+        }
+
+        return { driver, myBest, daysSinceLastLap, readinessStatus };
+      })
+      .sort((a, b) => {
+        if (!a.myBest && !b.myBest) return 0;
+        if (!a.myBest) return 1;
+        if (!b.myBest) return -1;
+        return Number(a.myBest.lap_time_ms) - Number(b.myBest.lap_time_ms);
+      });
+  }, [raceConfig, raceConfigComplete, laps, activeDrivers, now]);
 
   if (driversLoading || lapsLoading || rrLoading) {
     return (
@@ -463,6 +534,172 @@ export default function AdminTeamDashboard() {
         {!selectedDriver && (
           <div className={styles.empty}>
             Seleziona un pilota dal dropdown per visualizzare l'analisi.
+          </div>
+        )}
+      </section>
+
+      {/* ════ SEZIONE D — Pianificazione gara ════ */}
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>
+          <span className={styles.sectionIcon}>🏁</span>
+          Pianificazione iscrizioni gara
+          <span className={styles.sectionSubtitle}>ranking piloti basato sui best lap storici</span>
+        </h2>
+
+        <div className={styles.raceSelectorRow}>
+          <div className={styles.driverSelector}>
+            <label className={styles.selectLabel}>Sim</label>
+            <select
+              className={styles.select}
+              value={raceConfig.sim}
+              onChange={e => handleRaceSimChange(e.target.value)}
+            >
+              <option value="">— Sim —</option>
+              <option value="LMU">LMU</option>
+              <option value="IRC">iRacing</option>
+              <option value="ACE">ACE</option>
+            </select>
+          </div>
+
+          <div className={styles.driverSelector}>
+            <label className={styles.selectLabel}>Tracciato</label>
+            <select
+              className={styles.select}
+              value={raceConfig.track_id}
+              onChange={e => handleRaceTrackChange(e.target.value)}
+              disabled={!raceConfig.sim}
+            >
+              <option value="">— Tracciato —</option>
+              {trackOptionsForRace.map(t => (
+                <option key={t.track_id} value={t.track_id}>
+                  {t.track_name}{t.variant ? ` (${t.variant})` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className={styles.driverSelector}>
+            <label className={styles.selectLabel}>Auto</label>
+            <select
+              className={styles.select}
+              value={raceConfig.car_id}
+              onChange={e => handleRaceCarChange(e.target.value)}
+              disabled={!raceConfig.sim}
+            >
+              <option value="">— Auto —</option>
+              {carOptionsForRace.map(c => (
+                <option key={c.car_id} value={c.car_id}>
+                  {c.car_name}{c.race_class ? ` · ${c.race_class}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {raceConfigComplete && teamBestForCombo && (
+          <div className={styles.raceContextBar}>
+            Team record su questo combo: <strong>{teamBestForCombo.lap_time_display}</strong>
+            {driverMap[teamBestForCombo.driver_id] && (
+              <>
+                {' '}· holder:{' '}
+                <Link
+                  to={`/roster/${teamBestForCombo.driver_id}`}
+                  className={styles.holderLink}
+                >
+                  {driverMap[teamBestForCombo.driver_id].display_name}
+                </Link>
+              </>
+            )}
+          </div>
+        )}
+
+        {raceConfigComplete && pilotRanking.length > 0 && (
+          <table className={styles.trendTable}>
+            <thead>
+              <tr>
+                <th className={styles.numCol}>#</th>
+                <th>Pilota</th>
+                <th className={styles.numCol}>Best lap</th>
+                <th className={styles.numCol}>Gap</th>
+                <th className={styles.numCol}>Ultimo lap</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pilotRanking.map((row, idx) => {
+                const hasData = !!row.myBest;
+                const teamMs = teamBestForCombo ? Number(teamBestForCombo.lap_time_ms) : null;
+                const myMs = hasData ? Number(row.myBest.lap_time_ms) : null;
+                const deltaMs = hasData && teamMs != null ? myMs - teamMs : null;
+                const deltaPct = hasData && teamMs ? (deltaMs / teamMs) * 100 : null;
+                const isRecord = hasData
+                  && teamBestForCombo
+                  && teamBestForCombo.driver_id === row.driver.driver_id
+                  && deltaMs === 0;
+
+                const gapClass = !hasData ? '' :
+                  isRecord ? styles.gapRecord :
+                  (deltaPct != null && deltaPct > 5) ? styles.gapBad :
+                  (deltaPct != null && deltaPct > 1) ? styles.gapMid :
+                  styles.gapGood;
+
+                const statusClass =
+                  row.readinessStatus === 'PRONTO' ? styles.statusReady :
+                  row.readinessStatus === 'RUSTY' ? styles.statusRusty :
+                  styles.statusUnexplored;
+
+                return (
+                  <tr key={row.driver.driver_id} className={!hasData ? styles.rowFaded : ''}>
+                    <td className={styles.numCol}>
+                      {hasData ? (
+                        <span className={`${styles.posBadge} ${idx < 3 ? styles.posBadgePodium : ''}`}>
+                          {idx + 1}
+                        </span>
+                      ) : (
+                        <span className={styles.posBadgeFaded}>—</span>
+                      )}
+                    </td>
+                    <td>
+                      <Link to={`/roster/${row.driver.driver_id}`} className={styles.driverLink}>
+                        <Avatar name={row.driver.display_name} driverId={row.driver.driver_id} size={24} />
+                        <span>{row.driver.display_name}</span>
+                      </Link>
+                    </td>
+                    <td className={styles.numCol}>
+                      {hasData ? <LapTime ms={row.myBest.lap_time_ms} /> : '—'}
+                    </td>
+                    <td className={`${styles.numCol} ${gapClass}`}>
+                      {!hasData ? '—' : isRecord ? (
+                        <span className={styles.recordBadge}>★ RECORD</span>
+                      ) : (
+                        <>
+                          {formatGap(deltaMs)}
+                          {deltaPct != null && (
+                            <span className={styles.gapPct}>
+                              {deltaPct > 0 ? '+' : ''}{deltaPct.toFixed(2)}%
+                            </span>
+                          )}
+                        </>
+                      )}
+                    </td>
+                    <td className={styles.numCol}>
+                      {row.daysSinceLastLap === null ? '—' : `${row.daysSinceLastLap}gg fa`}
+                    </td>
+                    <td>
+                      <span className={`${styles.statusBadge} ${statusClass}`}>
+                        {row.readinessStatus}
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+
+        {!raceConfigComplete && (
+          <div className={styles.empty}>
+            Seleziona sim, tracciato e auto per generare il ranking piloti.
           </div>
         )}
       </section>
