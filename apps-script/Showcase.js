@@ -8,13 +8,13 @@
 // ═══════════════════════════════════════════════════════════
 
 function handleShowcaseSummary(payload, ctx) {
-  const drivers = sheetToObjects(SHEETS.DRIVERS);
-  const races = sheetToObjects(SHEETS.RACES);
+  const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
+  const races = getCachedSheetData_(SHEETS.RACES, 900);
   const reports = sheetToObjects(SHEETS.RACE_REPORTS);
   const manualLaps = sheetToObjects(SHEETS.BEST_LAPS);
   const raceResults = sheetToObjects(SHEETS.RACE_RESULTS);
-  const tracks = sheetToObjects(SHEETS.TRACKS);
-  const cars = sheetToObjects(SHEETS.CARS);
+  const tracks =getCachedSheetData_(SHEETS.TRACKS, 21600);
+  const cars = getCachedSheetData_(SHEETS.CARS, 21600);
 
   // Lookup maps per join veloce (case-insensitive)
   const trackById = {};

@@ -21,7 +21,7 @@ function handleRosterList(payload, ctx) {
 
   const includeInactive = payload && payload.includeInactive === true;
 
-  const drivers = sheetToObjects(SHEETS.DRIVERS);
+  const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
 
   const filtered = drivers.filter(d => {
     if (includeInactive) return true;
@@ -58,7 +58,7 @@ function handleRosterGet(payload, ctx) {
   const driverId = payload && payload.driver_id;
   if (!driverId) return fail('driver_id mancante');
 
-  const drivers = sheetToObjects(SHEETS.DRIVERS);
+  const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
   const driver = drivers.find(d => d.driver_id === driverId);
 
   if (!driver) return fail('Pilota non trovato: ' + driverId);
@@ -133,7 +133,7 @@ function testRosterGetOther() {
   const ctx = verifyToken(login.data.token);
 
   // Prendi un driver_id diverso dal tuo
-  const drivers = sheetToObjects(SHEETS.DRIVERS);
+  const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
   const other = drivers.find(d => d.driver_id !== ctx.driver_id && d.status === 'active');
 
   if (!other) {

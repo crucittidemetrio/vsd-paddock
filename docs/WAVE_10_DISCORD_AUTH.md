@@ -192,7 +192,7 @@ function classifyDiscordUser_(discordId, roles, isMember) {
   if (roles.includes(ROLES.ACE)) sims.push('ACE');
 
   // Lookup nel sheet Drivers via discord_id
-  const drivers = sheetToObjects(SHEETS.DRIVERS);
+  const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
   const matched = drivers.find(d => String(d.discord_id || '').trim() === String(discordId));
 
   // Admin/staff sovrascrive Discord

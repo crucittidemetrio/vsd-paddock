@@ -33,7 +33,7 @@ function msToTimeDisplay_(ms) {
  * Costruisce mappa { display_name_lowercase: driver_id } dal tab Drivers.
  */
 function buildDriverNameMap_() {
-  const drivers = sheetToObjects(SHEETS.DRIVERS);
+  const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
   const map = {};
   drivers.forEach(d => {
     if (d.display_name && d.driver_id) {
@@ -516,7 +516,7 @@ function handleRaceResultsImport(payload, ctx) {
     catch (e) { return fail('JSON non valido: ' + e.message); }
   }
 
-  const races = sheetToObjects(SHEETS.RACES);
+  const races = getCachedSheetData_(SHEETS.RACES, 900);
   const race = races.find(r => r.race_id === payload.race_id);
   if (!race) return fail('Gara non trovata: ' + payload.race_id);
 
@@ -669,7 +669,7 @@ function checkAndNotifyIracingPodiums_(raw, race) {
 // ═══════════════════════════════════════════════════════════
 
 function debug_gianlucaMatch() {
-  const drivers = sheetToObjects(SHEETS.DRIVERS);
+  const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
 
   Logger.log('=== Tutti i record con Gianluca/Fabbro ===');
   drivers.forEach(d => {

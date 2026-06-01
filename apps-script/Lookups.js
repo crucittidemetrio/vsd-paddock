@@ -18,7 +18,7 @@ function handleLookupsTracks(payload, ctx) {
   if (!ctx) return fail('Auth richiesto');
 
   const sim = payload && payload.sim;
-  const tracks = sheetToObjects(SHEETS.TRACKS);
+  const tracks =getCachedSheetData_(SHEETS.TRACKS, 21600);
 
   const filtered = tracks.filter(t => {
     if (t.active !== true && t.active !== 'TRUE') return false;
@@ -48,7 +48,7 @@ function handleLookupsCars(payload, ctx) {
   if (!ctx) return fail('Auth richiesto');
 
   const sim = payload && payload.sim;
-  const cars = sheetToObjects(SHEETS.CARS);
+  const cars = getCachedSheetData_(SHEETS.CARS, 21600);
 
   const filtered = cars.filter(c => {
     if (c.active !== true && c.active !== 'TRUE') return false;

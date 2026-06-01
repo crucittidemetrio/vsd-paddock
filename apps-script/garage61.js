@@ -506,6 +506,7 @@ function garage61DraftUnmappedCars_(unmappedCarsSeen, carsRaw) {
   if (draftRows.length > 0) {
     carsSheet.getRange(carsSheet.getLastRow() + 1, 1, draftRows.length, carsHeaders.length)
       .setValues(draftRows);
+      invalidateSheetCache_(SHEETS.CARS);
   }
 
   return { drafted: draftRows.length, draftedList };

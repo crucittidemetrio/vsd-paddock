@@ -382,7 +382,7 @@ function handleDiscordCallback(payload, ctx) {
   // 6b. (Wave 10.2.X) Lookup driver completo dal sheet per popolare display_name/role
   let fullDriver = null;
   if (classification.driver_id) {
-    const drivers = sheetToObjects(SHEETS.DRIVERS);
+    const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
     const found = drivers.find(d => d.driver_id === classification.driver_id);
     if (found) {
       fullDriver = sanitizeDriver(found, 'private');

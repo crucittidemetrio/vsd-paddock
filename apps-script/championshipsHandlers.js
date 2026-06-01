@@ -13,7 +13,7 @@
 function handleChampionshipsList(payload, ctx) {
   if (!ctx) return fail('Auth richiesto');
 
-  let championships = sheetToObjects(SHEETS.CHAMPIONSHIPS);
+  let championships = getCachedSheetData_(SHEETS.CHAMPIONSHIPS, 3600);
 
   if (payload) {
     if (payload.sim)    championships = championships.filter(c => c.sim === payload.sim);
@@ -29,7 +29,7 @@ function handleChampionshipsList(payload, ctx) {
  * Riusato da handleRacesList / handleRacesGet / handleRacesUpcoming per JOIN.
  */
 function getChampionshipNameMap_() {
-  const list = sheetToObjects(SHEETS.CHAMPIONSHIPS);
+  const list = getCachedSheetData_(SHEETS.CHAMPIONSHIPS, 3600);
   const map = {};
   list.forEach(c => { if (c.id) map[c.id] = c.name; });
   return map;

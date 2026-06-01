@@ -220,7 +220,7 @@ function verifyToken(token) {
     // Driver lookup: null per tier='guest' (non corrisponde a un pilota nel sheet)
     let driver = null;
     if (driverId) {
-      const drivers = sheetToObjects(SHEETS.DRIVERS);
+      const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
       driver = drivers.find(d => d.driver_id === driverId) || null;
     }
 
@@ -307,7 +307,7 @@ function debugBestLapsHeaders() {
   });
 }
 function testReadDrivers() {
-  const drivers = sheetToObjects(SHEETS.DRIVERS);
+  const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
   Logger.log(`Trovati ${drivers.length} piloti:`);
   drivers.forEach(d => Logger.log(`  ${d.driver_id}: ${d.display_name} (${d.role})`));
 }

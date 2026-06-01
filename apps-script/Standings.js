@@ -16,12 +16,12 @@ function handleStandingsByChampionship(payload, ctx) {
   if (!championshipId) return fail('championship_id mancante');
 
   // 1. Campionato
-  const championships = sheetToObjects(SHEETS.CHAMPIONSHIPS);
+  const championships = getCachedSheetData_(SHEETS.CHAMPIONSHIPS, 3600);
   const championship = championships.find(c => c.id === championshipId);
   if (!championship) return fail('Campionato non trovato: ' + championshipId);
 
   // 2. Round del campionato
-  const allRaces = sheetToObjects(SHEETS.RACES);
+  const allRaces = getCachedSheetData_(SHEETS.RACES, 900);
   const rounds = allRaces
     .filter(r =>
       r.championship_id === championshipId &&
@@ -72,7 +72,7 @@ function handleStandingsByChampionship(payload, ctx) {
     roundRaceIds[r.race_id] && r.session_type === 'race'
   );
 
-  const drivers = sheetToObjects(SHEETS.DRIVERS);
+  const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
   const driverMap = {};
   drivers.forEach(d => { driverMap[d.driver_id] = d; });
 
@@ -182,7 +182,7 @@ function parseLmuStandingsJson_(rawJson) {
   if (!Array.isArray(data)) throw new Error('Atteso array di carClass groups');
   if (data.length === 0) throw new Error('Array vuoto');
 
-  const drivers = sheetToObjects(SHEETS.DRIVERS);
+  const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
   const driverNameMap = buildDriverNameMap_();
   const driverInfoMap = {};
   drivers.forEach(d => { driverInfoMap[d.driver_id] = d; });
@@ -287,6 +287,7 @@ function handleChampionshipsImportStandings(payload, ctx) {
   if (foundRow === -1) return fail('Campionato non trovato: ' + payload.championship_id);
 
   sheet.getRange(foundRow, jsonIdx + 1).setValue(jsonStr);
+  invalidateSheetCache_(SHEETS.CHAMPIONSHIPS);
 
   const totalDrivers = parsed.classes.reduce((sum, c) => sum + c.standings.length, 0);
   const matchedVsd = parsed.classes.reduce(

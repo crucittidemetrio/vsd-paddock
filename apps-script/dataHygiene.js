@@ -26,7 +26,7 @@
 function auditOrphanRaceIds() {
   Logger.log('[AUDIT race_id orfani] avviato...');
 
-  const racesRaw = sheetToObjects(SHEETS.RACES);
+  const racesRaw = getCachedSheetData_(SHEETS.RACES, 900);
   const existingRaceIds = new Set(
     racesRaw.map(r => String(r.race_id || '').trim()).filter(Boolean)
   );

@@ -32,7 +32,7 @@ function handleRacesList(payload, ctx) {
   if (!ctx) return fail('Auth richiesto');
 
   const statusFilter = payload && payload.status;
-  const races = sheetToObjects(SHEETS.RACES);
+  const races = getCachedSheetData_(SHEETS.RACES, 900);
 
   const filtered = statusFilter
     ? races.filter(r => r.status === statusFilter)
@@ -71,7 +71,7 @@ function handleRacesUpcoming(payload, ctx) {
   if (!ctx) return fail('Auth richiesto');
 
   const now = new Date();
-  const races = sheetToObjects(SHEETS.RACES);
+  const races = getCachedSheetData_(SHEETS.RACES, 900);
 
   const upcoming = races
     .filter(r => {
@@ -106,7 +106,7 @@ function handleRacesGet(payload, ctx) {
   const raceId = payload && payload.race_id;
   if (!raceId) return fail('race_id mancante');
 
-  const races = sheetToObjects(SHEETS.RACES);
+  const races = getCachedSheetData_(SHEETS.RACES, 900);
   const race = races.find(r => r.race_id === raceId);
 
   if (!race) return fail('Gara non trovata: ' + raceId);
@@ -248,6 +248,7 @@ function handleRacesUpdatePoster(payload, ctx) {
   if (foundRow === -1) return fail('Gara non trovata: ' + payload.race_id);
 
   sheet.getRange(foundRow, posterIdx + 1).setValue(posterUrl);
+  invalidateSheetCache_(SHEETS.RACES);
 
   return ok({
     race_id: payload.race_id,

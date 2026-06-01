@@ -175,7 +175,7 @@ function handleLapsRaceLaps(payload, ctx) {
   if (!ctx) return fail('Auth richiesto');
 
   const results = sheetToObjects(SHEETS.RACE_RESULTS);
-  const races = sheetToObjects(SHEETS.RACES);
+  const races = getCachedSheetData_(SHEETS.RACES, 900);
   const carMatchMap = buildCarNameToIdMap_();
 
   // race_id -> race_name lookup
@@ -226,7 +226,7 @@ function handleLapsRaceLaps(payload, ctx) {
  * Difensivo: prova più nomi di campo per robustezza.
  */
 function buildCarNameToIdMap_() {
-  const cars = sheetToObjects(SHEETS.CARS);
+  const cars = getCachedSheetData_(SHEETS.CARS, 21600);
   const map = {};
   cars.forEach(c => {
     if (!c.car_id) return;
