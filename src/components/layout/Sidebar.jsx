@@ -22,6 +22,7 @@ const FUTURE_ITEMS = [
 ];
 
 const ADMIN_ITEMS = [
+  { to: '/admin/team-dashboard', label: 'Team Dashboard', icon: '📊' },
  { to: '/admin/import-results', label: 'Import Risultati', icon: '📥' },
   { to: '/admin/import-standings', label: 'Import Standings', icon: '🏆' },
   { to: '/admin/garage61-sync', label: 'Sync Garage61', icon: '⚡' },

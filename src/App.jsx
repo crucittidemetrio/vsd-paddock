@@ -21,6 +21,7 @@ import ChampionshipsList from './pages/ChampionshipsList';
 import ChampionshipDetail from './pages/ChampionshipDetail';
 import AdminImportResults from './pages/AdminImportResults';
 import AdminImportStandings from './pages/AdminImportStandings';
+import AdminTeamDashboard from './pages/AdminTeamDashboard';
 import AdminGarage61Sync from './pages/AdminGarage61Sync';
 import AdminPosters from './pages/AdminPosters';
 import LapsDrilldown from './pages/LapsDrilldown';
@@ -64,6 +65,10 @@ export default function App() {
             <Route
               path="/admin/import-results"
               element={<AdminRoute><AdminImportResults /></AdminRoute>}
+            />
+            <Route
+              path="/admin/team-dashboard"
+              element={<AdminRoute><AdminTeamDashboard /></AdminRoute>}
             />
             <Route
               path="/admin/import-standings"
