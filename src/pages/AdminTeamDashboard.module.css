@@ -228,3 +228,189 @@
   font-size: 13px;
   color: var(--vsd-red, #ef3340);
 }
+
+/* ═══════════════════════════════════════ Driver selector ═══════ */
+
+.driverSelector {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 24px;
+  max-width: 400px;
+}
+
+.selectLabel {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.select {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  border-radius: 6px;
+  padding: 10px 14px;
+  color: inherit;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.select:hover,
+.select:focus {
+  border-color: var(--vsd-cyan, #00d4ff);
+  outline: none;
+}
+
+/* ═══════════════════════════════════════ Driver header ═══════ */
+
+.driverHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  background: rgba(0, 212, 255, 0.05);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+
+.driverHeaderInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.driverHeaderName {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--vsd-cyan, #00d4ff);
+  text-decoration: none;
+  letter-spacing: 0.5px;
+}
+
+.driverHeaderName:hover {
+  text-decoration: underline;
+}
+
+.driverHeaderMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.metaDot {
+  opacity: 0.4;
+}
+
+.recordsCount {
+  color: var(--vsd-orange, #f5a623);
+  font-weight: 600;
+}
+
+/* ═══════════════════════════════════════ Trend table ═══════ */
+
+.trendTable {
+  width: 100%;
+  border-collapse: collapse;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.trendTable thead tr {
+  background: rgba(0, 212, 255, 0.08);
+  border-bottom: 1px solid rgba(0, 212, 255, 0.2);
+}
+
+.trendTable th {
+  padding: 10px 12px;
+  text-align: left;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 600;
+}
+
+.trendTable tbody tr {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background 0.15s;
+}
+
+.trendTable tbody tr:hover {
+  background: rgba(0, 212, 255, 0.04);
+}
+
+.trendTable tbody tr:last-child {
+  border-bottom: none;
+}
+
+.trendTable td {
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.numCol {
+  text-align: right;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.gapRecord {
+  color: var(--vsd-orange, #f5a623);
+  font-weight: 700;
+}
+
+.gapGood {
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.gapMid {
+  color: var(--vsd-orange, #f5a623);
+}
+
+.gapBad {
+  color: var(--vsd-red, #ef3340);
+  font-weight: 600;
+}
+
+.gapPct {
+  display: block;
+  font-size: 11px;
+  opacity: 0.7;
+  font-weight: 400;
+  margin-top: 2px;
+}
+
+.recordBadge {
+  background: var(--vsd-orange, #f5a623);
+  color: #000;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.holderLink {
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.holderLink:hover {
+  color: var(--vsd-cyan, #00d4ff);
+  text-decoration: underline;
+}
+
+.holderSelf {
+  color: rgba(255, 255, 255, 0.3);
+}
