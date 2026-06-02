@@ -306,18 +306,24 @@ export default function RaceDetail() {
         </section>
       )}
 
-      {statusKey === 'completed' && classification.length > 0 && (
+      {statusKey === 'completed' && (
         <section className="rd-section">
           <h2 className="rd-section-title">Race Reports</h2>
           <RequireTier
             minTier="pilot_vsd"
             fallback={<LoginPrompt feature="i Race Reports dei piloti" />}
           >
-            <div className="rd-reports-list">
-              {classification.map(r => (
-                <ReportCard key={r.report_id || r.driver_id} report={r} drivers={drivers} />
-              ))}
-            </div>
+            {classification.length > 0 ? (
+              <div className="rd-reports-list">
+                {classification.map(r => (
+                  <ReportCard key={r.report_id || r.driver_id} report={r} drivers={drivers} />
+                ))}
+              </div>
+            ) : (
+              <div style={{ color: 'rgba(255,255,255,0.4)', padding: '16px 0' }}>
+                Nessun report pubblicato per questa gara.
+              </div>
+            )}
           </RequireTier>
         </section>
       )}
