@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /reports
+Disallow: /training
+Disallow: /academy
+Disallow: /endurance
+
+Sitemap: https://vsd-paddock.vercel.app/sitemap.xml
