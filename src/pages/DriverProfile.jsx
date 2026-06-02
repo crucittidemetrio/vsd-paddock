@@ -185,7 +185,11 @@ export default function DriverProfile() {
           />
           <div className="hero-info">
             <div className="hero-meta-line">
-              <span className="hero-id">{driver.driver_id}</span>
+              <span className="hero-id">
+  {driver.race_number != null && driver.race_number !== ''
+    ? `#${driver.race_number}`
+    : driver.driver_id}
+</span>
               <span className="hero-divider" />
               <StatusDot status={driver.status} withLabel />
               {isStaff && (
