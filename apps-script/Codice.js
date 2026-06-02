@@ -72,9 +72,22 @@ function doPost(e) {
     const handler = ACTIONS[action];
     if (!handler) return jsonResponse({ ok: false, error: 'Action sconosciuta: ' + action });
 
-    const ctx = token ? verifyToken(token) : null;
+   // Wave 10.3 — anonymous è un tier valido per endpoint pubblici.
+    // Gli handler che devono restare privati controllano ctx.driver_id o ctx.tier.
+    let ctx = token ? verifyToken(token) : null;
+    if (!ctx) {
+      ctx = {
+        driver_id: null,
+        role: '',
+        tier: 'anonymous',
+        sims: [],
+        isStaff: false,
+        isAdmin: false,
+      };
+    }
+
     const result = handler(payload, ctx);
-    return jsonResponse(result);
+    return jsonResponse(result); 
 
   } catch (err) {
     return jsonResponse({ ok: false, error: err.message || 'Errore interno' });

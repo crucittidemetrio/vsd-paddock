@@ -17,9 +17,13 @@ import {
 import { ROLES, DRIVER_STATUS, SESSION_TYPE_LABELS } from '../utils/constants';
 import './Landing.css';
 import './Page.css';
+import LandingPublic from './LandingPublic';
 
 export default function Landing() {
-  const { driver, isStaff } = useAuth();
+  const { driver, isStaff, isVsdPilot } = useAuth();
+
+  // Visitatori anonimi e guest → showcase pubblico
+  if (!isVsdPilot) return <LandingPublic />;
   const { data: upcoming } = useUpcomingRaces();
   const { data: myLaps } = useBestLaps({ driver_id: driver?.driver_id });
   const { data: allRaces } = useRaces();

@@ -33,7 +33,7 @@ function filterReportsByPrivacy(reports, ctx) {
  * @returns {Object} { ok, data: { reports: [...], count } }
  */
 function handleReportsList(payload, ctx) {
-  if (!ctx) return fail('Auth richiesto');
+  if (!ctx.driver_id) return fail('Auth richiesto');
 
   const raceId = payload && payload.race_id;
   const driverId = payload && payload.driver_id;
@@ -67,7 +67,7 @@ function handleReportsList(payload, ctx) {
  * @returns {Object} { ok, data: { reports: [...], count } }
  */
 function handleReportsRecent(payload, ctx) {
-  if (!ctx) return fail('Auth richiesto');
+  if (!ctx.driver_id) return fail('Auth richiesto');
 
   const limit = (payload && payload.limit) || 5;
 

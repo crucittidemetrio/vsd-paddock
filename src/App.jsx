@@ -2,8 +2,9 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import AppShell from './components/layout/AppShell';
-import ProtectedRoute from './components/layout/ProtectedRoute';
 import AdminRoute from './components/layout/AdminRoute';
+import RequireTier from './components/auth/RequireTier';
+import LoginPrompt from './components/auth/LoginPrompt';
 
 // ── Eager: entry point + navigazione primaria ─────────────────
 import Login from './pages/Login';
@@ -33,7 +34,6 @@ const AdminPosters        = lazy(() => import('./pages/AdminPosters'));
 
 import './App.css';
 
-// Fallback minimale durante il caricamento di una chunk lazy
 function PageLoader() {
   return (
     <div style={{
@@ -58,34 +58,61 @@ export default function App() {
       <BrowserRouter>
         <Suspense fallback={<PageLoader />}>
           <Routes>
-            {/* Pubbliche */}
+            {/* ════ Standalone (senza AppShell) ════ */}
             <Route path="/login" element={<Login />} />
-            <Route path="/joinus" element={<JoinUs />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
 
-            {/* Protette: usano lo shell con sidebar+topbar */}
-            <Route element={<ProtectedRoute><AppShell /></ProtectedRoute>}>
+            {/* ════ Dentro AppShell — sidebar + topbar ════ */}
+            <Route element={<AppShell />}>
+
+              {/* ── Pubbliche: accessibili a tutti i tier ── */}
               <Route path="/" element={<Landing />} />
+              <Route path="/joinus" element={<JoinUs />} />
               <Route path="/roster" element={<Roster />} />
               <Route path="/roster/:driverId" element={<DriverProfile />} />
               <Route path="/race" element={<Race />} />
               <Route path="/race/:raceId" element={<RaceDetail />} />
               <Route path="/calendar" element={<Calendar />} />
-              <Route path="/reports" element={<Reports />} />
               <Route path="/laps" element={<BestLaps />} />
               <Route path="/laps/:sim/:track/:category" element={<LapsDrilldown />} />
-              <Route path="/training" element={<Training />} />
-              <Route path="/academy" element={<Academy />} />
-              <Route path="/endurance" element={<Endurance />} />
-
-              {/* Championships — Wave 9.9 */}
               <Route path="/championships" element={<ChampionshipsList />} />
+              <Route path="/championships/:championshipId" element={<ChampionshipDetail />} />
+
+              {/* ── Private: richiede pilot_vsd o superiore ── */}
               <Route
-                path="/championships/:championshipId"
-                element={<ChampionshipDetail />}
+                path="/reports"
+                element={
+                  <RequireTier minTier="pilot_vsd" fallback={<LoginPrompt feature="i report di gara" />}>
+                    <Reports />
+                  </RequireTier>
+                }
+              />
+              <Route
+                path="/training"
+                element={
+                  <RequireTier minTier="pilot_vsd" fallback={<LoginPrompt feature="il modulo Training" />}>
+                    <Training />
+                  </RequireTier>
+                }
+              />
+              <Route
+                path="/academy"
+                element={
+                  <RequireTier minTier="pilot_vsd" fallback={<LoginPrompt feature="VSD Academy" />}>
+                    <Academy />
+                  </RequireTier>
+                }
+              />
+              <Route
+                path="/endurance"
+                element={
+                  <RequireTier minTier="pilot_vsd" fallback={<LoginPrompt feature="il modulo Endurance" />}>
+                    <Endurance />
+                  </RequireTier>
+                }
               />
 
-              {/* Admin only — Wave 9.8 + 9.10 */}
+              {/* ── Admin/Staff: AdminRoute è già staff-aware ── */}
               <Route
                 path="/admin/import-results"
                 element={<AdminRoute><AdminImportResults /></AdminRoute>}

@@ -19,16 +19,24 @@ function getAuthContext() {
     const savedTier = localStorage.getItem(STORAGE.TIER);
     const savedDriver = localStorage.getItem(STORAGE.DRIVER);
     const driver = savedDriver ? JSON.parse(savedDriver) : null;
-    if (!savedTier && !driver) return null;
+    // Wave 10.3 — anonymous è un tier valido: sempre ritorna un ctx,
+    // così il backend può servire dati pubblici a visitatori non loggati.
+    const tier = savedTier || TIERS.ANONYMOUS;
     return {
       driver_id: driver?.driver_id || null,
       role: driver?.role || null,
-      tier: savedTier || null,
-      isStaff: savedTier === TIERS.STAFF || savedTier === TIERS.ADMIN,
-      isAdmin: savedTier === TIERS.ADMIN,
+      tier,
+      isStaff: tier === TIERS.STAFF || tier === TIERS.ADMIN,
+      isAdmin: tier === TIERS.ADMIN,
     };
   } catch {
-    return null;
+    return {
+      driver_id: null,
+      role: null,
+      tier: TIERS.ANONYMOUS,
+      isStaff: false,
+      isAdmin: false,
+    };
   }
 }
 
@@ -37,8 +45,11 @@ function getAuthContext() {
  * I componenti useranno hooks React Query, che gestiscono error/loading.
  */
 async function call(action, payload = {}) {
+  console.log('[API CALL]', action, payload);
   const ctx = getAuthContext();
+  console.log('[API CTX]', ctx);
   const res = await callApi(action, payload, ctx);
+  console.log('[API RES]', action, res);
   if (!res.ok) {
     throw new Error(res.error || `API error: ${action}`);
   }

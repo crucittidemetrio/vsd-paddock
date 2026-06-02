@@ -3,11 +3,7 @@
 // ═══════════════════════════════════════════════════════════
 
 function handleRaceResultsList(payload, ctx) {
-  if (!ctx || !ctx.driver_id) {
-    throw new Error('Autenticazione richiesta');
-  }
-
-  const all = sheetToObjects(SHEETS.RACE_RESULTS);
+   const all = sheetToObjects(SHEETS.RACE_RESULTS);
 
   const raceIdFilter = payload && payload.race_id ? String(payload.race_id) : null;
   const sessionFilter = payload && payload.session_type ? String(payload.session_type) : null;

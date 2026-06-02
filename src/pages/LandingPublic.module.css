@@ -1,0 +1,304 @@
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 32px 24px 64px;
+}
+
+.loading {
+  padding: 96px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+/* ═══════════════════════════════════════ HERO ═══════ */
+
+.hero {
+  text-align: center;
+  padding: 56px 16px 48px;
+  margin-bottom: 32px;
+}
+
+.heroLogo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+
+.heroTitle {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: clamp(36px, 6vw, 56px);
+  letter-spacing: 4px;
+  margin: 0 0 8px 0;
+  color: var(--vsd-cyan, #00d4ff);
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.heroTagline {
+  font-size: 16px;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin: 0 0 20px 0;
+}
+
+.heroSims {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 32px;
+  flex-wrap: wrap;
+}
+
+.heroActions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ═══════════════════════════════════════ Buttons ═══════ */
+
+.btn {
+  display: inline-block;
+  padding: 12px 24px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.85);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  border-color: rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.btnPrimary {
+  background: #5865F2;
+  border-color: #5865F2;
+  color: white;
+}
+
+.btnPrimary:hover {
+  background: #4752c4;
+  border-color: #4752c4;
+  box-shadow: 0 4px 12px rgba(88, 101, 242, 0.3);
+}
+
+.btnAccent {
+  background: var(--vsd-cyan, #00d4ff);
+  border-color: var(--vsd-cyan, #00d4ff);
+  color: #060d1f;
+}
+
+.btnAccent:hover {
+  background: #00b8e0;
+  border-color: #00b8e0;
+  box-shadow: 0 4px 12px rgba(0, 212, 255, 0.3);
+}
+
+.btnGhost {
+  background: transparent;
+  border-color: rgba(0, 212, 255, 0.4);
+  color: var(--vsd-cyan, #00d4ff);
+}
+
+.btnGhost:hover {
+  background: rgba(0, 212, 255, 0.08);
+  border-color: var(--vsd-cyan, #00d4ff);
+}
+
+/* ═══════════════════════════════════════ Sections ═══════ */
+
+.section {
+  margin-bottom: 40px;
+}
+
+.sectionTitle {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 24px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin: 0 0 20px 0;
+  color: var(--vsd-cyan, #00d4ff);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.sectionCount {
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 400;
+  text-transform: none;
+}
+
+/* ═══════════════════════════════════════ Next Race ═══════ */
+
+.nextRaceCard {
+  padding: 24px 28px;
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.08) 0%, rgba(245, 166, 35, 0.04) 100%);
+  border: 1px solid rgba(0, 212, 255, 0.25);
+  border-radius: 10px;
+}
+
+.nextRaceMeta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.nextRaceDate {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--vsd-orange, #f5a623);
+  letter-spacing: 0.5px;
+}
+
+.nextRaceName {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 28px;
+  letter-spacing: 1px;
+  margin: 0 0 4px 0;
+  color: white;
+}
+
+.nextRaceTrack {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* ═══════════════════════════════════════ Roster ═══════ */
+
+.rosterGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 16px;
+}
+
+.rosterCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.rosterCard:hover {
+  border-color: rgba(0, 212, 255, 0.3);
+  background: rgba(0, 212, 255, 0.04);
+}
+
+.rosterName {
+  font-size: 13px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.3;
+}
+
+/* ═══════════════════════════════════════ Podiums ═══════ */
+
+.podiumList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.podiumItem {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.podiumItem:last-child {
+  border-bottom: none;
+}
+
+.podiumMedal {
+  font-size: 28px;
+  flex-shrink: 0;
+}
+
+.podiumInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.podiumRace {
+  font-weight: 600;
+  font-size: 15px;
+  color: white;
+  margin-bottom: 4px;
+}
+
+.podiumDriver {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.65);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.podiumDot {
+  opacity: 0.4;
+}
+
+.podiumDate {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+}
+
+/* ═══════════════════════════════════════ CTA ═══════ */
+
+.ctaSection {
+  text-align: center;
+  padding: 48px 24px;
+  margin-top: 32px;
+  background: linear-gradient(135deg, rgba(245, 166, 35, 0.04) 0%, rgba(0, 212, 255, 0.04) 100%);
+  border: 1px solid rgba(245, 166, 35, 0.15);
+  border-radius: 12px;
+}
+
+.ctaTitle {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 32px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  margin: 0 0 12px 0;
+  color: var(--vsd-orange, #f5a623);
+}
+
+.ctaText {
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0 auto 24px;
+  max-width: 540px;
+  line-height: 1.6;
+}
+
+.ctaActions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
