@@ -6,6 +6,7 @@ import Logo from '../components/shared/Logo';
 import totalPaintLogo from '../assets/total-paint-logo.webp';
 
 const DISCORD_INVITE = 'https://discord.gg/hdt8uHEfsy';
+const JOIN_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScA6mFauERcpKetn0T58LMPioRZHJ1W5PQpl9e9ytV5QB31Tw/viewform';
 
 // Funzione per formattare la data della gara
 function formatRaceDate(iso) {
@@ -34,10 +35,8 @@ function formatDuration(minutes) {
 }
 
 export default function JoinUs() {
- const { data, isLoading } = useShowcase();
-  
-  // Debug per vedere cosa arriva dalle API
-  
+  const { data, isLoading } = useShowcase();
+
   if (isLoading) {
     return <div className="joinus-loading">Caricamento in corso...</div>;
   }
@@ -59,11 +58,9 @@ export default function JoinUs() {
       <section className="joinus-hero">
         <div className="joinus-hero-glow" />
         <div className="joinus-hero-content">
-  <div className="joinus-hero-logo-wrap">
-    <Logo size={140} withWordmark />
-  </div>
-  <div className="joinus-hero-eyebrow">...</div>
-  ...
+          <div className="joinus-hero-logo-wrap">
+            <Logo size={140} withWordmark />
+          </div>
           <h1 className="joinus-hero-title">
             La community italiana<br />
             di <span className="joinus-hero-accent">sim racing</span>
@@ -76,8 +73,7 @@ export default function JoinUs() {
             <a href="#unisciti" className="joinus-cta-primary">
               Unisciti al team
             </a>
-            {/* CORRETTO: Aggiunto il tag <a> mancante */}
-            <a 
+            <a
               href={DISCORD_INVITE}
               target="_blank"
               rel="noopener noreferrer"
@@ -97,26 +93,26 @@ export default function JoinUs() {
         <Stat value={data?.stats?.verified_laps_count} label="Best lap verificate" />
       </section>
 
-{/* PARTNER UFFICIALE */}
-        <section className="joinus-section">
-          <div className="joinus-section-head">
-            <div className="joinus-section-eyebrow">PARTNER UFFICIALE</div>
-            <h2 className="joinus-section-title">Sostenuti da</h2>
-          </div>
-          <a 
-            href="https://www.totalpaint.it"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="joinus-partner-card"
-            title="Total Paint — Sponsor ufficiale VSD"
-          >
-            <img
-              src={totalPaintLogo}
-              alt="Total Paint"
-              className="joinus-partner-logo"
-            />
-          </a>
-        </section>
+      {/* PARTNER UFFICIALE */}
+      <section className="joinus-section">
+        <div className="joinus-section-head">
+          <div className="joinus-section-eyebrow">PARTNER UFFICIALE</div>
+          <h2 className="joinus-section-title">Sostenuti da</h2>
+        </div>
+        <a
+          href="https://www.totalpaint.it"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="joinus-partner-card"
+          title="Total Paint — Sponsor ufficiale VSD"
+        >
+          <img
+            src={totalPaintLogo}
+            alt="Total Paint"
+            className="joinus-partner-logo"
+          />
+        </a>
+      </section>
 
       {/* TOP PILOTI */}
       {data?.topDrivers?.length > 0 && (
@@ -208,9 +204,25 @@ export default function JoinUs() {
         </div>
 
         <div className="joinus-steps">
-          <Step n={1} title="Entra nel server Discord VSD">
-            {/* CORRETTO: Aggiunto il tag <a> mancante */}
-            <a 
+          <Step n={1} title="Compila il form di candidatura">
+            <p className="joinus-step-text">
+              Ti chiederà nome, esperienza, sim preferenze e una breve motivazione.
+              Tempo richiesto: 3-5 minuti.
+            </p>
+            <a
+              href={JOIN_FORM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="joinus-discord-btn"
+            >
+              Apri il form ↗
+            </a>
+          </Step>
+          <Step n={2} title="Entra nel server Discord VSD">
+            <p className="joinus-step-text">
+              Lo staff ti risponderà direttamente in DM. È utile essere già sul server per accelerare i tempi.
+            </p>
+            <a
               href={DISCORD_INVITE}
               target="_blank"
               rel="noopener noreferrer"
@@ -219,16 +231,11 @@ export default function JoinUs() {
               Apri invito Discord ↗
             </a>
           </Step>
-          <Step n={2} title="Vai al canale #accesso-come-pilota-vsd" />
-          <Step n={3} title="Apri un nuovo post seguendo questo template:">
-            <ul className="joinus-template">
-              <li>Nome e Cognome</li>
-              <li>Categoria preferita (LMGT3, Hypercar, ecc.)</li>
-              <li>Esperienza nel sim racing</li>
-              <li>Perché vuoi entrare nel Team VSD</li>
-            </ul>
+          <Step n={3} title="Attendi la valutazione dello staff">
+            <p className="joinus-step-text">
+              Solitamente entro 48-72 ore. Se selezionato, riceverai accesso al server come pilota VSD e potrai iniziare a correre con noi.
+            </p>
           </Step>
-          <Step n={4} title="Lo staff valuterà la richiesta e ti risponderà direttamente nel post" />
         </div>
 
         <div className="joinus-requirements">
