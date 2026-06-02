@@ -15,9 +15,11 @@ const SHEETS = {
   RACES: 'Races',
   RACE_REPORTS: 'RaceReports',
   AUDIT_LOG: 'AuditLog',
-  RACE_RESULTS: 'RaceResults',
+ RACE_RESULTS: 'RaceResults',
   CHAMPIONSHIPS: 'Championships',
-
+  ENDURANCE_AUDITIONS: 'EnduranceAuditions',
+  ENDURANCE_PARTICIPANTS: 'EnduranceParticipants',
+  ENDURANCE_AUDITION_STINTS: 'EnduranceAuditionStints',
 };
 
 // Token TTL: 7 giorni
@@ -174,6 +176,12 @@ const ACTIONS = {
 
   // Showcase (pubblico, no auth)
   'showcase.summary': handleShowcaseSummary,
+
+  // Endurance Auditions (Phase 1A)
+  'endurance.auditions.list': handleEnduranceAuditionsList,
+  'endurance.auditions.get': handleEnduranceAuditionsGet,
+  'endurance.auditions.create': handleEnduranceAuditionsCreate,
+  'endurance.auditions.update': handleEnduranceAuditionsUpdate,
 };
 
 // ═══════════════════════════════════════════════════════════
