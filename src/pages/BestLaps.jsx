@@ -30,7 +30,7 @@ const SEASON_OPTIONS = [
 ];
 
 export default function BestLaps() {
-  const { driver } = useAuth();
+  const { driver, isVsdPilot } = useAuth();
   const [viewMode, setViewMode] = useState('leaderboard');
   const [seasonFilter, setSeasonFilter] = useState('season2026');
   const [simFilter, setSimFilter] = useState('all');
@@ -104,7 +104,7 @@ export default function BestLaps() {
 
       <div className="laps-top-bar">
         <div className="view-switch">
-          {VIEW_MODES.map(v => (
+          {VIEW_MODES.filter(v => v.id !== 'mine' || isVsdPilot).map(v => (
             <button
               key={v.id}
               className={`view-switch-btn ${viewMode === v.id ? 'is-active' : ''}`}

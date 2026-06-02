@@ -7,6 +7,8 @@ import { formatTrackInfo, formatCarInfo } from '../utils/format';
 import RaceResultsSection from '../components/race/RaceResultsSection';
 import './Page.css';
 import './RaceDetail.css';
+import RequireTier from '../components/auth/RequireTier';
+import LoginPrompt from '../components/auth/LoginPrompt';
 
 const STATUS_LABELS = {
   scheduled: 'PROGRAMMATA',
@@ -307,11 +309,16 @@ export default function RaceDetail() {
       {statusKey === 'completed' && classification.length > 0 && (
         <section className="rd-section">
           <h2 className="rd-section-title">Race Reports</h2>
-          <div className="rd-reports-list">
-            {classification.map(r => (
-              <ReportCard key={r.report_id || r.driver_id} report={r} drivers={drivers} />
-            ))}
-          </div>
+          <RequireTier
+            minTier="pilot_vsd"
+            fallback={<LoginPrompt feature="i Race Reports dei piloti" />}
+          >
+            <div className="rd-reports-list">
+              {classification.map(r => (
+                <ReportCard key={r.report_id || r.driver_id} report={r} drivers={drivers} />
+              ))}
+            </div>
+          </RequireTier>
         </section>
       )}
     </div>
