@@ -138,9 +138,12 @@ export default function LandingPublic() {
         <div className={styles.rosterGrid}>
           {activeRoster.map(d => (
             <div key={d.driver_id} className={styles.rosterCard}>
-              <Avatar name={d.display_name} driverId={d.driver_id} size={56} />
-              <div className={styles.rosterName}>{d.display_name}</div>
-            </div>
+  <Avatar name={d.display_name} driverId={d.driver_id} size={56} />
+  {d.race_number != null && d.race_number !== '' && (
+    <div className={styles.rosterNumber}>#{d.race_number}</div>
+  )}
+  <div className={styles.rosterName}>{d.display_name}</div>
+</div>
           ))}
         </div>
       </section>

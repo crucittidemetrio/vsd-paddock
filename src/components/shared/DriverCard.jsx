@@ -29,7 +29,11 @@ export default function DriverCard({ driver, compact = false }) {
           size={compact ? 44 : 56}
         />
         <div className="driver-card-id-block">
-          <div className="driver-card-id">{driver.driver_id}</div>
+          <div className="driver-card-id">
+  {driver.race_number != null && driver.race_number !== ''
+    ? `#${driver.race_number}`
+    : driver.driver_id}
+</div>
           <StatusDot status={driver.status} />
         </div>
       </div>

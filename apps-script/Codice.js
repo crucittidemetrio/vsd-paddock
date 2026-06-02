@@ -30,7 +30,7 @@ const TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const DRIVER_PUBLIC_FIELDS = [
   'driver_id', 'display_name', 'role', 'status', 'join_date',
   'nationality', 'preferred_sims', 'specialties', 'avatar_url', 'bio',
-  'iracing_id', 'lmu_id', 'ace_id', 'discord_id'
+  'iracing_id', 'lmu_id', 'ace_id', 'discord_id', 'race_number'
 ];
 
 const DRIVER_PRIVATE_EXTRA_FIELDS = [

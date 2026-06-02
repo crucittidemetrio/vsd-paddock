@@ -204,6 +204,16 @@
   background: rgba(0, 212, 255, 0.04);
 }
 
+.rosterNumber {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--vsd-cyan, #00d4ff);
+  text-align: center;
+  letter-spacing: 1px;
+  margin-top: 4px;
+}
+
 .rosterName {
   font-size: 13px;
   text-align: center;
