@@ -86,10 +86,33 @@
   font-weight: var(--fw-medium);
   transition: all var(--t-fast);
 }
-
+ 
 .logout-btn:hover {
   border-color: var(--vsd-red);
   color: var(--vsd-red);
+}
+
+.login-btn {
+  background: var(--vsd-cyan, #00d4ff);
+  color: #060d1f;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s, background 0.15s;
+  white-space: nowrap;
+}
+
+.login-btn:hover {
+  background: #00b8e0;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 212, 255, 0.3);
 }
 
 .topbar-left {

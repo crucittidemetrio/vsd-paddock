@@ -5,16 +5,22 @@ import Logo from '../shared/Logo';
 import totalPaintLogo from '../../assets/total-paint-logo.webp';
 import './Sidebar.css';
 
-const ITEMS = [
+// Voci pubbliche — visibili a tutti i tier (anonymous incluso)
+const PUBLIC_ITEMS = [
   { to: '/', label: LABELS.nav_landing, icon: '◉', exact: true },
   { to: '/roster', label: LABELS.nav_roster, icon: '◢' },
   { to: '/race', label: LABELS.nav_race, icon: '◤' },
   { to: '/calendar', label: 'Calendario', icon: '📅' },
   { to: '/championships', label: 'Campionati', icon: '🏆' },
-  { to: '/reports', label: LABELS.nav_reports, icon: '◣' },
   { to: '/laps', label: LABELS.nav_laps, icon: '◈' },
 ];
 
+// Voci pilota — visibili solo a pilot_vsd, staff, admin
+const PILOT_ITEMS = [
+  { to: '/reports', label: LABELS.nav_reports, icon: '◣' },
+];
+
+// Voci future "soon" — solo pilota loggato
 const FUTURE_ITEMS = [
   { to: '/training', label: LABELS.nav_training, icon: '◆' },
   { to: '/academy', label: LABELS.nav_academy, icon: '◇' },
@@ -23,14 +29,30 @@ const FUTURE_ITEMS = [
 
 const ADMIN_ITEMS = [
   { to: '/admin/team-dashboard', label: 'Team Dashboard', icon: '📊' },
- { to: '/admin/import-results', label: 'Import Risultati', icon: '📥' },
+  { to: '/admin/import-results', label: 'Import Risultati', icon: '📥' },
   { to: '/admin/import-standings', label: 'Import Standings', icon: '🏆' },
   { to: '/admin/garage61-sync', label: 'Sync Garage61', icon: '⚡' },
   { to: '/admin/posters', label: 'Race Posters', icon: '🖼️' },
 ];
 
+function renderNavItem(item, onMobileClose, extraClass = '') {
+  return (
+    <NavLink
+      key={item.to}
+      to={item.to}
+      end={item.exact}
+      onClick={onMobileClose}
+      className={({ isActive }) => `nav-item${extraClass ? ' ' + extraClass : ''}${isActive ? ' is-active' : ''}`}
+    >
+      <span className="nav-icon">{item.icon}</span>
+      <span className="nav-label">{item.label}</span>
+      {extraClass.includes('is-soon') && <span className="nav-tag">soon</span>}
+    </NavLink>
+  );
+}
+
 export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {} }) {
-  const { isStaff, isAdmin } = useAuth();
+  const { isVsdPilot, isStaff } = useAuth();
 
   return (
     <aside className={`sidebar${isMobileOpen ? ' is-mobile-open' : ''}`}>
@@ -40,55 +62,27 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
 
       <nav className="sidebar-nav">
         <div className="nav-section-label">Operations</div>
-        {ITEMS.map(item => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.exact}
-            onClick={onMobileClose}
-            className={({ isActive }) => `nav-item${isActive ? ' is-active' : ''}`}
-          >
-            <span className="nav-icon">{item.icon}</span>
-            <span className="nav-label">{item.label}</span>
-          </NavLink>
-        ))}
+        {PUBLIC_ITEMS.map(item => renderNavItem(item, onMobileClose))}
+        {isVsdPilot && PILOT_ITEMS.map(item => renderNavItem(item, onMobileClose))}
 
-        <div className="nav-section-label">In arrivo</div>
-        {FUTURE_ITEMS.map(item => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            onClick={onMobileClose}
-            className={({ isActive }) => `nav-item is-soon${isActive ? ' is-active' : ''}`}
-          >
-            <span className="nav-icon">{item.icon}</span>
-            <span className="nav-label">{item.label}</span>
-            <span className="nav-tag">soon</span>
-          </NavLink>
-        ))}
+        {isVsdPilot && (
+          <>
+            <div className="nav-section-label">In arrivo</div>
+            {FUTURE_ITEMS.map(item => renderNavItem(item, onMobileClose, 'is-soon'))}
+          </>
+        )}
 
         {isStaff && (
           <>
             <div className="nav-section-label">Admin</div>
-            {ADMIN_ITEMS.map(item => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                onClick={onMobileClose}
-                className={({ isActive }) => `nav-item${isActive ? ' is-active' : ''}`}
-              >
-                <span className="nav-icon">{item.icon}</span>
-                <span className="nav-label">{item.label}</span>
-              </NavLink>
-            ))}
+            {ADMIN_ITEMS.map(item => renderNavItem(item, onMobileClose))}
           </>
         )}
       </nav>
 
       <div className="sidebar-footer">
         {isStaff && <div className="staff-badge">STAFF MODE</div>}
-        
-        {/* CORREZIONE: Aggiunto il tag di apertura <a */}
+
         <a
           href="https://www.totalpaint.it"
           target="_blank"
