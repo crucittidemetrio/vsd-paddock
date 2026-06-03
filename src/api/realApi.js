@@ -204,6 +204,14 @@ export async function callApi(action, payload = {}, ctx = null) {
         return await showcaseSummaryAdapter(payload);
       case 'races.updatePoster':
         return await racesUpdatePosterAdapter(payload, token);
+      case 'endurance.auditions.list':
+        return await enduranceAuditionsListAdapter(payload, token);
+      case 'endurance.auditions.get':
+        return await enduranceAuditionsGetAdapter(payload, token);
+      case 'endurance.auditions.create':
+        return await enduranceAuditionsCreateAdapter(payload, token);
+      case 'endurance.auditions.update':
+        return await enduranceAuditionsUpdateAdapter(payload, token);
       default:
         return fail(`Action non instradata: ${action}`);
     }
@@ -359,6 +367,42 @@ async function raceResultsImportAdapter(payload, token) {
   const res = await postToBackend('raceResults.import', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
+}
+
+// ═══════════════════════════════════════════════════════════
+// ENDURANCE — Phase 1A adapters
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Frontend: endurance.auditions.list({ status?, sim? }) → array
+ * Backend:  endurance.auditions.list → { auditions: [...], count }
+ */
+async function enduranceAuditionsListAdapter(payload, token) {
+  const res = await postToBackend('endurance.auditions.list', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data.auditions);
+}
+
+/**
+ * Frontend: endurance.auditions.get(auditionId) → audition object
+ * Backend:  endurance.auditions.get → { audition: {...} }
+ */
+async function enduranceAuditionsGetAdapter(payload, token) {
+  const res = await postToBackend('endurance.auditions.get', payload, token);
+  if (!res.ok) return res;
+  return ok(res.data.audition);
+}
+
+async function enduranceAuditionsCreateAdapter(payload, token) {
+  const res = await postToBackend('endurance.auditions.create', payload, token);
+  if (!res.ok) return res;
+  return ok(res.data.audition);
+}
+
+async function enduranceAuditionsUpdateAdapter(payload, token) {
+  const res = await postToBackend('endurance.auditions.update', payload, token);
+  if (!res.ok) return res;
+  return ok(res.data.audition);
 }
 
 /**

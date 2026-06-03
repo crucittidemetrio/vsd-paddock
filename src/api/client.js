@@ -116,7 +116,16 @@ export const api = {
     recent: (limit = 5) => call('reports.recent', { limit }),
   },
 
-  showcase: {
+ showcase: {
     summary: () => call('showcase.summary'),
+  },
+
+  endurance: {
+    auditions: {
+      list: (payload = {}) => call('endurance.auditions.list', payload),
+      get: (audition_id) => call('endurance.auditions.get', { audition_id }),
+      create: (payload) => call('endurance.auditions.create', payload),
+      update: (payload) => call('endurance.auditions.update', payload),
+    },
   },
 };
