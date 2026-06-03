@@ -25,6 +25,7 @@ const LapsDrilldown       = lazy(() => import('./pages/LapsDrilldown'));
 const Training            = lazy(() => import('./pages/Training'));
 const Academy             = lazy(() => import('./pages/Academy'));
 const Endurance           = lazy(() => import('./pages/Endurance'));
+const EnduranceDetail     = lazy(() => import('./pages/EnduranceDetail'));
 const ChampionshipDetail  = lazy(() => import('./pages/ChampionshipDetail'));
 const AdminImportResults  = lazy(() => import('./pages/AdminImportResults'));
 const AdminImportStandings= lazy(() => import('./pages/AdminImportStandings'));
@@ -77,6 +78,8 @@ export default function App() {
               <Route path="/laps/:sim/:track/:category" element={<LapsDrilldown />} />
               <Route path="/championships" element={<ChampionshipsList />} />
               <Route path="/championships/:championshipId" element={<ChampionshipDetail />} />
+              <Route path="/endurance" element={<Endurance />} />
+              <Route path="/endurance/:auditionId" element={<EnduranceDetail />} />
 
               {/* ── Private: richiede pilot_vsd o superiore ── */}
               <Route
@@ -100,14 +103,6 @@ export default function App() {
                 element={
                   <RequireTier minTier="pilot_vsd" fallback={<LoginPrompt feature="VSD Academy" />}>
                     <Academy />
-                  </RequireTier>
-                }
-              />
-              <Route
-                path="/endurance"
-                element={
-                  <RequireTier minTier="pilot_vsd" fallback={<LoginPrompt feature="il modulo Endurance" />}>
-                    <Endurance />
                   </RequireTier>
                 }
               />

@@ -13,9 +13,10 @@ const PUBLIC_ITEMS = [
   { to: '/calendar', label: 'Calendario', icon: '📅' },
   { to: '/championships', label: 'Campionati', icon: '🏆' },
   { to: '/laps', label: LABELS.nav_laps, icon: '◈' },
+  { to: '/endurance', label: LABELS.nav_endurance, icon: '◐' },
 ];
 
-// Voci pilota — visibili solo a pilot_vsd, staff, admin
+// Voci pilota attive — visibili solo a pilot_vsd, staff, admin
 const PILOT_ITEMS = [
   { to: '/reports', label: LABELS.nav_reports, icon: '◣' },
 ];
@@ -24,7 +25,6 @@ const PILOT_ITEMS = [
 const FUTURE_ITEMS = [
   { to: '/training', label: LABELS.nav_training, icon: '◆' },
   { to: '/academy', label: LABELS.nav_academy, icon: '◇' },
-  { to: '/endurance', label: LABELS.nav_endurance, icon: '◐' },
 ];
 
 const ADMIN_ITEMS = [
