@@ -8,7 +8,6 @@ import {
 import { useTracks, useCars } from '../hooks/useLookups';
 import styles from './AdminEnduranceForm.module.css';
 
-// Enum sincronizzati con backend (Endurance.js)
 const SIM_OPTIONS = ['LMU', 'IRC', 'ACE'];
 const PILOT_CLASS_OPTIONS = ['Hypercar', 'LMP2', 'GT3', 'Open'];
 const WEATHER_OPTIONS = ['asciutto', 'dinamico', 'bagnato'];
@@ -29,6 +28,8 @@ const WEATHER_LABELS = {
 };
 
 const INITIAL_STATE = {
+  target_race: '',
+  target_race_date: '',
   name: '',
   date: '',
   sim: 'LMU',
@@ -66,13 +67,11 @@ function computeEndTime(startHHMM, durationMinutes) {
 
 function isoFromDatetimeLocal(value) {
   if (!value) return '';
-  // datetime-local: "2026-06-14T20:00" → "2026-06-14T20:00:00"
   return value.length === 16 ? value + ':00' : value;
 }
 
 function datetimeLocalFromIso(iso) {
   if (!iso) return '';
-  // "2026-06-14T20:00:00" → "2026-06-14T20:00"
   return String(iso).substring(0, 16);
 }
 
@@ -85,20 +84,19 @@ export default function AdminEnduranceForm() {
   const [errors, setErrors] = useState({});
   const [submitError, setSubmitError] = useState('');
 
-  // Edit mode: preload audition
   const existing = useAudition(isEdit ? auditionId : null);
   const createMutation = useCreateAudition();
   const updateMutation = useUpdateAudition();
 
-  // Lookups filtered by selected sim
   const tracksQuery = useTracks(form.sim || undefined);
   const carsQuery = useCars(form.sim || undefined);
 
-  // Popola form quando l'audition arriva
   useEffect(() => {
     if (!isEdit || !existing.data) return;
     const a = existing.data;
     setForm({
+      target_race: a.target_race || '',
+      target_race_date: datetimeLocalFromIso(a.target_race_date),
       name: a.name || '',
       date: datetimeLocalFromIso(a.date),
       sim: a.sim || 'LMU',
@@ -120,19 +118,16 @@ export default function AdminEnduranceForm() {
     });
   }, [isEdit, existing.data]);
 
-  // Cars filtrate ulteriormente per pilot_class (se specificata)
   const filteredCars = useMemo(() => {
     const all = carsQuery.data || [];
     if (!form.pilot_class) return all;
     return all.filter(c => {
       const cls = (c.class || c.car_class || '').toString();
-      // Match esatto OR contiene la classe (per gestire varianti tipo "LMGT3" includendo "GT3")
       return cls === form.pilot_class
         || cls.toUpperCase().includes(form.pilot_class.toUpperCase());
     });
   }, [carsQuery.data, form.pilot_class]);
 
-  // Computed live preview
   const durationIngamePreview = useMemo(() => {
     const real = Number(form.duration_minutes_real);
     const mult = Number(form.time_multiplier) || 1;
@@ -153,12 +148,10 @@ export default function AdminEnduranceForm() {
   function update(field, value) {
     setForm(prev => {
       const next = { ...prev, [field]: value };
-      // Reset track e car se cambia sim
       if (field === 'sim') {
         next.track_id = '';
         next.mandatory_car_id = '';
       }
-      // Reset car se cambia class
       if (field === 'pilot_class') {
         next.mandatory_car_id = '';
       }
@@ -218,6 +211,8 @@ export default function AdminEnduranceForm() {
   function buildPayload() {
     const numericOrEmpty = (v) => (v === '' || v == null ? '' : Number(v));
     return {
+      target_race: form.target_race.trim(),
+      target_race_date: isoFromDatetimeLocal(form.target_race_date),
       name: form.name.trim(),
       date: isoFromDatetimeLocal(form.date),
       sim: form.sim,
@@ -243,14 +238,11 @@ export default function AdminEnduranceForm() {
     e.preventDefault();
     setSubmitError('');
     if (!validate()) {
-      // Scroll to top per mostrare errori
       window.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
     const payload = buildPayload();
-    const onSuccess = () => {
-      navigate('/admin/endurance');
-    };
+    const onSuccess = () => navigate('/admin/endurance');
     const onError = (err) => {
       setSubmitError(err.message || 'Errore durante il salvataggio');
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -268,7 +260,6 @@ export default function AdminEnduranceForm() {
 
   const isPending = createMutation.isPending || updateMutation.isPending;
 
-  // Loading state per edit
   if (isEdit && existing.isLoading) {
     return (
       <div className={styles.container}>
@@ -320,15 +311,45 @@ export default function AdminEnduranceForm() {
       )}
 
       <form onSubmit={handleSubmit} className={styles.form}>
+
         {/* ════ SEZIONE 1: Identità & Sessione ════ */}
         <Section title="Identità & Sessione">
+
+          <div className={styles.row2}>
+            <Field
+              label="Gara target"
+              hint="A quale gara reale si riferisce? Es. 'Le Mans 24h 2026', 'Spa 6h 2026'"
+            >
+              <input
+                type="text"
+                className={styles.input}
+                value={form.target_race}
+                onChange={e => update('target_race', e.target.value)}
+                placeholder="Es. Le Mans 24h 2026"
+                maxLength={120}
+              />
+            </Field>
+
+            <Field
+              label="Data della gara target"
+              hint="Quando si correrà la gara reale (per countdown)"
+            >
+              <input
+                type="datetime-local"
+                className={styles.input}
+                value={form.target_race_date}
+                onChange={e => update('target_race_date', e.target.value)}
+              />
+            </Field>
+          </div>
+
           <Field label="Nome audizione" error={errors.name} required>
             <input
               type="text"
               className={styles.input}
               value={form.name}
               onChange={e => update('name', e.target.value)}
-              placeholder="Es. Audizione Le Mans 24h — LMGT3"
+              placeholder="Es. Audizione Le Mans 24h"
               maxLength={200}
             />
           </Field>
@@ -346,7 +367,7 @@ export default function AdminEnduranceForm() {
               </select>
             </Field>
 
-            <Field label="Data e ora" error={errors.date} required>
+            <Field label="Data e ora audizione" error={errors.date} required>
               <input
                 type="datetime-local"
                 className={styles.input}
@@ -368,7 +389,9 @@ export default function AdminEnduranceForm() {
               >
                 <option value="">— Seleziona tracciato —</option>
                 {(tracksQuery.data || []).map(t => {
-                  const label = [t.circuit_name, t.config_name].filter(Boolean).join(' ') || t.track_id;
+                  const label = [t.circuit_name, t.config_name].filter(Boolean).join(' ')
+                    || t.track_name
+                    || t.track_id;
                   return (
                     <option key={t.track_id} value={t.track_id}>
                       {label} ({t.track_id})
@@ -590,7 +613,6 @@ export default function AdminEnduranceForm() {
           </Field>
         </Section>
 
-        {/* ════ Actions ════ */}
         <div className={styles.actions}>
           <Link to="/admin/endurance" className={styles.btnSecondary}>
             Annulla

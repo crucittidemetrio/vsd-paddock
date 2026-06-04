@@ -104,7 +104,6 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
-/* Status accent (left border) */
 .card_scheduled {
   border-left: 3px solid #00d4ff;
 }
@@ -119,6 +118,45 @@
 .card_cancelled {
   border-left: 3px solid #ef3340;
   opacity: 0.6;
+}
+
+/* Phase 2: Target race badge */
+.targetRaceBadge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin: -4px -4px 16px -4px;
+  background: linear-gradient(90deg, rgba(245, 166, 35, 0.15), rgba(245, 166, 35, 0.05));
+  border: 1px solid rgba(245, 166, 35, 0.25);
+  border-radius: 6px;
+  flex-wrap: wrap;
+}
+
+.targetRaceIcon {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.targetRaceText {
+  flex: 1;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #f5a623;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.targetRaceCountdown {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: rgba(245, 166, 35, 0.8);
+  text-transform: uppercase;
+  background: rgba(245, 166, 35, 0.1);
+  padding: 2px 8px;
+  border-radius: 10px;
 }
 
 .cardHeader {

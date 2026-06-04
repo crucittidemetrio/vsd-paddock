@@ -1,8 +1,8 @@
 // ═══════════════════════════════════════════════════════════
-// VSD PADDOCK — Endurance Endpoints (Phase 1A)
+// VSD PADDOCK — Endurance Endpoints (Phase 1A + 2)
 // ═══════════════════════════════════════════════════════════
 // Gestione audition endurance: sessioni di selezione piloti
-// per gare lunghe (es. Le Mans 24h).
+// per gare lunghe (Le Mans 24h, Spa 6h, Daytona 24h, ecc.).
 //
 // Auth model:
 //   - List/Get: pubblico. Anonymous vede solo audition pubblicate
@@ -11,6 +11,9 @@
 //
 // Validation: tipi base + enums + presence required fields.
 // Soft-delete: status = 'cancelled' invece di eliminazione fisica.
+//
+// Phase 2 (4 giu 2026): aggiunti campi target_race + target_race_date
+// per legare ogni audition a una gara reale specifica.
 // ═══════════════════════════════════════════════════════════
 
 const ENDURANCE_PILOT_CLASSES = ['Hypercar', 'LMP2', 'GT3', 'Open'];
@@ -18,7 +21,8 @@ const ENDURANCE_WEATHER = ['asciutto', 'dinamico', 'bagnato'];
 const ENDURANCE_STATUSES = ['draft', 'scheduled', 'in_progress', 'completed', 'cancelled'];
 
 const ENDURANCE_AUDITION_FIELDS = [
-  'audition_id', 'name', 'date', 'sim', 'track_id',
+  'audition_id', 'target_race', 'target_race_date',
+  'name', 'date', 'sim', 'track_id',
   'pilot_class', 'mandatory_car_id', 'setup_url', 'setup_notes',
   'duration_minutes_real', 'time_multiplier', 'duration_minutes_ingame',
   'start_time_ingame', 'end_time_ingame', 'ai_strength_pct',
@@ -223,6 +227,14 @@ function validateAuditionPayload_(payload, mode) {
     }
   }
 
+  // Phase 2: target_race_date validation (opzionale, deve essere ISO parsable se presente)
+  if (payload.target_race_date !== undefined && payload.target_race_date !== '') {
+    const d = new Date(payload.target_race_date);
+    if (isNaN(d.getTime())) {
+      return { ok: false, error: 'target_race_date deve essere una data ISO valida (es. 2026-06-14T14:00:00)' };
+    }
+  }
+
   const numericFields = [
     'duration_minutes_real', 'time_multiplier', 'ai_strength_pct',
     'field_size_hypercar', 'field_size_lmp2', 'field_size_gt3'
@@ -278,12 +290,14 @@ function testEnduranceAuditionsCreate() {
   const ctx = getMockStaffCtx_();
 
   const payload = {
-    name: 'Test Audition Le Mans Hypercar',
-    date: '2026-06-14T20:00:00',
+    target_race: 'Test Race 2026',
+    target_race_date: '2026-12-31T14:00:00',
+    name: 'Test Audition Phase 2',
+    date: '2026-12-15T20:00:00',
     sim: 'LMU',
-    track_id: 'lmu-le-mans-circuit',
+    track_id: 'lmu-lemans-mulsanne',
     pilot_class: 'Hypercar',
-    mandatory_car_id: 'lmu-ferrari-499p',
+    mandatory_car_id: 'lmu-ferrari-499P',
     setup_url: 'https://drive.google.com/example',
     setup_notes: 'TC 4, ABS 6, brake bias 56%',
     duration_minutes_real: 60,
@@ -295,7 +309,7 @@ function testEnduranceAuditionsCreate() {
     field_size_gt3: 15,
     weather_condition: 'asciutto',
     status: 'draft',
-    notes_internal: 'Test audition primo del sistema'
+    notes_internal: 'Test phase 2 - target_race fields'
   };
 
   const result = handleEnduranceAuditionsCreate(payload, ctx);

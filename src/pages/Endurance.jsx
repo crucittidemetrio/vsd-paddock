@@ -16,6 +16,13 @@ const STATUS_LABELS = {
   cancelled: 'Annullate',
 };
 
+const PILL_SINGULAR = {
+  scheduled: 'Programmata',
+  in_progress: 'In Corso',
+  completed: 'Conclusa',
+  cancelled: 'Annullata',
+};
+
 function formatAuditionDate(iso) {
   if (!iso) return '—';
   try {
@@ -50,6 +57,25 @@ function formatRealDuration(minutes) {
   const h = Math.floor(m / 60);
   const r = m % 60;
   return r === 0 ? `${h}h` : `${h}h ${r}min`;
+}
+
+// Countdown breve: "tra 12 giorni", "tra 3 ore", "oggi", "passato"
+function formatShortCountdown(iso) {
+  if (!iso) return '';
+  try {
+    const target = new Date(iso).getTime();
+    const now = Date.now();
+    const diff = target - now;
+    if (diff < 0) return 'passato';
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    if (days > 1) return `tra ${days} giorni`;
+    if (days === 1) return `tra 1 giorno`;
+    if (hours > 1) return `tra ${hours} ore`;
+    return 'oggi';
+  } catch {
+    return '';
+  }
 }
 
 export default function Endurance() {
@@ -150,19 +176,25 @@ function AuditionCard({ audition, tracks, status }) {
       ? `${audition.start_time_ingame} → ${audition.end_time_ingame}`
       : '—';
 
-  // Label singolare per pill (Programmate → Programmata, etc.)
-  const PILL_SINGULAR = {
-    scheduled: 'Programmata',
-    in_progress: 'In Corso',
-    completed: 'Conclusa',
-    cancelled: 'Annullata',
-  };
+  const targetRace = audition.target_race;
+  const targetRaceDate = audition.target_race_date;
+  const countdown = formatShortCountdown(targetRaceDate);
 
   return (
     <Link
       to={`/endurance/${audition.audition_id}`}
       className={`${styles.card} ${styles[`card_${status}`]}`}
     >
+      {targetRace && (
+        <div className={styles.targetRaceBadge}>
+          <span className={styles.targetRaceIcon}>🎯</span>
+          <span className={styles.targetRaceText}>{targetRace}</span>
+          {countdown && countdown !== 'passato' && (
+            <span className={styles.targetRaceCountdown}>{countdown}</span>
+          )}
+        </div>
+      )}
+
       <div className={styles.cardHeader}>
         <span className={`${styles.statusPill} ${styles[`pill_${status}`]}`}>
           {PILL_SINGULAR[status] || status}

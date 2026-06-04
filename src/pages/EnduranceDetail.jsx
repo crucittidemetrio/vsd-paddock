@@ -51,6 +51,38 @@ function formatWeather(value) {
   return String(value).charAt(0).toUpperCase() + String(value).slice(1);
 }
 
+// Countdown dettagliato: "12 giorni, 5 ore"
+function formatDetailedCountdown(iso) {
+  if (!iso) return null;
+  try {
+    const target = new Date(iso).getTime();
+    const now = Date.now();
+    const diff = target - now;
+    if (diff < 0) {
+      return { isPast: true, label: 'Gara già disputata' };
+    }
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (days > 0) {
+      return {
+        isPast: false,
+        label: hours > 0 ? `${days} giorni, ${hours} ore` : `${days} giorni`,
+      };
+    }
+    if (hours > 0) {
+      return {
+        isPast: false,
+        label: minutes > 0 ? `${hours} ore, ${minutes} min` : `${hours} ore`,
+      };
+    }
+    return { isPast: false, label: `${minutes} minuti` };
+  } catch {
+    return null;
+  }
+}
+
 export default function EnduranceDetail() {
   const { auditionId } = useParams();
   const { data: audition, isLoading, error } = useAudition(auditionId);
@@ -83,9 +115,42 @@ export default function EnduranceDetail() {
     (Number(audition.field_size_lmp2) || 0) +
     (Number(audition.field_size_gt3) || 0);
 
+  const targetRace = audition.target_race;
+  const targetRaceDate = audition.target_race_date;
+  const countdown = formatDetailedCountdown(targetRaceDate);
+
   return (
     <div className={styles.page}>
       <Link to="/endurance" className={styles.back}>← Audizioni</Link>
+
+      {/* Phase 2: Target race hero */}
+      {targetRace && (
+        <div className={styles.targetRaceHero}>
+          <div className={styles.targetRaceLabel}>🎯 Per la gara</div>
+          <div className={styles.targetRaceName}>{targetRace}</div>
+          {countdown && !countdown.isPast && (
+            <div className={styles.targetRaceCountdown}>
+              <span className={styles.countdownLabel}>Mancano:</span>
+              <span className={styles.countdownValue}>{countdown.label}</span>
+              {targetRaceDate && (
+                <span className={styles.countdownDate}>
+                  · {formatDate(targetRaceDate)}
+                </span>
+              )}
+            </div>
+          )}
+          {countdown && countdown.isPast && (
+            <div className={styles.targetRaceCountdown}>
+              <span className={styles.countdownLabel}>{countdown.label}</span>
+              {targetRaceDate && (
+                <span className={styles.countdownDate}>
+                  · {formatDate(targetRaceDate)}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       <header className={styles.header}>
         <div className={styles.headerTop}>

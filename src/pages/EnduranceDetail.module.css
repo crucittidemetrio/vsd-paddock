@@ -19,6 +19,67 @@
   color: #00d4ff;
 }
 
+/* Phase 2: Target race hero */
+.targetRaceHero {
+  margin-bottom: 28px;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, rgba(245, 166, 35, 0.15), rgba(245, 166, 35, 0.04));
+  border: 1px solid rgba(245, 166, 35, 0.3);
+  border-radius: 12px;
+  border-left: 4px solid #f5a623;
+}
+
+.targetRaceLabel {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: rgba(245, 166, 35, 0.8);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.targetRaceName {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: #f5a623;
+  letter-spacing: 0.5px;
+  margin-bottom: 12px;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.targetRaceCountdown {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+}
+
+.countdownLabel {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  color: rgba(245, 166, 35, 0.7);
+  text-transform: uppercase;
+}
+
+.countdownValue {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+
+.countdownDate {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
 .header {
   margin-bottom: 40px;
   padding-bottom: 28px;
@@ -284,6 +345,9 @@
   }
   .title {
     font-size: 30px;
+  }
+  .targetRaceName {
+    font-size: 22px;
   }
   .grid2,
   .grid3 {
