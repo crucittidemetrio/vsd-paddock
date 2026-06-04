@@ -36,6 +36,13 @@ function shortId(id) {
   return id.length > 12 ? id.substring(0, 12) + '…' : id;
 }
 
+// Tracks hanno colonne: track_id, sim, circuit_name, config_name, length_meters, country_code, active
+function formatTrackName(track, fallbackId) {
+  if (!track) return fallbackId || '—';
+  const parts = [track.circuit_name, track.config_name].filter(Boolean);
+  return parts.length > 0 ? parts.join(' ') : (track.track_id || fallbackId || '—');
+}
+
 export default function AdminEndurance() {
   const [statusFilter, setStatusFilter] = useState('');
   const [simFilter, setSimFilter] = useState('');
@@ -51,7 +58,6 @@ export default function AdminEndurance() {
   const { getTrack, isLoading: lookupsLoading } = useLookupResolvers();
   const updateMutation = useUpdateAudition();
 
-  // Stats: sempre su lista non filtrata? Per ora usiamo filtrata per coerenza.
   const stats = useMemo(() => {
     const s = { draft: 0, scheduled: 0, in_progress: 0, completed: 0, cancelled: 0 };
     (auditions || []).forEach(a => {
@@ -175,7 +181,7 @@ export default function AdminEndurance() {
               {auditions.map(a => {
                 const isCancelled = a.status === 'cancelled';
                 const track = getTrack(a.track_id);
-                const trackName = track?.display_name || track?.name || a.track_id || '—';
+                const trackName = formatTrackName(track, a.track_id);
 
                 return (
                   <tr key={a.audition_id} className={isCancelled ? styles.rowCancelled : ''}>

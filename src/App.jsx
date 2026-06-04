@@ -33,6 +33,7 @@ const AdminTeamDashboard  = lazy(() => import('./pages/AdminTeamDashboard'));
 const AdminGarage61Sync   = lazy(() => import('./pages/AdminGarage61Sync'));
 const AdminPosters        = lazy(() => import('./pages/AdminPosters'));
 const AdminEndurance      = lazy(() => import('./pages/AdminEndurance'));
+const AdminEnduranceForm  = lazy(() => import('./pages/AdminEnduranceForm'));
 
 import './App.css';
 
@@ -132,6 +133,14 @@ export default function App() {
               <Route
                 path="/admin/endurance"
                 element={<AdminRoute><AdminEndurance /></AdminRoute>}
+              />
+              <Route
+                path="/admin/endurance/new"
+                element={<AdminRoute><AdminEnduranceForm /></AdminRoute>}
+              />
+              <Route
+                path="/admin/endurance/:auditionId/edit"
+                element={<AdminRoute><AdminEnduranceForm /></AdminRoute>}
               />
             </Route>
 
