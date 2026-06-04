@@ -47,7 +47,6 @@
   box-shadow: 0 6px 18px rgba(0, 212, 255, 0.3);
 }
 
-/* ════ Stats ════ */
 .statsRow {
   display: flex;
   gap: 12px;
@@ -85,7 +84,6 @@
 .stat_completed { border-left: 3px solid rgba(255, 255, 255, 0.4); }
 .stat_cancelled { border-left: 3px solid #ef3340; }
 
-/* ════ Filters ════ */
 .filtersBar {
   display: flex;
   align-items: flex-end;
@@ -128,6 +126,13 @@
   border-color: rgba(0, 212, 255, 0.4);
 }
 
+/* Fix dropdown nativo browser su tema dark */
+.select option {
+  background-color: #0e1729;
+  color: #fff;
+  padding: 8px;
+}
+
 .btnClear {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -146,7 +151,6 @@
   color: #fff;
 }
 
-/* ════ States ════ */
 .empty,
 .errorBox {
   padding: 48px 24px;
@@ -162,7 +166,6 @@
   border-color: rgba(239, 51, 64, 0.2);
 }
 
-/* ════ Table ════ */
 .tableWrap {
   overflow-x: auto;
   background: rgba(255, 255, 255, 0.02);
@@ -238,7 +241,6 @@
   color: rgba(255, 255, 255, 0.8);
 }
 
-/* Status pills */
 .statusPill {
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;
@@ -271,7 +273,6 @@
   color: #ef3340;
 }
 
-/* Actions */
 .actionsCell {
   text-align: right;
   white-space: nowrap;
