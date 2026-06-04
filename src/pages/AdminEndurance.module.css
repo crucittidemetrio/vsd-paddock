@@ -1,0 +1,349 @@
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+
+.header {
+  margin-bottom: 32px;
+}
+
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin: 0;
+  color: #fff;
+  text-transform: uppercase;
+}
+
+.btnPrimary {
+  background: linear-gradient(180deg, #00d4ff, #3b8bff);
+  color: #060d1f;
+  padding: 10px 20px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  font-size: 14px;
+  border: none;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.btnPrimary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 212, 255, 0.3);
+}
+
+/* ════ Stats ════ */
+.statsRow {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.statChip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.statValue {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+}
+
+.statLabel {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+}
+
+.stat_draft { border-left: 3px solid rgba(255, 255, 255, 0.3); }
+.stat_scheduled { border-left: 3px solid #00d4ff; }
+.stat_in_progress { border-left: 3px solid #f5a623; }
+.stat_completed { border-left: 3px solid rgba(255, 255, 255, 0.4); }
+.stat_cancelled { border-left: 3px solid #ef3340; }
+
+/* ════ Filters ════ */
+.filtersBar {
+  display: flex;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 24px;
+  padding: 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  flex-wrap: wrap;
+}
+
+.filterField {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 180px;
+}
+
+.filterLabel {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: uppercase;
+}
+
+.select {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  cursor: pointer;
+}
+.select:focus {
+  outline: none;
+  border-color: rgba(0, 212, 255, 0.4);
+}
+
+.btnClear {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.7);
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  text-transform: uppercase;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.btnClear:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+/* ════ States ════ */
+.empty,
+.errorBox {
+  padding: 48px 24px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 14px;
+}
+.errorBox {
+  color: #ef3340;
+  border-color: rgba(239, 51, 64, 0.2);
+}
+
+/* ════ Table ════ */
+.tableWrap {
+  overflow-x: auto;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+}
+
+.table thead th {
+  text-align: left;
+  padding: 12px 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
+}
+
+.thActions {
+  text-align: right;
+}
+
+.table tbody td {
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: #fff;
+  vertical-align: middle;
+}
+
+.table tbody tr:hover {
+  background: rgba(0, 212, 255, 0.04);
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.rowCancelled {
+  opacity: 0.45;
+}
+
+.idCell {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.nameCell {
+  font-weight: 500;
+  max-width: 280px;
+}
+
+.dateCell {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+}
+
+.trackCell {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* Status pills */
+.statusPill {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1.2px;
+  padding: 3px 8px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.pill_draft {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.5);
+}
+.pill_scheduled {
+  background: rgba(0, 212, 255, 0.15);
+  color: #00d4ff;
+}
+.pill_in_progress {
+  background: rgba(245, 166, 35, 0.15);
+  color: #f5a623;
+}
+.pill_completed {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.6);
+}
+.pill_cancelled {
+  background: rgba(239, 51, 64, 0.15);
+  color: #ef3340;
+}
+
+/* Actions */
+.actionsCell {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.actionBtn,
+.actionBtnGhost,
+.actionBtnDanger {
+  display: inline-block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  text-decoration: none;
+  cursor: pointer;
+  border: 1px solid transparent;
+  margin-left: 6px;
+  text-transform: uppercase;
+  transition: background 0.15s ease, border-color 0.15s ease;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.actionBtn {
+  background: rgba(0, 212, 255, 0.1);
+  color: #00d4ff;
+  border-color: rgba(0, 212, 255, 0.2);
+}
+.actionBtn:hover {
+  background: rgba(0, 212, 255, 0.18);
+  border-color: rgba(0, 212, 255, 0.4);
+}
+
+.actionBtnGhost {
+  padding: 5px 8px;
+  font-size: 14px;
+  letter-spacing: 0;
+}
+.actionBtnGhost:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.actionBtnDanger {
+  background: rgba(239, 51, 64, 0.08);
+  color: #ef3340;
+  border-color: rgba(239, 51, 64, 0.2);
+}
+.actionBtnDanger:hover:not(:disabled) {
+  background: rgba(239, 51, 64, 0.18);
+  border-color: rgba(239, 51, 64, 0.4);
+}
+.actionBtnDanger:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.footerNote {
+  margin-top: 16px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.3);
+  text-align: center;
+}
+
+@media (max-width: 900px) {
+  .table thead th,
+  .table tbody td {
+    padding: 10px 8px;
+    font-size: 12px;
+  }
+  .title {
+    font-size: 28px;
+  }
+}

@@ -33,6 +33,7 @@ const ADMIN_ITEMS = [
   { to: '/admin/import-standings', label: 'Import Standings', icon: '🏆' },
   { to: '/admin/garage61-sync', label: 'Sync Garage61', icon: '⚡' },
   { to: '/admin/posters', label: 'Race Posters', icon: '🖼️' },
+  { to: '/admin/endurance', label: 'Endurance Admin', icon: '◐' },
 ];
 
 function renderNavItem(item, onMobileClose, extraClass = '') {
