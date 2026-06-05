@@ -87,41 +87,41 @@ export default function Landing() {
   ).length;
   const podiums = Math.max(podiumsFromResults, podiumsFromReports);
 
-  // Activity feed: laps + reports + raceResults, dedup report/result sulla stessa gara+pilota
-  const feed = useMemo(() => {
-    const items = [];
-    (allLaps || []).forEach(l => {
-      items.push({
-        type: 'lap',
-        ts: new Date(l.created_at).getTime(),
-        data: l,
-      });
-    });
+// Activity feed: laps + reports + raceResults, dedup report/result sulla stessa gara+pilota
+// Filter difensivo: scarta record malformati (campi critici mancanti o ts invalido)
+const feed = useMemo(() => {
+  const items = [];
 
-    // Dedup: se esiste un RaceResult per la stessa coppia race_id+driver_id, skippiamo il report
-    const resultsKeySet = new Set(
-      (allRaceResults || []).map(rr => `${rr.race_id}__${rr.driver_id}`)
-    );
-    (allReports || []).forEach(r => {
-      const key = `${r.race_id}__${r.driver_id}`;
-      if (resultsKeySet.has(key)) return; // hidden in favor of RaceResult event
-      items.push({
-        type: 'report',
-        ts: new Date(r.created_at).getTime(),
-        data: r,
-      });
-    });
+  (allLaps || []).forEach(l => {
+    // Skip laps senza dati critici (import incompleti, race results travestiti, ecc.)
+    if (!l.driver_id || !l.lap_time_ms || !l.sim || !l.track_id) return;
+    const ts = new Date(l.created_at || l.set_date).getTime();
+    if (Number.isNaN(ts)) return;
+    items.push({ type: 'lap', ts, data: l });
+  });
 
-    (allRaceResults || []).forEach(rr => {
-      items.push({
-        type: 'raceResult',
-        ts: new Date(rr.set_date).getTime(),
-        data: rr,
-      });
-    });
+  // Dedup: se esiste un RaceResult per la stessa coppia race_id+driver_id, skippiamo il report
+  const resultsKeySet = new Set(
+    (allRaceResults || []).map(rr => `${rr.race_id}__${rr.driver_id}`)
+  );
+  (allReports || []).forEach(r => {
+    if (!r.driver_id || !r.race_id) return;
+    const key = `${r.race_id}__${r.driver_id}`;
+    if (resultsKeySet.has(key)) return;
+    const ts = new Date(r.created_at).getTime();
+    if (Number.isNaN(ts)) return;
+    items.push({ type: 'report', ts, data: r });
+  });
 
-    return items.sort((a, b) => b.ts - a.ts).slice(0, 8);
-  }, [allLaps, allReports, allRaceResults]);
+  (allRaceResults || []).forEach(rr => {
+    if (!rr.driver_id || !rr.race_id) return;
+    const ts = new Date(rr.set_date || rr.created_at).getTime();
+    if (Number.isNaN(ts)) return;
+    items.push({ type: 'raceResult', ts, data: rr });
+  });
+
+  return items.sort((a, b) => b.ts - a.ts).slice(0, 8);
+}, [allLaps, allReports, allRaceResults]);
 
   // Staff metrics
   const pendingLaps = useMemo(
