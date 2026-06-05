@@ -40,10 +40,15 @@ function formatDuration(minutes) {
   return r === 0 ? `${h}h` : `${h}h ${r}min`;
 }
 
+// Cars schema: car_id, sim, car_name, manufacturer, category, race_class, active
 function formatCarName(carId, cars) {
   if (!carId) return '—';
   const car = (cars || []).find(c => c.car_id === carId);
-  return car?.display_name || car?.name || carId;
+  if (!car) return carId;
+  return car.car_name
+    || car.display_name
+    || [car.manufacturer, car.model].filter(Boolean).join(' ')
+    || car.car_id;
 }
 
 function formatWeather(value) {
@@ -51,7 +56,6 @@ function formatWeather(value) {
   return String(value).charAt(0).toUpperCase() + String(value).slice(1);
 }
 
-// Countdown dettagliato: "12 giorni, 5 ore"
 function formatDetailedCountdown(iso) {
   if (!iso) return null;
   try {
@@ -123,7 +127,6 @@ export default function EnduranceDetail() {
     <div className={styles.page}>
       <Link to="/endurance" className={styles.back}>← Audizioni</Link>
 
-      {/* Phase 2: Target race hero */}
       {targetRace && (
         <div className={styles.targetRaceHero}>
           <div className={styles.targetRaceLabel}>🎯 Per la gara</div>

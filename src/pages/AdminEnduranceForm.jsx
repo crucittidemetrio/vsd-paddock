@@ -75,6 +75,32 @@ function datetimeLocalFromIso(iso) {
   return String(iso).substring(0, 16);
 }
 
+// Match cars on pilot_class against category OR race_class.
+// "Open" matches everything. Empty string also matches everything.
+function carMatchesClass(car, pilotClass) {
+  if (!pilotClass || pilotClass === 'Open') return true;
+  const category = String(car.category || '').toUpperCase();
+  const raceClass = String(car.race_class || '').toUpperCase();
+  const wanted = pilotClass.toUpperCase();
+  return category === wanted
+    || raceClass === wanted
+    || category.includes(wanted)
+    || raceClass.includes(wanted);
+}
+
+function carDisplayLabel(car) {
+  return car.car_name
+    || car.display_name
+    || [car.manufacturer, car.model].filter(Boolean).join(' ')
+    || car.car_id;
+}
+
+function trackDisplayLabel(track) {
+  const parts = [track.circuit_name, track.config_name].filter(Boolean);
+  if (parts.length > 0) return parts.join(' ');
+  return track.track_name || track.track_id;
+}
+
 export default function AdminEnduranceForm() {
   const { auditionId } = useParams();
   const navigate = useNavigate();
@@ -120,12 +146,7 @@ export default function AdminEnduranceForm() {
 
   const filteredCars = useMemo(() => {
     const all = carsQuery.data || [];
-    if (!form.pilot_class) return all;
-    return all.filter(c => {
-      const cls = (c.class || c.car_class || '').toString();
-      return cls === form.pilot_class
-        || cls.toUpperCase().includes(form.pilot_class.toUpperCase());
-    });
+    return all.filter(c => carMatchesClass(c, form.pilot_class));
   }, [carsQuery.data, form.pilot_class]);
 
   const durationIngamePreview = useMemo(() => {
@@ -312,7 +333,6 @@ export default function AdminEnduranceForm() {
 
       <form onSubmit={handleSubmit} className={styles.form}>
 
-        {/* ════ SEZIONE 1: Identità & Sessione ════ */}
         <Section title="Identità & Sessione">
 
           <div className={styles.row2}>
@@ -388,16 +408,11 @@ export default function AdminEnduranceForm() {
                 onChange={e => update('track_id', e.target.value)}
               >
                 <option value="">— Seleziona tracciato —</option>
-                {(tracksQuery.data || []).map(t => {
-                  const label = [t.circuit_name, t.config_name].filter(Boolean).join(' ')
-                    || t.track_name
-                    || t.track_id;
-                  return (
-                    <option key={t.track_id} value={t.track_id}>
-                      {label} ({t.track_id})
-                    </option>
-                  );
-                })}
+                {(tracksQuery.data || []).map(t => (
+                  <option key={t.track_id} value={t.track_id}>
+                    {trackDisplayLabel(t)} ({t.track_id})
+                  </option>
+                ))}
               </select>
             </Field>
 
@@ -419,7 +434,7 @@ export default function AdminEnduranceForm() {
             label="Auto obbligatoria"
             hint={carsQuery.isLoading
               ? 'Caricamento…'
-              : `${filteredCars.length} disponibili${form.pilot_class ? ` per ${form.pilot_class}` : ''}`}
+              : `${filteredCars.length} disponibili${form.pilot_class && form.pilot_class !== 'Open' ? ` per ${form.pilot_class}` : ''}`}
           >
             <select
               className={styles.select}
@@ -427,21 +442,15 @@ export default function AdminEnduranceForm() {
               onChange={e => update('mandatory_car_id', e.target.value)}
             >
               <option value="">— Nessuna auto obbligatoria —</option>
-              {filteredCars.map(c => {
-                const label = c.display_name
-                  || [c.manufacturer, c.model].filter(Boolean).join(' ')
-                  || c.car_id;
-                return (
-                  <option key={c.car_id} value={c.car_id}>
-                    {label} ({c.car_id})
-                  </option>
-                );
-              })}
+              {filteredCars.map(c => (
+                <option key={c.car_id} value={c.car_id}>
+                  {carDisplayLabel(c)} ({c.car_id})
+                </option>
+              ))}
             </select>
           </Field>
         </Section>
 
-        {/* ════ SEZIONE 2: Setup ════ */}
         <Section title="Setup">
           <Field label="URL Setup (Google Drive, MEGA, etc.)" error={errors.setup_url}>
             <input
@@ -464,7 +473,6 @@ export default function AdminEnduranceForm() {
           </Field>
         </Section>
 
-        {/* ════ SEZIONE 3: Configurazione Sessione ════ */}
         <Section title="Configurazione Sessione">
           <div className={styles.row3}>
             <Field label="Durata reale (min)" error={errors.duration_minutes_real}>
@@ -540,7 +548,6 @@ export default function AdminEnduranceForm() {
           </Field>
         </Section>
 
-        {/* ════ SEZIONE 4: Composizione Field ════ */}
         <Section title="Composizione Field">
           <div className={styles.row3}>
             <Field label="Hypercar" error={errors.field_size_hypercar}>
@@ -581,7 +588,6 @@ export default function AdminEnduranceForm() {
           </div>
         </Section>
 
-        {/* ════ SEZIONE 5: Status & Note Interne ════ */}
         <Section title="Status & Note Interne">
           <Field
             label="Status"
