@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuditions, useUpdateAudition } from '../hooks/useEndurance';
-import { useLookupResolvers } from '../hooks/useLookups';
+import { useTracks } from '../hooks/useLookups';
+import { formatTrack } from '../utils/format';
 import SimBadge from '../components/shared/SimBadge';
 import styles from './AdminEndurance.module.css';
 
@@ -36,13 +37,6 @@ function shortId(id) {
   return id.length > 12 ? id.substring(0, 12) + '…' : id;
 }
 
-// Tracks hanno colonne: track_id, sim, circuit_name, config_name, length_meters, country_code, active
-function formatTrackName(track, fallbackId) {
-  if (!track) return fallbackId || '—';
-  const parts = [track.circuit_name, track.config_name].filter(Boolean);
-  return parts.length > 0 ? parts.join(' ') : (track.track_id || fallbackId || '—');
-}
-
 export default function AdminEndurance() {
   const [statusFilter, setStatusFilter] = useState('');
   const [simFilter, setSimFilter] = useState('');
@@ -55,7 +49,7 @@ export default function AdminEndurance() {
   }, [statusFilter, simFilter]);
 
   const { data: auditions, isLoading, error } = useAuditions(filters);
-  const { getTrack, isLoading: lookupsLoading } = useLookupResolvers();
+  const { data: tracks = [], isLoading: tracksLoading } = useTracks();
   const updateMutation = useUpdateAudition();
 
   const stats = useMemo(() => {
@@ -180,8 +174,7 @@ export default function AdminEndurance() {
             <tbody>
               {auditions.map(a => {
                 const isCancelled = a.status === 'cancelled';
-                const track = getTrack(a.track_id);
-                const trackName = formatTrackName(track, a.track_id);
+                const trackName = formatTrack(a.track_id, tracks);
 
                 return (
                   <tr key={a.audition_id} className={isCancelled ? styles.rowCancelled : ''}>
@@ -229,7 +222,7 @@ export default function AdminEndurance() {
         </div>
       )}
 
-      {lookupsLoading && (
+      {tracksLoading && (
         <div className={styles.footerNote}>Caricamento dati lookups…</div>
       )}
     </div>
