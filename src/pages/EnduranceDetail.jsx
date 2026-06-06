@@ -1,6 +1,8 @@
 import { useParams, Link } from 'react-router-dom';
 import { useAudition } from '../hooks/useEndurance';
+import { useParticipants } from '../hooks/useEnduranceParticipants';
 import { useTracks, useCars } from '../hooks/useLookups';
+import { useDrivers } from '../hooks/useRoster';
 import SimBadge from '../components/shared/SimBadge';
 import CategoryPill from '../components/shared/CategoryPill';
 import { formatTrack } from '../utils/format';
@@ -13,6 +15,15 @@ const STATUS_LABELS = {
   completed: 'Conclusa',
   cancelled: 'Annullata',
 };
+
+const PARTICIPANT_STATUS_LABELS = {
+  registered: 'Iscritto',
+  accepted: 'Accettato',
+  reserve: 'Riserva',
+};
+
+// status non mostrati pubblicamente
+const PARTICIPANT_HIDDEN_STATUSES = new Set(['rejected', 'withdrawn']);
 
 const DISCORD_INVITE = 'https://discord.gg/hdt8uHEfsy';
 
@@ -40,7 +51,6 @@ function formatDuration(minutes) {
   return r === 0 ? `${h}h` : `${h}h ${r}min`;
 }
 
-// Cars schema: car_id, sim, car_name, manufacturer, category, race_class, active
 function formatCarName(carId, cars) {
   if (!carId) return '—';
   const car = (cars || []).find(c => c.car_id === carId);
@@ -92,6 +102,8 @@ export default function EnduranceDetail() {
   const { data: audition, isLoading, error } = useAudition(auditionId);
   const { data: tracks = [] } = useTracks();
   const { data: cars = [] } = useCars();
+  const { data: participants = [], isLoading: pLoading } = useParticipants(auditionId);
+  const { data: drivers = [] } = useDrivers();
 
   if (isLoading) {
     return (
@@ -122,6 +134,13 @@ export default function EnduranceDetail() {
   const targetRace = audition.target_race;
   const targetRaceDate = audition.target_race_date;
   const countdown = formatDetailedCountdown(targetRaceDate);
+
+  // Build driverId → driver map
+  const driverMap = {};
+  (drivers || []).forEach(d => { driverMap[d.driver_id] = d; });
+
+  // Filter participants visibili pubblicamente
+  const visibleParticipants = (participants || []).filter(p => !PARTICIPANT_HIDDEN_STATUSES.has(p.status));
 
   return (
     <div className={styles.page}>
@@ -236,23 +255,51 @@ export default function EnduranceDetail() {
         </div>
       </Section>
 
-      <Section title="Partecipanti">
-        <div className={styles.placeholder}>
-          <div className={styles.placeholderTitle}>Iscrizioni gestite via Discord</div>
-          <div className={styles.placeholderText}>
-            Per partecipare a questa audizione comunica la tua disponibilità
-            nel canale Discord del team. Il sistema di iscrizione automatica
-            sarà disponibile a breve.
+      {/* ════════ PARTECIPANTI ════════ */}
+      <Section title={`Partecipanti (${visibleParticipants.length})`}>
+        {pLoading && (
+          <div className={styles.placeholderText}>Caricamento partecipanti…</div>
+        )}
+
+        {!pLoading && visibleParticipants.length === 0 && (
+          <div className={styles.placeholder}>
+            <div className={styles.placeholderTitle}>Nessun pilota iscritto</div>
+            <div className={styles.placeholderText}>
+              Le iscrizioni saranno annunciate sul canale Discord del team.
+              Se vuoi candidarti, contatta lo staff.
+            </div>
+            <a
+              href={DISCORD_INVITE}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.discordButton}
+            >
+              Apri Discord →
+            </a>
           </div>
-          <a
-            href={DISCORD_INVITE}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.discordButton}
-          >
-            Apri Discord →
-          </a>
-        </div>
+        )}
+
+        {!pLoading && visibleParticipants.length > 0 && (
+          <div className={styles.participantsGrid}>
+            {visibleParticipants.map(p => {
+              const driver = driverMap[p.driver_id];
+              const label = driver ? driver.display_name : p.driver_id;
+              return (
+                <Link
+                  key={p.participation_id}
+                  to={`/roster/${p.driver_id}`}
+                  className={styles.participantCard}
+                >
+                  <div className={`${styles.participantStatusBadge} ${styles[`statusBadge_${p.status}`]}`}>
+                    {PARTICIPANT_STATUS_LABELS[p.status] || p.status}
+                  </div>
+                  <div className={styles.participantCardName}>{label}</div>
+                  <div className={styles.participantCardId}>{p.driver_id}</div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </Section>
 
       <div className={styles.footer}>

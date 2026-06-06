@@ -5,7 +5,14 @@ import {
   useCreateAudition,
   useUpdateAudition,
 } from '../hooks/useEndurance';
+import {
+  useParticipants,
+  useAddParticipant,
+  useUpdateParticipant,
+  useRemoveParticipant,
+} from '../hooks/useEnduranceParticipants';
 import { useTracks, useCars } from '../hooks/useLookups';
+import { useDrivers } from '../hooks/useRoster';
 import styles from './AdminEnduranceForm.module.css';
 
 const SIM_OPTIONS = ['LMU', 'IRC', 'ACE'];
@@ -25,6 +32,15 @@ const WEATHER_LABELS = {
   asciutto: 'Asciutto',
   dinamico: 'Dinamico',
   bagnato: 'Bagnato',
+};
+
+const PARTICIPANT_STATUS_OPTIONS = ['registered', 'accepted', 'reserve', 'rejected', 'withdrawn'];
+const PARTICIPANT_STATUS_LABELS = {
+  registered: 'Iscritto',
+  accepted: 'Accettato',
+  reserve: 'Riserva',
+  rejected: 'Rifiutato',
+  withdrawn: 'Ritirato',
 };
 
 const INITIAL_STATE = {
@@ -75,8 +91,6 @@ function datetimeLocalFromIso(iso) {
   return String(iso).substring(0, 16);
 }
 
-// Match cars on pilot_class against category OR race_class.
-// "Open" matches everything. Empty string also matches everything.
 function carMatchesClass(car, pilotClass) {
   if (!pilotClass || pilotClass === 'Open') return true;
   const category = String(car.category || '').toUpperCase();
@@ -188,16 +202,9 @@ export default function AdminEnduranceForm() {
     if (!form.name.trim()) e.name = 'Nome obbligatorio';
     if (!form.date) e.date = 'Data obbligatoria';
     if (!form.sim) e.sim = 'Sim obbligatorio';
-
-    if (form.pilot_class && !PILOT_CLASS_OPTIONS.includes(form.pilot_class)) {
-      e.pilot_class = 'Classe non valida';
-    }
-    if (form.weather_condition && !WEATHER_OPTIONS.includes(form.weather_condition)) {
-      e.weather_condition = 'Meteo non valido';
-    }
-    if (form.status && !STATUS_OPTIONS.includes(form.status)) {
-      e.status = 'Status non valido';
-    }
+    if (form.pilot_class && !PILOT_CLASS_OPTIONS.includes(form.pilot_class)) e.pilot_class = 'Classe non valida';
+    if (form.weather_condition && !WEATHER_OPTIONS.includes(form.weather_condition)) e.weather_condition = 'Meteo non valido';
+    if (form.status && !STATUS_OPTIONS.includes(form.status)) e.status = 'Status non valido';
 
     const numericFields = [
       ['duration_minutes_real', 'Durata reale'],
@@ -211,16 +218,13 @@ export default function AdminEnduranceForm() {
       const v = form[field];
       if (v !== '' && v != null) {
         const n = Number(v);
-        if (Number.isNaN(n) || n < 0) {
-          e[field] = `${label} deve essere ≥ 0`;
-        }
+        if (Number.isNaN(n) || n < 0) e[field] = `${label} deve essere ≥ 0`;
       }
     }
 
     if (form.start_time_ingame && !/^\d{2}:\d{2}$/.test(form.start_time_ingame)) {
       e.start_time_ingame = 'Formato HH:MM richiesto';
     }
-
     if (form.setup_url && !/^https?:\/\//.test(form.setup_url)) {
       e.setup_url = 'URL deve iniziare con http(s)://';
     }
@@ -270,10 +274,7 @@ export default function AdminEnduranceForm() {
     };
 
     if (isEdit) {
-      updateMutation.mutate(
-        { ...payload, audition_id: auditionId },
-        { onSuccess, onError }
-      );
+      updateMutation.mutate({ ...payload, audition_id: auditionId }, { onSuccess, onError });
     } else {
       createMutation.mutate(payload, { onSuccess, onError });
     }
@@ -282,11 +283,7 @@ export default function AdminEnduranceForm() {
   const isPending = createMutation.isPending || updateMutation.isPending;
 
   if (isEdit && existing.isLoading) {
-    return (
-      <div className={styles.container}>
-        <div className={styles.loading}>Caricamento audizione…</div>
-      </div>
-    );
+    return <div className={styles.container}><div className={styles.loading}>Caricamento audizione…</div></div>;
   }
   if (isEdit && existing.error) {
     return (
@@ -306,9 +303,7 @@ export default function AdminEnduranceForm() {
       <Link to="/admin/endurance" className={styles.back}>← Lista audizioni</Link>
 
       <header className={styles.header}>
-        <h1 className={styles.title}>
-          {isEdit ? 'Modifica Audizione' : 'Nuova Audizione'}
-        </h1>
+        <h1 className={styles.title}>{isEdit ? 'Modifica Audizione' : 'Nuova Audizione'}</h1>
         {isEdit && a && (
           <div className={styles.headerMeta}>
             <span><code className={styles.metaCode}>{a.audition_id}</code></span>
@@ -318,11 +313,7 @@ export default function AdminEnduranceForm() {
         )}
       </header>
 
-      {submitError && (
-        <div className={styles.alertError}>
-          ❌ {submitError}
-        </div>
-      )}
+      {submitError && <div className={styles.alertError}>❌ {submitError}</div>}
 
       {(form.status === 'completed' || form.status === 'cancelled') && (
         <div className={styles.alertWarning}>
@@ -334,79 +325,42 @@ export default function AdminEnduranceForm() {
       <form onSubmit={handleSubmit} className={styles.form}>
 
         <Section title="Identità & Sessione">
-
           <div className={styles.row2}>
-            <Field
-              label="Gara target"
-              hint="A quale gara reale si riferisce? Es. 'Le Mans 24h 2026', 'Spa 6h 2026'"
-            >
-              <input
-                type="text"
-                className={styles.input}
-                value={form.target_race}
+            <Field label="Gara target" hint="A quale gara reale si riferisce? Es. 'Le Mans 24h 2026', 'Spa 6h 2026'">
+              <input type="text" className={styles.input} value={form.target_race}
                 onChange={e => update('target_race', e.target.value)}
-                placeholder="Es. Le Mans 24h 2026"
-                maxLength={120}
-              />
+                placeholder="Es. Le Mans 24h 2026" maxLength={120} />
             </Field>
 
-            <Field
-              label="Data della gara target"
-              hint="Quando si correrà la gara reale (per countdown)"
-            >
-              <input
-                type="datetime-local"
-                className={styles.input}
-                value={form.target_race_date}
-                onChange={e => update('target_race_date', e.target.value)}
-              />
+            <Field label="Data della gara target" hint="Quando si correrà la gara reale (per countdown)">
+              <input type="datetime-local" className={styles.input} value={form.target_race_date}
+                onChange={e => update('target_race_date', e.target.value)} />
             </Field>
           </div>
 
           <Field label="Nome audizione" error={errors.name} required>
-            <input
-              type="text"
-              className={styles.input}
-              value={form.name}
+            <input type="text" className={styles.input} value={form.name}
               onChange={e => update('name', e.target.value)}
-              placeholder="Es. Audizione Le Mans 24h"
-              maxLength={200}
-            />
+              placeholder="Es. Audizione Le Mans 24h" maxLength={200} />
           </Field>
 
           <div className={styles.row2}>
             <Field label="Sim" error={errors.sim} required>
-              <select
-                className={styles.select}
-                value={form.sim}
-                onChange={e => update('sim', e.target.value)}
-              >
-                {SIM_OPTIONS.map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
+              <select className={styles.select} value={form.sim} onChange={e => update('sim', e.target.value)}>
+                {SIM_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
               </select>
             </Field>
 
             <Field label="Data e ora audizione" error={errors.date} required>
-              <input
-                type="datetime-local"
-                className={styles.input}
-                value={form.date}
-                onChange={e => update('date', e.target.value)}
-              />
+              <input type="datetime-local" className={styles.input} value={form.date}
+                onChange={e => update('date', e.target.value)} />
             </Field>
           </div>
 
           <div className={styles.row2}>
-            <Field
-              label="Tracciato"
-              hint={tracksQuery.isLoading ? 'Caricamento…' : `${(tracksQuery.data || []).length} disponibili per ${form.sim}`}
-            >
-              <select
-                className={styles.select}
-                value={form.track_id}
-                onChange={e => update('track_id', e.target.value)}
-              >
+            <Field label="Tracciato"
+              hint={tracksQuery.isLoading ? 'Caricamento…' : `${(tracksQuery.data || []).length} disponibili per ${form.sim}`}>
+              <select className={styles.select} value={form.track_id} onChange={e => update('track_id', e.target.value)}>
                 <option value="">— Seleziona tracciato —</option>
                 {(tracksQuery.data || []).map(t => (
                   <option key={t.track_id} value={t.track_id}>
@@ -417,30 +371,16 @@ export default function AdminEnduranceForm() {
             </Field>
 
             <Field label="Classe pilota" error={errors.pilot_class}>
-              <select
-                className={styles.select}
-                value={form.pilot_class}
-                onChange={e => update('pilot_class', e.target.value)}
-              >
+              <select className={styles.select} value={form.pilot_class} onChange={e => update('pilot_class', e.target.value)}>
                 <option value="">— Nessuna —</option>
-                {PILOT_CLASS_OPTIONS.map(c => (
-                  <option key={c} value={c}>{c}</option>
-                ))}
+                {PILOT_CLASS_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </Field>
           </div>
 
-          <Field
-            label="Auto obbligatoria"
-            hint={carsQuery.isLoading
-              ? 'Caricamento…'
-              : `${filteredCars.length} disponibili${form.pilot_class && form.pilot_class !== 'Open' ? ` per ${form.pilot_class}` : ''}`}
-          >
-            <select
-              className={styles.select}
-              value={form.mandatory_car_id}
-              onChange={e => update('mandatory_car_id', e.target.value)}
-            >
+          <Field label="Auto obbligatoria"
+            hint={carsQuery.isLoading ? 'Caricamento…' : `${filteredCars.length} disponibili${form.pilot_class && form.pilot_class !== 'Open' ? ` per ${form.pilot_class}` : ''}`}>
+            <select className={styles.select} value={form.mandatory_car_id} onChange={e => update('mandatory_car_id', e.target.value)}>
               <option value="">— Nessuna auto obbligatoria —</option>
               {filteredCars.map(c => (
                 <option key={c.car_id} value={c.car_id}>
@@ -451,99 +391,66 @@ export default function AdminEnduranceForm() {
           </Field>
         </Section>
 
+        {/* ════ SEZIONE PARTECIPANTI ════ */}
+        <Section title="Partecipanti">
+          {isEdit ? (
+            <ParticipantsManager auditionId={auditionId} />
+          ) : (
+            <div className={styles.participantsPlaceholder}>
+              Salva l'audizione una prima volta per poter gestire la lista dei partecipanti.
+            </div>
+          )}
+        </Section>
+
         <Section title="Setup">
           <Field label="URL Setup (Google Drive, MEGA, etc.)" error={errors.setup_url}>
-            <input
-              type="url"
-              className={styles.input}
-              value={form.setup_url}
+            <input type="url" className={styles.input} value={form.setup_url}
               onChange={e => update('setup_url', e.target.value)}
-              placeholder="https://drive.google.com/..."
-            />
+              placeholder="https://drive.google.com/..." />
           </Field>
 
           <Field label="Note Setup" hint="Visibili al pubblico (TC, ABS, brake bias, etc.)">
-            <textarea
-              className={styles.textarea}
-              rows={3}
-              value={form.setup_notes}
+            <textarea className={styles.textarea} rows={3} value={form.setup_notes}
               onChange={e => update('setup_notes', e.target.value)}
-              placeholder="Es. TC 4, ABS 6, brake bias 56%"
-            />
+              placeholder="Es. TC 4, ABS 6, brake bias 56%" />
           </Field>
         </Section>
 
         <Section title="Configurazione Sessione">
           <div className={styles.row3}>
             <Field label="Durata reale (min)" error={errors.duration_minutes_real}>
-              <input
-                type="number"
-                min="0"
-                className={styles.input}
-                value={form.duration_minutes_real}
-                onChange={e => update('duration_minutes_real', e.target.value)}
-                placeholder="60"
-              />
+              <input type="number" min="0" className={styles.input} value={form.duration_minutes_real}
+                onChange={e => update('duration_minutes_real', e.target.value)} placeholder="60" />
             </Field>
 
             <Field label="Multiplier tempo" error={errors.time_multiplier}>
-              <input
-                type="number"
-                min="1"
-                step="1"
-                className={styles.input}
-                value={form.time_multiplier}
-                onChange={e => update('time_multiplier', e.target.value)}
-                placeholder="6"
-              />
+              <input type="number" min="1" step="1" className={styles.input} value={form.time_multiplier}
+                onChange={e => update('time_multiplier', e.target.value)} placeholder="6" />
             </Field>
 
-            <ComputedField
-              label="Durata in-game (computed)"
-              value={durationIngamePreview ? `${durationIngamePreview} min` : '—'}
-              hint="reale × multiplier"
-            />
+            <ComputedField label="Durata in-game (computed)"
+              value={durationIngamePreview ? `${durationIngamePreview} min` : '—'} hint="reale × multiplier" />
           </div>
 
           <div className={styles.row3}>
             <Field label="Inizio in-game (HH:MM)" error={errors.start_time_ingame}>
-              <input
-                type="time"
-                className={styles.input}
-                value={form.start_time_ingame}
-                onChange={e => update('start_time_ingame', e.target.value)}
-              />
+              <input type="time" className={styles.input} value={form.start_time_ingame}
+                onChange={e => update('start_time_ingame', e.target.value)} />
             </Field>
 
-            <ComputedField
-              label="Fine in-game (computed)"
-              value={endTimeIngamePreview || '—'}
-              hint="inizio + durata in-game"
-            />
+            <ComputedField label="Fine in-game (computed)" value={endTimeIngamePreview || '—'}
+              hint="inizio + durata in-game" />
 
             <Field label="AI Strength (%)" error={errors.ai_strength_pct}>
-              <input
-                type="number"
-                min="0"
-                max="150"
-                className={styles.input}
-                value={form.ai_strength_pct}
-                onChange={e => update('ai_strength_pct', e.target.value)}
-                placeholder="105"
-              />
+              <input type="number" min="0" max="150" className={styles.input} value={form.ai_strength_pct}
+                onChange={e => update('ai_strength_pct', e.target.value)} placeholder="105" />
             </Field>
           </div>
 
           <Field label="Condizioni meteo" error={errors.weather_condition}>
-            <select
-              className={styles.select}
-              value={form.weather_condition}
-              onChange={e => update('weather_condition', e.target.value)}
-            >
+            <select className={styles.select} value={form.weather_condition} onChange={e => update('weather_condition', e.target.value)}>
               <option value="">— Non specificato —</option>
-              {WEATHER_OPTIONS.map(w => (
-                <option key={w} value={w}>{WEATHER_LABELS[w]}</option>
-              ))}
+              {WEATHER_OPTIONS.map(w => <option key={w} value={w}>{WEATHER_LABELS[w]}</option>)}
             </select>
           </Field>
         </Section>
@@ -551,36 +458,18 @@ export default function AdminEnduranceForm() {
         <Section title="Composizione Field">
           <div className={styles.row3}>
             <Field label="Hypercar" error={errors.field_size_hypercar}>
-              <input
-                type="number"
-                min="0"
-                className={styles.input}
-                value={form.field_size_hypercar}
-                onChange={e => update('field_size_hypercar', e.target.value)}
-                placeholder="5"
-              />
+              <input type="number" min="0" className={styles.input} value={form.field_size_hypercar}
+                onChange={e => update('field_size_hypercar', e.target.value)} placeholder="5" />
             </Field>
 
             <Field label="LMP2" error={errors.field_size_lmp2}>
-              <input
-                type="number"
-                min="0"
-                className={styles.input}
-                value={form.field_size_lmp2}
-                onChange={e => update('field_size_lmp2', e.target.value)}
-                placeholder="10"
-              />
+              <input type="number" min="0" className={styles.input} value={form.field_size_lmp2}
+                onChange={e => update('field_size_lmp2', e.target.value)} placeholder="10" />
             </Field>
 
             <Field label="GT3 / LMGT3" error={errors.field_size_gt3}>
-              <input
-                type="number"
-                min="0"
-                className={styles.input}
-                value={form.field_size_gt3}
-                onChange={e => update('field_size_gt3', e.target.value)}
-                placeholder="15"
-              />
+              <input type="number" min="0" className={styles.input} value={form.field_size_gt3}
+                onChange={e => update('field_size_gt3', e.target.value)} placeholder="15" />
             </Field>
           </div>
           <div className={styles.totalRow}>
@@ -589,54 +478,32 @@ export default function AdminEnduranceForm() {
         </Section>
 
         <Section title="Status & Note Interne">
-          <Field
-            label="Status"
-            error={errors.status}
-            hint="draft = nascosta al pubblico · scheduled = visibile · cancelled = soft delete"
-          >
-            <select
-              className={styles.select}
-              value={form.status}
-              onChange={e => update('status', e.target.value)}
-            >
-              {STATUS_OPTIONS.map(s => (
-                <option key={s} value={s}>{STATUS_LABELS[s]}</option>
-              ))}
+          <Field label="Status" error={errors.status}
+            hint="draft = nascosta al pubblico · scheduled = visibile · cancelled = soft delete">
+            <select className={styles.select} value={form.status} onChange={e => update('status', e.target.value)}>
+              {STATUS_OPTIONS.map(s => <option key={s} value={s}>{STATUS_LABELS[s]}</option>)}
             </select>
           </Field>
 
-          <Field
-            label="Note interne (staff only)"
-            hint="NON visibili pubblicamente. Criteri di valutazione, considerazioni private."
-          >
-            <textarea
-              className={styles.textarea}
-              rows={4}
-              value={form.notes_internal}
+          <Field label="Note interne (staff only)" hint="NON visibili pubblicamente. Criteri di valutazione, considerazioni private.">
+            <textarea className={styles.textarea} rows={4} value={form.notes_internal}
               onChange={e => update('notes_internal', e.target.value)}
-              placeholder="Note solo staff, mai esposte al pubblico"
-            />
+              placeholder="Note solo staff, mai esposte al pubblico" />
           </Field>
         </Section>
 
         <div className={styles.actions}>
-          <Link to="/admin/endurance" className={styles.btnSecondary}>
-            Annulla
-          </Link>
-          <button
-            type="submit"
-            className={styles.btnPrimary}
-            disabled={isPending}
-          >
-            {isPending
-              ? 'Salvataggio…'
-              : (isEdit ? 'Salva modifiche' : 'Crea audizione')}
+          <Link to="/admin/endurance" className={styles.btnSecondary}>Annulla</Link>
+          <button type="submit" className={styles.btnPrimary} disabled={isPending}>
+            {isPending ? 'Salvataggio…' : (isEdit ? 'Salva modifiche' : 'Crea audizione')}
           </button>
         </div>
       </form>
     </div>
   );
 }
+
+// ════════ SUB-COMPONENTS ════════
 
 function Section({ title, children }) {
   return (
@@ -664,11 +531,191 @@ function Field({ label, hint, error, required, children }) {
 function ComputedField({ label, value, hint }) {
   return (
     <div className={styles.field}>
-      <label className={styles.fieldLabel}>
-        {label}
-      </label>
+      <label className={styles.fieldLabel}>{label}</label>
       <div className={styles.computedValue}>{value}</div>
       {hint && <div className={styles.fieldHint}>{hint}</div>}
     </div>
   );
 }
+
+// ════════ PARTICIPANTS MANAGER ════════
+
+function ParticipantsManager({ auditionId }) {
+  const { data: participants = [], isLoading: pLoading, error: pError } = useParticipants(auditionId);
+  const { data: roster = [], isLoading: rLoading } = useDrivers();
+
+  const addMutation = useAddParticipant();
+  const updateMutation = useUpdateParticipant();
+  const removeMutation = useRemoveParticipant();
+
+  const [selectedDriverId, setSelectedDriverId] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('registered');
+  const [actionError, setActionError] = useState('');
+
+  // Set of driver IDs already in participants
+  const participantDriverIds = useMemo(
+    () => new Set((participants || []).map(p => p.driver_id)),
+    [participants]
+  );
+
+  // Roster filtered: only drivers not already added
+  const availableDrivers = useMemo(() => {
+    return (roster || []).filter(d => !participantDriverIds.has(d.driver_id));
+  }, [roster, participantDriverIds]);
+
+  // Map driver_id → driver object, for showing display_name etc in list
+  const rosterById = useMemo(() => {
+    const m = {};
+    (roster || []).forEach(d => { m[d.driver_id] = d; });
+    return m;
+  }, [roster]);
+
+  function handleAdd() {
+    setActionError('');
+    if (!selectedDriverId) {
+      setActionError('Seleziona un pilota');
+      return;
+    }
+    addMutation.mutate(
+      {
+        audition_id: auditionId,
+        driver_id: selectedDriverId,
+        status: selectedStatus,
+      },
+      {
+        onSuccess: () => {
+          setSelectedDriverId('');
+          setSelectedStatus('registered');
+        },
+        onError: (err) => setActionError(err.message || 'Errore aggiunta'),
+      }
+    );
+  }
+
+  function handleStatusChange(participation_id, newStatus) {
+    setActionError('');
+    updateMutation.mutate(
+      { participation_id, status: newStatus },
+      { onError: (err) => setActionError(err.message || 'Errore aggiornamento') }
+    );
+  }
+
+  function handleRemove(participation_id, driverLabel) {
+    setActionError('');
+    const ok = window.confirm(`Rimuovere ${driverLabel} dai partecipanti?`);
+    if (!ok) return;
+    removeMutation.mutate(participation_id, {
+      onError: (err) => setActionError(err.message || 'Errore rimozione'),
+    });
+  }
+
+  if (pLoading || rLoading) {
+    return <div className={styles.participantsLoading}>Caricamento partecipanti…</div>;
+  }
+
+  if (pError) {
+    return <div className={styles.fieldError}>Errore caricamento partecipanti: {pError.message}</div>;
+  }
+
+  const isBusy = addMutation.isPending || updateMutation.isPending || removeMutation.isPending;
+
+  return (
+    <div className={styles.participantsWrap}>
+
+      {actionError && (
+        <div className={styles.alertError} style={{ marginBottom: 12 }}>
+          ❌ {actionError}
+        </div>
+      )}
+
+      {/* Add row */}
+      <div className={styles.participantsAddRow}>
+        <select
+          className={styles.select}
+          value={selectedDriverId}
+          onChange={e => setSelectedDriverId(e.target.value)}
+          disabled={availableDrivers.length === 0 || isBusy}
+        >
+          <option value="">
+            {availableDrivers.length === 0
+              ? '— Tutti i piloti già aggiunti —'
+              : '— Seleziona pilota dal roster —'}
+          </option>
+          {availableDrivers.map(d => (
+            <option key={d.driver_id} value={d.driver_id}>
+              {d.display_name} ({d.driver_id})
+            </option>
+          ))}
+        </select>
+
+        <select
+          className={styles.select}
+          value={selectedStatus}
+          onChange={e => setSelectedStatus(e.target.value)}
+          disabled={isBusy}
+        >
+          {PARTICIPANT_STATUS_OPTIONS.map(s => (
+            <option key={s} value={s}>{PARTICIPANT_STATUS_LABELS[s]}</option>
+          ))}
+        </select>
+
+        <button
+          type="button"
+          className={styles.btnPrimary}
+          onClick={handleAdd}
+          disabled={!selectedDriverId || isBusy}
+        >
+          + Aggiungi
+        </button>
+      </div>
+
+      {/* List */}
+      <div className={styles.participantsListHeader}>
+        Iscritti ({participants.length})
+      </div>
+
+      {participants.length === 0 ? (
+        <div className={styles.participantsEmpty}>
+          Nessun partecipante. Aggiungi piloti dal dropdown sopra.
+        </div>
+      ) : (
+        <div className={styles.participantsList}>
+          {participants.map(p => {
+            const driver = rosterById[p.driver_id];
+            const label = driver ? driver.display_name : p.driver_id;
+            return (
+              <div key={p.participation_id} className={styles.participantRow}>
+                <div className={styles.participantName}>
+                  <strong>{label}</strong>
+                  <span className={styles.participantDriverId}>{p.driver_id}</span>
+                </div>
+
+                <select
+                  className={styles.select}
+                  value={p.status}
+                  onChange={e => handleStatusChange(p.participation_id, e.target.value)}
+                  disabled={isBusy}
+                >
+                  {PARTICIPANT_STATUS_OPTIONS.map(s => (
+                    <option key={s} value={s}>{PARTICIPANT_STATUS_LABELS[s]}</option>
+                  ))}
+                </select>
+
+                <button
+                  type="button"
+                  className={styles.participantRemoveBtn}
+                  onClick={() => handleRemove(p.participation_id, label)}
+                  disabled={isBusy}
+                  title="Rimuovi partecipante"
+                >
+                  ✕
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+

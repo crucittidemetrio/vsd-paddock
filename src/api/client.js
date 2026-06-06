@@ -120,12 +120,18 @@ export const api = {
     summary: () => call('showcase.summary'),
   },
 
-  endurance: {
-    auditions: {
-      list: (payload = {}) => call('endurance.auditions.list', payload),
-      get: (audition_id) => call('endurance.auditions.get', { audition_id }),
-      create: (payload) => call('endurance.auditions.create', payload),
-      update: (payload) => call('endurance.auditions.update', payload),
+endurance: {
+      auditions: {
+        list: (payload = {}) => call('endurance.auditions.list', payload),
+        get: (audition_id) => call('endurance.auditions.get', { audition_id }),
+        create: (payload) => call('endurance.auditions.create', payload),
+        update: (payload) => call('endurance.auditions.update', payload),
+      },
+      participants: {
+        list: (audition_id) => call('endurance.participants.list', audition_id ? { audition_id } : {}),
+        add: (payload) => call('endurance.participants.add', payload),
+        update: (payload) => call('endurance.participants.update', payload),
+        remove: (participation_id) => call('endurance.participants.remove', { participation_id }),
+      },
     },
-  },
 };

@@ -212,6 +212,14 @@ export async function callApi(action, payload = {}, ctx = null) {
         return await enduranceAuditionsCreateAdapter(payload, token);
       case 'endurance.auditions.update':
         return await enduranceAuditionsUpdateAdapter(payload, token);
+      case 'endurance.participants.list':
+        return await enduranceParticipantsListAdapter(payload, token);
+      case 'endurance.participants.add':
+        return await enduranceParticipantsAddAdapter(payload, token);
+      case 'endurance.participants.update':
+        return await enduranceParticipantsUpdateAdapter(payload, token);
+      case 'endurance.participants.remove':
+        return await enduranceParticipantsRemoveAdapter(payload, token);
       default:
         return fail(`Action non instradata: ${action}`);
     }
@@ -478,4 +486,19 @@ async function racesUpdatePosterAdapter(payload, token) {
   const res = await postToBackend('races.updatePoster', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
+}
+
+
+// ════ Endurance Participants adapters ════
+async function enduranceParticipantsListAdapter(payload, token) {
+  return await postToBackend('endurance.participants.list', payload || {}, token);
+}
+async function enduranceParticipantsAddAdapter(payload, token) {
+  return await postToBackend('endurance.participants.add', payload || {}, token);
+}
+async function enduranceParticipantsUpdateAdapter(payload, token) {
+  return await postToBackend('endurance.participants.update', payload || {}, token);
+}
+async function enduranceParticipantsRemoveAdapter(payload, token) {
+  return await postToBackend('endurance.participants.remove', payload || {}, token);
 }

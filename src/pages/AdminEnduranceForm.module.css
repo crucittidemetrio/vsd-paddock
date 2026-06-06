@@ -302,3 +302,139 @@
     text-align: center;
   }
 }
+
+/* ════════════════════════════════════════════════════════════
+   AGGIUNGI QUESTE REGOLE IN CODA A:
+   src/pages/AdminEnduranceForm.module.css
+   ════════════════════════════════════════════════════════════ */
+
+.participantsPlaceholder {
+  padding: 16px 18px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.55);
+  font-style: italic;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.participantsLoading,
+.participantsEmpty {
+  padding: 24px 16px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 14px;
+}
+
+.participantsWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.participantsAddRow {
+  display: grid;
+  grid-template-columns: 1fr 180px auto;
+  gap: 10px;
+  align-items: center;
+  padding: 14px;
+  background: rgba(0, 212, 255, 0.05);
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  border-radius: 6px;
+}
+
+.participantsAddRow .btnPrimary,
+.participantsAddRow button {
+  white-space: nowrap;
+}
+
+.participantsListHeader {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.participantsList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.participantRow {
+  display: grid;
+  grid-template-columns: 1fr 180px 44px;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  transition: border-color 0.15s ease;
+}
+
+.participantRow:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.participantName {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.participantName strong {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 16px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: 0.3px;
+}
+
+.participantDriverId {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  letter-spacing: 0.5px;
+}
+
+.participantRemoveBtn {
+  background: rgba(239, 51, 64, 0.1);
+  border: 1px solid rgba(239, 51, 64, 0.25);
+  color: #ef3340;
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.participantRemoveBtn:hover:not(:disabled) {
+  background: rgba(239, 51, 64, 0.22);
+  transform: scale(1.05);
+}
+
+.participantRemoveBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+@media (max-width: 720px) {
+  .participantsAddRow,
+  .participantRow {
+    grid-template-columns: 1fr;
+  }
+}

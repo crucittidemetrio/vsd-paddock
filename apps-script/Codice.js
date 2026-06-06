@@ -182,6 +182,10 @@ const ACTIONS = {
   'endurance.auditions.get': handleEnduranceAuditionsGet,
   'endurance.auditions.create': handleEnduranceAuditionsCreate,
   'endurance.auditions.update': handleEnduranceAuditionsUpdate,
+  'endurance.participants.list': handleEnduranceParticipantsList,
+  'endurance.participants.add': handleEnduranceParticipantsAdd,
+  'endurance.participants.update': handleEnduranceParticipantsUpdate,
+  'endurance.participants.remove': handleEnduranceParticipantsRemove,
 };
 
 // ═══════════════════════════════════════════════════════════
