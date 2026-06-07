@@ -110,9 +110,13 @@ export function formatDateTime(iso) {
  * Differenza tempo in ms vs reference.
  * 83456 vs 83000 → "+0.456"
  * 83000 vs 83456 → "-0.456"
+ *
+ * Wave Sprint 0 (7 giu 2026): guard rinforzato con Number.isFinite per
+ * gestire NaN/Infinity/null/undefined uniformemente. Return '—' allineato
+ * con altre funzioni format invece del precedente '' (empty string).
  */
 export function formatLapDelta(ms, refMs) {
-  if (typeof ms !== 'number' || typeof refMs !== 'number') return '';
+  if (!Number.isFinite(ms) || !Number.isFinite(refMs)) return '—';
   const delta = ms - refMs;
   if (delta === 0) return '—';
   const sec = (delta / 1000).toFixed(3);
@@ -126,11 +130,16 @@ export function formatLapDelta(ms, refMs) {
  *
  * Numeri negativi (caso impossibile se chiamato correttamente: il mio tempo
  * non può essere migliore del record team) sono comunque gestiti.
+ *
+ * Wave Sprint 0 (7 giu 2026): null-check esplicito prima della coercion
+ * Number() per evitare Number(null) === 0 false-positive. Return '—' per
+ * tutti gli input invalid invece del precedente '' (uniformità UI).
  */
 export function formatGapPercent(myMs, recordMs) {
+  if (myMs == null || recordMs == null) return '—';
   const my = Number(myMs);
   const rec = Number(recordMs);
-  if (!Number.isFinite(my) || !Number.isFinite(rec) || rec <= 0) return '';
+  if (!Number.isFinite(my) || !Number.isFinite(rec) || rec <= 0) return '—';
   const gapMs = my - rec;
   if (gapMs === 0) return '—';
   const gapS = (gapMs / 1000).toFixed(3);
@@ -168,8 +177,20 @@ export function formatRaceDateTime(iso) {
   return `${date} · ${time}`;
 }
 
+/**
+ * Formatta una durata in minuti in stringa human-readable.
+ * 30  → "30min"
+ * 60  → "1h"
+ * 90  → "1h 30min"
+ * 120 → "2h"
+ *
+ * Wave Sprint 0 (7 giu 2026): guard rinforzato con Number.isFinite + check
+ * negativi. Zero ora ritorna "0min" (valid valore = zero duration esplicita)
+ * invece del precedente "—" (che confondeva missing data con zero).
+ * Negativi e null/undefined/NaN ritornano "—".
+ */
 export function formatDuration(minutes) {
-  if (!minutes) return '—';
+  if (!Number.isFinite(minutes) || minutes < 0) return '—';
   if (minutes < 60) return `${minutes}min`;
   const h = Math.floor(minutes / 60);
   const m = minutes % 60;
