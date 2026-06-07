@@ -762,6 +762,28 @@ function garage61TestSync() {
   garage61SyncLaps_({ writeToSheet: false });
 }
 
+/**
+ * ENTRY POINT — Scheduled Garage61 Sync (Sprint 0 - 5 giu 2026)
+ *
+ * Eseguito automaticamente da Apps Script time-driven trigger ogni 4 ore.
+ *
+ * SETUP TRIGGER (una tantum):
+ *   Editor Apps Script → menu Trigger (icona orologio sx) → "Aggiungi trigger"
+ *     - Funzione da eseguire:   garage61RunSync
+ *     - Sorgente evento:        Basato su tempo
+ *     - Tipo trigger di tempo:  Timer ore
+ *     - Intervallo orario:      Ogni 4 ore
+ *     - Notifiche errori:       Immediatamente (email su failure)
+ *
+ * Stesso sync chiamato dall'admin UI (button "Avvia Sync Garage61"
+ * in /admin/sync-garage61, via action laps.syncFromGarage61).
+ *
+ * Operazione idempotente: lap già presenti vengono skippati via dedup.
+ * Garage61 upstream ha lag ~1-3h → frequenza ogni 4h è il giusto compromesso.
+ *
+ * NB: importa solo "best lap puliti" (practice/qualifying clean).
+ * Race laps di gara NON vengono importati da questo sync (Wave 9.8 backlog).
+ */
 function garage61RunSync() {
   garage61SyncLaps_({ writeToSheet: true });
 }
@@ -782,3 +804,4 @@ function handleLapsSyncFromGarage61(payload, ctx) {
     return fail(e.message || 'Errore durante il sync Garage61');
   }
 }
+
