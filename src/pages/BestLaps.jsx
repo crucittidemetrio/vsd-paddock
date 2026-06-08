@@ -287,7 +287,8 @@ function RaceLapsView({ filters, driverMap, tracks }) {
 
   const raceMap = useMemo(() => {
     const m = {};
-    (races || []).forEach(r => { m[r.race_id] = r; });
+    const list = Array.isArray(races) ? races : (races?.races || []);
+    list.forEach(r => { m[r.race_id] = r; });
     return m;
   }, [races]);
 
@@ -483,4 +484,6 @@ function Prompt({ icon, title, text }) {
     </div>
   );
 }
+
+
 
