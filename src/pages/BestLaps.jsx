@@ -7,6 +7,7 @@ import {
   useCars,
 } from '../hooks/useBestLaps';
 import { useRaceResults } from '../hooks/useRaceResults';
+import { useRaces } from '../hooks/useRaces';
 import { useDrivers } from '../hooks/useRoster';
 import { useAuth } from '../hooks/useAuth';
 import SimBadge from '../components/shared/SimBadge';
@@ -278,31 +279,31 @@ function LeaderboardView({ filters, driverMap, tracks, cars }) {
 
 
 function RaceLapsView({ filters, driverMap, tracks }) {
-  const { data, isLoading, isError, error } = useRaceResults({ session_type: 'race' });
+  const { data, isLoading, isError, error } = useRaceResults({
+    session_type: 'race',
+    sort: 'date_desc',
+  });
+  const { data: races } = useRaces();
+
+  const raceMap = useMemo(() => {
+    const m = {};
+    (races || []).forEach(r => { m[r.race_id] = r; });
+    return m;
+  }, [races]);
 
   const records = useMemo(() => {
-    const rows = (data?.results || []).filter(
-      r => r.is_vsd_driver && r.best_lap_ms != null && r.best_lap_ms > 0
-    );
+    const rows = (data?.results || []).filter(r => r.is_vsd_driver);
     const filtered = rows.filter(r => {
       if (filters.sim !== 'all' && r.sim !== filters.sim) return false;
       if (filters.track_id !== 'all' && r.track_id !== filters.track_id) return false;
       if (filters.race_class !== 'all' && r.car_class !== filters.race_class) return false;
       return true;
     });
-    // Record di gara per (sim | track | class): tieni il best_lap_ms minimo
-    const map = {};
-    for (const r of filtered) {
-      const key = `${r.sim}|${r.track_id}|${r.car_class}`;
-      if (!map[key] || r.best_lap_ms < map[key].best_lap_ms) {
-        map[key] = r;
-      }
-    }
-    return Object.values(map).sort((a, b) => {
-      if (a.track_id !== b.track_id) {
-        return String(a.track_id).localeCompare(String(b.track_id));
-      }
-      return String(a.car_class).localeCompare(String(b.car_class));
+    return filtered.sort((a, b) => {
+      const da = String(a.set_date || '');
+      const db = String(b.set_date || '');
+      if (da !== db) return db.localeCompare(da);
+      return String(b.race_id || '').localeCompare(String(a.race_id || ''));
     });
   }, [data, filters]);
 
@@ -312,8 +313,8 @@ function RaceLapsView({ filters, driverMap, tracks }) {
     return (
       <Prompt
         icon="🏁"
-        title="Nessun giro di gara"
-        text="Nessun best lap di gara trovato per i filtri selezionati. I race lap appaiono quando importi i risultati di una gara."
+        title="Nessuna partecipazione VSD"
+        text="Nessun risultato di gara trovato. I risultati appaiono dopo aver importato il JSON di una gara."
       />
     );
   }
@@ -322,24 +323,30 @@ function RaceLapsView({ filters, driverMap, tracks }) {
     <table className="laps-table">
       <thead>
         <tr>
-          <th>Sim</th>
-          <th>Tracciato</th>
-          <th>Classe</th>
-          <th>Auto</th>
-          <th>Pilota</th>
-          <th>Best lap gara</th>
-          <th>Data</th>
+          <th>Gara</th><th>Sim</th><th>Tracciato</th><th>Classe</th><th>Pilota</th>
+          <th>Pos</th><th>Laps</th><th>Best lap</th><th>Tot time</th><th>Punti</th><th>Status</th>
         </tr>
       </thead>
       <tbody>
         {records.map(rec => {
           const drv = driverMap[rec.driver_id];
+          const race = raceMap[rec.race_id];
+          const raceName = race?.name || rec.race_id || '—';
+          const isDnf = rec.dnf === 'TRUE' || rec.dnf === true;
+          const isDns = rec.dns === 'TRUE' || rec.dns === true;
+          const position = rec.finish_position;
+          const points = (rec.point_total !== '' && rec.point_total != null) ? rec.point_total : '—';
+
           return (
-            <tr key={`${rec.sim}-${rec.track_id}-${rec.car_class}`}>
+            <tr key={`${rec.race_id}-${rec.driver_id}-${rec.session_type}`}>
+              <td>
+                <Link to={`/races/${rec.race_id}`} className="driver-link">
+                  <span className="driver-link-name">{raceName}</span>
+                </Link>
+              </td>
               <td><SimBadge sim={rec.sim} /></td>
               <td>{formatTrack(rec.track_id, tracks)}</td>
-              <td><span className="lap-badge-record">{rec.car_class}</span></td>
-              <td>{rec.car_external_name || '—'}</td>
+              <td>{rec.car_class ? <span className="lap-badge-record">{rec.car_class}</span> : '—'}</td>
               <td>
                 {drv ? (
                   <Link to={`/roster/${drv.driver_id}`} className="driver-link">
@@ -348,8 +355,16 @@ function RaceLapsView({ filters, driverMap, tracks }) {
                   </Link>
                 ) : (rec.driver_name_external || rec.driver_id)}
               </td>
-              <td><LapTime ms={rec.best_lap_ms} /></td>
-              <td><span className="cell-gap">{String(rec.set_date).slice(0, 10)}</span></td>
+              <td>{isDns ? '—' : (position != null && position !== '' ? position : '—')}</td>
+              <td>{rec.total_laps !== '' && rec.total_laps != null ? rec.total_laps : '—'}</td>
+              <td>{rec.best_lap_ms ? <LapTime ms={rec.best_lap_ms} /> : '—'}</td>
+              <td><span className="cell-gap">{rec.total_time_display || '—'}</span></td>
+              <td><span className="cell-gap">{points}</span></td>
+              <td>
+                {isDns ? <span className="lap-badge-unclassified">DNS</span>
+                  : isDnf ? <span className="lap-badge-unclassified">DNF</span>
+                  : <span className="lap-badge-record">✓</span>}
+              </td>
             </tr>
           );
         })}
