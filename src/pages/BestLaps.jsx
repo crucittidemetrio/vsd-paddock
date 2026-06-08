@@ -331,7 +331,7 @@ function RaceLapsView({ filters, driverMap, tracks }) {
         {records.map(rec => {
           const drv = driverMap[rec.driver_id];
           const race = raceMap[rec.race_id];
-          const raceName = race?.name || rec.race_id || '—';
+          const raceName = race?.race_name || rec.race_id || '—';
           const isDnf = rec.dnf === 'TRUE' || rec.dnf === true;
           const isDns = rec.dns === 'TRUE' || rec.dns === true;
           const position = rec.finish_position;
@@ -483,3 +483,4 @@ function Prompt({ icon, title, text }) {
     </div>
   );
 }
+
