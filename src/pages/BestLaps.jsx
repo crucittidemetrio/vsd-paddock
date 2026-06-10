@@ -6,8 +6,6 @@ import {
   useTracks,
   useCars,
 } from '../hooks/useBestLaps';
-import { useRaceResults } from '../hooks/useRaceResults';
-import { useRaces } from '../hooks/useRaces';
 import { useDrivers } from '../hooks/useRoster';
 import { useAuth } from '../hooks/useAuth';
 import SimBadge from '../components/shared/SimBadge';
@@ -21,7 +19,6 @@ import './Page.css';
 
 const VIEW_MODES = [
   { id: 'leaderboard', label: 'Leaderboard' },
-  { id: 'raceLaps', label: 'Race Laps' },
   { id: 'mine', label: 'I miei tempi' },
 ];
 
@@ -184,14 +181,6 @@ export default function BestLaps() {
         />
       )}
 
-      {viewMode === 'raceLaps' && (
-        <RaceLapsView
-          filters={filters}
-          driverMap={driverMap}
-          tracks={tracks}
-        />
-      )}
-
       {viewMode === 'mine' && (
         <MineView
           driver={driver}
@@ -269,103 +258,6 @@ function LeaderboardView({ filters, driverMap, tracks, cars }) {
               </td>
               <td><LapTime ms={rec.lap_time_ms} /></td>
               <td><Sparkline values={rec.lastLaps} /></td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  );
-}
-
-
-function RaceLapsView({ filters, driverMap, tracks }) {
-  const { data, isLoading, isError, error } = useRaceResults({
-    session_type: 'race',
-    sort: 'date_desc',
-  });
-  const { data: races } = useRaces();
-
-  const raceMap = useMemo(() => {
-    const m = {};
-    const list = Array.isArray(races) ? races : (races?.races || []);
-    list.forEach(r => { m[r.race_id] = r; });
-    return m;
-  }, [races]);
-
-  const records = useMemo(() => {
-    const rows = (data?.results || []).filter(r => r.is_vsd_driver);
-    const filtered = rows.filter(r => {
-      if (filters.sim !== 'all' && r.sim !== filters.sim) return false;
-      if (filters.track_id !== 'all' && r.track_id !== filters.track_id) return false;
-      if (filters.race_class !== 'all' && r.car_class !== filters.race_class) return false;
-      return true;
-    });
-    return filtered.sort((a, b) => {
-      const da = String(a.set_date || '');
-      const db = String(b.set_date || '');
-      if (da !== db) return db.localeCompare(da);
-      return String(b.race_id || '').localeCompare(String(a.race_id || ''));
-    });
-  }, [data, filters]);
-
-  if (isLoading) return <Prompt text="Caricamento…" />;
-  if (isError) return <Prompt text={`Errore: ${error?.message || 'sconosciuto'}`} />;
-  if (records.length === 0) {
-    return (
-      <Prompt
-        icon="🏁"
-        title="Nessuna partecipazione VSD"
-        text="Nessun risultato di gara trovato. I risultati appaiono dopo aver importato il JSON di una gara."
-      />
-    );
-  }
-
-  return (
-    <table className="laps-table">
-      <thead>
-        <tr>
-          <th>Gara</th><th>Sim</th><th>Tracciato</th><th>Classe</th><th>Pilota</th>
-          <th>Pos</th><th>Laps</th><th>Best lap</th><th>Tot time</th><th>Punti</th><th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {records.map(rec => {
-          const drv = driverMap[rec.driver_id];
-          const race = raceMap[rec.race_id];
-          const raceName = race?.race_name || rec.race_id || '—';
-          const isDnf = rec.dnf === 'TRUE' || rec.dnf === true;
-          const isDns = rec.dns === 'TRUE' || rec.dns === true;
-          const position = rec.finish_position;
-          const points = (rec.point_total !== '' && rec.point_total != null) ? rec.point_total : '—';
-
-          return (
-            <tr key={`${rec.race_id}-${rec.driver_id}-${rec.session_type}`}>
-              <td>
-                <Link to={`/races/${rec.race_id}`} className="driver-link">
-                  <span className="driver-link-name">{raceName}</span>
-                </Link>
-              </td>
-              <td><SimBadge sim={rec.sim} /></td>
-              <td>{formatTrack(rec.track_id, tracks)}</td>
-              <td>{rec.car_class ? <span className="lap-badge-record">{rec.car_class}</span> : '—'}</td>
-              <td>
-                {drv ? (
-                  <Link to={`/roster/${drv.driver_id}`} className="driver-link">
-                    <Avatar name={drv.display_name} driverId={drv.driver_id} size={28} />
-                    <span className="driver-link-name">{drv.display_name}</span>
-                  </Link>
-                ) : (rec.driver_name_external || rec.driver_id)}
-              </td>
-              <td>{isDns ? '—' : (position != null && position !== '' ? position : '—')}</td>
-              <td>{rec.total_laps !== '' && rec.total_laps != null ? rec.total_laps : '—'}</td>
-              <td>{rec.best_lap_ms ? <LapTime ms={rec.best_lap_ms} /> : '—'}</td>
-              <td><span className="cell-gap">{rec.total_time_display || '—'}</span></td>
-              <td><span className="cell-gap">{points}</span></td>
-              <td>
-                {isDns ? <span className="lap-badge-unclassified">DNS</span>
-                  : isDnf ? <span className="lap-badge-unclassified">DNF</span>
-                  : <span className="lap-badge-record">✓</span>}
-              </td>
             </tr>
           );
         })}
@@ -484,6 +376,3 @@ function Prompt({ icon, title, text }) {
     </div>
   );
 }
-
-
-

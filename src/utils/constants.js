@@ -66,6 +66,7 @@ export const LABELS = {
   nav_race: 'Race Hub',
   nav_reports: 'Race Report',
   nav_laps: 'Best Laps',
+  nav_results: 'Risultati',
   nav_training: 'Training',
   nav_academy: 'Academy',
   nav_endurance: 'Endurance',

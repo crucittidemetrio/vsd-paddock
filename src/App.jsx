@@ -13,6 +13,7 @@ import Landing from './pages/Landing';
 import Roster from './pages/Roster';
 import Race from './pages/Race';
 import BestLaps from './pages/BestLaps';
+import Results from './pages/Results';
 import Calendar from './pages/Calendar';
 import ChampionshipsList from './pages/ChampionshipsList';
 
@@ -77,6 +78,7 @@ export default function App() {
               <Route path="/race/:raceId" element={<RaceDetail />} />
               <Route path="/calendar" element={<Calendar />} />
               <Route path="/laps" element={<BestLaps />} />
+              <Route path="/results" element={<Results />} />
               <Route path="/laps/:sim/:track/:category" element={<LapsDrilldown />} />
               <Route path="/championships" element={<ChampionshipsList />} />
               <Route path="/championships/:championshipId" element={<ChampionshipDetail />} />
