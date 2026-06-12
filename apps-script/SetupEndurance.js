@@ -4,9 +4,10 @@
 // Crea i tab Endurance Auditions nel VSD_HUB_DB con headers
 // e formattazione. Idempotente: skip su tab già esistenti.
 //
-// IMPORTANTE: questo file usa nomi tab DISTINTI da quelli
-// legacy preesistenti. Il tab "EnduranceStints" legacy
-// (stint planning per gare 24h vere) resta intatto.
+// NOTA: il tab "EnduranceStints" è gestito da EnduranceStints.js
+// (handlers endurance.stints.*). Schema esteso a 20 colonne in Phase 5.
+// Questo file gestisce solo i tab Audition (Auditions, Participants,
+// AuditionStints), non gli stint delle gare vere.
 //
 // Tab creati dallo script:
 //   - EnduranceAuditions       (config sessione)
@@ -184,3 +185,4 @@ function verifyEnduranceTabs() {
 //     }
 //   });
 // }
+

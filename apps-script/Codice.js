@@ -20,6 +20,7 @@ const SHEETS = {
   ENDURANCE_AUDITIONS: 'EnduranceAuditions',
   ENDURANCE_PARTICIPANTS: 'EnduranceParticipants',
   ENDURANCE_AUDITION_STINTS: 'EnduranceAuditionStints',
+  ENDURANCE_STINTS: 'EnduranceStints',
 };
 
 // Token TTL: 7 giorni
@@ -186,6 +187,10 @@ const ACTIONS = {
   'endurance.participants.add': handleEnduranceParticipantsAdd,
   'endurance.participants.update': handleEnduranceParticipantsUpdate,
   'endurance.participants.remove': handleEnduranceParticipantsRemove,
+  'endurance.stints.list': handleEnduranceStintsList,
+  'endurance.stints.add': handleEnduranceStintsAdd,
+  'endurance.stints.update': handleEnduranceStintsUpdate,
+  'endurance.stints.remove': handleEnduranceStintsRemove,
 };
 
 // ═══════════════════════════════════════════════════════════
@@ -597,3 +602,4 @@ function testActionsRegistryHealth() {
     issues.forEach(i => Logger.log(i));
   }
 }
+

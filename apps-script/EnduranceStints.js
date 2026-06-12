@@ -1,0 +1,470 @@
+/**
+ * EnduranceStints.js — Gestione stint pianificati per gare endurance.
+ *
+ * Sheet: EnduranceStints (20 colonne)
+ *   NOTA: distinto da EnduranceAuditionStints (stint durante audizioni di selezione).
+ *   EnduranceStints = stint pianificati per le GARE VERE (es. Le Mans 24h).
+ *
+ * Actions registrate in Codice.js:
+ *   - endurance.stints.list    (auth required)
+ *   - endurance.stints.add     (admin/staff only)
+ *   - endurance.stints.update  (admin/staff only)
+ *   - endurance.stints.remove  (admin/staff only)
+ *
+ * Design point confermati:
+ *   A. Re-numbering automatico stint_order dopo add/remove
+ *   B. UNIQUE (race_id, stint_order)
+ *   C. Swap pilota = workflow client-side (update status=completed + add nuovo)
+ *   D. UI pubblica mostra tutti gli stint con proprio evidenziato (server ritorna tutti)
+ *
+ * Autore: Phase 5 — giugno 2026
+ */
+
+// ═══════════════════════════════════════════════════════════
+// COSTANTI
+// ═══════════════════════════════════════════════════════════
+
+const ES_TIRE_COMPOUNDS = ['soft', 'medium', 'hard', 'wet', 'intermediate'];
+const ES_STATUSES       = ['planned', 'active', 'completed', 'aborted'];
+
+const ES_CACHE_TTL_SECONDS = 300; // 5 min, basso perché in-race può cambiare velocemente
+
+// ═══════════════════════════════════════════════════════════
+// HANDLERS PUBBLICI (registrati in Codice.js)
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * endurance.stints.list — Lista stint pianificati per una gara.
+ * Auth: richiesta (qualsiasi utente loggato).
+ *
+ * @param {Object} payload - { race_id: string }
+ * @param {Object} ctx - Auth context
+ * @returns {Object} { ok, data: { stints: [...], count: N } }
+ */
+function handleEnduranceStintsList(payload, ctx) {
+  if (!ctx) return fail('Auth richiesto');
+
+  const raceId = payload && payload.race_id;
+  if (!raceId) return fail('race_id obbligatorio');
+
+  const stints = _esLoadAll_(raceId);
+  const sorted = stints.sort((a, b) => Number(a.stint_order) - Number(b.stint_order));
+
+  return ok({ stints: sorted, count: sorted.length });
+}
+
+/**
+ * endurance.stints.add — Crea un nuovo stint.
+ * Auth: admin/staff only.
+ *
+ * Re-numbering automatico: se viene inserito a stint_order=N, tutti gli stint
+ * con order >= N vengono shiftati +1.
+ *
+ * @param {Object} payload - dati stint (vedi _esValidateStint_)
+ * @param {Object} ctx - Auth context (deve essere admin)
+ */
+function handleEnduranceStintsAdd(payload, ctx) {
+  if (!ctx) return fail('Auth richiesto');
+  if (!_esIsStaff_(ctx)) return fail('Permessi insufficienti');
+
+  const validation = _esValidateStint_(payload, { isCreate: true });
+  if (!validation.ok) return fail(validation.error);
+
+  const raceId      = payload.race_id;
+  const desiredOrder = Number(payload.stint_order) || 1;
+
+  // Re-numbering: shift +1 di tutti gli stint con order >= desiredOrder
+  _esShiftStintsOrder_(raceId, desiredOrder, +1);
+
+  // Crea nuovo record
+  const stintId = _esGenerateStintId_();
+  const now     = new Date().toISOString();
+
+  const newRow = {
+    stint_id:              stintId,
+    race_id:               raceId,
+    driver_id:             payload.driver_id,
+    stint_order:           desiredOrder,
+    planned_start_time:    payload.planned_start_time || '',
+    planned_end_time:      payload.planned_end_time || '',
+    planned_duration_min:  payload.planned_duration_min || '',
+    actual_start_time:     '',
+    actual_end_time:       '',
+    actual_duration_min:   '',
+    tire_compound:         payload.tire_compound || '',
+    pit_stop_at_end:       (payload.pit_stop_at_end === true || payload.pit_stop_at_end === 'TRUE') ? 'TRUE' : 'FALSE',
+    fuel_loaded_l:         payload.fuel_loaded_l || '',
+    actual_laps:           '',
+    best_lap_ms:           '',
+    status:                payload.status || 'planned',
+    notes:                 payload.notes || '',
+    created_at:            now,
+    created_by:            ctx.driver_id || '',
+    updated_at:            now,
+  };
+
+  _esAppendRow_(newRow);
+  _esInvalidateCache_(raceId);
+
+  return ok({ stint: newRow });
+}
+
+/**
+ * endurance.stints.update — Modifica uno stint esistente.
+ * Auth: admin/staff only.
+ *
+ * Permessi: tutti i campi modificabili tranne stint_id, race_id, created_at, created_by.
+ * Se viene modificato stint_order, scatta re-numbering automatico.
+ *
+ * @param {Object} payload - { stint_id: string, ...campi da aggiornare }
+ */
+function handleEnduranceStintsUpdate(payload, ctx) {
+  if (!ctx) return fail('Auth richiesto');
+  if (!_esIsStaff_(ctx)) return fail('Permessi insufficienti');
+
+  const stintId = payload && payload.stint_id;
+  if (!stintId) return fail('stint_id obbligatorio');
+
+  const existing = _esFindById_(stintId);
+  if (!existing) return fail('Stint non trovato');
+
+  const validation = _esValidateStint_(payload, { isCreate: false, existing });
+  if (!validation.ok) return fail(validation.error);
+
+  const raceId = existing.race_id;
+
+  // Se cambia stint_order → re-numbering
+  if (payload.stint_order != null && Number(payload.stint_order) !== Number(existing.stint_order)) {
+    const oldOrder = Number(existing.stint_order);
+    const newOrder = Number(payload.stint_order);
+
+    _esShiftStintsOrder_(raceId, oldOrder + 1, -1, stintId); // chiudi buco
+    _esShiftStintsOrder_(raceId, newOrder, +1, stintId);     // apri spazio
+  }
+
+  // Aggiorna campi consentiti
+  const updates = {
+    updated_at: new Date().toISOString(),
+  };
+
+  const allowedFields = [
+    'driver_id', 'stint_order',
+    'planned_start_time', 'planned_end_time', 'planned_duration_min',
+    'actual_start_time', 'actual_end_time', 'actual_duration_min',
+    'tire_compound', 'pit_stop_at_end', 'fuel_loaded_l',
+    'actual_laps', 'best_lap_ms', 'status', 'notes',
+  ];
+
+  allowedFields.forEach(f => {
+    if (payload[f] !== undefined) {
+      if (f === 'pit_stop_at_end') {
+        updates[f] = (payload[f] === true || payload[f] === 'TRUE') ? 'TRUE' : 'FALSE';
+      } else {
+        updates[f] = payload[f];
+      }
+    }
+  });
+
+  _esUpdateRowById_(stintId, updates);
+  _esInvalidateCache_(raceId);
+
+  const updated = _esFindById_(stintId);
+  return ok({ stint: updated });
+}
+
+/**
+ * endurance.stints.remove — Elimina uno stint.
+ * Auth: admin/staff only.
+ *
+ * Re-numbering automatico: dopo eliminazione, tutti gli stint con order > rimosso
+ * vengono shiftati -1.
+ *
+ * @param {Object} payload - { stint_id: string }
+ */
+function handleEnduranceStintsRemove(payload, ctx) {
+  if (!ctx) return fail('Auth richiesto');
+  if (!_esIsStaff_(ctx)) return fail('Permessi insufficienti');
+
+  const stintId = payload && payload.stint_id;
+  if (!stintId) return fail('stint_id obbligatorio');
+
+  const existing = _esFindById_(stintId);
+  if (!existing) return fail('Stint non trovato');
+
+  const raceId       = existing.race_id;
+  const removedOrder = Number(existing.stint_order);
+
+  _esDeleteRowById_(stintId);
+  _esShiftStintsOrder_(raceId, removedOrder + 1, -1);
+  _esInvalidateCache_(raceId);
+
+  return ok({ removed: stintId });
+}
+
+// ═══════════════════════════════════════════════════════════
+// HELPERS PRIVATI
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Genera un nuovo stint_id univoco.
+ * Formato: stint_<hash 8 char>
+ */
+function _esGenerateStintId_() {
+  const hash = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.MD5,
+    String(Date.now()) + Math.random()
+  );
+  const hex = hash.map(b => (b < 0 ? b + 256 : b).toString(16).padStart(2, '0')).join('');
+  return 'stint_' + hex.substring(0, 8);
+}
+
+/**
+ * Carica tutti gli stint di una race con cache.
+ */
+function _esLoadAll_(raceId) {
+  const cacheKey = `es_race_${raceId}`;
+  const cache    = CacheService.getScriptCache();
+  const cached   = cache.get(cacheKey);
+
+  if (cached) {
+    return JSON.parse(cached);
+  }
+
+  const allRows = getCachedSheetData_(SHEETS.ENDURANCE_STINTS, ES_CACHE_TTL_SECONDS);
+  const filtered = allRows.filter(r => r.race_id === raceId);
+
+  cache.put(cacheKey, JSON.stringify(filtered), ES_CACHE_TTL_SECONDS);
+  return filtered;
+}
+
+/**
+ * Cerca uno stint per ID (su tutto il sheet, non solo per race).
+ */
+function _esFindById_(stintId) {
+  const allRows = getCachedSheetData_(SHEETS.ENDURANCE_STINTS, ES_CACHE_TTL_SECONDS);
+  return allRows.find(r => r.stint_id === stintId) || null;
+}
+
+/**
+ * Verifica se ctx è admin/staff. ADATTARE al sistema di auth esistente.
+ * Vedi README step 4.
+ */
+function _esIsStaff_(ctx) {
+  return ctx && (ctx.role === 'admin' || ctx.tier === 'admin');
+}
+
+/**
+ * Shift dello stint_order per gli stint di una race.
+ *
+ * @param {string} raceId
+ * @param {number} fromOrder - shift applicato a stint con order >= fromOrder
+ * @param {number} delta - +1 (apri spazio) o -1 (chiudi buco)
+ * @param {string} excludeStintId - opzionale, escludi questo stint_id dal shift (per update)
+ */
+function _esShiftStintsOrder_(raceId, fromOrder, delta, excludeStintId) {
+  const sheet = SpreadsheetApp.openById(ENDURANCE_SS_ID).getSheetByName(SHEETS.ENDURANCE_STINTS);
+  if (!sheet) throw new Error('Sheet EnduranceStints non trovato');
+
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 2) return; // solo header
+
+  const headers = data[0];
+  const idxStintId    = headers.indexOf('stint_id');
+  const idxRaceId     = headers.indexOf('race_id');
+  const idxStintOrder = headers.indexOf('stint_order');
+  const idxUpdatedAt  = headers.indexOf('updated_at');
+
+  if (idxStintId < 0 || idxRaceId < 0 || idxStintOrder < 0) {
+    throw new Error('Schema EnduranceStints inconsistente: colonne mancanti');
+  }
+
+  const now = new Date().toISOString();
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (row[idxRaceId] !== raceId) continue;
+    if (excludeStintId && row[idxStintId] === excludeStintId) continue;
+
+    const currentOrder = Number(row[idxStintOrder]);
+    if (currentOrder >= fromOrder) {
+      sheet.getRange(i + 1, idxStintOrder + 1).setValue(currentOrder + delta);
+      if (idxUpdatedAt >= 0) sheet.getRange(i + 1, idxUpdatedAt + 1).setValue(now);
+    }
+  }
+}
+
+/**
+ * Append di una riga al sheet.
+ */
+function _esAppendRow_(rowObj) {
+  const sheet = SpreadsheetApp.openById(ENDURANCE_SS_ID).getSheetByName(SHEETS.ENDURANCE_STINTS);
+  if (!sheet) throw new Error('Sheet EnduranceStints non trovato');
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const newRow  = headers.map(h => rowObj[h] !== undefined ? rowObj[h] : '');
+
+  sheet.appendRow(newRow);
+}
+
+/**
+ * Update di una riga per stint_id.
+ */
+function _esUpdateRowById_(stintId, updates) {
+  const sheet = SpreadsheetApp.openById(ENDURANCE_SS_ID).getSheetByName(SHEETS.ENDURANCE_STINTS);
+  if (!sheet) throw new Error('Sheet EnduranceStints non trovato');
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const idxStintId = headers.indexOf('stint_id');
+
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][idxStintId] === stintId) {
+      Object.keys(updates).forEach(field => {
+        const colIdx = headers.indexOf(field);
+        if (colIdx >= 0) {
+          sheet.getRange(i + 1, colIdx + 1).setValue(updates[field]);
+        }
+      });
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Elimina una riga per stint_id.
+ */
+function _esDeleteRowById_(stintId) {
+  const sheet = SpreadsheetApp.openById(ENDURANCE_SS_ID).getSheetByName(SHEETS.ENDURANCE_STINTS);
+  if (!sheet) throw new Error('Sheet EnduranceStints non trovato');
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const idxStintId = headers.indexOf('stint_id');
+
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][idxStintId] === stintId) {
+      sheet.deleteRow(i + 1);
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * Invalida la cache custom per una race.
+ */
+function _esInvalidateCache_(raceId) {
+  const cache = CacheService.getScriptCache();
+  cache.remove(`es_race_${raceId}`);
+  // Invalida anche cache generica sheet
+  if (typeof invalidateSheetCache_ === 'function') {
+    invalidateSheetCache_(SHEETS.ENDURANCE_STINTS);
+  }
+}
+
+/**
+ * Validation del payload.
+ *
+ * @param {Object} payload
+ * @param {Object} opts - { isCreate: boolean, existing: Object|null }
+ * @returns {Object} { ok: boolean, error?: string }
+ */
+function _esValidateStint_(payload, opts) {
+  opts = opts || {};
+
+  if (opts.isCreate) {
+    if (!payload.race_id) return { ok: false, error: 'race_id obbligatorio' };
+    if (!payload.driver_id) return { ok: false, error: 'driver_id obbligatorio' };
+    if (payload.stint_order == null || Number(payload.stint_order) < 1) {
+      return { ok: false, error: 'stint_order deve essere >= 1' };
+    }
+  }
+
+  // Validation tire_compound
+  if (payload.tire_compound && payload.tire_compound !== '' && ES_TIRE_COMPOUNDS.indexOf(payload.tire_compound) < 0) {
+    return { ok: false, error: `tire_compound non valido. Valori ammessi: ${ES_TIRE_COMPOUNDS.join(', ')}` };
+  }
+
+  // Validation status
+  if (payload.status && ES_STATUSES.indexOf(payload.status) < 0) {
+    return { ok: false, error: `status non valido. Valori ammessi: ${ES_STATUSES.join(', ')}` };
+  }
+
+  // Validation coerenza date pianificate
+  if (payload.planned_start_time && payload.planned_end_time) {
+    const ps = new Date(payload.planned_start_time);
+    const pe = new Date(payload.planned_end_time);
+    if (!isNaN(ps.getTime()) && !isNaN(pe.getTime()) && ps >= pe) {
+      return { ok: false, error: 'planned_start_time deve essere precedente a planned_end_time' };
+    }
+  }
+
+  // Validation coerenza date effettive
+  if (payload.actual_start_time && payload.actual_end_time) {
+    const as = new Date(payload.actual_start_time);
+    const ae = new Date(payload.actual_end_time);
+    if (!isNaN(as.getTime()) && !isNaN(ae.getTime()) && as >= ae) {
+      return { ok: false, error: 'actual_start_time deve essere precedente a actual_end_time' };
+    }
+  }
+
+  return { ok: true };
+}
+
+// ═══════════════════════════════════════════════════════════
+// TEST FUNCTIONS (manuali dall'editor Apps Script)
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Test handleEnduranceStintsList con race fittizia.
+ * Esegui da editor Apps Script per verificare connessione sheet.
+ */
+function testEsList() {
+  const ctx = { driver_id: 'VSD005', role: 'admin' };
+  const result = handleEnduranceStintsList({ race_id: 'lmu-test-race' }, ctx);
+  Logger.log('endurance.stints.list result:');
+  Logger.log(JSON.stringify(result, null, 2));
+}
+
+/**
+ * Test handleEnduranceStintsAdd con stint fittizio.
+ * ATTENZIONE: questo INSERISCE una riga nel sheet. Pulisci con testEsCleanup dopo.
+ */
+function testEsAdd() {
+  const ctx = { driver_id: 'VSD005', role: 'admin' };
+  const payload = {
+    race_id: 'lmu-test-race',
+    driver_id: 'VSD005',
+    stint_order: 1,
+    planned_start_time: '2026-06-30T14:00:00',
+    planned_end_time:   '2026-06-30T15:30:00',
+    planned_duration_min: 90,
+    tire_compound: 'medium',
+    pit_stop_at_end: true,
+    status: 'planned',
+    notes: 'Test stint creato da testEsAdd',
+  };
+  const result = handleEnduranceStintsAdd(payload, ctx);
+  Logger.log('endurance.stints.add result:');
+  Logger.log(JSON.stringify(result, null, 2));
+}
+
+/**
+ * Test cleanup: rimuove tutti gli stint della race 'lmu-test-race'.
+ * USARE DOPO TEST per pulire il sheet.
+ */
+function testEsCleanup() {
+  const ctx = { driver_id: 'VSD005', role: 'admin' };
+  const list = handleEnduranceStintsList({ race_id: 'lmu-test-race' }, ctx);
+  if (!list.ok) {
+    Logger.log('Errore list: ' + list.error);
+    return;
+  }
+  list.data.stints.forEach(s => {
+    const result = handleEnduranceStintsRemove({ stint_id: s.stint_id }, ctx);
+    Logger.log(`Rimosso ${s.stint_id}: ${result.ok ? 'OK' : result.error}`);
+  });
+}
+
+
