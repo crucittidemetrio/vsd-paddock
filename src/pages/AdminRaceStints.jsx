@@ -33,7 +33,7 @@ export default function AdminRaceStints() {
   }, [racesData]);
 
   const race = useMemo(() => races.find(r => r.race_id === raceId), [races, raceId]);
-  const stints = useMemo(() => stintsResponse?.data?.stints || [], [stintsResponse]);
+  const stints = useMemo(() => stintsResponse?.stints || [], [stintsResponse]);
 
   const driverById = useMemo(() => {
     const m = {};
@@ -563,3 +563,4 @@ function truncate(text, max) {
   if (text.length <= max) return text;
   return text.slice(0, max - 1) + '…';
 }
+
