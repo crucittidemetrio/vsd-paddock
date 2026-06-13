@@ -203,6 +203,21 @@ export default function RaceDetail() {
         )}
       </div>
 
+        {race.format === 'endurance' && (
+          <RequireTier minTier="staff">
+            <div className="rd-admin-tools">
+              <Link
+                to={`/admin/race/${race.race_id}/stints`}
+                className="rd-admin-btn"
+              >
+                🛠 Gestisci stint
+              </Link>
+            </div>
+          </RequireTier>
+        )}
+
+        <section className="rd-info-card"></section>
+
       <section className="rd-info-card">
         <div className="rd-info-grid">
           <div className="rd-info-item">
