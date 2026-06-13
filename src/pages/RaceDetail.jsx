@@ -1,3 +1,6 @@
+import StintTimeline from '../components/race/StintTimeline';
+import { useStints } from '../hooks/useEnduranceStints';
+import { useAuth } from '../hooks/useAuth';
 import { useParams, Link } from 'react-router-dom';
 import { useRace, useReports } from '../hooks/useRaces';
 import { useRaceResults } from '../hooks/useRaceResults';
@@ -139,6 +142,13 @@ export default function RaceDetail() {
   const { data: reports } = useReports({ race_id: raceId });
   const { data: drivers } = useDrivers();
   const { data: raceResultsData } = useRaceResults({ race_id: raceId });
+
+  // --- Stint endurance (UI pubblica read-only) ---
+  const { driver } = useAuth();
+  const currentDriverId = driver?.driver_id ?? null;
+  const isEndurance = race?.format === 'endurance';
+  const { data: stintsResp } = useStints(isEndurance ? raceId : null);
+  const stints = stintsResp?.stints ?? []; // passthrough adapter: unwrap già in call()
 
   const hasOfficialResults = (raceResultsData?.results?.length || 0) > 0;
 
@@ -291,6 +301,20 @@ export default function RaceDetail() {
 
       {/* Risultati Ufficiali — appare solo se ci sono righe in RaceResults */}
       <RaceResultsSection raceId={raceId} drivers={drivers} />
+
+      {/* Piano Stint — gare endurance, visibile ai piloti loggati (read-only) */}
+      {isEndurance && stints.length > 0 && (
+        <RequireTier minTier="pilot_vsd">
+          <StintTimeline
+            stints={stints}
+            drivers={drivers}
+            currentDriverId={currentDriverId}
+            getDriverName={getDriverName}
+            formatDuration={formatDuration}
+            formatLapMs={formatLapMs}
+          />
+        </RequireTier>
+      )}
 
       {/* Classifica derivata dai reports — fallback per gare senza risultati ufficiali */}
       {statusKey === 'completed' && !hasOfficialResults && (

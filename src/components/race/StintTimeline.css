@@ -1,0 +1,168 @@
+/* StintTimeline.css — UI pubblica stint endurance (read-only) */
+
+.st-section {
+  margin-top: 2rem;
+}
+
+.st-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.st-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #00d4ff;
+  margin: 0;
+}
+
+.st-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  color: #6b7a99;
+}
+
+.st-table-wrap {
+  overflow-x: auto;
+  border: 1px solid rgba(0, 212, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(6, 13, 31, 0.6);
+}
+
+.st-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  min-width: 640px;
+}
+
+.st-table thead th {
+  text-align: left;
+  padding: 0.6rem 0.85rem;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #6b7a99;
+  border-bottom: 1px solid rgba(0, 212, 255, 0.15);
+  white-space: nowrap;
+}
+
+.st-row td {
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  color: #c5d0e6;
+  vertical-align: middle;
+}
+
+.st-row:last-child td {
+  border-bottom: none;
+}
+
+.st-row:hover {
+  background: rgba(0, 212, 255, 0.03);
+}
+
+/* Highlight stint del pilota loggato */
+.st-row-mine {
+  background: rgba(245, 166, 35, 0.07);
+  box-shadow: inset 3px 0 0 #f5a623;
+}
+
+.st-row-mine:hover {
+  background: rgba(245, 166, 35, 0.11);
+}
+
+.st-pos {
+  font-family: 'JetBrains Mono', monospace;
+  color: #6b7a99;
+  width: 2.5rem;
+}
+
+.st-driver {
+  font-weight: 600;
+  color: #e6edf7;
+  white-space: nowrap;
+}
+
+.st-mine-tag {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.05rem 0.4rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #060d1f;
+  background: #f5a623;
+  border-radius: 3px;
+  vertical-align: middle;
+}
+
+.st-lap {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85rem;
+}
+
+.st-dash {
+  color: #3d4a63;
+}
+
+/* Tire compound pills */
+.st-tire {
+  display: inline-block;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  border-radius: 10px;
+  letter-spacing: 0.03em;
+}
+.st-tire-soft   { background: rgba(229, 57, 53, 0.18);  color: #ff6b66; }
+.st-tire-medium { background: rgba(251, 192, 45, 0.18); color: #ffd54f; }
+.st-tire-hard   { background: rgba(224, 224, 224, 0.14); color: #e0e0e0; }
+.st-tire-wet    { background: rgba(33, 150, 243, 0.18); color: #64b5f6; }
+.st-tire-inter  { background: rgba(67, 160, 71, 0.18);  color: #81c784; }
+.st-tire-unknown { background: rgba(107, 122, 153, 0.18); color: #8b9bb8; }
+
+.st-pit {
+  display: inline-block;
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.35rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #00d4ff;
+  border: 1px solid rgba(0, 212, 255, 0.35);
+  border-radius: 3px;
+  vertical-align: middle;
+}
+
+/* Status badges */
+.st-badge {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+.st-status-planned   { background: rgba(107, 122, 153, 0.18); color: #8b9bb8; }
+.st-status-active    { background: rgba(0, 212, 255, 0.18);   color: #00d4ff; }
+.st-status-completed { background: rgba(67, 160, 71, 0.20);   color: #81c784; }
+.st-status-aborted   { background: rgba(229, 57, 53, 0.18);   color: #ff6b66; }
+.st-status-unknown   { background: rgba(107, 122, 153, 0.12); color: #6b7a99; }
+
+@media (max-width: 600px) {
+  .st-title { font-size: 1.15rem; }
+  .st-table { font-size: 0.82rem; }
+  .st-table thead th,
+  .st-row td { padding: 0.5rem 0.6rem; }
+}
