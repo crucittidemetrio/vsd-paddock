@@ -220,6 +220,14 @@ export async function callApi(action, payload = {}, ctx = null) {
         return await enduranceParticipantsUpdateAdapter(payload, token);
       case 'endurance.participants.remove':
         return await enduranceParticipantsRemoveAdapter(payload, token);
+      case 'endurance.stints.list':
+        return await enduranceStintsListAdapter(payload, token);
+      case 'endurance.stints.add':
+        return await enduranceStintsAddAdapter(payload, token);
+      case 'endurance.stints.update':
+        return await enduranceStintsUpdateAdapter(payload, token);
+      case 'endurance.stints.remove':
+        return await enduranceStintsRemoveAdapter(payload, token);
       default:
         return fail(`Action non instradata: ${action}`);
     }
@@ -502,3 +510,18 @@ async function enduranceParticipantsUpdateAdapter(payload, token) {
 async function enduranceParticipantsRemoveAdapter(payload, token) {
   return await postToBackend('endurance.participants.remove', payload || {}, token);
 }
+
+// ════ Endurance Stints adapters ════
+async function enduranceStintsListAdapter(payload, token) {
+  return await postToBackend('endurance.stints.list', payload || {}, token);
+}
+async function enduranceStintsAddAdapter(payload, token) {
+  return await postToBackend('endurance.stints.add', payload || {}, token);
+}
+async function enduranceStintsUpdateAdapter(payload, token) {
+  return await postToBackend('endurance.stints.update', payload || {}, token);
+}
+async function enduranceStintsRemoveAdapter(payload, token) {
+  return await postToBackend('endurance.stints.remove', payload || {}, token);
+}
+

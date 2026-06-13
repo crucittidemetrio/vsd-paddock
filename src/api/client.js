@@ -133,5 +133,12 @@ endurance: {
         update: (payload) => call('endurance.participants.update', payload),
         remove: (participation_id) => call('endurance.participants.remove', { participation_id }),
       },
+      stints: {
+        list: (race_id) => call('endurance.stints.list', { race_id }),
+        add: (payload) => call('endurance.stints.add', payload),
+        update: (payload) => call('endurance.stints.update', payload),
+        remove: (stint_id) => call('endurance.stints.remove', { stint_id }),
+      },
     },
 };
+

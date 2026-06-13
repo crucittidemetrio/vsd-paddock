@@ -13,6 +13,7 @@ import Landing from './pages/Landing';
 import Roster from './pages/Roster';
 import Race from './pages/Race';
 import BestLaps from './pages/BestLaps';
+import AdminRaceStints from './pages/AdminRaceStints';
 import Results from './pages/Results';
 import Calendar from './pages/Calendar';
 import ChampionshipsList from './pages/ChampionshipsList';
@@ -144,6 +145,10 @@ export default function App() {
                 path="/admin/endurance/:auditionId/edit"
                 element={<AdminRoute><AdminEnduranceForm /></AdminRoute>}
               />
+              <Route
+                path="/admin/race/:raceId/stints"
+                element={<AdminRoute><AdminRaceStints /></AdminRoute>}
+              />
             </Route>
 
             {/* Fallback */}
@@ -154,3 +159,4 @@ export default function App() {
     </AuthProvider>
   );
 }
+

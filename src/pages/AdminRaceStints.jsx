@@ -1,0 +1,565 @@
+import { useState, useMemo } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
+import {
+  useStints,
+  useAddStint,
+  useUpdateStint,
+  useRemoveStint,
+} from '../hooks/useEnduranceStints';
+import { useRaces } from '../hooks/useRaces';
+import { useDrivers } from '../hooks/useRoster';
+import Avatar from '../components/shared/Avatar';
+import styles from './AdminRaceStints.module.css';
+
+const TIRE_COMPOUNDS = ['soft', 'medium', 'hard', 'wet', 'intermediate'];
+const STATUS_OPTIONS = [
+  { value: 'planned',   label: 'Pianificato' },
+  { value: 'active',    label: 'In corso' },
+  { value: 'completed', label: 'Completato' },
+  { value: 'aborted',   label: 'Abortito' },
+];
+
+export default function AdminRaceStints() {
+  const { raceId } = useParams();
+  const navigate = useNavigate();
+
+  const { data: racesData } = useRaces();
+  const { data: drivers = [] } = useDrivers();
+  const { data: stintsResponse, isLoading, isError, error } = useStints(raceId);
+
+  const races = useMemo(() => {
+    if (Array.isArray(racesData)) return racesData;
+    return racesData?.races || [];
+  }, [racesData]);
+
+  const race = useMemo(() => races.find(r => r.race_id === raceId), [races, raceId]);
+  const stints = useMemo(() => stintsResponse?.data?.stints || [], [stintsResponse]);
+
+  const driverById = useMemo(() => {
+    const m = {};
+    (drivers || []).forEach(d => { m[d.driver_id] = d; });
+    return m;
+  }, [drivers]);
+
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [editingStintId, setEditingStintId] = useState(null);
+  const [actionError, setActionError] = useState(null);
+
+  const editingStint = useMemo(
+    () => stints.find(s => s.stint_id === editingStintId) || null,
+    [stints, editingStintId]
+  );
+
+  if (!raceId) {
+    return <div className={styles.error}>Race ID mancante nell'URL.</div>;
+  }
+
+  if (isLoading) {
+    return <div className={styles.loading}>Caricamento stint…</div>;
+  }
+
+  if (isError) {
+    return (
+      <div className={styles.error}>
+        Errore caricamento stint: {error?.message || 'sconosciuto'}
+      </div>
+    );
+  }
+
+  // Default stint_order per nuovo stint
+  const nextStintOrder = stints.length === 0
+    ? 1
+    : Math.max(...stints.map(s => Number(s.stint_order) || 0)) + 1;
+
+  return (
+    <div className={styles.page}>
+      <div className={styles.header}>
+        <div>
+          <div className={styles.eyebrow}>ADMIN — RACE STINTS</div>
+          <h1 className={styles.title}>
+            {race ? race.race_name : raceId}
+          </h1>
+          {race && (
+            <div className={styles.subtitle}>
+              {race.sim} · {race.date?.slice(0, 10)} · {stints.length} stint pianificati
+            </div>
+          )}
+        </div>
+        <button
+          className={styles.backBtn}
+          onClick={() => navigate(`/race/${raceId}`)}
+        >
+          ← Torna alla gara
+        </button>
+      </div>
+
+      {actionError && (
+        <div className={styles.alertError}>❌ {actionError}</div>
+      )}
+
+      {/* ════ TABELLA STINT ════ */}
+      <section className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>Stint pianificati</h2>
+          <button
+            className={styles.addBtn}
+            onClick={() => { setShowAddForm(v => !v); setActionError(null); }}
+          >
+            {showAddForm ? '× Annulla' : '+ Aggiungi stint'}
+          </button>
+        </div>
+
+        {showAddForm && (
+          <StintForm
+            mode="add"
+            initialValues={{
+              race_id: raceId,
+              stint_order: nextStintOrder,
+              status: 'planned',
+            }}
+            drivers={drivers}
+            existingStints={stints}
+            onSubmit={() => setShowAddForm(false)}
+            onCancel={() => setShowAddForm(false)}
+            onError={setActionError}
+          />
+        )}
+
+        {stints.length === 0 ? (
+          <div className={styles.empty}>
+            Nessuno stint pianificato. Click "+ Aggiungi stint" per iniziare.
+          </div>
+        ) : (
+          <div className={styles.tableWrap}>
+            <table className={styles.stintsTable}>
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>Pilota</th>
+                  <th>Pianificato</th>
+                  <th>Effettivo</th>
+                  <th>Gomme</th>
+                  <th>Pit</th>
+                  <th>Stato</th>
+                  <th>Note</th>
+                  <th>Azioni</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stints.map(s => (
+                  <StintRow
+                    key={s.stint_id}
+                    stint={s}
+                    driver={driverById[s.driver_id]}
+                    onEdit={() => { setEditingStintId(s.stint_id); setActionError(null); }}
+                    onRemove={() => setActionError(null)}
+                    onError={setActionError}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {/* ════ EDIT MODAL ════ */}
+      {editingStint && (
+        <div className={styles.modalBackdrop} onClick={() => setEditingStintId(null)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h3>Modifica stint #{editingStint.stint_order}</h3>
+              <button
+                className={styles.closeBtn}
+                onClick={() => setEditingStintId(null)}
+              >×</button>
+            </div>
+            <StintForm
+              mode="edit"
+              initialValues={editingStint}
+              drivers={drivers}
+              existingStints={stints}
+              onSubmit={() => setEditingStintId(null)}
+              onCancel={() => setEditingStintId(null)}
+              onError={setActionError}
+            />
+          </div>
+        </div>
+      )}
+
+      <div className={styles.footnote}>
+        <strong>Swap pilota in corso:</strong> chiudi lo stint attuale (status →
+        "completato" con orari effettivi) e aggiungi un nuovo stint con il pilota
+        sostituto. Re-numbering automatico.
+      </div>
+    </div>
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// STINT FORM (riusato per add ed edit)
+// ═══════════════════════════════════════════════════════════
+
+function StintForm({ mode, initialValues, drivers, existingStints, onSubmit, onCancel, onError }) {
+  const addMutation = useAddStint();
+  const updateMutation = useUpdateStint();
+
+  const [form, setForm] = useState(() => ({
+    driver_id:            initialValues.driver_id || '',
+    stint_order:          initialValues.stint_order || 1,
+    planned_start_time:   initialValues.planned_start_time || '',
+    planned_end_time:     initialValues.planned_end_time || '',
+    planned_duration_min: initialValues.planned_duration_min || '',
+    actual_start_time:    initialValues.actual_start_time || '',
+    actual_end_time:      initialValues.actual_end_time || '',
+    actual_duration_min:  initialValues.actual_duration_min || '',
+    tire_compound:        initialValues.tire_compound || '',
+    pit_stop_at_end:      initialValues.pit_stop_at_end === 'TRUE' || initialValues.pit_stop_at_end === true,
+    fuel_loaded_l:        initialValues.fuel_loaded_l || '',
+    actual_laps:          initialValues.actual_laps || '',
+    best_lap_ms:          initialValues.best_lap_ms || '',
+    status:               initialValues.status || 'planned',
+    notes:                initialValues.notes || '',
+  }));
+
+  function setField(name, value) {
+    setForm(f => ({ ...f, [name]: value }));
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault();
+
+    if (!form.driver_id) {
+      onError('Seleziona un pilota.');
+      return;
+    }
+    if (!form.stint_order || Number(form.stint_order) < 1) {
+      onError('Stint order deve essere >= 1.');
+      return;
+    }
+
+    const payload = {
+      ...form,
+      stint_order: Number(form.stint_order),
+      pit_stop_at_end: form.pit_stop_at_end ? 'TRUE' : 'FALSE',
+    };
+
+    if (mode === 'add') {
+      payload.race_id = initialValues.race_id;
+      addMutation.mutate(payload, {
+        onSuccess: () => onSubmit(),
+        onError: (err) => onError(err?.message || 'Errore aggiunta stint'),
+      });
+    } else {
+      payload.stint_id = initialValues.stint_id;
+      updateMutation.mutate(payload, {
+        onSuccess: () => onSubmit(),
+        onError: (err) => onError(err?.message || 'Errore aggiornamento stint'),
+      });
+    }
+  }
+
+  const isBusy = addMutation.isPending || updateMutation.isPending;
+
+  // Drivers attivi (escludi VSD001 e altri non-active)
+  const activeDrivers = (drivers || []).filter(d => d.status === 'active' || d.status === 'trial');
+
+  return (
+    <form className={styles.form} onSubmit={handleSubmit}>
+      <div className={styles.formGrid}>
+
+        {/* Pilota */}
+        <div className={styles.field}>
+          <label>Pilota *</label>
+          <select
+            value={form.driver_id}
+            onChange={e => setField('driver_id', e.target.value)}
+            required
+          >
+            <option value="">— Seleziona —</option>
+            {activeDrivers.map(d => (
+              <option key={d.driver_id} value={d.driver_id}>
+                {d.display_name} ({d.driver_id})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Stint order */}
+        <div className={styles.field}>
+          <label>Ordine stint *</label>
+          <input
+            type="number"
+            min="1"
+            value={form.stint_order}
+            onChange={e => setField('stint_order', e.target.value)}
+            required
+          />
+        </div>
+
+        {/* Planned start */}
+        <div className={styles.field}>
+          <label>Inizio pianificato</label>
+          <input
+            type="datetime-local"
+            value={form.planned_start_time?.slice(0, 16) || ''}
+            onChange={e => setField('planned_start_time', e.target.value)}
+          />
+        </div>
+
+        {/* Planned end */}
+        <div className={styles.field}>
+          <label>Fine pianificata</label>
+          <input
+            type="datetime-local"
+            value={form.planned_end_time?.slice(0, 16) || ''}
+            onChange={e => setField('planned_end_time', e.target.value)}
+          />
+        </div>
+
+        {/* Planned duration */}
+        <div className={styles.field}>
+          <label>Durata pianificata (min)</label>
+          <input
+            type="number"
+            min="0"
+            value={form.planned_duration_min}
+            onChange={e => setField('planned_duration_min', e.target.value)}
+            placeholder="es. 90"
+          />
+        </div>
+
+        {/* Tire compound */}
+        <div className={styles.field}>
+          <label>Gomme</label>
+          <select
+            value={form.tire_compound}
+            onChange={e => setField('tire_compound', e.target.value)}
+          >
+            <option value="">—</option>
+            {TIRE_COMPOUNDS.map(t => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Pit stop */}
+        <div className={styles.field}>
+          <label>Pit stop a fine stint</label>
+          <input
+            type="checkbox"
+            checked={form.pit_stop_at_end}
+            onChange={e => setField('pit_stop_at_end', e.target.checked)}
+          />
+        </div>
+
+        {/* Fuel */}
+        <div className={styles.field}>
+          <label>Carburante (L)</label>
+          <input
+            type="number"
+            min="0"
+            value={form.fuel_loaded_l}
+            onChange={e => setField('fuel_loaded_l', e.target.value)}
+            placeholder="opzionale"
+          />
+        </div>
+
+        {/* Status */}
+        <div className={styles.field}>
+          <label>Stato</label>
+          <select
+            value={form.status}
+            onChange={e => setField('status', e.target.value)}
+          >
+            {STATUS_OPTIONS.map(s => (
+              <option key={s.value} value={s.value}>{s.label}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Sezione "Risultati effettivi" — visibile solo in edit mode */}
+        {mode === 'edit' && (
+          <>
+            <div className={styles.divider}>Risultati effettivi (post-gara)</div>
+
+            <div className={styles.field}>
+              <label>Inizio effettivo</label>
+              <input
+                type="datetime-local"
+                value={form.actual_start_time?.slice(0, 16) || ''}
+                onChange={e => setField('actual_start_time', e.target.value)}
+              />
+            </div>
+
+            <div className={styles.field}>
+              <label>Fine effettiva</label>
+              <input
+                type="datetime-local"
+                value={form.actual_end_time?.slice(0, 16) || ''}
+                onChange={e => setField('actual_end_time', e.target.value)}
+              />
+            </div>
+
+            <div className={styles.field}>
+              <label>Durata effettiva (min)</label>
+              <input
+                type="number"
+                min="0"
+                value={form.actual_duration_min}
+                onChange={e => setField('actual_duration_min', e.target.value)}
+              />
+            </div>
+
+            <div className={styles.field}>
+              <label>Giri effettivi</label>
+              <input
+                type="number"
+                min="0"
+                value={form.actual_laps}
+                onChange={e => setField('actual_laps', e.target.value)}
+              />
+            </div>
+
+            <div className={styles.field}>
+              <label>Best lap (ms)</label>
+              <input
+                type="number"
+                min="0"
+                value={form.best_lap_ms}
+                onChange={e => setField('best_lap_ms', e.target.value)}
+                placeholder="es. 103245"
+              />
+            </div>
+          </>
+        )}
+
+        {/* Notes */}
+        <div className={`${styles.field} ${styles.fieldFull}`}>
+          <label>Note</label>
+          <textarea
+            rows="2"
+            value={form.notes}
+            onChange={e => setField('notes', e.target.value)}
+            placeholder="Condizioni meteo, strategia, eventi rilevanti…"
+          />
+        </div>
+      </div>
+
+      <div className={styles.formActions}>
+        <button
+          type="button"
+          className={styles.cancelBtn}
+          onClick={onCancel}
+          disabled={isBusy}
+        >
+          Annulla
+        </button>
+        <button
+          type="submit"
+          className={styles.submitBtn}
+          disabled={isBusy}
+        >
+          {isBusy ? 'Salvataggio…' : (mode === 'add' ? 'Crea stint' : 'Salva modifiche')}
+        </button>
+      </div>
+    </form>
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// STINT ROW (riga tabella con azioni inline)
+// ═══════════════════════════════════════════════════════════
+
+function StintRow({ stint, driver, onEdit, onError }) {
+  const removeMutation = useRemoveStint();
+
+  function handleRemove() {
+    const label = driver?.display_name || stint.driver_id;
+    const ok = window.confirm(
+      `Eliminare lo stint #${stint.stint_order} di ${label}?\nGli stint successivi verranno re-numerati automaticamente.`
+    );
+    if (!ok) return;
+    removeMutation.mutate(stint.stint_id, {
+      onError: (err) => onError(err?.message || 'Errore rimozione stint'),
+    });
+  }
+
+  const isDnf = stint.status === 'aborted';
+  const isCompleted = stint.status === 'completed';
+  const statusClass = `${styles.statusBadge} ${styles['status_' + stint.status]}`;
+
+  return (
+    <tr>
+      <td className={styles.colOrder}>{stint.stint_order}</td>
+      <td>
+        {driver ? (
+          <div className={styles.driverCell}>
+            <Avatar name={driver.display_name} driverId={driver.driver_id} size={24} />
+            <span>{driver.display_name}</span>
+          </div>
+        ) : stint.driver_id}
+      </td>
+      <td className={styles.timeCell}>
+        {formatRange(stint.planned_start_time, stint.planned_end_time)}
+      </td>
+      <td className={styles.timeCell}>
+        {stint.actual_start_time || stint.actual_end_time
+          ? formatRange(stint.actual_start_time, stint.actual_end_time)
+          : '—'}
+      </td>
+      <td>{stint.tire_compound || '—'}</td>
+      <td>{(stint.pit_stop_at_end === 'TRUE' || stint.pit_stop_at_end === true) ? '✓' : '—'}</td>
+      <td>
+        <span className={statusClass}>
+          {STATUS_OPTIONS.find(s => s.value === stint.status)?.label || stint.status}
+        </span>
+      </td>
+      <td className={styles.notesCell}>
+        {stint.notes ? (
+          <span title={stint.notes}>{truncate(stint.notes, 30)}</span>
+        ) : '—'}
+      </td>
+      <td className={styles.actionsCell}>
+        <button
+          className={styles.editBtn}
+          onClick={onEdit}
+          disabled={removeMutation.isPending}
+          title="Modifica"
+        >✎</button>
+        <button
+          className={styles.removeBtn}
+          onClick={handleRemove}
+          disabled={removeMutation.isPending}
+          title="Elimina"
+        >×</button>
+      </td>
+    </tr>
+  );
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════════
+
+function formatRange(start, end) {
+  if (!start && !end) return '—';
+  const fmt = (iso) => {
+    if (!iso) return '?';
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    return d.toLocaleString('it-IT', {
+      day: '2-digit', month: '2-digit',
+      hour: '2-digit', minute: '2-digit',
+    });
+  };
+  return `${fmt(start)} → ${fmt(end)}`;
+}
+
+function truncate(text, max) {
+  if (!text) return '';
+  if (text.length <= max) return text;
+  return text.slice(0, max - 1) + '…';
+}
