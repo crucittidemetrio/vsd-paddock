@@ -13,7 +13,7 @@ const STATUS_FILTERS = [
 ];
 
 export default function Roster() {
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState(DRIVER_STATUS.ACTIVE);
   const [simFilter, setSimFilter] = useState('all');
 
   const { data: drivers, isLoading, error } = useDrivers();
