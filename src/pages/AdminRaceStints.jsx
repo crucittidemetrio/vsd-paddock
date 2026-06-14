@@ -261,8 +261,19 @@ function StintForm({ mode, initialValues, drivers, existingStints, onSubmit, onC
 
   const isBusy = addMutation.isPending || updateMutation.isPending;
 
-  // Drivers attivi (escludi VSD001 e altri non-active)
-  const activeDrivers = (drivers || []).filter(d => d.status === 'active' || d.status === 'trial');
+  // Drivers selezionabili: attivi + trial.
+  // In edit, includi sempre il pilota corrente dello stint anche se nel frattempo
+  // è diventato inactive (es. archiviato), altrimenti il <select> cadrebbe su
+  // "— Seleziona —" e al salvataggio azzererebbe il driver_id dello stint.
+  const activeDrivers = useMemo(() => {
+    const base = (drivers || []).filter(d => d.status === 'active' || d.status === 'trial');
+    const current = initialValues.driver_id;
+    if (current && !base.some(d => d.driver_id === current)) {
+      const found = (drivers || []).find(d => d.driver_id === current);
+      if (found) return [...base, found];
+    }
+    return base;
+  }, [drivers, initialValues.driver_id]);
 
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
@@ -279,7 +290,7 @@ function StintForm({ mode, initialValues, drivers, existingStints, onSubmit, onC
             <option value="">— Seleziona —</option>
             {activeDrivers.map(d => (
               <option key={d.driver_id} value={d.driver_id}>
-                {d.display_name} ({d.driver_id})
+                {d.display_name} ({d.driver_id}){d.status === 'inactive' ? ' — inattivo' : ''}
               </option>
             ))}
           </select>
@@ -563,4 +574,3 @@ function truncate(text, max) {
   if (text.length <= max) return text;
   return text.slice(0, max - 1) + '…';
 }
-
