@@ -226,8 +226,6 @@ export default function RaceDetail() {
           </RequireTier>
         )}
 
-        <section className="rd-info-card"></section>
-
       <section className="rd-info-card">
         <div className="rd-info-grid">
           <div className="rd-info-item">
