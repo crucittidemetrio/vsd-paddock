@@ -79,7 +79,7 @@ async function postToBackend(action, payload, token) {
  */
 async function rosterListAdapter(payload, token) {
   const filters = (payload && payload.filters) || {};
-  const includeInactive = filters.status && filters.status !== 'active';
+ const includeInactive = true; // carica sempre tutti; le viste filtrano lato client (Roster.jsx via pill, lookup nomi usano roster completo)
 
   const res = await postToBackend(
     'roster.list',
