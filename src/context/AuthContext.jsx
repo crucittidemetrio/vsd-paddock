@@ -29,7 +29,7 @@ export function AuthProvider({ children }) {
         // driver può essere null per tier=guest
         setDriver(savedDriver ? JSON.parse(savedDriver) : null);
         // Fallback tier=guest se manca (token legacy salvato pre-Wave 10)
-        setTier(savedTier || TIERS.PILOT_VSD);
+        setTier(savedTier || TIERS.GUEST);
         setSims(savedSims ? JSON.parse(savedSims) : []);
         setDiscordAvatarUrl(savedDiscordAvatar || null);
         setDiscordUsername(savedDiscordUsername || null);
