@@ -4,7 +4,7 @@ import { api } from '../api/client';
 export function useDrivers(filters = {}) {
   return useQuery({
     queryKey: ['drivers', filters],
-    queryFn: () => api.roster.list({ includeInactive: true, ...filters }),
+    queryFn: () => api.roster.list(filters),
   });
 }
 
