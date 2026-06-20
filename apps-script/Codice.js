@@ -190,6 +190,7 @@ const ACTIONS = {
   'endurance.stints.list': handleEnduranceStintsList,
   'endurance.stints.generate': handleEnduranceStintsGenerate,
   'endurance.stints.validateCoverage': handleEnduranceStintsValidateCoverage,
+  'endurance.stints.confirmPlan': handleEnduranceStintsConfirmPlan,
   'endurance.stints.add': handleEnduranceStintsAdd,
   'endurance.stints.update': handleEnduranceStintsUpdate,
   'endurance.stints.remove': handleEnduranceStintsRemove,

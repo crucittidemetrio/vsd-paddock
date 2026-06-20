@@ -721,3 +721,102 @@ function testEsValidate() {
   }, ctx);
   Logger.log(JSON.stringify(r, null, 2));
 }
+
+/**
+ * Persiste in batch un piano di stint generato.
+ * Se richiesto, cancella gli stint precedentemente esistenti per la gara.
+ *
+ * @param {Object} payload Dati contenenti race_id, array di stint da scrivere e flag replace_existing.
+ * @param {Object} ctx Contesto della richiesta (utilizzato per auth).
+ * @returns {Object} Risultato ok con { written, replaced, race_id } o fail.
+ */
+function handleEnduranceStintsConfirmPlan(payload, ctx) {
+  // 1. Controllo Autenticazione e Permessi
+  if (!ctx) return fail('Auth richiesto');
+  if (!_esIsStaff_(ctx)) return fail('Permessi insufficienti');
+
+  // 2. Estrazione e Validazione Input Base
+  const { race_id, stints, replace_existing } = payload;
+
+  if (!race_id || typeof race_id !== 'string' || race_id.trim() === '') {
+    return fail('race_id mancante o non valido');
+  }
+
+  if (!Array.isArray(stints) || stints.length === 0) {
+    return fail('stints deve essere un array non vuoto');
+  }
+
+  if (typeof replace_existing !== 'boolean') {
+    return fail('replace_existing deve essere un valore booleano');
+  }
+
+  for (let i = 0; i < stints.length; i++) {
+    const s = stints[i];
+    if (!s.driver_id || typeof s.stint_order !== 'number' || s.stint_order < 1) {
+      return fail(`Stint all'indice ${i} non valido: driver_id mancante o stint_order < 1`);
+    }
+  }
+
+  // 3. Gestione Stint Esistenti
+  const existingStints = _esLoadAll_(race_id) || [];
+  let replacedCount = 0;
+
+  if (existingStints.length > 0) {
+    if (replace_existing === false) {
+      return fail(`La gara ha già ${existingStints.length} stint. Imposta replace_existing per sostituirli.`);
+    } else {
+      // Sostituzione confermata: elimina tutti i record esistenti per questa gara
+      for (let i = 0; i < existingStints.length; i++) {
+        _esDeleteRowById_(existingStints[i].stint_id);
+      }
+      replacedCount = existingStints.length;
+    }
+  }
+
+  // 4. Scrittura Nuovi Stint in Batch
+  const nowIso = new Date().toISOString();
+  const createdBy = ctx.driver_id || '';
+  let writtenCount = 0;
+
+  for (let i = 0; i < stints.length; i++) {
+    const s = stints[i];
+    
+    // Costruzione del record completo con i default previsti
+    const record = {
+      stint_id: _esGenerateStintId_(),
+      race_id: race_id,
+      stint_order: s.stint_order,
+      driver_id: s.driver_id,
+      planned_start_time: s.planned_start_time || '',
+      planned_end_time: s.planned_end_time || '',
+      planned_duration_min: s.planned_duration_min !== undefined ? s.planned_duration_min : '',
+      actual_start_time: '',
+      actual_end_time: '',
+      actual_duration_min: '',
+      actual_laps: '',
+      best_lap_ms: '',
+      status: 'planned',
+      tire_compound: s.tire_compound || '',
+      fuel_loaded_l: s.fuel_loaded_l || '',
+      pit_stop_at_end: 'FALSE', // Default booleano come stringa UPPERCASE
+      notes: s.notes || '',
+      created_by: createdBy,
+      created_at: nowIso,
+      updated_at: nowIso
+    };
+
+    _esAppendRow_(record);
+    writtenCount++;
+  }
+
+  // 5. Invalidazione Cache
+  // Fatta una sola volta alla fine per ottimizzare le performance e rinfrescare lo stato
+  _esInvalidateCache_(race_id);
+
+  // 6. Return Output
+  return ok({
+    written: writtenCount,
+    replaced: replacedCount,
+    race_id: race_id
+  });
+}
