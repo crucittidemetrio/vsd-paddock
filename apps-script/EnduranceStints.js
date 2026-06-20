@@ -412,6 +412,107 @@ function _esValidateStint_(payload, opts) {
   return { ok: true };
 }
 
+/**
+ * Formatta una data in stringa ISO 8601 "naive" (senza suffisso Z / timezone),
+ * preservando i componenti di data/ora locali dello script.
+ * Coerente col formato usato nel resto del sistema (es. "2026-10-24T15:00:00"),
+ * evitando lo shift in UTC che .toISOString() introdurrebbe.
+ *
+ * @param {Date} d
+ * @returns {string} es. "2026-10-24T15:00:00"
+ */
+function _esToNaiveIso_(d) {
+  const pad = (n) => String(n).padStart(2, '0');
+  return d.getFullYear()
+    + '-' + pad(d.getMonth() + 1)
+    + '-' + pad(d.getDate())
+    + 'T' + pad(d.getHours())
+    + ':' + pad(d.getMinutes())
+    + ':' + pad(d.getSeconds());
+}
+
+/**
+ * Calcola e propone un piano di stint per un evento endurance.
+ * Genera gli orari sequenziali e ruota i piloti in base all'ordine fornito.
+ * Funzione pura: NON altera lo stato dello sheet.
+ *
+ * @param {Object} payload Dati della gara e parametri stint.
+ * @param {Object} ctx Contesto della richiesta (auth).
+ * @returns {Object} ok({ stints, count, total_duration_check }) oppure fail(messaggio).
+ */
+function handleEnduranceStintsGenerate(payload, ctx) {
+  // 1. Auth e permessi
+  if (!ctx) {
+    return fail('Auth richiesto');
+  }
+  if (!_esIsStaff_(ctx)) {
+    return fail('Permessi insufficienti');
+  }
+
+  // 2. Estrazione e validazione input
+  const {
+    race_id,
+    race_start_time,
+    total_duration_min,
+    target_stint_min,
+    driver_ids
+  } = payload || {};
+
+  if (!race_id || typeof race_id !== 'string' || race_id.trim() === '') {
+    return fail('race_id non valido o mancante');
+  }
+  const startDate = new Date(race_start_time);
+  if (isNaN(startDate.getTime())) {
+    return fail('race_start_time non parsabile come data valida');
+  }
+  if (typeof total_duration_min !== 'number' || total_duration_min <= 0) {
+    return fail('total_duration_min deve essere un numero maggiore di 0');
+  }
+  if (typeof target_stint_min !== 'number' || target_stint_min <= 0 || target_stint_min > total_duration_min) {
+    return fail('target_stint_min deve essere un numero > 0 e <= total_duration_min');
+  }
+  if (!Array.isArray(driver_ids) || driver_ids.length === 0) {
+    return fail('driver_ids deve essere un array con almeno 1 elemento');
+  }
+
+  // 3. Generazione stint
+  const numStints = Math.ceil(total_duration_min / target_stint_min);
+  const stints = [];
+  let total_duration_check = 0;
+
+  // Avanzamento in millisecondi per non perdere precisione.
+  let currentStartTimeMs = startDate.getTime();
+
+  for (let i = 0; i < numStints; i++) {
+    // Durata: target per tutti, residuo per l'ultimo (somma esatta = total_duration_min).
+    let durationMin = target_stint_min;
+    if (i === numStints - 1) {
+      durationMin = total_duration_min - (target_stint_min * (numStints - 1));
+    }
+
+    const currentEndTimeMs = currentStartTimeMs + (durationMin * 60000);
+    const assignedDriverId = driver_ids[i % driver_ids.length];
+
+    stints.push({
+      stint_order: i + 1,
+      driver_id: assignedDriverId,
+      planned_start_time: _esToNaiveIso_(new Date(currentStartTimeMs)),
+      planned_end_time: _esToNaiveIso_(new Date(currentEndTimeMs)),
+      planned_duration_min: durationMin
+    });
+
+    total_duration_check += durationMin;
+    currentStartTimeMs = currentEndTimeMs;
+  }
+
+  // 4. Output
+  return ok({
+    stints: stints,
+    count: stints.length,
+    total_duration_check: total_duration_check
+  });
+}
+
 // ═══════════════════════════════════════════════════════════
 // TEST FUNCTIONS (manuali dall'editor Apps Script)
 // ═══════════════════════════════════════════════════════════
@@ -467,4 +568,14 @@ function testEsCleanup() {
   });
 }
 
-
+function testEsGenerate() {
+  const ctx = { driver_id: 'VSD005', role: 'admin' };
+  const r = handleEnduranceStintsGenerate({
+    race_id: 'test-24h',
+    race_start_time: '2026-10-24T15:00:00',
+    total_duration_min: 1440,
+    target_stint_min: 90,
+    driver_ids: ['VSD005', 'VSD006', 'VSD008']
+  }, ctx);
+  Logger.log(JSON.stringify(r, null, 2));
+}

@@ -188,6 +188,7 @@ const ACTIONS = {
   'endurance.participants.update': handleEnduranceParticipantsUpdate,
   'endurance.participants.remove': handleEnduranceParticipantsRemove,
   'endurance.stints.list': handleEnduranceStintsList,
+  'endurance.stints.generate': handleEnduranceStintsGenerate,
   'endurance.stints.add': handleEnduranceStintsAdd,
   'endurance.stints.update': handleEnduranceStintsUpdate,
   'endurance.stints.remove': handleEnduranceStintsRemove,
