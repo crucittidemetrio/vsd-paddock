@@ -513,6 +513,138 @@ function handleEnduranceStintsGenerate(payload, ctx) {
   });
 }
 
+/**
+ * Valida la copertura del piano stint rispetto alla durata della gara,
+ * rilevando gap, sovrapposizioni e discrepanze con inizio e fine evento.
+ * Funzione di sola lettura: non scrive sullo sheet.
+ *
+ * Validazione basata sugli ORARI (planned_start_time/planned_end_time), non
+ * sulle durate dichiarate: gli orari determinano l'effettiva copertura della
+ * macchina. Come effetto collaterale intercetta anche discrepanze durata/orari
+ * (es. bug DST), segnalando gap dove gli orari non coprono quanto la durata dice.
+ *
+ * @param {Object} payload { race_id, race_start_time (ISO naive), total_duration_min }.
+ * @param {Object} ctx Contesto della richiesta (auth).
+ * @returns {Object} ok({ valid, issues, stint_count }) oppure fail.
+ */
+function handleEnduranceStintsValidateCoverage(payload, ctx) {
+  // 1. Auth e permessi
+  if (!ctx) return fail('Auth richiesto');
+  if (!_esIsStaff_(ctx)) return fail('Permessi insufficienti');
+
+  // 2. Validazione input
+  const { race_id, race_start_time, total_duration_min } = payload || {};
+
+  if (!race_id || typeof race_id !== 'string' || race_id.trim() === '') {
+    return fail('race_id mancante o non valido');
+  }
+  const raceStartMs = new Date(race_start_time).getTime();
+  if (isNaN(raceStartMs)) {
+    return fail('race_start_time non parsabile come data valida');
+  }
+  if (typeof total_duration_min !== 'number' || total_duration_min <= 0) {
+    return fail('total_duration_min deve essere un numero > 0');
+  }
+
+  // 3. Caricamento stint
+  const stints = _esLoadAll_(race_id);
+  if (!stints || stints.length === 0) {
+    return ok({
+      valid: false,
+      issues: [{ type: 'no_stints', message: 'Nessuno stint trovato per la gara specificata.' }],
+      stint_count: 0
+    });
+  }
+
+  stints.sort((a, b) => Number(a.stint_order) - Number(b.stint_order));
+
+  // 4. Parsing orari (segnaposto null per stint con orari invalidi, mantiene indici)
+  const raceEndMs = raceStartMs + (total_duration_min * 60000);
+  const TOLERANCE_MS = 5000; // ~5s: assorbe rumore al secondo, non maschera buchi reali
+  const issues = [];
+  const parsed = [];
+
+  for (let i = 0; i < stints.length; i++) {
+    const s = stints[i];
+    const startMs = new Date(s.planned_start_time).getTime();
+    const endMs = new Date(s.planned_end_time).getTime();
+    if (isNaN(startMs) || isNaN(endMs)) {
+      issues.push({
+        type: 'invalid_times',
+        message: `Orari mancanti o non validi per lo stint ${s.stint_order}.`,
+        stint_order: s.stint_order
+      });
+      parsed.push(null);
+    } else {
+      parsed.push({ startMs, endMs, stint_order: s.stint_order });
+    }
+  }
+
+  // 5a. Start mismatch — sul PRIMO stint valido (non per forza l'indice 0)
+  const firstValid = parsed.find(p => p !== null);
+  if (firstValid) {
+    const deltaStart = (firstValid.startMs - raceStartMs) / 60000;
+    if (Math.abs(firstValid.startMs - raceStartMs) > TOLERANCE_MS) {
+      issues.push({
+        type: 'start_mismatch',
+        message: `Il primo stint non coincide con la partenza della gara. Delta: ${Math.round(deltaStart)} min.`,
+        stint_order: firstValid.stint_order,
+        delta_min: deltaStart
+      });
+    }
+  }
+
+  // 5b. End mismatch — sull'ULTIMO stint valido
+  let lastValid = null;
+  for (let i = parsed.length - 1; i >= 0; i--) {
+    if (parsed[i]) { lastValid = parsed[i]; break; }
+  }
+  if (lastValid) {
+    const deltaEnd = (lastValid.endMs - raceEndMs) / 60000;
+    if (Math.abs(lastValid.endMs - raceEndMs) > TOLERANCE_MS) {
+      issues.push({
+        type: 'end_mismatch',
+        message: `L'ultimo stint non coincide con la fine prevista della gara. Delta: ${Math.round(deltaEnd)} min.`,
+        stint_order: lastValid.stint_order,
+        delta_min: deltaEnd
+      });
+    }
+  }
+
+  // 5c. Gap e overlap tra coppie consecutive valide
+  for (let i = 0; i < parsed.length - 1; i++) {
+    const current = parsed[i];
+    const next = parsed[i + 1];
+    if (!current || !next) continue;
+
+    const diffMs = next.startMs - current.endMs;
+    if (diffMs > TOLERANCE_MS) {
+      const gap = diffMs / 60000;
+      issues.push({
+        type: 'gap',
+        message: `Buco temporale di ${Math.round(gap)} min dopo lo stint ${current.stint_order}.`,
+        stint_order: current.stint_order,
+        delta_min: gap
+      });
+    } else if (diffMs < -TOLERANCE_MS) {
+      const overlap = -diffMs / 60000;
+      issues.push({
+        type: 'overlap',
+        message: `Sovrapposizione di ${Math.round(overlap)} min tra lo stint ${current.stint_order} e il successivo.`,
+        stint_order: current.stint_order,
+        delta_min: overlap
+      });
+    }
+  }
+
+  // 6. Output
+  return ok({
+    valid: issues.length === 0,
+    issues: issues,
+    stint_count: stints.length
+  });
+}
+
 // ═══════════════════════════════════════════════════════════
 // TEST FUNCTIONS (manuali dall'editor Apps Script)
 // ═══════════════════════════════════════════════════════════
@@ -576,6 +708,16 @@ function testEsGenerate() {
     total_duration_min: 1440,
     target_stint_min: 90,
     driver_ids: ['VSD005', 'VSD006', 'VSD008']
+  }, ctx);
+  Logger.log(JSON.stringify(r, null, 2));
+}
+
+function testEsValidate() {
+  const ctx = { driver_id: 'VSD005', role: 'admin' };
+  const r = handleEnduranceStintsValidateCoverage({
+    race_id: 'lmu-spa-6h-2026-06-30',
+    race_start_time: '2026-06-30T16:00:00',
+    total_duration_min: 360
   }, ctx);
   Logger.log(JSON.stringify(r, null, 2));
 }
