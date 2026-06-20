@@ -19,11 +19,12 @@
 function handleRosterList(payload, ctx) {
   if (!ctx) return fail('Auth richiesto');
 
-  const includeInactive = payload && payload.includeInactive === true;
+  const includeInactive = payload && (payload.includeInactive === true || payload.includeInactive === 'true');
 
   const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
 
   const filtered = drivers.filter(d => {
+    if (d.driver_id === 'VSD001') return false; // account di sistema, mai nel roster pubblico
     if (includeInactive) return true;
     return d.status === 'active';
   });
