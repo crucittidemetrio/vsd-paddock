@@ -1,71 +1,90 @@
 # VSD Paddock — Handoff per nuova chat
 
 **Data**: giugno 2026
-**Stato repo**: `main` @ `6406a83`
+**Stato repo**: `main` @ (ultimo commit: generatore stint — vedi git log)
 **Prod**: `https://vsd-paddock.vercel.app`
 
 ---
 
-## Contesto strategico (IMPORTANTE — cambio di rotta)
+## Contesto strategico
 
-Il team **NON** partecipa più alla 6h del 30 giugno. Nuovo obiettivo: **24h di Le Mans, 24-25 ottobre 2026**, con una **6h pubblica VSD di collaudo a fine settembre** (data/tracciato da definire) come prova generale.
+Il team NON corre più la 6h del 30 giugno. Obiettivo: **24h di Le Mans, 24-25 ottobre 2026**, con **6h pubblica VSD di collaudo a fine settembre** (data/tracciato da definire) come prova generale.
 
-Roadmap completa in `docs/Roadmap-LeMans-2026.md`. Struttura a linea singola: igiene tecnica → StintPlanner → collaudo 6h → fix. Vincolo: budget token Claude limitato → ripartizione Claude (decisioni/debug) / Gemini (volume su brief chiusi).
+Roadmap in `docs/Roadmap-LeMans-2026.md`. Linea singola: igiene tecnica → StintPlanner → collaudo 6h → fix. **Sviluppo finisce fine agosto; settembre = collaudo, non costruzione.**
 
-**Sviluppo deve finire entro fine agosto.** Settembre = collaudo, non costruzione.
+Vincolo budget token Claude → ripartizione: **Claude** = design/debug/review; **Gemini** = volume su brief chiusi. Il modello ha funzionato sul primo task (design Claude → codice Gemini → review Claude che ha pescato 2 bug → clasp push → test → commit).
 
 ---
 
-## Stato lavori chiusi (sessioni precedenti)
+## FASE 0 — chiusa ✓
 
-**Blocco stint endurance + bugfix — tutto in produzione:**
-- TASK 1: UI pubblica StintTimeline read-only in RaceDetail (`ac494c9`)
-- TASK 3: guida admin `docs/Guida-Admin-Stint.md` + fix section vuota (`f4fee8e`)
-- Bug 1: pilota inactive incluso nel select edit stint (`01f27d5`)
-- Bug 3: fallback tier legacy a guest (`6e8260f`)
-- Bug roster (VSD010 mostrato invece del nome): risolto su tre layer — backend `Roster.js` (`includeInactive` accetta stringa 'true' + esclude VSD001), adapter `realApi.js` riga 82 (`includeInactive = true` sempre), hook `useRoster.js` ripulito. Commit `b772298`→`4106eca`, più allineamento locale `6406a83`.
+clasp operativo. Flusso backend ora: modifica `apps-script/` in locale → `clasp push` (allinea web ← locale) → Deploy "Nuova versione" dall'editor → `clearAllCaches()`.
+- 28 file sincronizzati, formato `.js` uniforme (eliminato misto .gs/.js)
+- funzioni di test rimosse dal web
+- token clasp in `.gitignore` (`.clasprc.json` mai committare; vive in `$env:USERPROFILE`)
+- `.clasp.json` in root con `scriptExtensions: [".js"]`
+- snapshot di sicurezza in `C:\Users\Demetrio\Dev\apps-script-web-snapshot` (può essere eliminato)
 
-**Gara 6h Spa**: creata nel sheet (`lmu-spa-6h-2026-06-30`) con stint di test. Ora NON si corre — resta come dato di test, da rimuovere o ignorare.
+---
+
+## FASE 1 — StintPlanner — IN CORSO
+
+### Decisioni di design v1 (prese)
+- **Propone-e-conferma**: generate calcola SENZA scrivere; admin rivede; conferma scrive.
+- **Rotazione ciclica** piloti (A,B,C,A,B,C…).
+- **Durata fissa**: ogni stint = target, ultimo assorbe il resto (somma esatta).
+
+### Micro-task 1 — Generatore — COMPLETATO ✓
+- `handleEnduranceStintsGenerate(payload, ctx)` + helper `_esToNaiveIso_` in `EnduranceStints.js`.
+- Registrato in `Codice.js`: `endurance.stints.generate`.
+- Input: `{ race_id, race_start_time (ISO naive es. "2026-10-24T15:00:00"), total_duration_min, target_stint_min, driver_ids[] }`.
+- Output: `ok({ stints[], count, total_duration_check })`. Stint: `{ stint_order, driver_id, planned_start_time, planned_end_time, planned_duration_min }`.
+- Auth: `_esIsStaff_` interno (staff/admin).
+- Funzione pura (non scrive sheet). Testato 24h/90min/3 piloti: count 16, durata 1440, rotazione e continuità OK, orari naive senza Z (fix timezone confermato — NON usare `.toISOString()`, shifta in UTC).
+
+### BUG NOTO — DST (da gestire PRIMA di Le Mans; NON blocca settembre)
+La notte del 25 ott 2026 in Europa le lancette tornano indietro di 1h (03:00→02:00). Il generatore lavora in ms assoluti ma `_esToNaiveIso_` legge `getHours()` locale → un'ora "sparisce": somma durate 1440 min ma intervallo orario reale 1380 min.
+- **Decisione presa: Opzione B** — il piano riflette la realtà fisica (tempo reale, non etichetta orologio). Lo stint che attraversa il cambio ora dura la sua durata reale; le lancette avanzano diversamente.
+- La 6h di settembre NON attraversa il cambio ora → generatore valido per il collaudo. Il bug morde solo a Le Mans.
+
+### PROSSIMI micro-task
+1. **Validazione copertura inter-stint** (`endurance.stints.validateCoverage`): gli stint coprono tutta la durata senza gap/overlap, limiti di guida per pilota. NB: validazione intra-stint (start<end) già in `_esValidateStint_`.
+2. **Conferma piano**: scrittura batch degli stint generati (riusa `add` o nuovo `addBatch`).
+3. **Frontend**: hook + UI planner (propone → rivedi → conferma).
+4. **Bug DST (Opzione B)** prima di Le Mans.
 
 ---
 
 ## Lezioni operative consolidate
 
-1. **Diagnosi: guarda subito la chiamata di rete vera** (Network tab → payload richiesta + risposta) PRIMA di ipotizzare su cache/deploy/codice. Il bug roster è costato 1 ora perché abbiamo diagnosticato alla cieca; la svolta è arrivata leggendo il payload (`includeInactive: false`).
-2. **Apps Script NON è sincronizzato col repo Git.** Modifiche a `apps-script/*.js` in locale NON arrivano all'editor web. Vanno riportate a mano + Deploy "Nuova versione" + `clearAllCaches()`. Questo disallineamento è la causa #1 di tempo perso → Fase 0 della roadmap risolve con clasp.
-3. **Se `npm run build` fallisce, NON committare.** I comandi incatenati non bloccano il git al fallimento del build. Lanciare build e commit separati.
-4. **Adapter roster**: `includeInactive` è calcolato in `realApi.js`, NON passato dall'hook. Modificare l'hook non ha effetto sul parametro inviato al backend.
-
----
-
-## PROSSIMO PASSO — Fase 0: clasp
-
-1. Installare/configurare `clasp` per sincronizzare il progetto Apps Script standalone col repo (cartella `apps-script/`). Apps Script standalone ID: `1IbLOiw4tiljIN8s8dG8g-RedIyf9QV_wL9JWtzXCJ0-FUCQ5wTu5ryza`.
-2. Rimuovere funzioni di test residue dall'editor Apps Script (`testRosterInactive`, `testRosterHandler`, `testRosterFix`, `testFinale`, `trovaColpevole`).
-3. Committare `docs/Roadmap-LeMans-2026.md` (creato, non ancora versionato).
-
-Poi Fase 1 — StintPlanner (vedi roadmap per micro-task e ripartizione Claude/Gemini).
+1. **Diagnosi: guarda subito la chiamata di rete vera** (payload richiesta + risposta) PRIMA di ipotizzare cache/deploy/codice. Il bug roster costò 1 ora di diagnosi alla cieca.
+2. **clasp**: fonte di verità = locale. `clasp push` allinea il web; le funzioni di test aggiunte SOLO nel web spariscono al push (ok, sono usa-e-getta — ma se le vuoi tenere, mettile in locale).
+3. **Se `npm run build` fallisce, NON committare.** Comandi separati, non incatenati.
+4. **Apps Script**: dopo push, serve Deploy "Nuova versione" perché la web app pubblica cambi (i test interni girano sul codice salvato, la web app sulla versione deployata).
+5. **Timezone**: nel backend usare ISO naive (senza Z); `.toISOString()` shifta in UTC e rompe gli orari.
+6. **Verifica sempre il log riga per riga**: il bug DST è emerso solo controllando che 15:00→14:00 fossero 23h e non 24h.
 
 ---
 
 ## Stato tecnico
 
-- Git config `gc.auto=0 + autocrlf=true` (usare `git -c gc.auto=0 push`)
+- Git: `gc.auto=0 + autocrlf=true` → usare `git -c gc.auto=0 push`
 - Apps Script standalone ID: `1IbLOiw4tiljIN8s8dG8g-RedIyf9QV_wL9JWtzXCJ0-FUCQ5wTu5ryza`
 - VSD_HUB_DB ID: `1ADUq7CRy0_PtPqbPYS42iCNgpdxZrNlSMY3HX6T8XQA`
-- Repo locale: `C:\Users\Demetrio\Dev\vsd-paddock`
-- Cache: Races TTL 15 min, roster TTL 600s, stint TTL 5 min → `clearAllCaches()` per propagare
-- Nota download: i file dalla chat atterrano in posti variabili → cercarli con `Get-ChildItem -Recurse -Filter` prima di spostare
+- Repo: `C:\Users\Demetrio\Dev\vsd-paddock`
+- Cache: Races 15 min, roster 600s, stint 300s → `clearAllCaches()` per propagare
+- Schema `EnduranceStints`: 20 colonne, regge la 24h senza modifiche (confermato). StintPlanner è un LAYER DI LOGICA sopra, non nuovo sheet.
+- Download dalla chat atterrano in posti variabili → `Get-ChildItem -Recurse -Filter` prima di spostare
 
 ---
 
 ## Memoria contestuale VSD
 
-- 25 piloti attivi pubblici (28 totali nel roster incl. inactive; VSD001 = account sistema, escluso)
-- 4 sim (LMU primario)
-- Discord OAuth Wave 10 live
-- Vetrina pubblica live (Discord + Instagram + Facebook)
+- 25 piloti attivi pubblici (28 totali incl. inactive; VSD001 = account sistema, escluso ovunque)
+- 4 sim (LMU primario, simulatore preferito di Demetrio)
+- Discord OAuth Wave 10 live; vetrina pubblica live (Discord + IG + FB)
 - Prossimo evento: 6h pubblica VSD di collaudo, fine settembre 2026
+- Ritmo sviluppo: ~1h/sera, vincolato da budget token
 
 ---
 
@@ -75,6 +94,9 @@ Poi Fase 1 — StintPlanner (vedi roadmap per micro-task e ripartizione Claude/G
 cd C:\Users\Demetrio\Dev\vsd-paddock
 git log --oneline -8
 git status
+clasp status
 git ls-remote origin main
-# Atteso HEAD: 6406a83 (o successivo)
 ```
+
+## Apertura raccomandata
+> "Fase 1 in corso, generatore stint fatto. Prossimo: validazione copertura inter-stint."
