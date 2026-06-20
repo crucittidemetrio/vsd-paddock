@@ -1,7 +1,7 @@
 # VSD Paddock — Handoff per nuova chat
 
 **Data**: giugno 2026
-**Stato repo**: `main` @ `c9c0657`
+**Stato repo**: `main` @ `e68320c`
 **Prod**: `https://vsd-paddock.vercel.app`
 
 ---
@@ -58,11 +58,21 @@ La notte del 25 ott 2026 in Europa le lancette tornano indietro di 1h (03:00→0
 - **Testato** sulla 6h di Spa (stint di test incoerenti): valid=false, pescato overlap 19 min stint 1-2 e end_mismatch -180 min. Preciso, nessun falso positivo.
 - Funzione di test `testEsValidate` in locale (usa-e-getta).
 
+### Micro-task 3 — Conferma piano — COMPLETATO ✓
+- `handleEnduranceStintsConfirmPlan(payload, ctx)` in `EnduranceStints.js`.
+- Registrato in `Codice.js`: `endurance.stints.confirmPlan`.
+- Scrive in batch gli stint generati. Input: `{ race_id, stints[], replace_existing }`.
+- `replace_existing` esplicito (booleano): se true cancella gli stint esistenti della gara e riscrive; se false e ne esistono già → fail. Sicurezza anti-cancellazione accidentale.
+- Riusa `_esLoadAll_`, `_esDeleteRowById_`, `_esGenerateStintId_`, `_esAppendRow_`, `_esInvalidateCache_`. Cache invalidata una volta sola alla fine.
+- Output: `ok({ written, replaced, race_id })`.
+- Review: verificato che `_esDeleteRowById_` legge il foglio diretto (`getDataRange().getValues()`, non cache) → delete in sequenza sicure nonostante shift indici. NON testato in editor (sporcherebbe il foglio; logica verificata per review, si testa col frontend su dati veri).
+
+### BACKEND STINTPLANNER COMPLETO ✓ — genera → valida → conferma
+
 ### PROSSIMI micro-task
-1. **Conferma piano**: scrittura batch degli stint generati (riusa `add` o nuovo `addBatch`). NB: generate produce stint SENZA scriverli; serve l'endpoint che li persiste dopo conferma admin.
-2. **Frontend**: hook + UI planner (genera → rivedi → valida → conferma).
-3. **Limiti piloti** nel validatore (v2): ore max per pilota, riposo minimo tra stint. Rimandato da v1.
-4. **Bug DST (Opzione B)** prima di Le Mans. Il validatore lo intercetta già (end_mismatch).
+1. **Frontend StintPlanner**: UI che lega generate → mostra piano → validateCoverage → confirmPlan. Form parametri (durata, target stint, piloti) → genera → tabella editabile → valida → conferma. Hook + adapter (pattern passthrough). È il pezzo grosso, sessione dedicata.
+2. **Limiti piloti** nel validatore (v2): ore max per pilota, riposo minimo tra stint. Rimandato da v1.
+3. **Bug DST (Opzione B)** prima di Le Mans. Il validatore lo intercetta già (end_mismatch).
 
 ---
 
