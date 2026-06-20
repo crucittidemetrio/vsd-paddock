@@ -1,7 +1,7 @@
 # VSD Paddock — Handoff per nuova chat
 
 **Data**: giugno 2026
-**Stato repo**: `main` @ (ultimo commit: generatore stint — vedi git log)
+**Stato repo**: `main` @ `c9c0657`
 **Prod**: `https://vsd-paddock.vercel.app`
 
 ---
@@ -47,11 +47,22 @@ La notte del 25 ott 2026 in Europa le lancette tornano indietro di 1h (03:00→0
 - **Decisione presa: Opzione B** — il piano riflette la realtà fisica (tempo reale, non etichetta orologio). Lo stint che attraversa il cambio ora dura la sua durata reale; le lancette avanzano diversamente.
 - La 6h di settembre NON attraversa il cambio ora → generatore valido per il collaudo. Il bug morde solo a Le Mans.
 
+### Micro-task 2 — Validatore copertura — COMPLETATO ✓
+- `handleEnduranceStintsValidateCoverage(payload, ctx)` in `EnduranceStints.js`.
+- Registrato in `Codice.js`: `endurance.stints.validateCoverage`.
+- v1 valida: gap, overlap, copertura totale (start_mismatch/end_mismatch). Limiti piloti RIMANDATI.
+- Validazione basata sugli ORARI (non sulle durate dichiarate): come effetto collaterale intercetta anche il bug DST (un piano che attraversa il cambio ora mostrerebbe end_mismatch).
+- Input: `{ race_id, race_start_time (ISO naive), total_duration_min }`.
+- Output: `ok({ valid, issues[], stint_count })`. Issue: `{ type, message (it), stint_order?, delta_min? }`. Tipi: no_stints, invalid_times, start_mismatch, end_mismatch, gap, overlap.
+- Tolleranza 5s sui confronti (no falsi positivi da rumore al secondo).
+- **Testato** sulla 6h di Spa (stint di test incoerenti): valid=false, pescato overlap 19 min stint 1-2 e end_mismatch -180 min. Preciso, nessun falso positivo.
+- Funzione di test `testEsValidate` in locale (usa-e-getta).
+
 ### PROSSIMI micro-task
-1. **Validazione copertura inter-stint** (`endurance.stints.validateCoverage`): gli stint coprono tutta la durata senza gap/overlap, limiti di guida per pilota. NB: validazione intra-stint (start<end) già in `_esValidateStint_`.
-2. **Conferma piano**: scrittura batch degli stint generati (riusa `add` o nuovo `addBatch`).
-3. **Frontend**: hook + UI planner (propone → rivedi → conferma).
-4. **Bug DST (Opzione B)** prima di Le Mans.
+1. **Conferma piano**: scrittura batch degli stint generati (riusa `add` o nuovo `addBatch`). NB: generate produce stint SENZA scriverli; serve l'endpoint che li persiste dopo conferma admin.
+2. **Frontend**: hook + UI planner (genera → rivedi → valida → conferma).
+3. **Limiti piloti** nel validatore (v2): ore max per pilota, riposo minimo tra stint. Rimandato da v1.
+4. **Bug DST (Opzione B)** prima di Le Mans. Il validatore lo intercetta già (end_mismatch).
 
 ---
 
