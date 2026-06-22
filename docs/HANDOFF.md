@@ -1,7 +1,7 @@
 # VSD Paddock — Handoff per nuova chat
 
 **Data**: giugno 2026
-**Stato repo**: `main` @ `6ca2452`
+**Stato repo**: `main` @ `ec08b56`
 **Prod**: `https://vsd-paddock.vercel.app`
 
 ---
@@ -69,6 +69,12 @@ La notte del 25 ott 2026 in Europa le lancette tornano indietro di 1h (03:00→0
 
 ### BACKEND STINTPLANNER COMPLETO ✓ — genera → valida → conferma
 
+### Micro-task 5 — Motore frontend (validatore client + hook) — COMPLETATO ✓
+- `src/utils/stintValidation.js`: funzione PURA `validatePlanCoverage(stints, raceStartTime, totalDurationMin)` → `{ valid, issues }`. Traduzione JS della logica backend (gap/overlap/copertura/mismatch, tolleranza 5s). Istantanea, no rete.
+- `src/utils/stintValidation.test.js`: 6 test Vitest (valido/gap/overlap/end_mismatch/vuoto/input-invalido). Suite totale ora 61 test verdi.
+- `src/hooks/useStintPlanner.js`: hook orchestratore. Stato `plan` in memoria (con `_localId` per editing), `validation`, flag async, `error`. Funzioni: `generate` (chiama backend, popola plan), `updateStintInPlan` (modifica in RAM, azzera validation), `validate` (CLIENT-SIDE via validatePlanCoverage, sincrono), `confirm` (scrive via confirmPlan, rimuove _localId), `reset`.
+- **STRADA 3 confermata**: validazione del piano PROPOSTO lato client (istantanea); il validateCoverage BACKEND resta per i piani PERSISTITI (es. modifiche manuali in AdminRaceStints). Due strumenti, due momenti — tenere logica in sync se cambiano le regole.
+
 ### Micro-task 4 — Layer API frontend — COMPLETATO ✓
 - `client.js`: namespace `api.endurance.stints` esteso con `generate`, `validateCoverage`, `confirmPlan`.
 - `realApi.js`: 3 case nel dispatcher + 3 adapter passthrough (`enduranceStints{Generate,ValidateCoverage,ConfirmPlan}Adapter`).
@@ -77,9 +83,11 @@ La notte del 25 ott 2026 in Europa le lancette tornano indietro di 1h (03:00→0
 - Endpoint ora raggiungibili: `api.endurance.stints.generate(payload)`, `.validateCoverage(payload)`, `.confirmPlan(payload)`.
 
 ### PROSSIMI micro-task
-1. **Frontend StintPlanner**: UI che lega generate → mostra piano → validateCoverage → confirmPlan. Form parametri (durata, target stint, piloti) → genera → tabella editabile → valida → conferma. Hook + adapter (pattern passthrough). È il pezzo grosso, sessione dedicata.
+1. **UI StintPlanner** (PEZZO GROSSO, sessione dedicata con skill frontend-design): componente React che consuma `useStintPlanner`. Form parametri (race_id, race_start_time, total_duration_min, target_stint_min, driver_ids) → bottone Genera → TABELLA EDITABILE del piano (cambia pilota/orari per stint via updateStintInPlan) → bottone Valida (mostra issues) → bottone Conferma (confirmPlan con replace_existing). Decisione presa: editabile prima della conferma. Validazione live possibile (è client-side, gratis) o on-demand.
 2. **Limiti piloti** nel validatore (v2): ore max per pilota, riposo minimo tra stint. Rimandato da v1.
 3. **Bug DST (Opzione B)** prima di Le Mans. Il validatore lo intercetta già (end_mismatch).
+
+### STATO FASE 1: backend completo + layer API + motore frontend FATTI. Resta solo la UI.
 
 ---
 
