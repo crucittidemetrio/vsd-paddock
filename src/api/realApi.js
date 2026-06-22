@@ -228,6 +228,12 @@ export async function callApi(action, payload = {}, ctx = null) {
         return await enduranceStintsUpdateAdapter(payload, token);
       case 'endurance.stints.remove':
         return await enduranceStintsRemoveAdapter(payload, token);
+      case 'endurance.stints.generate':
+        return await enduranceStintsGenerateAdapter(payload, token);
+      case 'endurance.stints.validateCoverage':
+        return await enduranceStintsValidateCoverageAdapter(payload, token);
+      case 'endurance.stints.confirmPlan':
+        return await enduranceStintsConfirmPlanAdapter(payload, token);
       default:
         return fail(`Action non instradata: ${action}`);
     }
@@ -524,4 +530,12 @@ async function enduranceStintsUpdateAdapter(payload, token) {
 async function enduranceStintsRemoveAdapter(payload, token) {
   return await postToBackend('endurance.stints.remove', payload || {}, token);
 }
-
+async function enduranceStintsGenerateAdapter(payload, token) {
+  return await postToBackend('endurance.stints.generate', payload || {}, token);
+}
+async function enduranceStintsValidateCoverageAdapter(payload, token) {
+  return await postToBackend('endurance.stints.validateCoverage', payload || {}, token);
+}
+async function enduranceStintsConfirmPlanAdapter(payload, token) {
+  return await postToBackend('endurance.stints.confirmPlan', payload || {}, token);
+}

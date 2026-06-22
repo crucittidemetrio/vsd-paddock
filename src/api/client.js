@@ -138,6 +138,9 @@ endurance: {
         add: (payload) => call('endurance.stints.add', payload),
         update: (payload) => call('endurance.stints.update', payload),
         remove: (stint_id) => call('endurance.stints.remove', { stint_id }),
+        generate: (payload) => call('endurance.stints.generate', payload),
+        validateCoverage: (payload) => call('endurance.stints.validateCoverage', payload),
+        confirmPlan: (payload) => call('endurance.stints.confirmPlan', payload),
       },
     },
 };
