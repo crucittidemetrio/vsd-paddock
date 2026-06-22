@@ -1,7 +1,7 @@
 # VSD Paddock — Handoff per nuova chat
 
 **Data**: giugno 2026
-**Stato repo**: `main` @ `e68320c`
+**Stato repo**: `main` @ `6ca2452`
 **Prod**: `https://vsd-paddock.vercel.app`
 
 ---
@@ -68,6 +68,13 @@ La notte del 25 ott 2026 in Europa le lancette tornano indietro di 1h (03:00→0
 - Review: verificato che `_esDeleteRowById_` legge il foglio diretto (`getDataRange().getValues()`, non cache) → delete in sequenza sicure nonostante shift indici. NON testato in editor (sporcherebbe il foglio; logica verificata per review, si testa col frontend su dati veri).
 
 ### BACKEND STINTPLANNER COMPLETO ✓ — genera → valida → conferma
+
+### Micro-task 4 — Layer API frontend — COMPLETATO ✓
+- `client.js`: namespace `api.endurance.stints` esteso con `generate`, `validateCoverage`, `confirmPlan`.
+- `realApi.js`: 3 case nel dispatcher + 3 adapter passthrough (`enduranceStints{Generate,ValidateCoverage,ConfirmPlan}Adapter`).
+- Pattern passthrough puro (no unwrap; `call()` fa l'unwrap di `.data`). Nei componenti leggere `response?.stints`, `response?.valid`, ecc.
+- Build verde. Cablaggio puro frontend (no backend, no clasp).
+- Endpoint ora raggiungibili: `api.endurance.stints.generate(payload)`, `.validateCoverage(payload)`, `.confirmPlan(payload)`.
 
 ### PROSSIMI micro-task
 1. **Frontend StintPlanner**: UI che lega generate → mostra piano → validateCoverage → confirmPlan. Form parametri (durata, target stint, piloti) → genera → tabella editabile → valida → conferma. Hook + adapter (pattern passthrough). È il pezzo grosso, sessione dedicata.
