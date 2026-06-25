@@ -42,7 +42,33 @@ clasp operativo. Flusso backend ora: modifica `apps-script/` in locale → `clas
 - Auth: `_esIsStaff_` interno (staff/admin).
 - Funzione pura (non scrive sheet). Testato 24h/90min/3 piloti: count 16, durata 1440, rotazione e continuità OK, orari naive senza Z (fix timezone confermato — NON usare `.toISOString()`, shifta in UTC).
 
-### BUG NOTO — DST (da gestire PRIMA di Le Mans; NON blocca settembre)
+### BUG NOTO — DST — ANALISI APPROFONDITA (da gestire PRIMA di Le Mans; NON blocca settembre)
+
+**Sintomo originale**: generando una 24h che parte 24 ott 15:00, l'ultimo stint mostra etichetta "25 ott 14:00" invece di 15:00 (un'ora "sparita"). Causa: la notte del 25 ott 2026 in Europa le lancette tornano 03:00->02:00 (fine ora legale).
+
+**Decisione: Opzione B1** — conta il TEMPO REALE (cronometro). A Le Mans la bandiera cade 24h reali dopo la partenza; l'orologio da muro è solo etichetta. (Confermato regolamentarmente.)
+
+**Cosa abbiamo capito (analisi giugno 2026)**:
+- Il generatore avanza in MILLISECONDI ASSOLUTI (`currentStartTimeMs += durationMin*60000`). I ms assoluti SONO tempo reale, non sanno del DST. Quindi durata stint e totale (1440 min reali) sono GIÀ CORRETTI in B1. Il "14:00" era solo l'ETICHETTA locale prodotta da `_esToNaiveIso_` che riflette il salto — comportamento CORRETTO in B1, non un bug di calcolo.
+- Quindi in B1 NON c'è bug nel calcolo. Il problema è solo di RAPPRESENTAZIONE + ROUND-TRIP.
+
+**Il vero rischio residuo (round-trip dell'ora ambigua)**:
+- La notte del cambio, l'ora 02:00-03:00 locale si RIPETE. Una stringa naive "2026-10-25T02:30:00" è AMBIGUA: prima o seconda occorrenza? Quando viene riparsata con `new Date(iso)` (nel validatore o nella UI), il runtime sceglie UNA delle due → uno stint potrebbe essere collocato 1h prima/dopo → falso overlap/gap.
+- Dipende dal TIMEZONE del runtime: Apps Script (TZ Europe/Rome) e browser admin (TZ Italia) hanno il DST → rischio presente. Container di test era UTC → NON riproduce il problema, NON testabile lì.
+
+**Soluzione probabile (decisione ARCHITETTURALE, non patch)**:
+- Per disambiguare l'ora ripetuta serve l'OFFSET ESPLICITO negli orari: "02:30+02:00" (CEST, prima) vs "02:30+01:00" (CET, seconda).
+- MA tutto il sistema usa ISO NAIVE senza offset (StintTimeline, AdminRaceStints, formato sheet). Introdurre l'offset tocca TUTTO il formato date del paddock. Va deciso e propagato con cura, NON di fretta.
+
+**Come affrontarlo quando si farà**:
+1. Riprodurre in un ambiente con TZ Europe/Rome (Apps Script reale, o Node con TZ='Europe/Rome').
+2. Decidere: introdurre offset espliciti negli orari endurance (almeno per le gare che attraversano il cambio ora) oppure tenere naive + flag/annotazione sullo stint ambiguo.
+3. Il validatore (validatePlanCoverage + backend) va aggiornato di conseguenza per non segnalare falsi gap/overlap sull'ora ripetuta.
+4. La UI mostrerà un avviso "cambio ora" sugli stint interessati.
+
+**NON blocca la 6h di settembre** (non attraversa il cambio ora). Morde solo a Le Mans 24-25 ott.
+
+### _SEZIONE DST ORIGINALE (storica)_
 La notte del 25 ott 2026 in Europa le lancette tornano indietro di 1h (03:00→02:00). Il generatore lavora in ms assoluti ma `_esToNaiveIso_` legge `getHours()` locale → un'ora "sparisce": somma durate 1440 min ma intervallo orario reale 1380 min.
 - **Decisione presa: Opzione B** — il piano riflette la realtà fisica (tempo reale, non etichetta orologio). Lo stint che attraversa il cambio ora dura la sua durata reale; le lancette avanzano diversamente.
 - La 6h di settembre NON attraversa il cambio ora → generatore valido per il collaudo. Il bug morde solo a Le Mans.
