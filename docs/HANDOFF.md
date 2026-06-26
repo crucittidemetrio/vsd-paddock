@@ -48,10 +48,16 @@ per ritestare il planner in futuro).
 
 ### PROSSIMI CANDIDATI (post Fase 1)
 1. **AdminRaceForm — creare/cancellare gare dalla UI** (NUOVO, richiesto da Demetrio).
-   Oggi le gare si creano/cancellano a mano nello sheet Races. Serve UI admin per chiudere il
-   flusso "crea gara → pianifica stint → corri" tutto nel paddock e togliere l'ultima operazione
-   manuale dallo sheet. Verificare prima se esiste backend races.add/races.remove (Select-String
-   in Races.js/Codice.js); se manca, aggiungerlo. Pattern: come AdminEnduranceForm esistente.
+   Oggi le gare si creano/cancellano SOLO a mano nello sheet Races. Serve UI admin per chiudere
+   il flusso "crea gara → pianifica stint → corri" tutto nel paddock.
+   ⚠ VERIFICATO (Select-String): NON esiste backend races.add/create/remove/update. Va costruito
+   il giro COMPLETO da zero:
+   - backend: handleRacesAdd / handleRacesRemove (+ Update?) in Races.js, registrati in Codice.js
+   - layer API: namespace + adapter passthrough in client.js / realApi.js
+   - frontend: form (pattern come AdminEnduranceForm esistente) + route admin + integrazione
+   Pezzo sostanzioso ma più semplice degli stint (gara = riga piatta, niente rotazione/validazione).
+   Attenzione alle convenzioni: race_id sim-prefissato (es. lmu-monza-gp), format endurance per
+   abilitare gli stint, ISO dates, eventuali booleani UPPERCASE. Sessione dedicata.
 2. **Bug DST (Opzione B1)** prima di Le Mans — vedi analisi approfondita più sotto. Non blocca
    settembre. Da affrontare in TZ Europe/Rome con tempo (decisione architetturale su formato date).
 3. **Limiti piloti nel validatore (v2)**: ore max/pilota, riposo minimo. Rimandato da v1.
