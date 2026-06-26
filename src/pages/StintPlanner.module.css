@@ -1,0 +1,260 @@
+/* StintPlanner — cockpit di pianificazione stint endurance.
+   Coerente coi brand asset VSD: dark blue #060d1f, cyan #00d4ff, blue #3b8bff, orange #f5a623.
+   Font: Rajdhani (display/titoli), Inter (corpo), JetBrains Mono (dati/orari).
+   Priorità di design: leggibilità sotto pressione (usato anche in gara, di notte). */
+
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 4rem;
+  color: #c5d0e6;
+}
+
+/* ── Header ── */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+.eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.18em;
+  color: #00d4ff;
+  margin-bottom: 0.35rem;
+}
+.title {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  font-size: 2rem;
+  line-height: 1.05;
+  color: #fff;
+  margin: 0;
+  text-transform: uppercase;
+}
+.subtitle {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  color: #7d8aa6;
+  margin-top: 0.4rem;
+}
+.backBtn {
+  background: transparent;
+  border: 1px solid #243049;
+  color: #c5d0e6;
+  padding: 0.5rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.backBtn:hover { border-color: #3b8bff; color: #fff; }
+
+/* ── Pannelli ── */
+.panel {
+  background: #0b1426;
+  border: 1px solid #1b2740;
+  border-radius: 10px;
+  padding: 1.25rem 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+}
+.panelTitle {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 600;
+  font-size: 1.15rem;
+  color: #fff;
+  margin: 0 0 1rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* ── Form parametri ── */
+.paramGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.field { display: flex; flex-direction: column; gap: 0.4rem; }
+.field > span {
+  font-size: 0.78rem;
+  color: #7d8aa6;
+  font-weight: 600;
+}
+.field input {
+  background: #060d1f;
+  border: 1px solid #243049;
+  border-radius: 6px;
+  color: #fff;
+  padding: 0.55rem 0.7rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.9rem;
+}
+.field input:focus { outline: none; border-color: #00d4ff; }
+
+/* ── Picker piloti ── */
+.driversBlock { margin-bottom: 1.25rem; }
+.driversLabel { font-size: 0.78rem; color: #7d8aa6; font-weight: 600; margin-bottom: 0.6rem; }
+.hint { font-weight: 400; font-style: italic; color: #5a6580; }
+.driversPicker { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+.driverChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #060d1f;
+  border: 1px solid #243049;
+  color: #c5d0e6;
+  padding: 0.45rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.driverChip:hover { border-color: #3b8bff; }
+.driverChipOn {
+  background: rgba(0, 212, 255, 0.12);
+  border-color: #00d4ff;
+  color: #fff;
+}
+.chipNum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px; height: 18px;
+  background: #00d4ff;
+  color: #060d1f;
+  border-radius: 50%;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ── Azioni ── */
+.actionsRow { display: flex; gap: 0.75rem; align-items: center; margin-top: 0.5rem; }
+.generateBtn {
+  background: #3b8bff;
+  border: none;
+  color: #fff;
+  padding: 0.65rem 1.4rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.generateBtn:hover:not(:disabled) { background: #5a9cff; }
+.generateBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+.resetBtn {
+  background: transparent;
+  border: 1px solid #243049;
+  color: #7d8aa6;
+  padding: 0.65rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+.resetBtn:hover { border-color: #ff6b66; color: #ff6b66; }
+.confirmBtn {
+  background: #f5a623;
+  border: none;
+  color: #060d1f;
+  padding: 0.7rem 1.6rem;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 0.92rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.confirmBtn:hover:not(:disabled) { background: #ffb840; }
+.confirmBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ── Piano / tabella ── */
+.planHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.tableWrap { overflow-x: auto; margin-bottom: 1.25rem; }
+.table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+.table thead th {
+  text-align: left;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #7d8aa6;
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid #1b2740;
+}
+.table tbody td {
+  padding: 0.45rem 0.6rem;
+  border-bottom: 1px solid #131e33;
+  vertical-align: middle;
+}
+.table tbody tr:hover { background: rgba(59, 139, 255, 0.05); }
+.colOrder {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  color: #00d4ff;
+  width: 40px;
+}
+.driverCell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 160px;
+}
+.driverCell select { flex: 1; }
+.colDur {
+  font-family: 'JetBrains Mono', monospace;
+  color: #7d8aa6;
+  white-space: nowrap;
+}
+.table select, .table input {
+  background: #060d1f;
+  border: 1px solid #243049;
+  border-radius: 5px;
+  color: #fff;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.82rem;
+  font-family: 'JetBrains Mono', monospace;
+  width: 100%;
+}
+.table select:focus, .table input:focus { outline: none; border-color: #00d4ff; }
+
+/* Riga con problema di validazione */
+:global(.st-row-issue) td { background: rgba(255, 107, 102, 0.08); }
+:global(.st-row-issue) .colOrder { color: #ff6b66; }
+
+/* ── Alert ── */
+.alertError {
+  background: rgba(255, 107, 102, 0.1);
+  border: 1px solid rgba(255, 107, 102, 0.35);
+  color: #ff8a85;
+  padding: 0.7rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+.alertOk {
+  background: rgba(129, 199, 132, 0.1);
+  border: 1px solid rgba(129, 199, 132, 0.35);
+  color: #a5d6a7;
+  padding: 0.7rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+}
+
+/* ── Responsive ── */
+@media (max-width: 640px) {
+  .title { font-size: 1.5rem; }
+  .header { flex-direction: column; }
+  .actionsRow { flex-wrap: wrap; }
+}

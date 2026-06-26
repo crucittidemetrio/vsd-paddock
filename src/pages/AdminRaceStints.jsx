@@ -101,6 +101,9 @@ export default function AdminRaceStints() {
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>Stint pianificati</h2>
+          <Link to={`/admin/race/${raceId}/stint-planner`} className={styles.addBtn}>
+            ⚡ Pianifica automaticamente
+          </Link>
           <button
             className={styles.addBtn}
             onClick={() => { setShowAddForm(v => !v); setActionError(null); }}
