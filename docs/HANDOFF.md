@@ -1,7 +1,7 @@
 # VSD Paddock — Handoff per nuova chat
 
 **Data**: giugno 2026
-**Stato repo**: `main` @ `ec08b56`
+**Stato repo**: `main` @ `f64a1db`
 **Prod**: `https://vsd-paddock.vercel.app`
 
 ---
@@ -27,7 +27,38 @@ clasp operativo. Flusso backend ora: modifica `apps-script/` in locale → `clas
 
 ---
 
-## FASE 1 — StintPlanner — IN CORSO
+## FASE 1 — StintPlanner — ✅ COMPLETATA E COLLAUDATA (giugno 2026)
+
+**Intero StintPlanner chiuso, integrato e provato end-to-end in PRODUZIONE su gara reale
+"Le Mans Default (WEC)".** Ciclo di vita stint collaudato: genera → valida (client-side, live)
+→ conferma (scrittura batch) → replace_existing (anti-doppione, verificato: 8→4 senza accumulo)
+→ delete dalla UI. Tutti i pezzi lavorano insieme.
+
+File UI: `src/pages/StintPlanner.jsx` + `StintPlanner.module.css`. Route in App.jsx
+(`/admin/race/:raceId/stint-planner`, wrapper `<AdminRoute>`, lazy). Bottone accesso
+"⚡ Pianifica automaticamente" in AdminRaceStints.jsx. Tutto su main @ f64a1db.
+
+Note di collaudo: il primo "Genera" ha dato "Action sconosciuta: endurance.stints.generate"
+perché la web app Apps Script serviva una versione vecchia — risolto con Deploy "Nuova versione"
+(ricordare SEMPRE dopo clasp push). Un "Permessi insufficienti" sul delete era solo sessione
+diversa (portatile vs PC principale) — risolto con logout/login. Gating funziona correttamente.
+
+Gara di test "Le Mans Default (WEC)" TENUTA come banco di prova permanente (0 stint, pronta
+per ritestare il planner in futuro).
+
+### PROSSIMI CANDIDATI (post Fase 1)
+1. **AdminRaceForm — creare/cancellare gare dalla UI** (NUOVO, richiesto da Demetrio).
+   Oggi le gare si creano/cancellano a mano nello sheet Races. Serve UI admin per chiudere il
+   flusso "crea gara → pianifica stint → corri" tutto nel paddock e togliere l'ultima operazione
+   manuale dallo sheet. Verificare prima se esiste backend races.add/races.remove (Select-String
+   in Races.js/Codice.js); se manca, aggiungerlo. Pattern: come AdminEnduranceForm esistente.
+2. **Bug DST (Opzione B1)** prima di Le Mans — vedi analisi approfondita più sotto. Non blocca
+   settembre. Da affrontare in TZ Europe/Rome con tempo (decisione architetturale su formato date).
+3. **Limiti piloti nel validatore (v2)**: ore max/pilota, riposo minimo. Rimandato da v1.
+
+---
+
+## FASE 1 — StintPlanner — dettaglio costruzione (storico)
 
 ### Decisioni di design v1 (prese)
 - **Propone-e-conferma**: generate calcola SENZA scrivere; admin rivede; conferma scrive.
