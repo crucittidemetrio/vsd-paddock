@@ -186,6 +186,12 @@ export async function callApi(action, payload = {}, ctx = null) {
         return await racesUpcomingAdapter(payload, token);
       case 'races.get':
         return await racesGetAdapter(payload, token);
+        case 'races.add':
+        return await racesAddAdapter(payload, token);
+      case 'races.update':
+        return await racesUpdateAdapter(payload, token);
+      case 'races.remove':
+        return await racesRemoveAdapter(payload, token);
       case 'raceResults.list':
         return await raceResultsListAdapter(payload, token);
      case 'raceResults.import':                              // ← NEW
@@ -355,7 +361,35 @@ async function racesGetAdapter(payload, token) {
   if (!res.ok) return res;
   return ok(res.data.race);
 }
+/**
+ * Frontend: races.add(payload) → { race_id, race }
+ * Backend:  races.add → { race_id, race }
+ */
+async function racesAddAdapter(payload, token) {
+  const res = await postToBackend('races.add', payload, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
 
+/**
+ * Frontend: races.update(payload) → { race_id, updated }
+ * Backend:  races.update → { race_id, updated }
+ */
+async function racesUpdateAdapter(payload, token) {
+  const res = await postToBackend('races.update', payload, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: races.remove({ race_id }) → { race_id, deleted }
+ * Backend:  races.remove → { race_id, deleted }
+ */
+async function racesRemoveAdapter(payload, token) {
+  const res = await postToBackend('races.remove', payload, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
 /**
  * Frontend: raceResults.list({ race_id?, session_type? }) → { results, count }
  * Backend:  raceResults.list({ race_id?, session_type? })
