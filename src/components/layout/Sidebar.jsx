@@ -29,6 +29,7 @@ const FUTURE_ITEMS = [
 ];
 
 const ADMIN_ITEMS = [
+  { to: '/admin/races', label: 'Gestione Gare', icon: '🏁' },
   { to: '/admin/team-dashboard', label: 'Team Dashboard', icon: '📊' },
   { to: '/admin/import-results', label: 'Import Risultati', icon: '📥' },
   { to: '/admin/import-standings', label: 'Import Standings', icon: '🏆' },
