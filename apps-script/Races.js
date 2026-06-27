@@ -285,3 +285,215 @@ function normalizeDrivePosterUrl_(url) {
 
   return str;
 }
+function dumpRacesHeader() {
+  const ss = SpreadsheetApp.openById('1ADUq7CRy0_PtPqbPYS42iCNgpdxZrNlSMY3HX6T8XQA');
+  const sheet = ss.getSheetByName('Races');
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  Logger.log('Colonne Races (' + headers.length + '):');
+  headers.forEach((h, i) => Logger.log((i + 1) + '. ' + h));
+  // bonus: una riga esempio per vedere i formati dei valori
+  if (sheet.getLastRow() > 1) {
+    const sample = sheet.getRange(2, 1, 1, headers.length).getValues()[0];
+    Logger.log('--- Esempio riga 2 ---');
+    headers.forEach((h, i) => Logger.log(h + ' = ' + JSON.stringify(sample[i])));
+  }
+}
+/**
+ * Crea una nuova gara aggiungendola alla tab RACES.
+ * Genera automaticamente il race_id incrementale (RACEnnn) e created_at.
+ *
+ * @param {Object} payload Dati della nuova gara (senza race_id e created_at).
+ * @param {Object} ctx Contesto della richiesta (auth).
+ * @returns {Object} ok({ race_id, race }) oppure fail.
+ */
+function handleRacesAdd(payload, ctx) {
+  if (!ctx) return fail('Auth richiesto');
+  if (!_esIsStaff_(ctx)) return fail('Permessi insufficienti');
+
+  // 1. Validazione campi obbligatori
+  const requiredFields = ['race_name', 'sim', 'date', 'format', 'status'];
+  for (let i = 0; i < requiredFields.length; i++) {
+    const field = requiredFields[i];
+    if (payload[field] === undefined || payload[field] === null || String(payload[field]).trim() === '') {
+      return fail(`Campo obbligatorio mancante o vuoto: ${field}`);
+    }
+  }
+  if (isNaN(new Date(payload.date).getTime())) {
+    return fail('Campo date non parsabile come data valida');
+  }
+
+  const sheet = getSheet(SHEETS.RACES);
+  if (!sheet) return fail('Foglio RACES non trovato');
+
+  // 2. Lettura diretta + generazione race_id (regex stretta: solo RACE + cifre)
+  const data = sheet.getDataRange().getValues();
+  const RACE_ID_RE = /^RACE(\d+)$/;
+  let maxId = 0;
+  for (let i = 1; i < data.length; i++) {
+    const id = data[i][0];
+    if (typeof id === 'string') {
+      const m = id.match(RACE_ID_RE);
+      if (m) {
+        const num = parseInt(m[1], 10);
+        if (num > maxId) maxId = num;
+      }
+    }
+  }
+  const newRaceId = 'RACE' + String(maxId + 1).padStart(3, '0');
+  const createdAt = new Date().toISOString();
+
+  // 3. Oggetto gara con default
+  const newRace = {
+    race_id: newRaceId,
+    sim: payload.sim,
+    round: payload.round || '',
+    race_name: payload.race_name,
+    track_id: payload.track_id || '',
+    car_id: payload.car_id || '',
+    date: payload.date,
+    duration_minutes: payload.duration_minutes || 0,
+    format: payload.format,
+    status: payload.status,
+    broadcast_url: payload.broadcast_url || '',
+    notes: payload.notes || '',
+    created_at: createdAt,
+    weather: payload.weather || '',
+    event_type: payload.event_type || '',
+    championship_id: payload.championship_id || '',
+    poster_url: payload.poster_url || ''
+  };
+
+  // 4. Riga nell'ordine ESATTO delle 17 colonne
+  const row = [
+    newRace.race_id, newRace.sim, newRace.round, newRace.race_name,
+    newRace.track_id, newRace.car_id, newRace.date, newRace.duration_minutes,
+    newRace.format, newRace.status, newRace.broadcast_url, newRace.notes,
+    newRace.created_at, newRace.weather, newRace.event_type,
+    newRace.championship_id, newRace.poster_url
+  ];
+
+  // 5. Scrittura + invalidazione cache
+  sheet.appendRow(row);
+  invalidateSheetCache_(SHEETS.RACES);
+
+  return ok({ race_id: newRaceId, race: newRace });
+}
+
+/**
+ * Modifica i campi di una gara esistente. Non altera race_id né created_at.
+ * Aggiorna solo i campi presenti nel payload.
+ *
+ * @param {Object} payload { race_id, ...campi da aggiornare }.
+ * @param {Object} ctx Contesto della richiesta (auth).
+ * @returns {Object} ok({ race_id, updated[] }) oppure fail.
+ */
+function handleRacesUpdate(payload, ctx) {
+  if (!ctx) return fail('Auth richiesto');
+  if (!_esIsStaff_(ctx)) return fail('Permessi insufficienti');
+
+  const race_id = payload && payload.race_id;
+  if (!race_id) return fail('Campo race_id obbligatorio per l\'aggiornamento');
+
+  if (payload.date && isNaN(new Date(payload.date).getTime())) {
+    return fail('Campo date non parsabile come data valida');
+  }
+
+  const sheet = getSheet(SHEETS.RACES);
+  if (!sheet) return fail('Foglio RACES non trovato');
+
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 2) return fail('Gara non trovata: ' + race_id);
+
+  const headers = data[0];
+  const rowIndex = data.findIndex(row => row[0] === race_id);
+  if (rowIndex === -1) return fail('Gara non trovata: ' + race_id);
+
+  const rowToUpdate = rowIndex + 1; // base-1 per getRange
+  const updatedFields = [];
+
+  for (const key in payload) {
+    if (key === 'race_id' || key === 'created_at') continue;
+    const colIndex = headers.indexOf(key);
+    if (colIndex !== -1) {
+      sheet.getRange(rowToUpdate, colIndex + 1).setValue(payload[key]);
+      updatedFields.push(key);
+    }
+  }
+
+  if (updatedFields.length > 0) {
+    invalidateSheetCache_(SHEETS.RACES);
+  }
+
+  return ok({ race_id: race_id, updated: updatedFields });
+}
+
+/**
+ * Rimuove una gara dalla tab RACES, SOLO se non ha stint collegati.
+ * Sicurezza: blocca la cancellazione se esistono dati dipendenti (no orfani).
+ *
+ * @param {Object} payload { race_id }.
+ * @param {Object} ctx Contesto della richiesta (auth).
+ * @returns {Object} ok({ race_id, deleted }) oppure fail.
+ */
+function handleRacesRemove(payload, ctx) {
+  if (!ctx) return fail('Auth richiesto');
+  if (!_esIsStaff_(ctx)) return fail('Permessi insufficienti');
+
+  const race_id = payload && payload.race_id;
+  if (!race_id) return fail('Campo race_id obbligatorio per la rimozione');
+
+  // 1. Controllo sicurezza: stint collegati
+  const stintsSheet = getSheet(SHEETS.ENDURANCE_STINTS);
+  if (stintsSheet) {
+    const stintsData = stintsSheet.getDataRange().getValues();
+    if (stintsData.length > 1) {
+      const stintRaceIdCol = stintsData[0].indexOf('race_id');
+      if (stintRaceIdCol !== -1) {
+        let linked = 0;
+        for (let i = 1; i < stintsData.length; i++) {
+          if (stintsData[i][stintRaceIdCol] === race_id) linked++;
+        }
+        if (linked > 0) {
+          return fail(`Impossibile cancellare: la gara ha ${linked} stint collegati. Rimuovili prima.`);
+        }
+      }
+    }
+  }
+
+  // 2. Rimozione gara
+  const racesSheet = getSheet(SHEETS.RACES);
+  if (!racesSheet) return fail('Foglio RACES non trovato');
+
+  const racesData = racesSheet.getDataRange().getValues();
+  const rowIndex = racesData.findIndex(row => row[0] === race_id);
+  if (rowIndex === -1) return fail('Gara non trovata: ' + race_id);
+
+  racesSheet.deleteRow(rowIndex + 1); // base-1
+  invalidateSheetCache_(SHEETS.RACES);
+
+  return ok({ race_id: race_id, deleted: true });
+}
+function testRacesAddRemove() {
+  const ctx = { driver_id: 'VSD005', role: 'admin' };
+  // 1. Crea una gara di test
+  const add = handleRacesAdd({
+    race_name: 'TEST CRUD Gara',
+    sim: 'LMU',
+    date: '2026-12-01T20:00:00',
+    duration_minutes: 360,
+    format: 'endurance',
+    status: 'scheduled'
+  }, ctx);
+  Logger.log('ADD: ' + JSON.stringify(add, null, 2));
+
+  if (!add.ok) return;
+  const newId = add.data.race_id;
+
+  // 2. Aggiorna un campo
+  const upd = handleRacesUpdate({ race_id: newId, notes: 'Aggiornato dal test' }, ctx);
+  Logger.log('UPDATE: ' + JSON.stringify(upd));
+
+  // 3. Rimuovi la gara di test (cleanup)
+  const rem = handleRacesRemove({ race_id: newId }, ctx);
+  Logger.log('REMOVE: ' + JSON.stringify(rem));
+}

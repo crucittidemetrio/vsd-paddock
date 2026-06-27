@@ -161,6 +161,9 @@ const ACTIONS = {
   'races.list': handleRacesList,
   'races.upcoming': handleRacesUpcoming,
   'races.get': handleRacesGet,
+  'races.add': handleRacesAdd,
+  'races.update': handleRacesUpdate,
+  'races.remove': handleRacesRemove,
   'raceResults.list': handleRaceResultsList,
    'raceResults.import': handleRaceResultsImport,   // ← NEW (Wave 9.8)
    'races.updatePoster': handleRacesUpdatePoster,
