@@ -1,7 +1,7 @@
 # VSD Paddock — Handoff per nuova chat
 
 **Data**: giugno 2026
-**Stato repo**: `main` @ `f64a1db`
+**Stato repo**: `main` @ `a5deb89`
 **Prod**: `https://vsd-paddock.vercel.app`
 
 ---
@@ -45,6 +45,25 @@ diversa (portatile vs PC principale) — risolto con logout/login. Gating funzio
 
 Gara di test "Le Mans Default (WEC)" TENUTA come banco di prova permanente (0 stint, pronta
 per ritestare il planner in futuro).
+
+### ✅ AdminRaces — CRUD gare dalla UI — COMPLETATA E COLLAUDATA (giugno 2026)
+Pannello gestione gare completo, collaudato end-to-end in produzione.
+- Backend: handleRacesAdd / handleRacesUpdate / handleRacesRemove in Races.js (@ 32b475b).
+  race_id sequenziale RACEnnn (regex stretta /^RACE(\d+)$/ — ignora id descrittivi tipo lmu-lumh-s1-r05).
+  racesRemove ha SAFETY GUARD: blocca la cancellazione se la gara ha stint collegati
+  (controlla EnduranceStints) → "ha N stint collegati. Rimuovili prima." Collaudato in entrambe
+  le direzioni: delete pulito OK, delete con stint BLOCCATO.
+- Layer API: api.races.add/update/remove (@ dd4f050).
+- UI: src/pages/AdminRaces.jsx (lista) + src/components/race/RaceFormModal.jsx (form modale
+  create/edit, 15 campi, select enum sim/format/status). Route /admin/races (AdminRoute, lazy).
+  Voce sidebar "🏁 Gestione Gare". (@ 708dd81 + a5deb89)
+- FLUSSO COMPLETO chiuso: crea gara → pianifica stint (StintPlanner) → proteggi (safety guard).
+  Le gare NON si creano più a mano nello sheet. Lo sheet è puro storage, non workflow.
+
+### ⚠ REMINDER FISSO — dopo OGNI modifica backend Apps Script:
+clasp push → **Deploy "Nuova versione"** (editor: Deploy > Gestisci deployment > matita > Nuova versione)
+→ test. Il `clasp push` NON aggiorna la web app pubblica! Senza il Deploy, la produzione dà
+"Action sconosciuta: xxx". Ci è successo 2 volte (StintPlanner generate, races.add). NON dimenticare.
 
 ### PROSSIMI CANDIDATI (post Fase 1)
 1. **AdminRaceForm — creare/cancellare gare dalla UI** (NUOVO, richiesto da Demetrio).
