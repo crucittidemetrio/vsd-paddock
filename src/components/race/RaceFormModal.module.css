@@ -1,0 +1,84 @@
+/* RaceFormModal — form gara in modale. Brand VSD. */
+
+.backdrop {
+  position: fixed; inset: 0; background: rgba(3, 7, 18, 0.75);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: 2rem 1rem; z-index: 1000; overflow-y: auto;
+}
+.modal {
+  background: #0b1426; border: 1px solid #1b2740; border-radius: 12px;
+  width: 100%; max-width: 760px; box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+}
+.modalHeader {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 1.25rem 1.5rem; border-bottom: 1px solid #1b2740;
+}
+.modalHeader h2 {
+  font-family: 'Rajdhani', sans-serif; font-weight: 600; font-size: 1.3rem;
+  color: #fff; margin: 0; text-transform: uppercase;
+}
+.closeBtn {
+  background: transparent; border: none; color: #7d8aa6; font-size: 1.6rem;
+  cursor: pointer; line-height: 1; padding: 0 0.3rem;
+}
+.closeBtn:hover { color: #fff; }
+
+.body { padding: 1.5rem; }
+
+.sectionLabel {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; letter-spacing: 0.12em;
+  text-transform: uppercase; color: #00d4ff; margin-bottom: 0.8rem;
+}
+
+.grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 1rem;
+}
+.field { display: flex; flex-direction: column; gap: 0.35rem; }
+.fieldWide { grid-column: span 2; }
+.fieldFull { grid-column: 1 / -1; }
+.field > span { font-size: 0.78rem; color: #7d8aa6; font-weight: 600; }
+.field input, .field select, .field textarea {
+  background: #060d1f; border: 1px solid #243049; border-radius: 6px; color: #fff;
+  padding: 0.55rem 0.7rem; font-size: 0.88rem; font-family: 'Inter', sans-serif;
+}
+.field input:focus, .field select:focus, .field textarea:focus { outline: none; border-color: #00d4ff; }
+.field textarea { resize: vertical; }
+
+.hint {
+  background: rgba(245, 166, 35, 0.08); border: 1px solid rgba(245, 166, 35, 0.25);
+  color: #f5c66b; padding: 0.6rem 0.9rem; border-radius: 6px; font-size: 0.8rem; margin-bottom: 1rem;
+}
+
+.toggleOptional {
+  background: transparent; border: 1px dashed #243049; color: #7d8aa6;
+  padding: 0.55rem 1rem; border-radius: 6px; font-size: 0.82rem; cursor: pointer;
+  width: 100%; margin-bottom: 1rem; transition: all 0.15s;
+}
+.toggleOptional:hover { border-color: #3b8bff; color: #c5d0e6; }
+
+.alertError {
+  background: rgba(255, 107, 102, 0.1); border: 1px solid rgba(255, 107, 102, 0.35);
+  color: #ff8a85; padding: 0.7rem 1rem; border-radius: 6px; font-size: 0.85rem;
+  margin: 0 1.5rem; margin-top: 1rem;
+}
+
+.footer {
+  display: flex; justify-content: flex-end; gap: 0.75rem;
+  padding: 1.25rem 1.5rem; border-top: 1px solid #1b2740;
+}
+.cancelBtn {
+  background: transparent; border: 1px solid #243049; color: #c5d0e6;
+  padding: 0.65rem 1.2rem; border-radius: 6px; font-size: 0.88rem; cursor: pointer;
+}
+.cancelBtn:hover { border-color: #7d8aa6; }
+.saveBtn {
+  background: #f5a623; border: none; color: #060d1f; padding: 0.65rem 1.5rem;
+  border-radius: 6px; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: background 0.15s;
+}
+.saveBtn:hover:not(:disabled) { background: #ffb840; }
+.saveBtn:disabled, .cancelBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+@media (max-width: 640px) {
+  .grid { grid-template-columns: 1fr; }
+  .fieldWide { grid-column: span 1; }
+}

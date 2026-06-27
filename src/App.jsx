@@ -37,6 +37,7 @@ const AdminPosters        = lazy(() => import('./pages/AdminPosters'));
 const AdminEndurance      = lazy(() => import('./pages/AdminEndurance'));
 const AdminEnduranceForm  = lazy(() => import('./pages/AdminEnduranceForm'));
 const StintPlanner        = lazy(() => import('./pages/StintPlanner'));
+const AdminRaces = lazy(() => import('./pages/AdminRaces'));
 
 import './App.css';
 
@@ -153,6 +154,10 @@ export default function App() {
               <Route
                 path="/admin/race/:raceId/stint-planner"
                 element={<AdminRoute><StintPlanner /></AdminRoute>}
+              />
+              <Route
+                path="/admin/races"
+                element={<AdminRoute><AdminRaces /></AdminRoute>}
               />
             </Route>
             
