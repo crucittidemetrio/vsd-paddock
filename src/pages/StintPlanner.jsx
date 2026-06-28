@@ -51,6 +51,8 @@ export default function StintPlanner() {
   const [totalDuration, setTotalDuration] = useState(race?.duration_minutes || 1440);
   const [targetStint, setTargetStint] = useState(90);
   const [selectedDrivers, setSelectedDrivers] = useState([]); // array di driver_id, in ordine di rotazione
+  const [maxHoursPerDriver, setMaxHoursPerDriver] = useState('');
+  const [minRestMinutes, setMinRestMinutes] = useState('');
 
   const [confirmError, setConfirmError] = useState(null);
   const [confirmSuccess, setConfirmSuccess] = useState(null);
@@ -73,14 +75,18 @@ export default function StintPlanner() {
     });
   }
 
-  // Validazione live: ricalcola a ogni render quando c'è un piano
+ // Validazione live: ricalcola a ogni render quando c'è un piano
   const liveValidation = useMemo(() => {
     if (!plan || plan.length === 0) return null;
-    return validate({ race_start_time: startTime, total_duration_min: Number(totalDuration) });
-    // validate è sincrono (client-side) e aggiorna lo state validation;
-    // qui lo richiamiamo per avere il risultato fresco a ogni modifica del piano.
+    return validate(
+      { race_start_time: startTime, total_duration_min: Number(totalDuration) },
+      {
+        maxHoursPerDriver: maxHoursPerDriver === '' ? null : Number(maxHoursPerDriver),
+        minRestMinutes: minRestMinutes === '' ? null : Number(minRestMinutes),
+      }
+    );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [plan, startTime, totalDuration]);
+  }, [plan, startTime, totalDuration, maxHoursPerDriver, minRestMinutes]);
 
   async function handleConfirm() {
     setConfirmError(null);
@@ -142,6 +148,16 @@ export default function StintPlanner() {
           <label className={styles.field}>
             <span>Durata stint target (min)</span>
             <input type="number" min="1" value={targetStint} onChange={e => setTargetStint(e.target.value)} />
+          </label>
+          <label className={styles.field}>
+            <span>Max ore/pilota (opz.)</span>
+            <input type="number" min="0" step="0.5" value={maxHoursPerDriver}
+              onChange={e => setMaxHoursPerDriver(e.target.value)} placeholder="es. 8" />
+          </label>
+          <label className={styles.field}>
+            <span>Riposo min tra stint (opz.)</span>
+            <input type="number" min="0" value={minRestMinutes}
+              onChange={e => setMinRestMinutes(e.target.value)} placeholder="es. 30" />
           </label>
         </div>
 

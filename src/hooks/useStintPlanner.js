@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { api } from '../api/client';
-import { validatePlanCoverage } from '../utils/stintValidation';
+import { validatePlanCoverage, validatePilotLimits } from '../utils/stintValidation';
 
 /**
  * Custom hook per orchestrare il flusso di creazione, modifica e conferma
@@ -70,14 +70,19 @@ export function useStintPlanner() {
    *
    * @param {Object} raceParams - { race_start_time, total_duration_min }
    */
-  const validate = useCallback((raceParams) => {
-    const result = validatePlanCoverage(
+  const validate = useCallback((raceParams, limits) => {
+    const coverage = validatePlanCoverage(
       plan,
       raceParams.race_start_time,
       raceParams.total_duration_min
     );
-    setValidation(result);
-    return result;
+    const pilot = validatePilotLimits(plan, limits || {});
+    const merged = {
+      valid: coverage.valid && pilot.valid,
+      issues: [...coverage.issues, ...pilot.issues],
+    };
+    setValidation(merged);
+    return merged;
   }, [plan]);
 
   /**

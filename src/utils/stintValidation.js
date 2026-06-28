@@ -107,3 +107,78 @@ export function validatePlanCoverage(stints, raceStartTime, totalDurationMin) {
 
   return { valid: issues.length === 0, issues };
 }
+// ─────────────────────────────────────────────────────────────
+// Da AGGIUNGERE a src/utils/stintValidation.js (non sostituire il file).
+// validatePilotLimits: controlla affaticamento piloti (ore max, riposo minimo).
+// Funzione PURA, separata da validatePlanCoverage (responsabilità distinte).
+// Soft: produce issue da mostrare, non blocca. Limiti opzionali: se null/0 → skip.
+// ─────────────────────────────────────────────────────────────
+
+/**
+ * Valida i limiti per pilota su un piano stint.
+ * Entrambi i limiti sono OPZIONALI: se non forniti (null/undefined/0), il
+ * relativo controllo viene saltato.
+ *
+ * @param {Array} stints - stint del piano. Ogni stint: { stint_order, driver_id, planned_start_time, planned_end_time }.
+ * @param {Object} limits - { maxHoursPerDriver?: number, minRestMinutes?: number }.
+ * @returns {{ valid: boolean, issues: Array }} issue: { type, message, driver_id?, value?, limit? }.
+ *   Tipi: max_hours_exceeded, insufficient_rest.
+ */
+export function validatePilotLimits(stints, limits) {
+  const issues = [];
+  const maxHours = limits && Number(limits.maxHoursPerDriver) > 0 ? Number(limits.maxHoursPerDriver) : null;
+  const minRest = limits && Number(limits.minRestMinutes) > 0 ? Number(limits.minRestMinutes) : null;
+
+  // Nessun limite impostato → niente da validare
+  if (!maxHours && !minRest) return { valid: true, issues: [] };
+  if (!Array.isArray(stints) || stints.length === 0) return { valid: true, issues: [] };
+
+  // Raggruppa gli stint per pilota, con orari parsati in ms
+  const byDriver = {};
+  for (const s of stints) {
+    const startMs = new Date(s.planned_start_time).getTime();
+    const endMs = new Date(s.planned_end_time).getTime();
+    if (isNaN(startMs) || isNaN(endMs)) continue; // orari invalidi: ignorati qui (li becca validatePlanCoverage)
+    const id = s.driver_id;
+    if (!byDriver[id]) byDriver[id] = [];
+    byDriver[id].push({ startMs, endMs, stint_order: s.stint_order });
+  }
+
+  for (const driverId in byDriver) {
+    const segs = byDriver[driverId].sort((a, b) => a.startMs - b.startMs);
+
+    // ── Ore massime per pilota ──
+    if (maxHours) {
+      let totalMs = 0;
+      for (const seg of segs) totalMs += (seg.endMs - seg.startMs);
+      const totalHours = totalMs / 3600000;
+      if (totalHours > maxHours + 1e-9) {
+        issues.push({
+          type: 'max_hours_exceeded',
+          driver_id: driverId,
+          value: Math.round(totalHours * 10) / 10,
+          limit: maxHours,
+          message: `${driverId} guida ${(Math.round(totalHours * 10) / 10)}h, oltre il limite di ${maxHours}h.`,
+        });
+      }
+    }
+
+    // ── Riposo minimo tra stint consecutivi dello stesso pilota ──
+    if (minRest) {
+      for (let i = 0; i < segs.length - 1; i++) {
+        const restMin = (segs[i + 1].startMs - segs[i].endMs) / 60000;
+        if (restMin < minRest - 1e-9) {
+          issues.push({
+            type: 'insufficient_rest',
+            driver_id: driverId,
+            value: Math.round(restMin),
+            limit: minRest,
+            message: `${driverId}: solo ${Math.round(restMin)} min di riposo tra lo stint ${segs[i].stint_order} e ${segs[i + 1].stint_order} (minimo ${minRest}).`,
+          });
+        }
+      }
+    }
+  }
+
+  return { valid: issues.length === 0, issues };
+}
