@@ -222,26 +222,15 @@ function _esGenerateStintId_() {
  * Carica tutti gli stint di una race con cache.
  */
 function _esLoadAll_(raceId) {
-  const cacheKey = `es_race_${raceId}`;
-  const cache    = CacheService.getScriptCache();
-  const cached   = cache.get(cacheKey);
-
-  if (cached) {
-    return JSON.parse(cached);
-  }
-
-  const allRows = getCachedSheetData_(SHEETS.ENDURANCE_STINTS, ES_CACHE_TTL_SECONDS);
-  const filtered = allRows.filter(r => r.race_id === raceId);
-
-  cache.put(cacheKey, JSON.stringify(filtered), ES_CACHE_TTL_SECONDS);
-  return filtered;
+  const allRows = sheetToObjects(SHEETS.ENDURANCE_STINTS);
+  return allRows.filter(r => r.race_id === raceId);
 }
 
 /**
  * Cerca uno stint per ID (su tutto il sheet, non solo per race).
  */
 function _esFindById_(stintId) {
-  const allRows = getCachedSheetData_(SHEETS.ENDURANCE_STINTS, ES_CACHE_TTL_SECONDS);
+  const allRows = sheetToObjects(SHEETS.ENDURANCE_STINTS);
   return allRows.find(r => r.stint_id === stintId) || null;
 }
 
