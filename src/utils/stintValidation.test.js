@@ -98,4 +98,22 @@ describe('validatePilotLimits', () => {
     expect(r.issues.some(i => i.type === 'max_hours_exceeded')).toBe(true);
     expect(r.issues.some(i => i.type === 'insufficient_rest')).toBe(true);
   });
+  it('ore: usa planned_duration_min, non la differenza di orari (robustezza DST)', () => {
+    // Stint con durata dichiarata 90 ma differenza orari naive di soli 30 min:
+    // simula lo sfasamento del cambio ora. Il calcolo DEVE usare i 90 dichiarati.
+    const stints = [
+      { stint_order: 1, driver_id: 'A',
+        planned_start_time: '2026-10-25T02:00:00',
+        planned_end_time: '2026-10-25T02:30:00',
+        planned_duration_min: 90 },
+      { stint_order: 2, driver_id: 'A',
+        planned_start_time: '2026-10-25T02:30:00',
+        planned_end_time: '2026-10-25T04:00:00',
+        planned_duration_min: 90 },
+    ];
+    const r = validatePilotLimits(stints, { maxHoursPerDriver: 2.5 });
+    const issue = r.issues.find(i => i.type === 'max_hours_exceeded' && i.driver_id === 'A');
+    expect(issue).toBeTruthy();
+    expect(issue.value).toBe(3);
+  });
 });

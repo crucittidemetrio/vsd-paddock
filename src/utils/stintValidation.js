@@ -141,7 +141,12 @@ export function validatePilotLimits(stints, limits) {
     if (isNaN(startMs) || isNaN(endMs)) continue; // orari invalidi: ignorati qui (li becca validatePlanCoverage)
     const id = s.driver_id;
     if (!byDriver[id]) byDriver[id] = [];
-    byDriver[id].push({ startMs, endMs, stint_order: s.stint_order });
+   byDriver[id].push({
+      startMs,
+      endMs,
+      stint_order: s.stint_order,
+      durationMin: Number(s.planned_duration_min) || (endMs - startMs) / 60000,
+    });
   }
 
   for (const driverId in byDriver) {
@@ -149,9 +154,9 @@ export function validatePilotLimits(stints, limits) {
 
     // ── Ore massime per pilota ──
     if (maxHours) {
-      let totalMs = 0;
-      for (const seg of segs) totalMs += (seg.endMs - seg.startMs);
-      const totalHours = totalMs / 3600000;
+      let totalMin = 0;
+      for (const seg of segs) totalMin += seg.durationMin;
+      const totalHours = totalMin / 60;
       if (totalHours > maxHours + 1e-9) {
         issues.push({
           type: 'max_hours_exceeded',
