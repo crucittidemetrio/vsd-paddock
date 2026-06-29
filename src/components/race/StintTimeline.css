@@ -166,3 +166,27 @@
   .st-table thead th,
   .st-row td { padding: 0.5rem 0.6rem; }
 }
+/* ── Aggiunte per stato calcolato dal tempo reale (v2 timeline) ── */
+/* Da APPENDERE in fondo a src/components/race/StintTimeline.css */
+
+/* Riga dello stint IN CORSO: evidenziata (è "adesso") */
+.st-row-active {
+  background: rgba(0, 212, 255, 0.07);
+  box-shadow: inset 3px 0 0 #00d4ff;
+}
+/* se lo stint in corso è anche il TUO, l'highlight "mine" (arancione) ha priorità
+   sul bordo, ma teniamo lo sfondo cyan tenue per dire "in corso" */
+.st-row-active.st-row-mine {
+  box-shadow: inset 3px 0 0 #f5a623;
+}
+
+/* Countdown accanto al badge IN CORSO */
+.st-countdown {
+  display: inline-block;
+  margin-left: 0.4rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #00d4ff;
+  white-space: nowrap;
+}

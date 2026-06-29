@@ -26,8 +26,41 @@ function formatClock(iso) {
 }
 
 /**
+ * Stato EFFETTIVO dello stint, ibrido:
+ * - 'aborted' è uno status FORTE: impostato a mano (es. ritiro/incidente), va sempre rispettato.
+ * - altrimenti lo stato si CALCOLA dal tempo corrente vs orari pianificati, così la timeline
+ *   "vive" durante la gara senza che nessuno aggiorni i campi a mano.
+ * Fallback: orari non parsabili → usa il campo status grezzo (o 'planned').
+ */
+function computeStatus(stint, nowMs) {
+  if (stint.status === 'aborted') return 'aborted';
+  const startMs = new Date(stint.planned_start_time).getTime();
+  const endMs = new Date(stint.planned_end_time).getTime();
+  if (isNaN(startMs) || isNaN(endMs)) return stint.status || 'planned';
+  if (nowMs >= endMs) return 'completed';
+  if (nowMs >= startMs) return 'active';
+  return 'planned';
+}
+
+/**
+ * Minuti rimanenti alla fine di uno stint IN CORSO (per il countdown).
+ * Ritorna null se lo stint non è in corso o orari non validi.
+ */
+function minutesToEnd(stint, nowMs) {
+  const startMs = new Date(stint.planned_start_time).getTime();
+  const endMs = new Date(stint.planned_end_time).getTime();
+  if (isNaN(startMs) || isNaN(endMs)) return null;
+  if (nowMs < startMs || nowMs >= endMs) return null;
+  return Math.round((endMs - nowMs) / 60000);
+}
+
+/**
  * Timeline stint read-only per gare endurance.
  * Visibile ai piloti loggati; nessun controllo edit/delete (solo admin page).
+ *
+ * Lo STATUS è calcolato dal tempo reale (ibrido con 'aborted' forte): la timeline
+ * mostra concluso/in corso/pianificato in base all'ora corrente, e un countdown
+ * sullo stint attivo. Si aggiorna a ogni render (apertura/refresh pagina).
  *
  * @param {Array}    stints           - lista stint (già unwrapped, shape { stint_id, driver_id, stint_order, ... })
  * @param {Array}    drivers          - roster per join id→nome
@@ -46,6 +79,8 @@ export default function StintTimeline({
 }) {
   const list = Array.isArray(stints) ? stints : [];
   if (list.length === 0) return null;
+
+  const nowMs = Date.now();
 
   // stint_order ascendente — rispetta override manuale admin (Phase 5), NO sort per orario
   const ordered = [...list].sort((a, b) => {
@@ -80,10 +115,13 @@ export default function StintTimeline({
           <tbody>
             {ordered.map((s, i) => {
               const isMine = currentDriverId && s.driver_id === currentDriverId;
-              const status = STINT_STATUS[s.status] || { label: (s.status || '—').toUpperCase(), cls: 'st-status-unknown' };
+              const effStatus = computeStatus(s, nowMs);
+              const status = STINT_STATUS[effStatus] || { label: (effStatus || '—').toUpperCase(), cls: 'st-status-unknown' };
               const tire = TIRE_LABELS[s.tire_compound] || (s.tire_compound ? { label: s.tire_compound, cls: 'st-tire-unknown' } : null);
               const lap = formatLapMs ? formatLapMs(s.best_lap_ms) : null;
-              const rowCls = ['st-row', isMine ? 'st-row-mine' : ''].filter(Boolean).join(' ');
+              const isActive = effStatus === 'active';
+              const remain = isActive ? minutesToEnd(s, nowMs) : null;
+              const rowCls = ['st-row', isMine ? 'st-row-mine' : '', isActive ? 'st-row-active' : ''].filter(Boolean).join(' ');
 
               return (
                 <tr key={s.stint_id || `${s.driver_id}-${s.stint_order}-${i}`} className={rowCls}>
@@ -106,6 +144,7 @@ export default function StintTimeline({
                   <td className="st-lap">{lap || <span className="st-dash">—</span>}</td>
                   <td>
                     <span className={`st-badge ${status.cls}`}>{status.label}</span>
+                    {remain !== null && <span className="st-countdown">−{remain}min</span>}
                   </td>
                 </tr>
               );
