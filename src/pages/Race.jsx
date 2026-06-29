@@ -46,16 +46,22 @@ export default function Race() {
     return m;
   }, [myRaceResultsData]);
 
-  const filtered = useMemo(() => {
+ const filtered = useMemo(() => {
     if (!races) return [];
-    const list = races.filter(r => r.status === tab);
-    return tab === 'scheduled'
-      ? list.sort((a, b) => new Date(a.date) - new Date(b.date))
-      : list.sort((a, b) => new Date(b.date) - new Date(a.date));
+    if (tab === 'scheduled') {
+      // Il tab "Programmate" include anche le gare in corso (in_progress),
+      // mostrate in cima: durante un evento live la gara deve restare raggiungibile dal hub.
+      const live = races.filter(r => r.status === 'in_progress')
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+      const scheduled = races.filter(r => r.status === 'scheduled')
+        .sort((a, b) => new Date(a.date) - new Date(b.date));
+      return [...live, ...scheduled];
+    }
+    return races.filter(r => r.status === tab)
+      .sort((a, b) => new Date(b.date) - new Date(a.date));
   }, [races, tab]);
-
   const counts = useMemo(() => ({
-    scheduled: races?.filter(r => r.status === 'scheduled').length || 0,
+    scheduled: races?.filter(r => r.status === 'scheduled' || r.status === 'in_progress').length || 0,
     completed: races?.filter(r => r.status === 'completed').length || 0,
   }), [races]);
 
