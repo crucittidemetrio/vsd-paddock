@@ -409,3 +409,11 @@
 .footnote strong {
   color: var(--vsd-orange, #f5a623);
 }
+
+.swapBtn {
+  width: 30px; height: 30px; border-radius: 5px; cursor: pointer; font-size: 0.95rem;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: rgba(245, 166, 35, 0.12); border: 1px solid rgba(245,166,35,0.35); color: #f5a623;
+  transition: all 0.15s;
+}
+.swapBtn:hover { background: rgba(245, 166, 35, 0.22); }

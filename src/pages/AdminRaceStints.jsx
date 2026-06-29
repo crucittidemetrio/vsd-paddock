@@ -9,6 +9,7 @@ import {
 import { useRaces } from '../hooks/useRaces';
 import { useDrivers } from '../hooks/useRoster';
 import Avatar from '../components/shared/Avatar';
+import SwapPilotModal from '../components/race/SwapPilotModal';
 import styles from './AdminRaceStints.module.css';
 
 const TIRE_COMPOUNDS = ['soft', 'medium', 'hard', 'wet', 'intermediate'];
@@ -44,6 +45,7 @@ export default function AdminRaceStints() {
   const [showAddForm, setShowAddForm] = useState(false);
   const [editingStintId, setEditingStintId] = useState(null);
   const [actionError, setActionError] = useState(null);
+  const [swappingStint, setSwappingStint] = useState(null);
 
   const editingStint = useMemo(
     () => stints.find(s => s.stint_id === editingStintId) || null,
@@ -157,6 +159,7 @@ export default function AdminRaceStints() {
                     onEdit={() => { setEditingStintId(s.stint_id); setActionError(null); }}
                     onRemove={() => setActionError(null)}
                     onError={setActionError}
+                    onSwap={(st) => { setSwappingStint(st); setActionError(null); }}
                   />
                 ))}
               </tbody>
@@ -189,11 +192,22 @@ export default function AdminRaceStints() {
         </div>
       )}
 
-      <div className={styles.footnote}>
+   <div className={styles.footnote}>
         <strong>Swap pilota in corso:</strong> chiudi lo stint attuale (status →
         "completato" con orari effettivi) e aggiungi un nuovo stint con il pilota
         sostituto. Re-numbering automatico.
       </div>
+
+      {swappingStint && (
+        <SwapPilotModal
+          stint={swappingStint}
+          raceId={raceId}
+          drivers={drivers}
+          getDriverName={(id) => driverById[id]?.display_name || id}
+          onClose={() => setSwappingStint(null)}
+          onSwapped={() => { setSwappingStint(null); setActionError(null); }}
+        />
+      )}
     </div>
   );
 }
@@ -487,8 +501,9 @@ function StintForm({ mode, initialValues, drivers, existingStints, onSubmit, onC
 // STINT ROW (riga tabella con azioni inline)
 // ═══════════════════════════════════════════════════════════
 
-function StintRow({ stint, driver, onEdit, onError }) {
+function StintRow({ stint, driver, onEdit, onError, onSwap }) {
   const removeMutation = useRemoveStint();
+  const canSwap = stint.status === 'planned' || stint.status === 'active';
 
   function handleRemove() {
     const label = driver?.display_name || stint.driver_id;
@@ -543,6 +558,13 @@ function StintRow({ stint, driver, onEdit, onError }) {
           disabled={removeMutation.isPending}
           title="Modifica"
         >✎</button>
+         {canSwap && (
+          <button
+            className={styles.swapBtn}
+            onClick={() => onSwap(stint)}
+            title="Sostituisci pilota (swap in corso gara)"
+          >⇄</button>
+        )}
         <button
           className={styles.removeBtn}
           onClick={handleRemove}
