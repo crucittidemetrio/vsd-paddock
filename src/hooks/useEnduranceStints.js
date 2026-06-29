@@ -54,8 +54,9 @@ export function useUpdateStint() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (payload) => api.endurance.stints.update(payload),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['endurance', 'stints', 'list'] });
+   onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ['endurance', 'stints', 'list', variables?.race_id] });
+      qc.invalidateQueries({ queryKey: ['endurance', 'stints', 'list', 'all'] });
     },
   });
 }
@@ -67,9 +68,10 @@ export function useUpdateStint() {
 export function useRemoveStint() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (stint_id) => api.endurance.stints.remove(stint_id),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['endurance', 'stints', 'list'] });
+    mutationFn: ({ stint_id }) => api.endurance.stints.remove(stint_id),
+    onSuccess: (_data, variables) => {
+      qc.invalidateQueries({ queryKey: ['endurance', 'stints', 'list', variables?.race_id] });
+      qc.invalidateQueries({ queryKey: ['endurance', 'stints', 'list', 'all'] });
     },
   });
 }

@@ -255,6 +255,7 @@ function StintForm({ mode, initialValues, drivers, existingStints, onSubmit, onC
       });
     } else {
       payload.stint_id = initialValues.stint_id;
+      payload.race_id = initialValues.race_id;
       updateMutation.mutate(payload, {
         onSuccess: () => onSubmit(),
         onError: (err) => onError(err?.message || 'Errore aggiornamento stint'),
@@ -495,7 +496,7 @@ function StintRow({ stint, driver, onEdit, onError }) {
       `Eliminare lo stint #${stint.stint_order} di ${label}?\nGli stint successivi verranno re-numerati automaticamente.`
     );
     if (!ok) return;
-    removeMutation.mutate(stint.stint_id, {
+   removeMutation.mutate({ stint_id: stint.stint_id, race_id: stint.race_id }, {
       onError: (err) => onError(err?.message || 'Errore rimozione stint'),
     });
   }
