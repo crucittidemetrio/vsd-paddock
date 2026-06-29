@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import './StintTimeline.css';
 
 const STINT_STATUS = {
@@ -14,6 +15,8 @@ const TIRE_LABELS = {
   wet:          { label: 'Wet', cls: 'st-tire-wet' },
   intermediate: { label: 'Inter', cls: 'st-tire-inter' },
 };
+
+const REFRESH_INTERVAL_MS = 30000; // 30s: tiene il countdown (in minuti) sempre accurato
 
 function formatClock(iso) {
   if (!iso) return '—';
@@ -60,7 +63,8 @@ function minutesToEnd(stint, nowMs) {
  *
  * Lo STATUS è calcolato dal tempo reale (ibrido con 'aborted' forte): la timeline
  * mostra concluso/in corso/pianificato in base all'ora corrente, e un countdown
- * sullo stint attivo. Si aggiorna a ogni render (apertura/refresh pagina).
+ * sullo stint attivo. Si auto-aggiorna ogni 30s (il countdown scala, gli stati
+ * avanzano) senza ricaricare la pagina.
  *
  * @param {Array}    stints           - lista stint (già unwrapped, shape { stint_id, driver_id, stint_order, ... })
  * @param {Array}    drivers          - roster per join id→nome
@@ -77,10 +81,16 @@ export default function StintTimeline({
   formatDuration,
   formatLapMs,
 }) {
+  // "adesso" come stato: aggiornato a intervalli per far vivere la timeline.
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNowMs(Date.now()), REFRESH_INTERVAL_MS);
+    return () => clearInterval(id); // cleanup: niente timer appesi alla smontatura
+  }, []);
+
   const list = Array.isArray(stints) ? stints : [];
   if (list.length === 0) return null;
-
-  const nowMs = Date.now();
 
   // stint_order ascendente — rispetta override manuale admin (Phase 5), NO sort per orario
   const ordered = [...list].sort((a, b) => {
