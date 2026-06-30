@@ -162,7 +162,18 @@ function handleStandingsByChampionship(payload, ctx) {
     source: 'computed',
   });
 }
-
+/**
+ * Match STRICT per standings di campionati ESTERNI: solo nome completo identico.
+ * A differenza di matchDriverName_ (import gara, piloti nostri, fuzzy utile), qui NO fuzzy:
+ * su un campionato esterno "Alessandro", "Marco" ecc. darebbero falsi positivi (un esterno
+ * omonimo erediterebbe il badge VSD di un nostro pilota). Meglio mancare un match
+ * (correggibile a mano) che marcare VSD chi non lo è.
+ */
+function matchDriverNameStrict_(externalName, matchMap) {
+  if (!externalName) return null;
+  const name = String(externalName).toLowerCase().trim();
+  return matchMap[name] || null;
+}
 // ═══════════════════════════════════════════════════════════
 // LMU STANDINGS JSON — parsing + import
 // ═══════════════════════════════════════════════════════════
@@ -193,7 +204,7 @@ function parseLmuStandingsJson_(rawJson) {
     .map(classGroup => {
       const className = String(classGroup.carClass || 'Unknown').trim();
       const standings = (classGroup.standings || []).map(s => {
-        const matchedDriverId = matchDriverName_(s.id, driverNameMap);
+        const matchedDriverId = matchDriverNameStrict_(s.id, driverNameMap);
         const isVsd = !!matchedDriverId;
         const driverInfo = isVsd ? driverInfoMap[matchedDriverId] : null;
 

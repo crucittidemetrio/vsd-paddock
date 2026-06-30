@@ -35,10 +35,18 @@ function msToTimeDisplay_(ms) {
 function buildDriverNameMap_() {
   const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
   const map = {};
-  drivers.forEach(d => {
-    if (d.display_name && d.driver_id) {
+drivers.forEach(d => {
+    if (!d.driver_id) return;
+    // chiave da display_name (compatto, es. "alessandro p.")
+    if (d.display_name) {
       const key = String(d.display_name).toLowerCase().trim();
       if (!map[key]) map[key] = d.driver_id;
+    }
+    // chiave da real_name (completo, es. "alessandro paneri") — distingue gli omonimi
+    // con stessa iniziale cognome (Paneri vs Ponchiardi) nei campionati esterni
+    if (d.real_name) {
+      const rkey = String(d.real_name).toLowerCase().trim();
+      if (!map[rkey]) map[rkey] = d.driver_id;
     }
   });
   return map;
