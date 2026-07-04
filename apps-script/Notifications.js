@@ -124,3 +124,81 @@ function test_notification() {
     }],
   });
 }
+// ═══════════════════════════════════════════════════════════
+// STINT NOTIFICATIONS — avvisi Discord pre-cambio pilota
+// ═══════════════════════════════════════════════════════════
+
+const STINT_NOTIFY_THRESHOLD_MIN = 30;
+const STINT_NOTIFY_PROP_PREFIX   = 'stint_notified_';
+
+function checkStintNotifications_() {
+  try {
+    const races = _snLoadInProgressRaces_();
+    if (races.length === 0) return;
+    const nowMs = Date.now();
+    const props = PropertiesService.getScriptProperties();
+    races.forEach(race => {
+      const stints = _esLoadAll_(race.race_id);
+      if (!stints || stints.length === 0) return;
+      stints.forEach(s => {
+        const status = String(s.status || '').toLowerCase();
+        if (status === 'completed' || status === 'aborted') return;
+        const startMs = new Date(s.planned_start_time).getTime();
+        if (isNaN(startMs)) return;
+        const minsToStart = (startMs - nowMs) / 60000;
+        if (minsToStart <= 0 || minsToStart > STINT_NOTIFY_THRESHOLD_MIN) return;
+        const key = STINT_NOTIFY_PROP_PREFIX + s.stint_id;
+        if (props.getProperty(key)) return;
+        const driverName = _snDriverName_(s.driver_id);
+        const isFirst = Number(s.stint_order) === 1;
+        _snSendStintAlert_(race, s, driverName, Math.round(minsToStart), isFirst);
+        props.setProperty(key, new Date(nowMs).toISOString());
+      });
+    });
+  } catch (e) {
+    Logger.log('checkStintNotifications_ error: ' + e.message);
+  }
+}
+
+function _snLoadInProgressRaces_() {
+  try {
+    const rows = getCachedSheetData_(SHEETS.RACES, 900);
+    return rows.filter(r => String(r.status || '').toLowerCase() === 'in_progress');
+  } catch (e) {
+    Logger.log('_snLoadInProgressRaces_ error: ' + e.message);
+    return [];
+  }
+}
+
+function _snDriverName_(driverId) {
+  if (!driverId) return 'Pilota';
+  try {
+    const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
+    const d = drivers.find(x => x.driver_id === driverId);
+    return d && d.display_name ? d.display_name : driverId;
+  } catch (e) {
+    return driverId;
+  }
+}
+
+function _snSendStintAlert_(race, stint, driverName, minsToStart, isFirst) {
+  const raceName = race.race_name || race.race_id;
+  const order = stint.stint_order;
+  const title = isFirst ? '🏁 ' + raceName + ' — Via!' : '🔄 Cambio pilota tra ~' + minsToStart + ' min';
+  const desc = isFirst
+    ? '**' + driverName + '** al via nel primo stint. In bocca al lupo! 🍀'
+    : 'Preparati **' + driverName + '** — stint ' + order + ' tra circa ' + minsToStart + ' minuti.';
+  postToDiscord_({
+    embeds: [{
+      title: title,
+      description: desc,
+      color: isFirst ? VSD_COLORS.green : VSD_COLORS.orange,
+      footer: { text: raceName + ' · Stint ' + order },
+      url: PADDOCK_URL + '/race/' + race.race_id,
+    }],
+  });
+}
+
+function runStintNotificationsCheck() {
+  checkStintNotifications_();
+}
