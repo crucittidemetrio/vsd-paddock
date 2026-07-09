@@ -133,6 +133,9 @@ const STINT_NOTIFY_PROP_PREFIX   = 'stint_notified_';
 
 function checkStintNotifications_() {
   try {
+    const enabled = PropertiesService.getScriptProperties().getProperty('STINT_NOTIFY_ENABLED');
+    if (enabled !== 'true') return; // interruttore spento → esce subito
+
     const races = _snLoadInProgressRaces_();
     if (races.length === 0) return;
     const nowMs = Date.now();
