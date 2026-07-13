@@ -149,7 +149,13 @@ function RaceCard({ race, driverMap, tracks, isPast, myResult }) {
           <span className="race-series">{race.series}</span>
           {race.round > 0 && <span className="race-round">R{race.round}</span>}
         </div>
-        {!isPast && (
+        {!isPast && race.status === 'in_progress' && (
+          <div className="race-live-badge">
+            <span className="live-dot" />
+            LIVE
+          </div>
+        )}
+        {!isPast && race.status !== 'in_progress' && (
           <div className="race-countdown">
             <span className="cd-value">{formatCountdown(race.date)}</span>
             <span className="cd-label">al via</span>
