@@ -27,7 +27,9 @@ export function useLandingData(driverId) {
       queryClient.setQueryData(['raceLaps'],                      d.race_laps);
       queryClient.setQueryData(['reports', {}],                   d.all_reports);
       queryClient.setQueryData(['reports', { driver_id: driverId }], d.my_reports);
-      queryClient.setQueryData(['drivers', {}],                   d.drivers);
+      queryClient.setQueryData(['drivers', {}],                          d.drivers);
+      // Pre-popola anche la key usata da Roster.jsx (include ex-VSD)
+      queryClient.setQueryData(['drivers', { includeRemoved: true }],   d.drivers);
       queryClient.setQueryData(['lookups', 'tracks', 'all'],      d.tracks);
       queryClient.setQueryData(['lookups', 'cars', 'all'],        d.cars);
       queryClient.setQueryData(

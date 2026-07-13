@@ -21,7 +21,7 @@ export default function Roster() {
   const [simFilter, setSimFilter] = useState('all');
   const [showEx, setShowEx] = useState(false);
 
-  const { data: drivers, isLoading, error } = useDrivers();
+  const { data: drivers, isLoading, error } = useDrivers({ includeRemoved: true });
 
   // Separa piloti attivi/inattivi dagli ex-VSD
   const activeDrivers = useMemo(() => (drivers || []).filter(d => !d.is_ex_vsd), [drivers]);
