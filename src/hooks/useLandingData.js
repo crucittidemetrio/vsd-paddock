@@ -29,6 +29,7 @@ export function useLandingData(driverId) {
       queryClient.setQueryData(['reports', { driver_id: driverId }], d.my_reports);
       queryClient.setQueryData(['drivers', {}],                   d.drivers);
       queryClient.setQueryData(['lookups', 'tracks', 'all'],      d.tracks);
+      queryClient.setQueryData(['lookups', 'cars', 'all'],        d.cars);
       queryClient.setQueryData(
         ['raceResults', { race_id: undefined, session_type: 'race', driver_id: driverId, limit: 200, sort: 'date_desc' }],
         { results: d.my_race_results, count: d.my_race_results.length, totalAvailable: d.my_race_results.length }

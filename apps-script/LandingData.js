@@ -30,6 +30,7 @@ function handleLandingData(payload, ctx) {
   const myReports       = handleReportsList({ driver_id: driverId }, ctx);
   const drivers         = handleRosterList({}, ctx);
   const tracks          = handleLookupsTracks({}, ctx);
+  const cars            = handleLookupsCars({}, ctx);
   const myRaceResults   = handleRaceResultsList(
     { driver_id: driverId, session_type: 'race', limit: 200, sort: 'date_desc' }, ctx
   );
@@ -46,6 +47,7 @@ function handleLandingData(payload, ctx) {
     my_reports:        myReports.ok     ? myReports.data.reports    : [],
     drivers:           drivers.ok       ? drivers.data.drivers      : [],
     tracks:            tracks.ok        ? tracks.data.tracks        : [],
+    cars:              cars.ok          ? cars.data.cars            : [],
     my_race_results:   myRaceResults.results   || [],
     team_race_results: teamRaceResults.results || [],
   });
