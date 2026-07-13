@@ -93,3 +93,47 @@ function auditOrphanRaceIds() {
 
   return { orphans: orphans.size, list: sortedKeys };
 }
+
+/**
+ * Corregge i created_at malformati nel tab BestLaps.
+ * Pattern malformato: "2026-07-09T010:42:14.400Z" (tre cifre nell'ora).
+ * Fix: rimuove lo zero di troppo → "2026-07-09T10:42:14.400Z"
+ *
+ * Sicuro: modifica solo le celle malformate, lascia intatto tutto il resto.
+ * Esegui fixBestLapsCreatedAt() dall'editor per applicare.
+ */
+function fixBestLapsCreatedAt() {
+  const sheet = getSheet(SHEETS.BEST_LAPS);
+  const data = sheet.getDataRange().getValues();
+  if (data.length <= 1) {
+    Logger.log('Sheet BestLaps vuoto o solo header.');
+    return;
+  }
+
+  const headers = data[0];
+  const colIdx = headers.indexOf('created_at');
+  if (colIdx === -1) {
+    Logger.log('⚠️  Colonna created_at non trovata.');
+    return;
+  }
+
+  // Regex: T seguito da 3+ cifre prima dei ':'
+  const malformedRe = /T(\d{3,}):/;
+
+  let fixed = 0;
+  let skipped = 0;
+
+  for (let i = 1; i < data.length; i++) {
+    const val = String(data[i][colIdx] || '');
+    if (!val || !malformedRe.test(val)) { skipped++; continue; }
+
+    // Rimuove gli zeri di troppo dall'ora: T010: → T10:, T001: → T01:
+    const corrected = val.replace(/T0*(\d{2}):/, 'T$1:');
+    sheet.getRange(i + 1, colIdx + 1).setValue(corrected);
+    Logger.log(`  Row ${i + 1}: "${val}" → "${corrected}"`);
+    fixed++;
+  }
+
+  Logger.log(`\n✅ Fix completato: ${fixed} corretti, ${skipped} già ok.`);
+  return { fixed, skipped };
+}

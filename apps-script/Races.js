@@ -118,100 +118,6 @@ function handleRacesGet(payload, ctx) {
   return ok({ race });
 }
 
-// ═══════════════════════════════════════════════════════════
-// TEST FUNCTIONS
-// ═══════════════════════════════════════════════════════════
-
-/**
- * Test: races.list senza filtri.
- * Atteso: 3 gare, ordinate per data (RACE001 2026-03-15 prima, poi RACE002, RACE003).
- */
-function testRacesList() {
-  const login = handleAuthLogin({ code: 'CRUCITTI-9182' });
-  const ctx = verifyToken(login.data.token);
-
-  const result = handleRacesList({}, ctx);
-  Logger.log('races.list result:');
-  Logger.log(`Totale: ${result.data.count}`);
-  result.data.races.forEach((r, i) => {
-    Logger.log(`  ${i + 1}. ${r.race_id} | ${r.race_name} | ${r.status} | ${r.date}`);
-  });
-}
-
-/**
- * Test: races.list con filtro status=scheduled.
- * Atteso: 2 gare (RACE002 + RACE003).
- */
-function testRacesListScheduled() {
-  const login = handleAuthLogin({ code: 'CRUCITTI-9182' });
-  const ctx = verifyToken(login.data.token);
-
-  const result = handleRacesList({ status: 'scheduled' }, ctx);
-  Logger.log('races.list (scheduled) result:');
-  Logger.log(`Totale scheduled: ${result.data.count}`);
-  result.data.races.forEach(r => {
-    Logger.log(`  ${r.race_id} | ${r.race_name}`);
-  });
-
-  if (result.data.count === 2) {
-    Logger.log('✓ 2 gare scheduled corrette');
-  } else {
-    Logger.log(`⚠️ Atteso 2, trovate ${result.data.count}`);
-  }
-}
-
-/**
- * Test: races.upcoming.
- * Atteso: 2 gare future scheduled (RACE002 + RACE003), max 3.
- */
-function testRacesUpcoming() {
-  const login = handleAuthLogin({ code: 'CRUCITTI-9182' });
-  const ctx = verifyToken(login.data.token);
-
-  const result = handleRacesUpcoming({}, ctx);
-  Logger.log('races.upcoming result:');
-  Logger.log(`Imminenti: ${result.data.count}`);
-  result.data.races.forEach((r, i) => {
-    Logger.log(`  ${i + 1}. ${r.race_id} | ${r.race_name} | ${r.date}`);
-  });
-}
-
-/**
- * Test: races.get di RACE001 (completed, gara passata).
- */
-function testRacesGet() {
-  const login = handleAuthLogin({ code: 'CRUCITTI-9182' });
-  const ctx = verifyToken(login.data.token);
-
-  const result = handleRacesGet({ race_id: 'RACE001' }, ctx);
-  Logger.log('races.get RACE001 result:');
-  Logger.log(JSON.stringify(result.data.race, null, 2));
-
-  if (result.ok && result.data.race.race_id === 'RACE001') {
-    Logger.log('✓ Race trovata correttamente');
-  } else {
-    Logger.log('⚠️ Race non trovata o errata');
-  }
-}
-
-/**
- * Test: races.get con id inesistente.
- * Atteso: result.ok === false con messaggio di errore.
- */
-function testRacesGetNotFound() {
-  const login = handleAuthLogin({ code: 'CRUCITTI-9182' });
-  const ctx = verifyToken(login.data.token);
-
-  const result = handleRacesGet({ race_id: 'RACE999' }, ctx);
-  Logger.log('races.get RACE999 result:');
-  Logger.log(JSON.stringify(result));
-
-  if (!result.ok) {
-    Logger.log('✓ Errore gestito correttamente');
-  } else {
-    Logger.log('⚠️ Doveva fallire ma non è fallito');
-  }
-}
 
 /**
  * races.updatePoster — admin only.
@@ -284,19 +190,6 @@ function normalizeDrivePosterUrl_(url) {
   }
 
   return str;
-}
-function dumpRacesHeader() {
-  const ss = SpreadsheetApp.openById('1ADUq7CRy0_PtPqbPYS42iCNgpdxZrNlSMY3HX6T8XQA');
-  const sheet = ss.getSheetByName('Races');
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  Logger.log('Colonne Races (' + headers.length + '):');
-  headers.forEach((h, i) => Logger.log((i + 1) + '. ' + h));
-  // bonus: una riga esempio per vedere i formati dei valori
-  if (sheet.getLastRow() > 1) {
-    const sample = sheet.getRange(2, 1, 1, headers.length).getValues()[0];
-    Logger.log('--- Esempio riga 2 ---');
-    headers.forEach((h, i) => Logger.log(h + ' = ' + JSON.stringify(sample[i])));
-  }
 }
 /**
  * Crea una nuova gara aggiungendola alla tab RACES.
@@ -472,28 +365,4 @@ function handleRacesRemove(payload, ctx) {
   invalidateSheetCache_(SHEETS.RACES);
 
   return ok({ race_id: race_id, deleted: true });
-}
-function testRacesAddRemove() {
-  const ctx = { driver_id: 'VSD005', role: 'admin' };
-  // 1. Crea una gara di test
-  const add = handleRacesAdd({
-    race_name: 'TEST CRUD Gara',
-    sim: 'LMU',
-    date: '2026-12-01T20:00:00',
-    duration_minutes: 360,
-    format: 'endurance',
-    status: 'scheduled'
-  }, ctx);
-  Logger.log('ADD: ' + JSON.stringify(add, null, 2));
-
-  if (!add.ok) return;
-  const newId = add.data.race_id;
-
-  // 2. Aggiorna un campo
-  const upd = handleRacesUpdate({ race_id: newId, notes: 'Aggiornato dal test' }, ctx);
-  Logger.log('UPDATE: ' + JSON.stringify(upd));
-
-  // 3. Rimuovi la gara di test (cleanup)
-  const rem = handleRacesRemove({ race_id: newId }, ctx);
-  Logger.log('REMOVE: ' + JSON.stringify(rem));
 }

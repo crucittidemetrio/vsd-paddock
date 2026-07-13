@@ -673,34 +673,6 @@ function checkAndNotifyIracingPodiums_(raw, race) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// DEBUG helpers
-// ═══════════════════════════════════════════════════════════
-
-function debug_gianlucaMatch() {
-  const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
-
-  Logger.log('=== Tutti i record con Gianluca/Fabbro ===');
-  drivers.forEach(d => {
-    const blob = JSON.stringify(d).toLowerCase();
-    if (blob.includes('gianluca') || blob.includes('fabbro')) {
-      Logger.log(JSON.stringify(d));
-    }
-  });
-
-  Logger.log('\n=== Tutti i piloti con last initial F. ===');
-  drivers.forEach(d => {
-    if (d.display_name && /\bF\.?$/i.test(d.display_name)) {
-      Logger.log(`${d.driver_id} → "${d.display_name}"`);
-    }
-  });
-
-  Logger.log('\n=== Match test ===');
-  const driverNameMap = buildDriverNameMap_();
-  const result = matchDriverName_('Gianluca Fabbro', driverNameMap);
-  Logger.log(`matchDriverName_("Gianluca Fabbro") → ${result || 'NO MATCH'}`);
-}
-
-// ═══════════════════════════════════════════════════════════
 // ADMIN CLEANUP — utility manuale, esegui da editor
 // ═══════════════════════════════════════════════════════════
 
