@@ -79,11 +79,13 @@ async function postToBackend(action, payload, token) {
  */
 async function rosterListAdapter(payload, token) {
   const filters = (payload && payload.filters) || {};
- const includeInactive = true; // carica sempre tutti; le viste filtrano lato client (Roster.jsx via pill, lookup nomi usano roster completo)
+  const includeRemoved = filters.includeRemoved === true;
+  // carica sempre tutti (active + inactive); viste filtrano client-side.
+  // includeRemoved aggiunge anche i piloti con removed_at (is_ex_vsd: true).
 
   const res = await postToBackend(
     'roster.list',
-    { includeInactive: !!includeInactive },
+    { includeInactive: true, includeRemoved },
     token
   );
 
