@@ -240,6 +240,8 @@ export async function callApi(action, payload = {}, ctx = null) {
         return await enduranceStintsValidateCoverageAdapter(payload, token);
       case 'endurance.stints.confirmPlan':
         return await enduranceStintsConfirmPlanAdapter(payload, token);
+      case 'landing.data':
+        return await landingDataAdapter(payload, token);
       default:
         return fail(`Action non instradata: ${action}`);
     }
@@ -572,4 +574,16 @@ async function enduranceStintsValidateCoverageAdapter(payload, token) {
 }
 async function enduranceStintsConfirmPlanAdapter(payload, token) {
   return await postToBackend('endurance.stints.confirmPlan', payload || {}, token);
+}
+
+/**
+ * Frontend: landing.data({ driver_id }) → oggetto aggregato con tutti i dati della Landing
+ * Backend:  landing.data → { all_races, upcoming_races, manual_laps, race_laps,
+ *                            all_reports, my_reports, drivers, tracks,
+ *                            my_race_results, team_race_results }
+ */
+async function landingDataAdapter(payload, token) {
+  const res = await postToBackend('landing.data', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
 }

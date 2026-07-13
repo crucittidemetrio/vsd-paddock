@@ -25,6 +25,7 @@ function handleRosterList(payload, ctx) {
 
   const filtered = drivers.filter(d => {
     if (d.driver_id === 'VSD001') return false; // account di sistema, mai nel roster pubblico
+    if (d.removed_at) return false;             // rimossi: invisibili ovunque
     if (includeInactive) return true;
     return d.status === 'active';
   });
@@ -62,7 +63,7 @@ function handleRosterGet(payload, ctx) {
   const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
   const driver = drivers.find(d => d.driver_id === driverId);
 
-  if (!driver) return fail('Pilota non trovato: ' + driverId);
+  if (!driver || driver.removed_at) return fail('Pilota non trovato: ' + driverId);
 
   // Determina livello visibilità
   const isSelf = ctx.driver_id === driverId;
@@ -73,6 +74,22 @@ function handleRosterGet(payload, ctx) {
 // ═══════════════════════════════════════════════════════════
 // TEST FUNCTIONS
 // ═══════════════════════════════════════════════════════════
+
+/**
+ * Test rimossi: verifica che i piloti con removed_at non compaiano nel roster.
+ * Esegui dall'editor Apps Script.
+ */
+function testRemovedDriverFilter() {
+  const drivers = getCachedSheetData_(SHEETS.DRIVERS, 0); // cache bypass
+  const total = drivers.filter(d => d.driver_id !== 'VSD001').length;
+  const rimossi = drivers.filter(d => d.removed_at).map(d => d.display_name + ' (' + d.driver_id + ')');
+  const visibili = drivers.filter(d => d.driver_id !== 'VSD001' && !d.removed_at && d.status === 'active').length;
+
+  Logger.log('Totale driver (escluso VSD001): ' + total);
+  Logger.log('Rimossi (removed_at compilato): ' + rimossi.length + ' → ' + JSON.stringify(rimossi));
+  Logger.log('Visibili nel roster (active + non rimossi): ' + visibili);
+  Logger.log(rimossi.length > 0 ? '✓ Filtro attivo — i rimossi NON appariranno nel roster' : '⚠️ Nessun pilota ha removed_at compilato — metti un valore di test per verificare');
+}
 
 /**
  * Test: chiamata a roster.list con un viewer staff/admin.

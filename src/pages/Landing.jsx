@@ -1,11 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth';
-import { useRaces, useUpcomingRaces, useReports } from '../hooks/useRaces';
-import { useBestLaps } from '../hooks/useBestLaps';
-import { useDrivers } from '../hooks/useRoster';
-import { useTracks } from '../hooks/useLookups';
-import { useMyRecentRaceResults, useRecentTeamRaceResults } from '../hooks/useRaceResults';
+import { useLandingData } from '../hooks/useLandingData';
 import SimBadge from '../components/shared/SimBadge';
 import CountdownLive from '../components/shared/CountdownLive';
 import LapTime from '../components/shared/LapTime';
@@ -24,28 +20,41 @@ export default function Landing() {
 
   // Visitatori anonimi e guest → showcase pubblico
   if (!isVsdPilot) return <LandingPublic />;
-  const { data: upcoming } = useUpcomingRaces();
-  const { data: myLaps } = useBestLaps({ driver_id: driver?.driver_id });
-  const { data: allRaces } = useRaces();
+
+  // Una sola fetch verso landing.data invece di ~9 chiamate separate.
+  // Pre-popola anche le cache degli hook esistenti per gli altri componenti.
+  const { data: ld, isLoading: ldLoading } = useLandingData(driver?.driver_id);
+
+  // Dati derivati dall'aggregato
+  const upcoming      = ld?.upcoming_races || [];
+  const allRaces      = ld?.all_races      || [];
+  const drivers       = ld?.drivers        || [];
+  const tracks        = ld?.tracks         || [];
+  const allReports    = ld?.all_reports    || [];
+  const myReports     = ld?.my_reports     || [];
+  const myRaceResults = ld?.my_race_results  || [];
+  const allRaceResults = ld?.team_race_results || [];
+  const lastResult    = myRaceResults[0];
+
+  // Best laps: merge manual + race, sort per tempo
+  const allLaps = useMemo(() => {
+    if (!ld) return [];
+    return [...(ld.manual_laps || []), ...(ld.race_laps || [])]
+      .map(l => ({ ...l, source: l.source || 'manual' }))
+      .sort((a, b) => Number(a.lap_time_ms) - Number(b.lap_time_ms));
+  }, [ld]);
+
+  const myLaps = useMemo(() => {
+    const driverId = driver?.driver_id;
+    if (!driverId) return [];
+    return allLaps.filter(l => l.driver_id === driverId);
+  }, [allLaps, driver?.driver_id]);
+
   const racesById = useMemo(() => {
     const m = {};
-    (allRaces || []).forEach(r => { m[r.race_id] = r; });
+    allRaces.forEach(r => { m[r.race_id] = r; });
     return m;
   }, [allRaces]);
-  const { data: myReports } = useReports({ driver_id: driver?.driver_id });
-  const { data: drivers } = useDrivers();
-  const { data: allLaps } = useBestLaps();
-  const { data: allReports } = useReports();
-  const { data: tracks = [] } = useTracks();
-
-  // NEW: race results
-  // limit alto per counter accurato (il feed "Ultimo risultato" usa solo [0])
-  const { data: myRaceResultsData } = useMyRecentRaceResults(driver?.driver_id, 200);
-  const myRaceResults = myRaceResultsData?.results || [];
-  const lastResult = myRaceResults[0];
-
-  const { data: allRaceResultsData } = useRecentTeamRaceResults(20);
-  const allRaceResults = allRaceResultsData?.results || [];
 
   const driverMap = useMemo(() => {
     const m = {};
@@ -220,8 +229,8 @@ const feed = useMemo(() => {
         </section>
       )}
 
-      {/* LE TUE CLASSI DOMINANTI */}
-      <MyDominantClassesWidget />
+      {/* LE TUE CLASSI DOMINANTI — montato dopo il caricamento aggregato così trova la cache calda */}
+      {!ldLoading && <MyDominantClassesWidget />}
 
       {/* LE MIE BEST LAPS */}
       {myUniqueLaps.length > 0 && (

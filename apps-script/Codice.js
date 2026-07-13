@@ -178,6 +178,9 @@ const ACTIONS = {
   'reports.list': handleReportsList,
   'reports.recent': handleReportsRecent,
 
+  // Landing aggregato (1 fetch invece di ~9)
+  'landing.data': handleLandingData,
+
   // Showcase (pubblico, no auth)
   'showcase.summary': handleShowcaseSummary,
 

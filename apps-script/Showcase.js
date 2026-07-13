@@ -41,7 +41,7 @@ function handleShowcaseSummary(payload, ctx) {
   }
 
   // --- Stats aggregate ---
-  const activeDrivers = drivers.filter(d => String(d.status).toLowerCase() === 'active');
+  const activeDrivers = drivers.filter(d => !d.removed_at && String(d.status).toLowerCase() === 'active');
   const completedRaces = races.filter(r => String(r.status).toLowerCase() === 'completed');
   // --- Podi: union RaceReports (self-submitted) + RaceResults (imported) ---
   const podiumsFromReports = reports.filter(r => {

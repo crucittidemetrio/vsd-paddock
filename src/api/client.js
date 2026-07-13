@@ -119,6 +119,10 @@ export const api = {
     recent: (limit = 5) => call('reports.recent', { limit }),
   },
 
+  landing: {
+    data: (payload = {}) => call('landing.data', payload),
+  },
+
  showcase: {
     summary: () => call('showcase.summary'),
   },
