@@ -5,6 +5,10 @@ import { SIM_LIST, DRIVER_STATUS } from '../utils/constants';
 import './Roster.css';
 import './Page.css';
 
+// Questo hook chiama la stessa query key ['drivers', {}] già
+// pre-popolata da useLandingData con includeRemoved: true.
+// I piloti rimossi arrivano con is_ex_vsd: true.
+
 const STATUS_FILTERS = [
   { id: 'all',     label: 'Tutti' },
   { id: DRIVER_STATUS.ACTIVE,   label: 'Attivi' },
@@ -15,26 +19,29 @@ const STATUS_FILTERS = [
 export default function Roster() {
   const [statusFilter, setStatusFilter] = useState(DRIVER_STATUS.ACTIVE);
   const [simFilter, setSimFilter] = useState('all');
+  const [showEx, setShowEx] = useState(false);
 
   const { data: drivers, isLoading, error } = useDrivers();
 
+  // Separa piloti attivi/inattivi dagli ex-VSD
+  const activeDrivers = useMemo(() => (drivers || []).filter(d => !d.is_ex_vsd), [drivers]);
+  const exDrivers     = useMemo(() => (drivers || []).filter(d =>  d.is_ex_vsd), [drivers]);
+
   const filtered = useMemo(() => {
-    if (!drivers) return [];
-    return drivers.filter(d => {
+    return activeDrivers.filter(d => {
       if (statusFilter !== 'all' && d.status !== statusFilter) return false;
       if (simFilter !== 'all' && !d.preferred_sims?.includes(simFilter)) return false;
       return true;
     });
-  }, [drivers, statusFilter, simFilter]);
+  }, [activeDrivers, statusFilter, simFilter]);
 
   const counts = useMemo(() => {
-    if (!drivers) return { total: 0, active: 0, trial: 0 };
     return {
-      total: drivers.length,
-      active: drivers.filter(d => d.status === 'active').length,
-      trial: drivers.filter(d => d.status === 'trial').length,
+      total:  activeDrivers.length,
+      active: activeDrivers.filter(d => d.status === 'active').length,
+      trial:  activeDrivers.filter(d => d.status === 'trial').length,
     };
-  }, [drivers]);
+  }, [activeDrivers]);
 
   return (
     <div className="page">
@@ -112,6 +119,24 @@ export default function Roster() {
       {!isLoading && filtered.length > 0 && (
         <div className="roster-grid">
           {filtered.map(d => <DriverCard key={d.driver_id} driver={d} />)}
+        </div>
+      )}
+
+      {!isLoading && exDrivers.length > 0 && (
+        <div className="roster-ex-section">
+          <button
+            className="roster-ex-toggle"
+            onClick={() => setShowEx(v => !v)}
+          >
+            <span className="roster-ex-label">Ex Piloti</span>
+            <span className="roster-ex-count">{exDrivers.length}</span>
+            <span className="roster-ex-chevron">{showEx ? '▲' : '▼'}</span>
+          </button>
+          {showEx && (
+            <div className="roster-grid roster-ex-grid">
+              {exDrivers.map(d => <DriverCard key={d.driver_id} driver={d} />)}
+            </div>
+          )}
         </div>
       )}
     </div>

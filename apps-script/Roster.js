@@ -12,7 +12,7 @@
  *   Razionale: la lista è una directory leggera. Se serve dettaglio,
  *   si chiama roster.get sul singolo driver_id.
  *
- * @param {Object} payload - { includeInactive?: boolean }
+ * @param {Object} payload - { includeInactive?: boolean, includeRemoved?: boolean }
  * @param {Object} ctx - Auth context (richiesto)
  * @returns {Object} { ok, data: { drivers: [...] } }
  */
@@ -20,17 +20,22 @@ function handleRosterList(payload, ctx) {
   if (!ctx) return fail('Auth richiesto');
 
   const includeInactive = payload && (payload.includeInactive === true || payload.includeInactive === 'true');
+  const includeRemoved  = payload && (payload.includeRemoved  === true || payload.includeRemoved  === 'true');
 
   const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
 
   const filtered = drivers.filter(d => {
     if (d.driver_id === 'VSD001') return false; // account di sistema, mai nel roster pubblico
-    if (d.removed_at) return false;             // rimossi: invisibili ovunque
-    if (includeInactive) return true;
+    if (d.removed_at) return includeRemoved;    // rimossi: visibili solo se esplicitamente richiesti
+    if (includeInactive || includeRemoved) return true;
     return d.status === 'active';
   });
 
-  const sanitized = filtered.map(d => sanitizeDriver(d, 'public'));
+  const sanitized = filtered.map(d => {
+    const base = sanitizeDriver(d, 'public');
+    if (d.removed_at) base.is_ex_vsd = true;
+    return base;
+  });
 
   // Ordina per display_name (case-insensitive)
   sanitized.sort((a, b) => {

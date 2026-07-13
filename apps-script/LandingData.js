@@ -28,7 +28,7 @@ function handleLandingData(payload, ctx) {
   const raceLaps        = handleLapsRaceLaps({}, ctx);
   const allReports      = handleReportsList({}, ctx);
   const myReports       = handleReportsList({ driver_id: driverId }, ctx);
-  const drivers         = handleRosterList({}, ctx);
+  const drivers         = handleRosterList({ includeRemoved: true }, ctx);
   const tracks          = handleLookupsTracks({}, ctx);
   const cars            = handleLookupsCars({}, ctx);
   const myRaceResults   = handleRaceResultsList(

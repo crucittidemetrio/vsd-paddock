@@ -98,3 +98,27 @@
   padding: var(--sp-3);
 }
 .driver-card-compact .driver-card-name { font-size: var(--fs-sm); }
+
+/* ===== EX VSD ===== */
+.driver-card.is-ex {
+  opacity: 0.65;
+  border-color: var(--color-border);
+}
+.driver-card.is-ex:hover {
+  border-color: var(--color-border-strong);
+  box-shadow: none;
+  transform: none;
+  opacity: 0.85;
+}
+.driver-card.is-ex::before { display: none; }
+
+.driver-ex-badge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--color-text-dim);
+  padding: 2px 6px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--r-sm);
+  background: var(--vsd-bg);
+}
