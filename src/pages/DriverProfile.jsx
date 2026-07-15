@@ -17,6 +17,9 @@ import './Page.css';
 
 export default function DriverProfile() {
   const { driverId } = useParams();
+  const [showAllLaps, setShowAllLaps] = useState(false);
+  const [showAllHistory, setShowAllHistory] = useState(false);
+
   const { data: driver, isLoading, error } = useDriver(driverId);
   const { data: laps } = useBestLaps({ driver_id: driverId });
   const { data: reports } = useReports({ driver_id: driverId });
@@ -120,9 +123,6 @@ export default function DriverProfile() {
       </div>
     );
   }
-
-  const [showAllLaps, setShowAllLaps] = useState(false);
-  const [showAllHistory, setShowAllHistory] = useState(false);
 
   const sims = (driver.preferred_sims || '').split(',').filter(Boolean);
   const specs = (driver.specialties || '').split(',').filter(Boolean);
