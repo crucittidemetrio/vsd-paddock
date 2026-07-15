@@ -1,4 +1,6 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { api } from '../api/client';
 import StintTimeline from '../components/race/StintTimeline';
 import { useStints } from '../hooks/useEnduranceStints';
 import { useAuth } from '../hooks/useAuth';
@@ -15,11 +17,81 @@ import RequireTier from '../components/auth/RequireTier';
 import LoginPrompt from '../components/auth/LoginPrompt';
 
 const STATUS_LABELS = {
-  scheduled: 'PROGRAMMATA',
-  live: 'LIVE',
-  completed: 'CONCLUSA',
-  cancelled: 'ANNULLATA',
+  draft:       'BOZZA',
+  scheduled:   'PROGRAMMATA',
+  in_progress: 'IN CORSO',
+  live:        'LIVE',
+  completed:   'CONCLUSA',
+  cancelled:   'ANNULLATA',
 };
+
+// Transizioni disponibili per ogni stato
+const STATUS_TRANSITIONS = {
+  draft:       [
+    { to: 'scheduled',   label: 'Pubblica',   icon: '📋' },
+    { to: 'cancelled',   label: 'Annulla',    icon: '✕', danger: true },
+  ],
+  scheduled:   [
+    { to: 'in_progress', label: 'Avvia',      icon: '▶' },
+    { to: 'completed',   label: 'Concludi',   icon: '✓' },
+    { to: 'cancelled',   label: 'Annulla',    icon: '✕', danger: true },
+  ],
+  in_progress: [
+    { to: 'completed',   label: 'Concludi',   icon: '✓' },
+    { to: 'cancelled',   label: 'Annulla',    icon: '✕', danger: true },
+  ],
+  completed:   [
+    { to: 'in_progress', label: 'Riapri',     icon: '↩' },
+  ],
+  cancelled:   [
+    { to: 'scheduled',   label: 'Ripristina', icon: '↩' },
+  ],
+};
+
+function StatusControl({ race, onUpdated }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [success, setSuccess] = useState(null);
+
+  const transitions = STATUS_TRANSITIONS[race.status] || [];
+  if (transitions.length === 0) return null;
+
+  async function handleTransition(newStatus) {
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+    try {
+      await api.races.update({ race_id: race.race_id, status: newStatus });
+      setSuccess(`Stato → ${STATUS_LABELS[newStatus] || newStatus}`);
+      onUpdated?.();
+    } catch (err) {
+      setError(err.message || 'Errore aggiornamento stato');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <div className="rd-status-control">
+      <div className="rd-status-control-label">⚙ Cambia stato</div>
+      <div className="rd-status-control-actions">
+        {transitions.map(t => (
+          <button
+            key={t.to}
+            className={`rd-status-btn${t.danger ? ' rd-status-btn--danger' : ''}`}
+            disabled={loading}
+            onClick={() => handleTransition(t.to)}
+          >
+            <span aria-hidden="true">{t.icon}</span>
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {error   && <div className="rd-status-msg rd-status-msg--error">{error}</div>}
+      {success && <div className="rd-status-msg rd-status-msg--ok">{success}</div>}
+    </div>
+  );
+}
 
 function formatRaceDate(iso) {
   if (!iso) return '—';
@@ -137,6 +209,7 @@ function ReportCard({ report, drivers }) {
 
 export default function RaceDetail() {
   const { raceId } = useParams();
+  const queryClient = useQueryClient();
   const { data: race, isLoading, error } = useRace(raceId);
   const { data: tracks } = useTracks();
   const { data: cars } = useCars();
@@ -149,8 +222,13 @@ export default function RaceDetail() {
   }, [driversRaw]);
   const { data: raceResultsData } = useRaceResults({ race_id: raceId });
 
+  function refreshRace() {
+    queryClient.invalidateQueries({ queryKey: ['race', raceId] });
+    queryClient.invalidateQueries({ queryKey: ['races'] });
+  }
+
   // --- Stint endurance (UI pubblica read-only) ---
-  const { driver } = useAuth();
+  const { driver, isStaff } = useAuth();
   const currentDriverId = driver?.driver_id ?? null;
   const isEndurance = race?.format === 'endurance';
   const { data: stintsResp } = useStints(isEndurance ? raceId : null);
@@ -218,6 +296,10 @@ export default function RaceDetail() {
           </p>
         )}
       </div>
+
+        {isStaff && (
+          <StatusControl race={race} onUpdated={refreshRace} />
+        )}
 
         {race.format === 'endurance' && (
           <RequireTier minTier="staff">

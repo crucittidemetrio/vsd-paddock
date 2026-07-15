@@ -322,3 +322,75 @@
   border-color: #f5a623;
   transform: translateY(-1px);
 }
+
+/* ════ STATUS CONTROL (solo staff) ════ */
+
+.rd-status-control {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 8px;
+}
+
+.rd-status-control-label {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  color: #888;
+  text-transform: uppercase;
+}
+
+.rd-status-control-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.rd-status-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  background: rgba(80, 200, 120, 0.12);
+  color: #62d488;
+  border: 1px solid rgba(80, 200, 120, 0.35);
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.rd-status-btn:hover:not(:disabled) {
+  background: rgba(80, 200, 120, 0.22);
+  border-color: #62d488;
+}
+
+.rd-status-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.rd-status-btn--danger {
+  background: rgba(255, 80, 80, 0.10);
+  color: #ff7070;
+  border-color: rgba(255, 80, 80, 0.30);
+}
+
+.rd-status-btn--danger:hover:not(:disabled) {
+  background: rgba(255, 80, 80, 0.20);
+  border-color: #ff7070;
+}
+
+.rd-status-msg {
+  font-size: 0.8rem;
+  padding: 4px 0;
+}
+
+.rd-status-msg--ok    { color: #62d488; }
+.rd-status-msg--error { color: #ff7070; }
