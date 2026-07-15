@@ -23,7 +23,10 @@ function readCurrentDriverId() {
   }
 }
 
-function getDriverName(result, drivers) {
+function getDriverName(result, driverMap) {
+  if (result.is_vsd_driver && driverMap && driverMap[result.driver_id]) {
+    return driverMap[result.driver_id].display_name || result.driver_name_external || '—';
+  }
   return result.driver_name_external || '—';
 }
 
@@ -68,7 +71,12 @@ function ResultsTable({ results, sessionType, currentDriverId, drivers }) {
                 <td className="rrs-col-num">{r.car_num ?? '—'}</td>
                 <td className="rrs-col-driver">
                   <span>{getDriverName(r, drivers)}</span>
-                  {isVsd && <span className="rrs-vsd-tag">VSD</span>}
+                  {isVsd && (() => {
+                    const isEx = drivers && drivers[r.driver_id]?.is_ex_vsd;
+                    return isEx
+                      ? <span className="rrs-vsd-tag rrs-vsd-tag--ex">EX VSD</span>
+                      : <span className="rrs-vsd-tag">VSD</span>;
+                  })()}
                 </td>
                 <td className="rrs-col-car">{r.car_external_name || '—'}</td>
                 <td className="rrs-col-num-cell">{r.total_laps ?? '—'}</td>

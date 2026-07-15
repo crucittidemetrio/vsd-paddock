@@ -45,11 +45,8 @@ function getAuthContext() {
  * I componenti useranno hooks React Query, che gestiscono error/loading.
  */
 async function call(action, payload = {}) {
-  console.log('[API CALL]', action, payload);
   const ctx = getAuthContext();
-  console.log('[API CTX]', ctx);
   const res = await callApi(action, payload, ctx);
-  console.log('[API RES]', action, res);
   if (!res.ok) {
     throw new Error(res.error || `API error: ${action}`);
   }

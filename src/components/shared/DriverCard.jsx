@@ -36,7 +36,16 @@ export default function DriverCard({ driver, compact = false }) {
               : driver.driver_id}
           </div>
           {isEx
-            ? <span className="driver-ex-badge">EX VSD</span>
+            ? (
+              <div className="driver-ex-block">
+                <span className="driver-ex-badge">EX VSD</span>
+                {driver.removed_at && (
+                  <span className="driver-ex-date">
+                    {new Date(driver.removed_at).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                  </span>
+                )}
+              </div>
+            )
             : <StatusDot status={driver.status} />
           }
         </div>

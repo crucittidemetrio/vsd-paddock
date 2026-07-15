@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import StintTimeline from '../components/race/StintTimeline';
 import { useStints } from '../hooks/useEnduranceStints';
 import { useAuth } from '../hooks/useAuth';
@@ -140,7 +141,12 @@ export default function RaceDetail() {
   const { data: tracks } = useTracks();
   const { data: cars } = useCars();
   const { data: reports } = useReports({ race_id: raceId });
-  const { data: drivers } = useDrivers();
+  const { data: driversRaw } = useDrivers({ includeRemoved: true });
+  const drivers = useMemo(() => {
+    const m = {};
+    (driversRaw || []).forEach(d => { m[d.driver_id] = d; });
+    return m;
+  }, [driversRaw]);
   const { data: raceResultsData } = useRaceResults({ race_id: raceId });
 
   // --- Stint endurance (UI pubblica read-only) ---

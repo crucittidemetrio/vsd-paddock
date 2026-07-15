@@ -26,7 +26,6 @@ export default function Race() {
   const [tab, setTab] = useState('scheduled');
   const { driver } = useAuth();
   const { data: races, isLoading } = useRaces();
-  console.log('[Race Hub] races:', races);
   const { data: drivers } = useDrivers();
   const { data: tracks = [] } = useTracks();
   const { data: myRaceResultsData } = useMyRecentRaceResults(driver?.driver_id, 50);

@@ -33,7 +33,10 @@ function handleRosterList(payload, ctx) {
 
   const sanitized = filtered.map(d => {
     const base = sanitizeDriver(d, 'public');
-    if (d.removed_at) base.is_ex_vsd = true;
+    if (d.removed_at) {
+      base.is_ex_vsd = true;
+      base.removed_at = d.removed_at;
+    }
     return base;
   });
 
