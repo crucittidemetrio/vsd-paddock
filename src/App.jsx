@@ -38,6 +38,7 @@ const AdminEndurance      = lazy(() => import('./pages/AdminEndurance'));
 const AdminEnduranceForm  = lazy(() => import('./pages/AdminEnduranceForm'));
 const StintPlanner        = lazy(() => import('./pages/StintPlanner'));
 const AdminRaces = lazy(() => import('./pages/AdminRaces'));
+const Compare    = lazy(() => import('./pages/Compare'));
 
 import './App.css';
 
@@ -87,6 +88,7 @@ export default function App() {
               <Route path="/championships/:championshipId" element={<ChampionshipDetail />} />
               <Route path="/endurance" element={<Endurance />} />
               <Route path="/endurance/:auditionId" element={<EnduranceDetail />} />
+              <Route path="/compare" element={<Compare />} />
 
               {/* ── Private: richiede pilot_vsd o superiore ── */}
               <Route

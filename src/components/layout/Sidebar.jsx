@@ -14,6 +14,7 @@ const PUBLIC_ITEMS = [
   { to: '/championships', label: 'Campionati', icon: '🏆' },
   { to: '/laps', label: LABELS.nav_laps, icon: '◈' },
   { to: '/results', label: LABELS.nav_results, icon: '🏁' },
+  { to: '/compare', label: 'Confronto', icon: '⚖' },
   { to: '/endurance', label: LABELS.nav_endurance, icon: '◐' },
 ];
 
