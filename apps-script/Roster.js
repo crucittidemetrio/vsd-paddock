@@ -71,11 +71,17 @@ function handleRosterGet(payload, ctx) {
   const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
   const driver = drivers.find(d => d.driver_id === driverId);
 
-  if (!driver || driver.removed_at) return fail('Pilota non trovato: ' + driverId);
+  if (!driver) return fail('Pilota non trovato: ' + driverId);
 
   // Determina livello visibilità
   const isSelf = ctx.driver_id === driverId;
   const level = (ctx.isStaff || isSelf) ? 'private' : 'public';
 
-  return ok({ driver: sanitizeDriver(driver, level) });
+  const sanitized = sanitizeDriver(driver, level);
+  if (driver.removed_at) {
+    sanitized.is_ex_vsd = true;
+    sanitized.removed_at = driver.removed_at;
+  }
+
+  return ok({ driver: sanitized });
 }

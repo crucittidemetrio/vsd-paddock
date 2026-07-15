@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useDriver } from '../hooks/useRoster';
 import { useBestLaps } from '../hooks/useBestLaps';
@@ -121,8 +121,12 @@ export default function DriverProfile() {
     );
   }
 
+  const [showAllLaps, setShowAllLaps] = useState(false);
+  const [showAllHistory, setShowAllHistory] = useState(false);
+
   const sims = (driver.preferred_sims || '').split(',').filter(Boolean);
   const specs = (driver.specialties || '').split(',').filter(Boolean);
+  const isExVsd = !!(driver.is_ex_vsd || driver.removed_at);
   const isStaff = driver.role === ROLES.STAFF || driver.role === ROLES.ADMIN;
   const roleLabel =
     driver.role === ROLES.ADMIN ? 'Team Principal' :
@@ -186,16 +190,33 @@ export default function DriverProfile() {
           <div className="hero-info">
             <div className="hero-meta-line">
               <span className="hero-id">
-  {driver.race_number != null && driver.race_number !== ''
-    ? `#${driver.race_number}`
-    : driver.driver_id}
-</span>
+                {driver.race_number != null && driver.race_number !== ''
+                  ? `#${driver.race_number}`
+                  : driver.driver_id}
+              </span>
               <span className="hero-divider" />
-              <StatusDot status={driver.status} withLabel />
-              {isStaff && (
+              {isExVsd ? (
+                <div className="hero-ex-block">
+                  <span className="hero-ex-badge">EX VSD</span>
+                  {driver.removed_at && (
+                    <span className="hero-ex-date">
+                      {new Date(driver.removed_at).toLocaleDateString('it-IT', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <StatusDot status={driver.status} withLabel />
+              )}
+              {isStaff && !isExVsd && (
                 <>
                   <span className="hero-divider" />
                   <span className="hero-role-tag">{roleLabel.toUpperCase()}</span>
+                </>
+              )}
+              {driver.nationality && (
+                <>
+                  <span className="hero-divider" />
+                  <span className="hero-nationality">{driver.nationality}</span>
                 </>
               )}
             </div>
@@ -223,6 +244,12 @@ export default function DriverProfile() {
                 </div>
               )}
             </div>
+
+            <div className="hero-actions">
+              <Link to={`/compare?a=${driver.driver_id}`} className="hero-compare-btn">
+                ⚖ Sfida
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -246,6 +273,36 @@ export default function DriverProfile() {
         <StatCard label="Membro dal" value={driver.join_date?.split('-')[0] || '—'} sub="anno entrata" />
       </div>
 
+      {/* FORMA RECENTE */}
+      {historyRaces.length > 0 && (
+        <div className="form-recente-wrap">
+          <div className="form-recente-label">Forma recente</div>
+          <div className="form-recente-strip">
+            {historyRaces.slice(0, 5).map((r, i) => {
+              const raceName = racesById[r.race_id]?.race_name || r.race_id;
+              const pos = r.finish_position;
+              const cls = r.dnf
+                ? 'form-dnf'
+                : pos === 1 ? 'form-p1'
+                : pos <= 3  ? 'form-podium'
+                : pos <= 10 ? 'form-normal'
+                : 'form-dim';
+              const label = r.dnf ? 'DNF' : pos ? `P${pos}` : '?';
+              return (
+                <Link
+                  key={r.race_id + i}
+                  to={`/race/${r.race_id}`}
+                  className={`form-badge ${cls}`}
+                  title={raceName}
+                >
+                  {label}
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* CLASSI DOMINANTI */}
       <MyDominantClassesWidget driverId={driverId} />
 
@@ -257,50 +314,57 @@ export default function DriverProfile() {
         </div>
 
         {uniqueLaps.length > 0 ? (
-          <div className="data-table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Sim</th>
-                  <th>Tracciato</th>
-                  <th>Auto</th>
-                  <th className="num">Tempo</th>
-                  <th>Cond.</th>
-                  <th>Verifica</th>
-                  <th>Data</th>
-                </tr>
-              </thead>
-              <tbody>
-                {uniqueLaps.slice(0, 10).map((lap, idx) => (
-                  <tr key={lap.lap_id}>
-                    <td><SimBadge sim={lap.sim} size="sm" /></td>
-                    <td className="cell-track">{formatTrack(lap.track_id, tracks)}</td>
-                    <td className="cell-car">{formatCar(lap.car_id, cars)}</td>
-                    <td className="num">
-                      <LapTime
-                        ms={lap.lap_time_ms}
-                        emphasis={idx === 0 ? 'best' : 'normal'}
-                        size="md"
-                      />
-                    </td>
-                    <td>
-                      <span className={`cond-tag cond-${lap.conditions}`}>
-                        {lap.conditions}
-                      </span>
-                    </td>
-                    <td>
-                      {lap.verified_by ? (
-                        <span className="verify-yes">✓ verificato</span>
-                      ) : (
-                        <span className="verify-no">in attesa</span>
-                      )}
-                    </td>
-                    <td className="cell-date">{formatDate(lap.set_date)}</td>
+          <>
+            <div className="data-table-wrap">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Sim</th>
+                    <th>Tracciato</th>
+                    <th>Auto</th>
+                    <th className="num">Tempo</th>
+                    <th>Cond.</th>
+                    <th>Verifica</th>
+                    <th>Data</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {(showAllLaps ? uniqueLaps : uniqueLaps.slice(0, 10)).map((lap, idx) => (
+                    <tr key={lap.lap_id}>
+                      <td><SimBadge sim={lap.sim} size="sm" /></td>
+                      <td className="cell-track">{formatTrack(lap.track_id, tracks)}</td>
+                      <td className="cell-car">{formatCar(lap.car_id, cars)}</td>
+                      <td className="num">
+                        <LapTime
+                          ms={lap.lap_time_ms}
+                          emphasis={idx === 0 ? 'best' : 'normal'}
+                          size="md"
+                        />
+                      </td>
+                      <td>
+                        <span className={`cond-tag cond-${lap.conditions}`}>
+                          {lap.conditions}
+                        </span>
+                      </td>
+                      <td>
+                        {lap.verified_by ? (
+                          <span className="verify-yes">✓ verificato</span>
+                        ) : (
+                          <span className="verify-no">in attesa</span>
+                        )}
+                      </td>
+                      <td className="cell-date">{formatDate(lap.set_date)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {uniqueLaps.length > 10 && (
+              <button className="show-all-btn" onClick={() => setShowAllLaps(v => !v)}>
+                {showAllLaps ? '▲ Mostra meno' : `▼ Mostra tutti (${uniqueLaps.length})`}
+              </button>
+            )}
+          </>
         ) : (
           <div className="empty-state">Nessun tempo registrato.</div>
         )}
@@ -314,62 +378,78 @@ export default function DriverProfile() {
         </div>
 
         {historyRaces.length > 0 ? (
-          <div className="data-table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Gara</th>
-                  <th className="num">Griglia</th>
-                  <th className="num">Arrivo</th>
-                  <th className="num">Best Lap</th>
-                  <th className="num">Inc.</th>
-                  <th>Note</th>
-                </tr>
-              </thead>
-              <tbody>
-                {historyRaces.slice(0, 10).map(r => {
-                  const delta = r.grid_position != null && r.finish_position != null
-                    ? r.grid_position - r.finish_position
-                    : null;
-                  return (
-                    <tr key={r.race_id}>
-                      <td className="cell-race">{racesById[r.race_id]?.race_name || r.race_id}</td>
-                      <td className="num">
-                        {r.grid_position != null ? r.grid_position : '—'}
-                      </td>
-                      <td className="num">
-                        {r.dnf ? (
-                          <span className="finish-pos">DNF</span>
-                        ) : r.finish_position != null ? (
-                          <>
-                            <span className={`finish-pos${r.finish_position <= 3 ? ' is-podium' : ''}`}>
-                              P{r.finish_position}
-                            </span>
-                            {delta != null && delta !== 0 && (
-                              <span className={`pos-delta${delta > 0 ? ' is-gain' : ' is-loss'}`}>
-                                {delta > 0 ? `+${delta}` : delta}
+          <>
+            <div className="data-table-wrap">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Gara</th>
+                    <th>Sim</th>
+                    <th className="num">Griglia</th>
+                    <th className="num">Arrivo</th>
+                    <th className="num">Best Lap</th>
+                    <th className="num">Inc.</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(showAllHistory ? historyRaces : historyRaces.slice(0, 10)).map(r => {
+                    const race = racesById[r.race_id];
+                    const delta = r.grid_position != null && r.finish_position != null
+                      ? r.grid_position - r.finish_position
+                      : null;
+                    return (
+                      <tr key={r.race_id}>
+                        <td className="cell-date">{formatDate(r.set_date) || '—'}</td>
+                        <td className="cell-race">
+                          <Link to={`/race/${r.race_id}`} className="cell-race-link">
+                            {race?.race_name || r.race_id}
+                          </Link>
+                        </td>
+                        <td>
+                          {race?.sim ? <SimBadge sim={race.sim} size="sm" /> : '—'}
+                        </td>
+                        <td className="num">
+                          {r.grid_position != null ? r.grid_position : '—'}
+                        </td>
+                        <td className="num">
+                          {r.dnf ? (
+                            <span className="finish-pos finish-dnf">DNF</span>
+                          ) : r.finish_position != null ? (
+                            <>
+                              <span className={`finish-pos${r.finish_position <= 3 ? ' is-podium' : ''}`}>
+                                P{r.finish_position}
                               </span>
-                            )}
-                          </>
-                        ) : '—'}
-                      </td>
-                      <td className="num">
-                        <LapTime ms={r.best_lap_ms} size="sm" />
-                      </td>
-                      <td className="num">
-                        {r.incidents != null ? (
-                          <span className={r.incidents > 0 ? 'inc-bad' : 'inc-clean'}>
-                            {r.incidents}
-                          </span>
-                        ) : '—'}
-                      </td>
-                      <td className="cell-notes">{r.strategy_notes || '—'}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                              {delta != null && delta !== 0 && (
+                                <span className={`pos-delta${delta > 0 ? ' is-gain' : ' is-loss'}`}>
+                                  {delta > 0 ? `+${delta}` : delta}
+                                </span>
+                              )}
+                            </>
+                          ) : '—'}
+                        </td>
+                        <td className="num">
+                          <LapTime ms={r.best_lap_ms} size="sm" />
+                        </td>
+                        <td className="num">
+                          {r.incidents != null ? (
+                            <span className={r.incidents > 0 ? 'inc-bad' : 'inc-clean'}>
+                              {r.incidents}
+                            </span>
+                          ) : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {historyRaces.length > 10 && (
+              <button className="show-all-btn" onClick={() => setShowAllHistory(v => !v)}>
+                {showAllHistory ? '▲ Mostra meno' : `▼ Mostra tutte (${historyRaces.length})`}
+              </button>
+            )}
+          </>
         ) : (
           <div className="empty-state">Nessuna gara disputata.</div>
         )}
