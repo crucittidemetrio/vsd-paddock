@@ -133,6 +133,5 @@
 .driver-ex-date {
   font-family: var(--font-mono);
   font-size: 9px;
-  color: var(--color-text-dim);
-  opacity: 0.6;
+  color: var(--color-text-muted);
 }
