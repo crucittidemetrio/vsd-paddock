@@ -136,7 +136,7 @@ export default function UE144() {
               Iscrizioni — prossimamente
             </span>
           )}
-          <a href="/docs/ue144_regolamento.docx" download="UE144_Regolamento.docx"
+          <a href="/docs/ue144_regolamento.pdf" target="_blank" rel="noopener noreferrer"
             className={styles.btn}>
             📄 Regolamento
           </a>
@@ -273,7 +273,7 @@ export default function UE144() {
         <div className={styles.protestBox}>
           <div className={styles.protestRow}>
             <span className={styles.protestIcon}>💬</span>
-            <span>Invia la protesta nel canale Discord dedicato entro <strong>30 minuti</strong> dal termine della sessione</span>
+            <span>Invia la protesta nel canale Discord dedicato entro <strong>48 ore</strong> dal termine della sessione</span>
           </div>
           <div className={styles.protestRow}>
             <span className={styles.protestIcon}>🎬</span>
