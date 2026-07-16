@@ -28,6 +28,7 @@ const Training            = lazy(() => import('./pages/Training'));
 const Academy             = lazy(() => import('./pages/Academy'));
 const Endurance           = lazy(() => import('./pages/Endurance'));
 const EnduranceDetail     = lazy(() => import('./pages/EnduranceDetail'));
+const UE144               = lazy(() => import('./pages/UE144'));
 const ChampionshipDetail  = lazy(() => import('./pages/ChampionshipDetail'));
 const AdminImportResults  = lazy(() => import('./pages/AdminImportResults'));
 const AdminImportStandings= lazy(() => import('./pages/AdminImportStandings'));
@@ -88,6 +89,7 @@ export default function App() {
               <Route path="/championships/:championshipId" element={<ChampionshipDetail />} />
               <Route path="/endurance" element={<Endurance />} />
               <Route path="/endurance/:auditionId" element={<EnduranceDetail />} />
+              <Route path="/ue144" element={<UE144 />} />
               <Route path="/compare" element={<Compare />} />
 
               {/* ── Private: richiede pilot_vsd o superiore ── */}

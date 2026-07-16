@@ -16,6 +16,7 @@ const PUBLIC_ITEMS = [
   { to: '/results', label: LABELS.nav_results, icon: '🏁' },
   { to: '/compare', label: 'Confronto', icon: '⚖' },
   { to: '/endurance', label: LABELS.nav_endurance, icon: '◐' },
+  { to: '/ue144', label: 'UE144', icon: '🏁' },
 ];
 
 // Voci pilota attive — visibili solo a pilot_vsd, staff, admin
