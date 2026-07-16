@@ -95,6 +95,10 @@ export default function Landing() {
     typeof r.finish_position === 'number' && r.finish_position <= 3
   ).length;
   const podiums = Math.max(podiumsFromResults, podiumsFromReports);
+  // Vittorie
+  const wins = myRaceResults.filter(r =>
+    !r.dns && !r.dnf && r.finish_position === 1
+  ).length;
 
 // Activity feed: laps + reports + raceResults, dedup report/result sulla stessa gara+pilota
 // Filter difensivo: scarta record malformati (campi critici mancanti o ts invalido)
@@ -165,9 +169,15 @@ const feed = useMemo(() => {
             <QuickStat label="Best Laps" value={totalLaps} sub={`${verifiedLaps} verificati`} />
             <QuickStat label="Gare disputate" value={racesCount} accent="blue" />
             <QuickStat label="Podi" value={podiums} accent="orange" />
+            {wins > 0 && <QuickStat label="Vittorie" value={wins} accent="gold" />}
           </div>
         </div>
       </section>
+
+      {/* FORMA RECENTE */}
+      {myRaceResults.length > 0 && (
+        <FormaRecente results={myRaceResults.slice(0, 5)} racesById={racesById} tracks={tracks} />
+      )}
 
       {/* PROSSIMA GARA */}
       {nextRace && (
@@ -356,6 +366,45 @@ const feed = useMemo(() => {
 }
 
 // -------- Sub-components --------
+
+function FormaRecente({ results, racesById, tracks }) {
+  if (!results || results.length === 0) return null;
+  return (
+    <section className="mc-forma">
+      <div className="mc-section-head">
+        <div className="mc-section-eyebrow">FORMA RECENTE</div>
+        <span className="mc-section-link">ultime {results.length} gare</span>
+      </div>
+      <div className="mc-forma-strip">
+        {results.map((r) => {
+          const isDns = r.dns;
+          const isDnf = r.dnf;
+          const pos = r.finish_position;
+          const label = isDns ? 'DNS' : isDnf ? 'DNF' : `P${pos}`;
+          let cls = 'mc-fb-normal';
+          if (!isDns && !isDnf && pos) {
+            if (pos === 1) cls = 'mc-fb-p1';
+            else if (pos <= 3) cls = 'mc-fb-podio';
+          } else if (isDns || isDnf) {
+            cls = 'mc-fb-dnf';
+          }
+          const raceName = racesById[r.race_id]?.title || formatTrack(r.track_id, tracks) || r.race_id;
+          const shortName = raceName.length > 14 ? raceName.slice(0, 13) + '…' : raceName;
+          return (
+            <Link
+              key={`${r.race_id}-${r.driver_id}`}
+              to={`/race/${r.race_id}`}
+              className={`mc-forma-badge ${cls}`}
+            >
+              <span className="mc-fb-pos">{label}</span>
+              <span className="mc-fb-race">{shortName}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
 
 function QuickStat({ label, value, sub, accent = 'cyan' }) {
   return (

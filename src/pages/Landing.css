@@ -71,6 +71,8 @@
 }
 .mc-qs-orange { border-left-color: var(--vsd-orange); }
 .mc-qs-blue { border-left-color: var(--vsd-blue); }
+.mc-qs-gold { border-left-color: #fbbf24; }
+.mc-qs-gold .mc-qs-value { color: #fbbf24; }
 
 .mc-qs-value {
   font-family: var(--font-display);
@@ -640,6 +642,59 @@
   margin-top: var(--sp-2);
   border-top: 1px dashed var(--color-border);
 }
+
+/* ========== FORMA RECENTE ========== */
+.mc-forma {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.mc-forma-strip {
+  display: flex;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.mc-forma-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  min-width: 80px;
+  text-decoration: none;
+  transition: opacity var(--t-fast), transform var(--t-fast);
+}
+
+.mc-forma-badge:hover {
+  opacity: 0.80;
+  transform: translateY(-1px);
+}
+
+.mc-fb-pos {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
+  line-height: 1;
+}
+
+.mc-fb-race {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.70;
+  text-align: center;
+}
+
+.mc-fb-p1    { background: rgba(245,166,35,0.18); color: var(--vsd-orange);       border: 1px solid rgba(245,166,35,0.35); }
+.mc-fb-podio { background: rgba(0,217,255,0.10);  color: var(--vsd-cyan);         border: 1px solid rgba(0,217,255,0.25); }
+.mc-fb-normal{ background: rgba(255,255,255,0.05);color: var(--color-text-muted); border: 1px solid var(--color-border); }
+.mc-fb-dnf   { background: rgba(239,51,64,0.10);  color: var(--vsd-red);          border: 1px solid rgba(239,51,64,0.25); }
+
+/* ========== ========== */
 
 .mc-lap-session {
   font-size: var(--fs-xs);
