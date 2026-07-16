@@ -88,9 +88,8 @@ export default function UE144() {
             </span>
           )}
           <a
-            href="/docs/ue144/ue144_regolamento.docx"
-            target="_blank"
-            rel="noopener noreferrer"
+            href="/docs/ue144_regolamento.docx"
+            download="UE144_Regolamento.docx"
             className={styles.btn}
           >
             📄 Regolamento
