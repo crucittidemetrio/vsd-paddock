@@ -277,7 +277,7 @@ export default function UE144() {
           </div>
           <div className={styles.protestRow}>
             <span className={styles.protestIcon}>🎬</span>
-            <span>Allega obbligatoriamente <strong>clip video</strong> e <strong>telemetria</strong></span>
+            <span>Allega obbligatoriamente <strong>clip video</strong> (telemetria consigliata)</span>
           </div>
           <div className={styles.protestRow}>
             <span className={styles.protestIcon}>⚖️</span>
