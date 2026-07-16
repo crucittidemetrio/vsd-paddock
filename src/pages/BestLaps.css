@@ -349,3 +349,19 @@
 .laps-table tbody tr.is-clickable:hover {
   background: rgba(0, 212, 255, 0.04);
 }
+
+/* ========== VERIFICA STATUS (staff only) ========== */
+.lap-verified {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--color-success);
+}
+
+.lap-pending {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--vsd-orange);
+  font-weight: var(--fw-semibold);
+}

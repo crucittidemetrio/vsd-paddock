@@ -28,7 +28,7 @@ const SEASON_OPTIONS = [
 ];
 
 export default function BestLaps() {
-  const { driver, isVsdPilot } = useAuth();
+  const { driver, isVsdPilot, isStaff } = useAuth();
   const [viewMode, setViewMode] = useState('leaderboard');
   const [seasonFilter, setSeasonFilter] = useState('season2026');
   const [simFilter, setSimFilter] = useState('all');
@@ -178,6 +178,7 @@ export default function BestLaps() {
           driverMap={driverMap}
           tracks={tracks}
           cars={cars}
+          isStaff={isStaff}
         />
       )}
 
@@ -194,7 +195,7 @@ export default function BestLaps() {
 }
 
 
-function LeaderboardView({ filters, driverMap, tracks, cars }) {
+function LeaderboardView({ filters, driverMap, tracks, cars, isStaff }) {
   const navigate = useNavigate();
   const { data, isLoading, isError, error } = useTeamLeaderboard(filters);
 
@@ -229,6 +230,7 @@ function LeaderboardView({ filters, driverMap, tracks, cars }) {
           <th>Pilota</th>
           <th>Tempo</th>
           <th>Trend</th>
+          {isStaff && <th>Stato</th>}
         </tr>
       </thead>
       <tbody>
@@ -258,6 +260,14 @@ function LeaderboardView({ filters, driverMap, tracks, cars }) {
               </td>
               <td><LapTime ms={rec.lap_time_ms} /></td>
               <td><Sparkline values={rec.lastLaps} /></td>
+              {isStaff && (
+                <td>
+                  {rec.verified_by
+                    ? <span className="lap-verified">✓ verificato</span>
+                    : <span className="lap-pending">⏳ da verificare</span>
+                  }
+                </td>
+              )}
             </tr>
           );
         })}
