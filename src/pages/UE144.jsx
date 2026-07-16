@@ -18,6 +18,7 @@ const CLASSES = [
       'BMW M Hybrid V8',
       'Alpine A424',
       'Lamborghini SC63',
+      'Genesis GR90',
     ],
   },
   {
