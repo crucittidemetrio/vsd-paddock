@@ -154,7 +154,7 @@ export default function UE144() {
         <div className={styles.specGrid}>
           <SpecRow label="Pista" value="Dynamic Track attivo — rubber-in progressivo" />
           <SpecRow label="Carburante" value="Virtual Energy Tank attivo" />
-          <SpecRow label="Danni" value="60%" />
+          <SpecRow label="Danni" value="100%" />
           <SpecRow label="Track Limits" value="Drive-Through automatico da LMU — da scontare entro 3 giri" />
           <SpecRow label="Cambio pilota" value="Non consentito — Single Driver Only" />
         </div>

@@ -248,6 +248,21 @@ export default function JoinUs() {
         </div>
       </section>
 
+      {/* UE144 BANNER */}
+      <section className="joinus-ue144-banner">
+        <div className="joinus-ue144-inner">
+          <div className="joinus-ue144-text">
+            <div className="joinus-ue144-eyebrow">Non vuoi unirti al team?</div>
+            <div className="joinus-ue144-title">Corri comunque con noi — UE144</div>
+            <div className="joinus-ue144-sub">
+              Il nostro campionato endurance è aperto a tutti. 144 minuti su Le Mans Ultimate,
+              tre classi, pilota singolo. Nessun requisito di membership.
+            </div>
+          </div>
+          <Link to="/ue144" className="joinus-ue144-btn">Scopri UE144 →</Link>
+        </div>
+      </section>
+
       {/* FOOTER */}
       <footer className="joinus-footer">
         <div>© 2026 Virtual Sim Driver — Team italiano sim racing</div>
