@@ -137,10 +137,7 @@ export default function UE144() {
               Iscrizioni — prossimamente
             </span>
           )}
-          <a href="/docs/ue144_regolamento.pdf" target="_blank" rel="noopener noreferrer"
-            className={styles.btn}>
-            📄 Regolamento
-          </a>
+          {/* Regolamento temporaneamente nascosto */}
         </div>
       </section>
 
