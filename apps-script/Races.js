@@ -180,14 +180,17 @@ function normalizeDrivePosterUrl_(url) {
   // Pattern: /file/d/FILE_ID/...
   let match = str.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
   if (match) {
-    return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1600`;
+    return `https://lh3.googleusercontent.com/d/${match[1]}`;
   }
 
-  // Pattern: ?id=FILE_ID
-  match = str.match(/drive\.google\.com\/(?:open|uc)\?(?:[^&]*&)*id=([a-zA-Z0-9_-]+)/);
+  // Pattern: ?id=FILE_ID  (open, uc, thumbnail)
+  match = str.match(/drive\.google\.com\/(?:open|uc|thumbnail)\?(?:[^&]*&)*id=([a-zA-Z0-9_-]+)/);
   if (match) {
-    return `https://drive.google.com/thumbnail?id=${match[1]}&sz=w1600`;
+    return `https://lh3.googleusercontent.com/d/${match[1]}`;
   }
+
+  // Pattern: lh3 già normalizzato — pass-through
+  if (str.includes('lh3.googleusercontent.com')) return str;
 
   return str;
 }
