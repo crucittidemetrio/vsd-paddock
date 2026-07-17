@@ -178,10 +178,19 @@
   position: relative;
   width: 100%;
   height: 160px;
-  background-size: cover;
-  background-position: center;
   background-color: var(--vsd-surface);
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.cardBannerImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
 }
 
 .cardBannerOverlay {

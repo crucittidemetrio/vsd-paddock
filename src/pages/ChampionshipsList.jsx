@@ -83,10 +83,12 @@ export default function ChampionshipsList() {
                 >
                   {/* Banner poster — solo se disponibile */}
                   {c.banner_url && (
-                    <div
-                      className={styles.cardBanner}
-                      style={{ backgroundImage: `url(${c.banner_url})` }}
-                    >
+                    <div className={styles.cardBanner}>
+                      <img
+                        src={c.banner_url}
+                        alt={c.name}
+                        className={styles.cardBannerImg}
+                      />
                       <div className={styles.cardBannerOverlay}>
                         <span className={`${styles.statusPill} ${styles[`pill_${status}`]}`}>
                           {STATUS_LABELS[status]}

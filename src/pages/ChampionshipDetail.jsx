@@ -64,10 +64,12 @@ export default function ChampionshipDetail() {
     <div className={styles.container}>
       {/* HERO BANNER — se banner_url disponibile */}
       {championship.banner_url ? (
-        <div
-          className={styles.heroBanner}
-          style={{ backgroundImage: `url(${championship.banner_url})` }}
-        >
+        <div className={styles.heroBanner}>
+          <img
+            src={championship.banner_url}
+            alt={championship.name}
+            className={styles.heroBannerImg}
+          />
           <div className={styles.heroBannerOverlay}>
             <div className={styles.eyebrow}>Campionato</div>
             <h1 className={styles.heroTitle}>{championship.name}</h1>

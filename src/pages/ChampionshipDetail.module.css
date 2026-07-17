@@ -36,11 +36,20 @@
   position: relative;
   width: 100%;
   height: 300px;
-  background-size: cover;
-  background-position: center top;
+  background-color: var(--vsd-bg-elevated);
   border-radius: var(--r-lg);
   overflow: hidden;
   flex-shrink: 0;
+}
+
+.heroBannerImg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  display: block;
 }
 
 .heroBannerOverlay {
