@@ -21,6 +21,12 @@ function handleChampionshipsList(payload, ctx) {
     if (payload.season) championships = championships.filter(c => String(c.season) === String(payload.season));
   }
 
+  // Normalizza banner_url: converte link Drive "view" in URL thumbnail diretto
+  championships = championships.map(c => ({
+    ...c,
+    banner_url: c.banner_url ? normalizeDrivePosterUrl_(String(c.banner_url).trim()) : '',
+  }));
+
   return ok({ championships, count: championships.length });
 }
 

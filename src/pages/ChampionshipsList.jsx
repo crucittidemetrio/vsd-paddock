@@ -79,14 +79,32 @@ export default function ChampionshipsList() {
                 <Link
                   key={c.id}
                   to={`/championships/${c.id}`}
-                  className={`${styles.card} ${styles[`card_${status}`]}`}
+                  className={`${styles.card} ${styles[`card_${status}`]} ${c.banner_url ? styles.cardWithBanner : ''}`}
                 >
-                  <div className={styles.cardHeader}>
-                    <span className={`${styles.statusPill} ${styles[`pill_${status}`]}`}>
-                      {STATUS_LABELS[status]}
-                    </span>
-                    <span className={styles.sim}>{c.sim}</span>
-                  </div>
+                  {/* Banner poster — solo se disponibile */}
+                  {c.banner_url && (
+                    <div
+                      className={styles.cardBanner}
+                      style={{ backgroundImage: `url(${c.banner_url})` }}
+                    >
+                      <div className={styles.cardBannerOverlay}>
+                        <span className={`${styles.statusPill} ${styles[`pill_${status}`]}`}>
+                          {STATUS_LABELS[status]}
+                        </span>
+                        <span className={styles.sim}>{c.sim}</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Header senza banner */}
+                  {!c.banner_url && (
+                    <div className={styles.cardHeader}>
+                      <span className={`${styles.statusPill} ${styles[`pill_${status}`]}`}>
+                        {STATUS_LABELS[status]}
+                      </span>
+                      <span className={styles.sim}>{c.sim}</span>
+                    </div>
+                  )}
 
                   <h3 className={styles.cardName}>{c.name}</h3>
 

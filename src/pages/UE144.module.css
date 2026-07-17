@@ -577,3 +577,240 @@
   flex-shrink: 0;
   margin-top: 1px;
 }
+
+/* ════ CLASSIFICA ════ */
+.standingsSkeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+}
+
+.skeletonBar {
+  height: 14px;
+  background: rgba(255,255,255,0.05);
+  border-radius: var(--r-sm);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50%       { opacity: 0.9; }
+}
+
+.standingsEmpty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 48px 24px;
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+  text-align: center;
+}
+
+.standingsEmptyIcon {
+  font-size: 36px;
+  margin-bottom: 4px;
+}
+
+.standingsEmptyTitle {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.standingsEmptyText {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  max-width: 400px;
+}
+
+.standingsTabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.standingsTab {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 18px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all var(--t-fast);
+  margin-bottom: -1px;
+}
+.standingsTab:hover {
+  color: var(--color-text);
+}
+.standingsTabActive {
+  color: var(--vsd-cyan);
+  border-bottom-color: var(--vsd-cyan);
+}
+
+.standingsTabCount {
+  background: rgba(255,255,255,0.08);
+  border-radius: 999px;
+  padding: 1px 7px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: var(--fw-normal);
+  color: var(--color-text-dim);
+}
+
+.standingsTableWrap {
+  overflow-x: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+}
+
+.standingsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+.standingsTable thead tr {
+  background: rgba(255,255,255,0.03);
+}
+
+.standingsTable th {
+  padding: 10px 14px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: var(--fw-normal);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  text-align: left;
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.standingsTable tbody tr {
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+  transition: background var(--t-fast);
+}
+.standingsTable tbody tr:last-child { border-bottom: none; }
+.standingsTable tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+.standingsTable td {
+  padding: 11px 14px;
+  color: var(--color-text-muted);
+  vertical-align: middle;
+}
+
+.stColPos {
+  width: 44px;
+}
+
+.stPosBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-sm);
+  background: rgba(255,255,255,0.06);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: var(--fw-semibold);
+  color: var(--color-text-muted);
+}
+
+.stNum {
+  text-align: right !important;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: nowrap;
+  color: var(--color-text-muted);
+}
+
+.stNum strong {
+  color: var(--color-text);
+  font-weight: var(--fw-bold);
+}
+
+.stPodium1 .stPosBadge {
+  background: rgba(255, 215, 0, 0.15);
+  color: #ffd700;
+}
+.stPodium2 .stPosBadge {
+  background: rgba(192, 192, 192, 0.12);
+  color: #c0c0c0;
+}
+.stPodium3 .stPosBadge {
+  background: rgba(205, 127, 50, 0.12);
+  color: #cd7f32;
+}
+
+.stRowVsd {
+  background: rgba(0, 212, 255, 0.02);
+}
+
+.stDriverLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+  color: var(--color-text);
+  transition: color var(--t-fast);
+}
+.stDriverLink:hover { color: var(--vsd-cyan); }
+
+.stDriverName {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+}
+
+.stVsdBadge {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--vsd-cyan);
+  background: rgba(0,212,255,0.1);
+  border: 1px solid rgba(0,212,255,0.25);
+  border-radius: var(--r-sm);
+  padding: 1px 5px;
+}
+
+.stDriverExternal {
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}
+
+.standingsFooter {
+  margin-top: 14px;
+  text-align: right;
+}
+
+.standingsDetailLink {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--vsd-cyan);
+  text-decoration: none;
+  opacity: 0.7;
+  transition: opacity var(--t-fast);
+}
+.standingsDetailLink:hover { opacity: 1; }

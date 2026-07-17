@@ -62,22 +62,43 @@ export default function ChampionshipDetail() {
 
   return (
     <div className={styles.container}>
-      {/* HEADER */}
-      <header className={styles.header}>
-        <div className={styles.eyebrow}>Campionato</div>
-        <h1 className={styles.title}>{championship.name}</h1>
-        <div className={styles.meta}>
-          <SimBadge sim={championship.sim} size="sm" />
-          <span className={styles.metaItem}>Stagione {championship.season}</span>
-          <span className={styles.metaItem}>{STATUS_LABEL[championship.status] || championship.status}</span>
-          {championship.format && (
-            <span className={styles.metaItem}>{championship.format}</span>
-          )}
+      {/* HERO BANNER — se banner_url disponibile */}
+      {championship.banner_url ? (
+        <div
+          className={styles.heroBanner}
+          style={{ backgroundImage: `url(${championship.banner_url})` }}
+        >
+          <div className={styles.heroBannerOverlay}>
+            <div className={styles.eyebrow}>Campionato</div>
+            <h1 className={styles.heroTitle}>{championship.name}</h1>
+            <div className={styles.heroMeta}>
+              <SimBadge sim={championship.sim} size="sm" />
+              <span className={styles.metaItem}>Stagione {championship.season}</span>
+              <span className={styles.metaItem}>{STATUS_LABEL[championship.status] || championship.status}</span>
+              {championship.format && (
+                <span className={styles.metaItem}>{championship.format}</span>
+              )}
+            </div>
+          </div>
         </div>
-        {championship.notes && (
-          <p className={styles.notes}>{championship.notes}</p>
-        )}
-      </header>
+      ) : (
+        /* HEADER standard — nessun banner */
+        <header className={styles.header}>
+          <div className={styles.eyebrow}>Campionato</div>
+          <h1 className={styles.title}>{championship.name}</h1>
+          <div className={styles.meta}>
+            <SimBadge sim={championship.sim} size="sm" />
+            <span className={styles.metaItem}>Stagione {championship.season}</span>
+            <span className={styles.metaItem}>{STATUS_LABEL[championship.status] || championship.status}</span>
+            {championship.format && (
+              <span className={styles.metaItem}>{championship.format}</span>
+            )}
+          </div>
+          {championship.notes && (
+            <p className={styles.notes}>{championship.notes}</p>
+          )}
+        </header>
+      )}
 
       {/* Banner se punti non configurati */}
       {!points_configured && rounds.length > 0 && (

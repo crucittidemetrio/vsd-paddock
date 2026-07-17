@@ -53,6 +53,43 @@ function migrate_wave98_championshipsAndEventType() {
   log.forEach(l => Logger.log(l));
   return log.join('\n');
 }
+/**
+ * Migration: aggiunge colonna `banner_url` al tab Championships.
+ * Inserita PRIMA di standings_json per mantenere l'ordine logico.
+ * Idempotente: se la colonna esiste già, non fa nulla.
+ * Da eseguire UNA VOLTA dal dropdown function dell'editor Apps Script.
+ */
+function migrate_addBannerUrlColumn() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Championships');
+  if (!sheet) throw new Error('Tab Championships non trovato');
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  if (headers.includes('banner_url')) {
+    Logger.log('⚠️ Colonna banner_url già presente, skip');
+    return;
+  }
+
+  // Inserisci prima di standings_json (se esiste), altrimenti in append
+  const jsonIdx = headers.indexOf('standings_json');
+  if (jsonIdx !== -1) {
+    sheet.insertColumnBefore(jsonIdx + 1);
+    sheet.getRange(1, jsonIdx + 1).setValue('banner_url');
+    Logger.log('✅ Colonna banner_url inserita prima di standings_json (col ' + (jsonIdx + 1) + ')');
+  } else {
+    const newCol = sheet.getLastColumn() + 1;
+    sheet.getRange(1, newCol).setValue('banner_url');
+    Logger.log('✅ Colonna banner_url aggiunta in fondo (col ' + newCol + ')');
+  }
+
+  // Invalida cache Championships
+  try {
+    invalidateSheetCache_(SHEETS.CHAMPIONSHIPS);
+    Logger.log('✅ Cache Championships invalidata');
+  } catch(e) {
+    Logger.log('⚠️ Cache non invalidata (normale se non in contesto API): ' + e.message);
+  }
+}
+
 function migrate_addStandingsJsonColumn() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Championships');
   if (!sheet) throw new Error('Tab Championships non trovato');

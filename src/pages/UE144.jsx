@@ -1,5 +1,11 @@
+import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { useChampionshipStandings } from '../hooks/useChampionshipStandings';
+import { useDrivers } from '../hooks/useRoster';
+import Avatar from '../components/shared/Avatar';
 import styles from './UE144.module.css';
+
+const UE144_CHAMPIONSHIP_ID = 'chmp-lmu-ultimate-endurance-144-2026';
 
 const SIMGRID_URL = null; // sostituire con il link reale
 
@@ -264,6 +270,9 @@ export default function UE144() {
         </div>
       </section>
 
+      {/* ════ CLASSIFICA ════ */}
+      <StandingsSection />
+
       {/* ════ PROTESTE ════ */}
       <section className={styles.section}>
         <div className={styles.sectionEyebrow}>Direzione Gara</div>
@@ -316,6 +325,157 @@ export default function UE144() {
     </div>
   );
 }
+
+// ════ CLASSIFICA ════
+
+const CLASS_META = {
+  Hypercar: { icon: '🔴', color: '#ef4444' },
+  LMP2:     { icon: '🔵', color: 'var(--vsd-blue)' },
+  LMGT3:    { icon: '🟠', color: 'var(--vsd-orange)' },
+};
+
+function StandingsSection() {
+  const { data, isLoading } = useChampionshipStandings(UE144_CHAMPIONSHIP_ID);
+  const { data: drivers } = useDrivers();
+  const [selectedClass, setSelectedClass] = useState(null);
+
+  const driverMap = useMemo(() => {
+    const m = {};
+    (drivers || []).forEach(d => { m[d.driver_id] = d; });
+    return m;
+  }, [drivers]);
+
+  const activeClass = useMemo(() => {
+    if (!data?.classes?.length) return null;
+    if (selectedClass) {
+      return data.classes.find(c => c.class_name === selectedClass) || data.classes[0];
+    }
+    return data.classes[0];
+  }, [data, selectedClass]);
+
+  const hasStandings = data?.classes?.length > 0 && data.rounds?.length > 0;
+
+  return (
+    <section className={styles.section}>
+      <div className={styles.sectionEyebrow}>Stagione 2026</div>
+      <h2 className={styles.sectionTitle}>Classifica</h2>
+
+      {isLoading && (
+        <div className={styles.standingsSkeleton}>
+          <div className={styles.skeletonBar} />
+          <div className={styles.skeletonBar} style={{ width: '80%' }} />
+          <div className={styles.skeletonBar} style={{ width: '90%' }} />
+        </div>
+      )}
+
+      {!isLoading && !hasStandings && (
+        <div className={styles.standingsEmpty}>
+          <div className={styles.standingsEmptyIcon}>🏁</div>
+          <div className={styles.standingsEmptyTitle}>Stagione in arrivo</div>
+          <div className={styles.standingsEmptyText}>
+            La classifica sarà disponibile dopo il Round 1 — Sebring, 13 Set 2026.
+          </div>
+        </div>
+      )}
+
+      {!isLoading && hasStandings && (
+        <>
+          {/* Class tabs */}
+          {data.classes.length > 1 && (
+            <div className={styles.standingsTabs}>
+              {data.classes.map(c => {
+                const meta = CLASS_META[c.class_name] || {};
+                const isActive = activeClass?.class_name === c.class_name;
+                return (
+                  <button
+                    key={c.class_name}
+                    onClick={() => setSelectedClass(c.class_name)}
+                    className={`${styles.standingsTab} ${isActive ? styles.standingsTabActive : ''}`}
+                    style={isActive && meta.color ? { borderBottomColor: meta.color, color: meta.color } : {}}
+                  >
+                    {meta.icon} {c.class_name}
+                    <span className={styles.standingsTabCount}>{c.standings.length}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Table */}
+          {activeClass && (
+            <div className={styles.standingsTableWrap}>
+              <table className={styles.standingsTable}>
+                <thead>
+                  <tr>
+                    <th className={styles.stColPos}>#</th>
+                    <th>Pilota</th>
+                    <th className={styles.stNum}>Pts</th>
+                    <th className={styles.stNum}>Gare</th>
+                    <th className={styles.stNum}>W</th>
+                    <th className={styles.stNum}>Podi</th>
+                    <th className={styles.stNum}>Best</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {activeClass.standings.map(s => {
+                    const podium = s.position <= 3;
+                    return (
+                      <tr
+                        key={`${s.driver_id || s.driver_name_external}__${s.car_class}`}
+                        className={[
+                          s.is_vsd ? styles.stRowVsd : '',
+                          podium ? styles[`stPodium${s.position}`] : '',
+                        ].filter(Boolean).join(' ')}
+                      >
+                        <td className={styles.stColPos}>
+                          <span className={styles.stPosBadge}>{s.position}</span>
+                        </td>
+                        <td>
+                          <DriverCell driver={s} driverInfo={driverMap[s.driver_id]} />
+                        </td>
+                        <td className={styles.stNum}><strong>{s.total_points}</strong></td>
+                        <td className={styles.stNum}>{s.races_count}</td>
+                        <td className={styles.stNum}>{s.wins || '—'}</td>
+                        <td className={styles.stNum}>{s.podiums || '—'}</td>
+                        <td className={styles.stNum}>{s.best_finish ?? '—'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {/* Link alla pagina completa */}
+          <div className={styles.standingsFooter}>
+            <Link to={`/championships/${UE144_CHAMPIONSHIP_ID}`} className={styles.standingsDetailLink}>
+              Classifica completa →
+            </Link>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+function DriverCell({ driver, driverInfo }) {
+  if (driver.is_vsd && driverInfo) {
+    return (
+      <Link to={`/roster/${driverInfo.driver_id}`} className={styles.stDriverLink}>
+        <Avatar name={driverInfo.display_name} driverId={driverInfo.driver_id} size={24} />
+        <span className={styles.stDriverName}>{driverInfo.display_name}</span>
+        <span className={styles.stVsdBadge}>VSD</span>
+      </Link>
+    );
+  }
+  return (
+    <span className={styles.stDriverExternal}>
+      {driver.display_name || driver.driver_name_external || 'Unknown'}
+    </span>
+  );
+}
+
+// ════ HELPER COMPONENTS ════
 
 function FormatCard({ label, value, detail, icon, accent }) {
   return (
