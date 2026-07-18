@@ -34,7 +34,7 @@ const CLASSES = [
     label: 'LMP2',
     sublabel: 'Parità assoluta',
     icon: '🔵',
-    cars: ['Oreca 07-Gibson'],
+    cars: ['Oreca 07-Gibson ELMS'],
     note: 'Vettura unica — massima parità di mezzi',
   },
   {
