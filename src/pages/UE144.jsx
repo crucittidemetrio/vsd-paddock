@@ -268,7 +268,6 @@ export default function UE144() {
             ))}
           </div>
           <div className={styles.bonusRow}>
-            <span className={styles.bonusBadge}>+1 pt Pole Position</span>
             <span className={styles.bonusBadge}>+1 pt Giro Più Veloce (top-10 di classe)</span>
           </div>
         </div>
