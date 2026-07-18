@@ -51,6 +51,8 @@ const CLASSES = [
       'McLaren 720S GT3 Evo',
       'Aston Martin Vantage GT3',
       'Mercedes-AMG GT3',
+      'Lamborghini Huracán LMGT3 Evo2',
+      'Lexus RCF LMGT3',
     ],
     note: '⚠ Lista soggetta ad aggiornamento in base ai DLC disponibili',
   },
