@@ -89,14 +89,7 @@ export default function App() {
               <Route path="/championships/:championshipId" element={<ChampionshipDetail />} />
               <Route path="/endurance" element={<Endurance />} />
               <Route path="/endurance/:auditionId" element={<EnduranceDetail />} />
-              <Route
-                path="/ue144"
-                element={
-                  <RequireTier minTier="pilot_vsd" fallback={<LoginPrompt feature="la pagina UE144" />}>
-                    <UE144 />
-                  </RequireTier>
-                }
-              />
+              <Route path="/ue144" element={<UE144 />} />
               <Route path="/compare" element={<Compare />} />
 
               {/* ── Private: richiede pilot_vsd o superiore ── */}
