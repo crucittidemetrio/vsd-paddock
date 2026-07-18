@@ -108,6 +108,15 @@
   color: var(--vsd-cyan);
 }
 
+.btnSecondary {
+  border-color: var(--color-border-strong);
+  color: var(--color-text-muted);
+}
+.btnSecondary:hover {
+  border-color: var(--color-text-muted);
+  color: var(--color-text);
+}
+
 .btnDisabled {
   opacity: 0.4;
   cursor: default;

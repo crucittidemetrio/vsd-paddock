@@ -7,7 +7,7 @@ import styles from './UE144.module.css';
 
 const UE144_CHAMPIONSHIP_ID = 'chmp-lmu-ultimate-endurance-144-2026';
 
-const SIMGRID_URL = null; // sostituire con il link reale
+const SIMGRID_URL = 'https://www.thesimgrid.com/championships/26197';
 
 const CLASSES = [
   {
@@ -147,7 +147,14 @@ export default function UE144() {
               Iscrizioni — prossimamente
             </span>
           )}
-          {/* Regolamento temporaneamente nascosto */}
+          <a
+            href="/ue144_regolamento.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`${styles.btn} ${styles.btnSecondary}`}
+          >
+            📄 Regolamento
+          </a>
         </div>
       </section>
 
