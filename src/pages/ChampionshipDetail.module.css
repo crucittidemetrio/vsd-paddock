@@ -340,13 +340,15 @@
 .roundMultiRaces {
   flex: 1;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: var(--sp-2);
 }
 .roundSubRace {
+  flex: 1;
   display: flex;
-  align-items: center;
-  gap: var(--sp-3);
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
   text-decoration: none;
   color: var(--color-text);
   padding: var(--sp-2) var(--sp-3);
@@ -369,10 +371,10 @@
 .roundSubName {
   font-size: var(--fs-sm);
   font-weight: var(--fw-medium);
-  flex: 1;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  max-width: 100%;
 }
 .roundSubMeta {
   font-size: var(--fs-xs);
@@ -482,7 +484,7 @@
 }
 .roundsList {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
   gap: var(--sp-3);
 }
 .roundCard {

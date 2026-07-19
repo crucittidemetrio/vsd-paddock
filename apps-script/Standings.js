@@ -51,7 +51,25 @@ function handleStandingsByChampionship(payload, ctx) {
   if (storedJson) {
     try {
       const parsed = parseLmuStandingsJson_(storedJson);
-      const classes = applyAdjustments_(parsed.classes, adjustments);
+      let classes = applyAdjustments_(parsed.classes, adjustments);
+
+      // Hybrid: augmenta con statistiche per-gara da RaceResults (W/P/BEST/DNF/GARE)
+      // se ci sono risultati importati per questo campionato
+      Logger.log('[Hybrid] rounds.length=' + rounds.length + ' for ' + championshipId);
+      if (rounds.length > 0) {
+        const allResults = sheetToObjects(SHEETS.RACE_RESULTS);
+        const roundRaceIds = {};
+        rounds.forEach(r => { roundRaceIds[r.race_id] = true; });
+        Logger.log('[Hybrid] roundRaceIds=' + JSON.stringify(Object.keys(roundRaceIds)));
+        const relevantResults = allResults.filter(r =>
+          roundRaceIds[r.race_id] && r.session_type === 'race'
+        );
+        Logger.log('[Hybrid] relevantResults.length=' + relevantResults.length);
+        if (relevantResults.length > 0) {
+          classes = mergeRaceStats_(classes, relevantResults);
+        }
+      }
+
       return ok({
         championship,
         classes,
@@ -270,6 +288,58 @@ function parseLmuStandingsJson_(rawJson) {
 }
 
 /**
+ * mergeRaceStats_ — augmenta standings (da standings_json) con statistiche
+ * per-gara (GARE, W, P, BEST, DNF) calcolate dai RaceResults importati.
+ * Usata in modalità ibrida: punti da standings_json, stats da RaceResults.
+ */
+function mergeRaceStats_(classes, relevantResults) {
+  // Costruisce mappa: driverKey → stats
+  const statsMap = {};
+
+  relevantResults.forEach(function(r) {
+    var isVsd = String(r.is_vsd_driver).toUpperCase() === 'TRUE';
+    var driverKey = isVsd ? r.driver_id : (r.driver_name_external || 'UNKNOWN');
+
+    if (!statsMap[driverKey]) {
+      statsMap[driverKey] = { races_count: 0, wins: 0, podiums: 0, best_finish: null, dnfs: 0 };
+    }
+
+    var stats = statsMap[driverKey];
+    var isDnf = String(r.dnf).toUpperCase() === 'TRUE';
+    var isDns = String(r.dns).toUpperCase() === 'TRUE';
+    var position = Number(r.finish_position) || null;
+
+    if (!isDns) stats.races_count++;
+    if (isDnf) stats.dnfs++;
+    if (position && !isDns && !isDnf) {
+      if (position === 1) stats.wins++;
+      if (position <= 3) stats.podiums++;
+      if (stats.best_finish === null || position < stats.best_finish) {
+        stats.best_finish = position;
+      }
+    }
+  });
+
+  return classes.map(function(cls) {
+    return {
+      class_name: cls.class_name,
+      standings: cls.standings.map(function(s) {
+        var key = s.driver_id || s.driver_name_external || s.display_name;
+        var stats = statsMap[key];
+        if (!stats) return s;
+        return Object.assign({}, s, {
+          races_count: stats.races_count,
+          wins: stats.wins,
+          podiums: stats.podiums,
+          best_finish: stats.best_finish,
+          dnfs: stats.dnfs,
+        });
+      }),
+    };
+  });
+}
+
+/**
  * championships.importStandings — admin only.
  * Salva il JSON LMU nella colonna standings_json del campionato.
  */
@@ -423,5 +493,4 @@ function handleChampionshipsSaveAdjustments(payload, ctx) {
   invalidateSheetCache_(SHEETS.CHAMPIONSHIPS);
 
   return ok({ championship_id: payload.championship_id, saved: adjustments.length });
-}
 }

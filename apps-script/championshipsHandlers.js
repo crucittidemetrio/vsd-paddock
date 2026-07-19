@@ -61,6 +61,14 @@ function testChampionshipsList() {
   });
 }
 
+function testBannerUrl() {
+  const raw = getCachedSheetData_(SHEETS.CHAMPIONSHIPS, 0);
+  raw.forEach(c => {
+    const normalized = c.banner_url ? normalizeDrivePosterUrl_(String(c.banner_url).trim()) : '';
+    Logger.log(c.id + ' | raw: "' + (c.banner_url || '') + '" | normalized: "' + normalized + '"');
+  });
+}
+
 function testChampionshipsListFiltered() {
   const login = handleAuthLogin({ code: 'DEMETRIO-6899' });
   if (!login.ok) {
