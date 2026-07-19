@@ -37,6 +37,7 @@ function handleStandingsByChampionship(payload, ctx) {
       race_id: r.race_id,
       race_name: r.race_name,
       round: Number(r.round) || null,
+      race_number: Number(r.race_number) || 1,
       date: r.date,
       track_id: r.track_id,
       status: r.status,

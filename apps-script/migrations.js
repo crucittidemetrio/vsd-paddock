@@ -163,3 +163,27 @@ function migrate_addPointsAdjustmentsColumn() {
   sheet.getRange(1, newColIdx).setValue('points_adjustments_json');
   Logger.log('✅ Colonna `points_adjustments_json` aggiunta a Championships (colonna #' + newColIdx + ')');
 }
+
+/**
+ * migrate_addRaceNumberColumn
+ * Aggiunge la colonna `race_number` al foglio Races.
+ * Usata per campionati multi-gara (es. Race 1 + Race 2 per tracciato).
+ * Idempotente.
+ */
+function migrate_addRaceNumberColumn() {
+  const ss = SpreadsheetApp.openById('1ADUq7CRy0_PtPqbPYS42iCNgpdxZrNlSMY3HX6T8XQA');
+  const sheet = ss.getSheetByName('Races');
+  if (!sheet) { Logger.log('❌ Tab Races non trovato'); return; }
+
+  const lastCol = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+  if (headers.indexOf('race_number') !== -1) {
+    Logger.log('⏭️  Colonna `race_number` già esistente, migration skippata');
+    return;
+  }
+
+  const newColIdx = lastCol + 1;
+  sheet.getRange(1, newColIdx).setValue('race_number');
+  Logger.log('✅ Colonna `race_number` aggiunta a Races (colonna #' + newColIdx + ')');
+}

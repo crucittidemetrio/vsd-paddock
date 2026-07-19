@@ -323,6 +323,62 @@
   border-radius: var(--r-sm);
 }
 
+/* MULTI-RACE ROUND */
+.roundCardMulti {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-md);
+  padding: var(--sp-3) var(--sp-4);
+  transition: border-color var(--t-fast);
+}
+.roundCardMulti:hover {
+  border-color: var(--vsd-cyan);
+}
+.roundMultiRaces {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.roundSubRace {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  text-decoration: none;
+  color: var(--color-text);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-sm);
+  background: var(--vsd-bg);
+  border: 1px solid var(--color-border);
+  transition: border-color var(--t-fast), background var(--t-fast);
+}
+.roundSubRace:hover {
+  border-color: var(--vsd-cyan);
+  background: var(--vsd-bg-hover);
+}
+.roundSubLabel {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  color: var(--vsd-cyan);
+  min-width: 52px;
+  font-family: var(--font-mono);
+}
+.roundSubName {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.roundSubMeta {
+  font-size: var(--fs-xs);
+  color: var(--color-text-muted);
+}
+
 /* ADJUSTMENTS PANEL */
 .adjPanel {
   background: var(--vsd-bg-elevated);

@@ -227,25 +227,7 @@ export default function ChampionshipDetail() {
           {/* ROUNDS */}
           <section className={styles.roundsSection}>
             <h2 className={styles.classHeading}>Round</h2>
-            <div className={styles.roundsList}>
-              {rounds.map(r => (
-                <Link
-                  key={r.race_id}
-                  to={`/race/${r.race_id}`}
-                  className={styles.roundCard}
-                >
-                  <div className={styles.roundNum}>
-                    {r.round ? `R${r.round}` : r.race_id}
-                  </div>
-                  <div className={styles.roundInfo}>
-                    <div className={styles.roundName}>{r.race_name}</div>
-                    <div className={styles.roundMeta}>
-                      {formatDate(r.date)} · {r.status}
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
+            <RoundsList rounds={rounds} />
           </section>
         </>
       )}
@@ -281,6 +263,61 @@ function DriverDisplay({ driver, driverInfo, size = 28, emphasis = false }) {
     <span className={styles.driverExternal}>
       {driver.display_name || driver.driver_name_external || 'Unknown'}
     </span>
+  );
+}
+
+// ─── ROUNDS LIST (raggruppa Race 1 + Race 2 per round) ───────────────────────
+
+function RoundsList({ rounds }) {
+  // Raggruppa per numero round (o race_id se round non definito)
+  const grouped = useMemo(() => {
+    const map = new Map();
+    rounds.forEach(r => {
+      const key = r.round != null ? r.round : r.race_id;
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(r);
+    });
+    // Ordina le gare dentro ogni gruppo per race_number
+    map.forEach(races => races.sort((a, b) => (a.race_number || 1) - (b.race_number || 1)));
+    return [...map.entries()];
+  }, [rounds]);
+
+  const isMultiRace = rounds.some(r => r.race_number > 1);
+
+  return (
+    <div className={styles.roundsList}>
+      {grouped.map(([key, races]) => {
+        const first = races[0];
+        const label = first.round ? `R${first.round}` : first.race_id;
+        if (!isMultiRace || races.length === 1) {
+          // Layout singola gara (originale)
+          return (
+            <Link key={key} to={`/race/${first.race_id}`} className={styles.roundCard}>
+              <div className={styles.roundNum}>{label}</div>
+              <div className={styles.roundInfo}>
+                <div className={styles.roundName}>{first.race_name}</div>
+                <div className={styles.roundMeta}>{formatDate(first.date)} · {first.status}</div>
+              </div>
+            </Link>
+          );
+        }
+        // Layout multi-gara: card con Race 1 + Race 2
+        return (
+          <div key={key} className={styles.roundCardMulti}>
+            <div className={styles.roundNum}>{label}</div>
+            <div className={styles.roundMultiRaces}>
+              {races.map(r => (
+                <Link key={r.race_id} to={`/race/${r.race_id}`} className={styles.roundSubRace}>
+                  <span className={styles.roundSubLabel}>Race {r.race_number}</span>
+                  <span className={styles.roundSubName}>{r.race_name}</span>
+                  <span className={styles.roundSubMeta}>{formatDate(r.date)} · {r.status}</span>
+                </Link>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
