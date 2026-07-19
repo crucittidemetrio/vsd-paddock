@@ -42,17 +42,22 @@ function handleStandingsByChampionship(payload, ctx) {
       status: r.status,
     }));
 
-  // 3. Se c'è JSON LMU importato, usa quello (sorgente autorevole)
+  // 3. Leggi aggiustamenti manuali (penalità, scarti)
+  const adjustments = parseAdjustments_(championship.points_adjustments_json);
+
+  // 4. Se c'è JSON LMU importato, usa quello (sorgente autorevole)
   const storedJson = championship.standings_json && String(championship.standings_json).trim();
   if (storedJson) {
     try {
       const parsed = parseLmuStandingsJson_(storedJson);
+      const classes = applyAdjustments_(parsed.classes, adjustments);
       return ok({
         championship,
-        classes: parsed.classes,
+        classes,
         rounds,
         points_configured: true,
         source: 'lmu_import',
+        adjustments,
       });
     } catch (e) {
       Logger.log('⚠️ Parse standings_json fallito, fallback al compute: ' + e.message);
@@ -153,13 +158,15 @@ function handleStandingsByChampionship(payload, ctx) {
     });
 
   const pointsConfigured = Object.values(aggregates).some(a => a.total_points > 0);
+  const classesWithAdj = applyAdjustments_(classes, adjustments);
 
   return ok({
     championship,
-    classes,
+    classes: classesWithAdj,
     rounds,
     points_configured: pointsConfigured,
     source: 'computed',
+    adjustments,
   });
 }
 /**
@@ -312,4 +319,108 @@ function handleChampionshipsImportStandings(payload, ctx) {
     vsd_matched: matchedVsd,
     external: totalDrivers - matchedVsd,
   });
+}
+
+// ═══════════════════════════════════════════════════════════
+// AGGIUSTAMENTI PUNTI — helper + endpoint admin
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Legge e valida il JSON degli aggiustamenti dalla colonna points_adjustments_json.
+ * Ritorna array vuoto se assente/invalido.
+ */
+function parseAdjustments_(raw) {
+  if (!raw || String(raw).trim() === '') return [];
+  try {
+    const arr = JSON.parse(String(raw).trim());
+    return Array.isArray(arr) ? arr : [];
+  } catch (e) {
+    Logger.log('⚠️ parseAdjustments_ parse error: ' + e.message);
+    return [];
+  }
+}
+
+/**
+ * Applica i delta di aggiustamento ai standings calcolati.
+ * Ogni adjustment: { id, driver_key, car_class, race_id?, delta, reason? }
+ * driver_key = driver_id (VSD) o display_name (esterno)
+ * delta può essere positivo (bonus) o negativo (penalità/scarto)
+ */
+function applyAdjustments_(classes, adjustments) {
+  if (!adjustments || adjustments.length === 0) return classes;
+
+  return classes.map(cls => {
+    const standings = cls.standings.map(s => {
+      const driverKey = s.driver_id || s.driver_name_external || s.display_name;
+      const relevant = adjustments.filter(a =>
+        a.car_class === cls.class_name &&
+        (a.driver_key === driverKey || a.driver_key === s.display_name)
+      );
+      if (relevant.length === 0) return s;
+
+      const totalDelta = relevant.reduce((sum, a) => sum + (Number(a.delta) || 0), 0);
+      return {
+        ...s,
+        total_points: (s.total_points || 0) + totalDelta,
+        points_adjustments: relevant,
+      };
+    });
+
+    // Ri-ordina per punti aggiornati
+    const sorted = standings
+      .sort((a, b) => {
+        if (b.total_points !== a.total_points) return b.total_points - a.total_points;
+        if ((b.wins || 0) !== (a.wins || 0)) return (b.wins || 0) - (a.wins || 0);
+        if ((b.podiums || 0) !== (a.podiums || 0)) return (b.podiums || 0) - (a.podiums || 0);
+        return (a.best_finish || 999) - (b.best_finish || 999);
+      })
+      .map((s, idx) => ({ ...s, position: idx + 1 }));
+
+    return { ...cls, standings: sorted };
+  });
+}
+
+/**
+ * championships.saveAdjustments — admin only.
+ * Salva l'array completo di aggiustamenti manuali nel foglio Championships.
+ *
+ * payload: { championship_id, adjustments: [...] }
+ */
+function handleChampionshipsSaveAdjustments(payload, ctx) {
+  if (!ctx) return fail('Auth richiesto');
+  if (!ctx.isStaff) return fail('Forbidden: solo staff/admin');
+  if (!payload || !payload.championship_id) return fail('championship_id mancante');
+
+  const adjustments = Array.isArray(payload.adjustments) ? payload.adjustments : [];
+
+  // Valida ogni entry
+  for (const a of adjustments) {
+    if (!a.driver_key) return fail('driver_key mancante in un aggiustamento');
+    if (!a.car_class)  return fail('car_class mancante in un aggiustamento');
+    if (typeof a.delta !== 'number') return fail('delta deve essere un numero');
+    if (!a.id) a.id = 'adj_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+  }
+
+  const sheet = getSheet(SHEETS.CHAMPIONSHIPS);
+  const data  = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const idIdx  = headers.indexOf('id');
+  const adjIdx = headers.indexOf('points_adjustments_json');
+
+  if (idIdx  < 0) return fail('Colonna id mancante in Championships');
+  if (adjIdx < 0) return fail('Colonna points_adjustments_json mancante — aggiungila al foglio');
+
+  let foundRow = -1;
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][idIdx] === payload.championship_id) { foundRow = i + 1; break; }
+  }
+  if (foundRow === -1) return fail('Campionato non trovato: ' + payload.championship_id);
+
+  sheet.getRange(foundRow, adjIdx + 1).setValue(
+    adjustments.length > 0 ? JSON.stringify(adjustments) : ''
+  );
+  invalidateSheetCache_(SHEETS.CHAMPIONSHIPS);
+
+  return ok({ championship_id: payload.championship_id, saved: adjustments.length });
+}
 }

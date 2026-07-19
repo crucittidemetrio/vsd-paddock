@@ -2,9 +2,11 @@ import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useChampionshipStandings } from '../hooks/useChampionshipStandings';
 import { useDrivers } from '../hooks/useRoster';
+import { useAuth } from '../hooks/useAuth';
 import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
 import { formatDate, formatTrack } from '../utils/format';
+import { api } from '../api/client';
 import styles from './ChampionshipDetail.module.css';
 
 const STATUS_LABEL = {
@@ -16,8 +18,9 @@ const STATUS_LABEL = {
 
 export default function ChampionshipDetail() {
   const { championshipId } = useParams();
-  const { data, isLoading, error } = useChampionshipStandings(championshipId);
+  const { data, isLoading, error, refetch } = useChampionshipStandings(championshipId);
   const { data: drivers } = useDrivers();
+  const { isStaff } = useAuth();
 
   const [selectedClass, setSelectedClass] = useState(null);
 
@@ -210,6 +213,17 @@ export default function ChampionshipDetail() {
             </section>
           )}
 
+          {/* AGGIUSTAMENTI PUNTI — solo staff */}
+          {isStaff && (
+            <AdjustmentsPanel
+              championshipId={championshipId}
+              adjustments={data.adjustments || []}
+              classes={classes}
+              rounds={rounds}
+              onSaved={refetch}
+            />
+          )}
+
           {/* ROUNDS */}
           <section className={styles.roundsSection}>
             <h2 className={styles.classHeading}>Round</h2>
@@ -267,5 +281,155 @@ function DriverDisplay({ driver, driverInfo, size = 28, emphasis = false }) {
     <span className={styles.driverExternal}>
       {driver.display_name || driver.driver_name_external || 'Unknown'}
     </span>
+  );
+}
+
+// ─── ADJUSTMENTS PANEL (staff only) ───────────────────────────────────────────
+
+const EMPTY_FORM = { driver_key: '', car_class: '', race_id: '', delta: '', reason: '' };
+
+function AdjustmentsPanel({ championshipId, adjustments, classes, rounds, onSaved }) {
+  const [list, setList]     = useState(adjustments);
+  const [form, setForm]     = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg]       = useState('');
+
+  // Sincronizza se arriva nuova prop (dopo refetch)
+  useState(() => { setList(adjustments); }, [adjustments]);
+
+  // Driver unici dalle standings
+  const driverOptions = useMemo(() => {
+    const seen = new Set();
+    const opts = [];
+    classes.forEach(cls => {
+      cls.standings.forEach(s => {
+        const key = s.driver_id || s.driver_name_external || s.display_name;
+        const label = `${s.display_name} (${cls.class_name})`;
+        if (!seen.has(key + cls.class_name)) {
+          seen.add(key + cls.class_name);
+          opts.push({ key, label, car_class: cls.class_name });
+        }
+      });
+    });
+    return opts;
+  }, [classes]);
+
+  function handleDriverChange(e) {
+    const val = e.target.value;
+    const opt = driverOptions.find(o => o.key + '__' + o.car_class === val);
+    setForm(f => ({ ...f, driver_key: opt?.key || '', car_class: opt?.car_class || '' }));
+  }
+
+  async function handleAdd(e) {
+    e.preventDefault();
+    if (!form.driver_key || !form.car_class || form.delta === '') return;
+    const delta = Number(form.delta);
+    if (isNaN(delta)) return;
+    const newAdj = {
+      id: 'adj_' + Date.now(),
+      driver_key: form.driver_key,
+      car_class: form.car_class,
+      race_id: form.race_id || null,
+      delta,
+      reason: form.reason || '',
+    };
+    const updated = [...list, newAdj];
+    await save(updated);
+    setForm(EMPTY_FORM);
+  }
+
+  async function handleRemove(id) {
+    const updated = list.filter(a => a.id !== id);
+    await save(updated);
+  }
+
+  async function save(updated) {
+    setSaving(true);
+    setMsg('');
+    try {
+      await api.championships.saveAdjustments({ championship_id: championshipId, adjustments: updated });
+      setList(updated);
+      setMsg('✓ Salvato');
+      onSaved();
+    } catch (err) {
+      setMsg('❌ ' + err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <section className={styles.adjPanel}>
+      <h2 className={styles.adjTitle}>⚙️ Aggiustamenti punti <span className={styles.adjBadge}>STAFF</span></h2>
+
+      {/* Lista aggiustamenti attivi */}
+      {list.length > 0 && (
+        <div className={styles.adjList}>
+          {list.map(a => (
+            <div key={a.id} className={styles.adjRow}>
+              <span className={styles.adjDelta} style={{ color: a.delta >= 0 ? 'var(--vsd-cyan)' : 'var(--color-danger)' }}>
+                {a.delta >= 0 ? '+' : ''}{a.delta}
+              </span>
+              <span className={styles.adjDriver}>{a.driver_key}</span>
+              <span className={styles.adjClass}>{a.car_class}</span>
+              {a.race_id && <span className={styles.adjRound}>{a.race_id}</span>}
+              {a.reason && <span className={styles.adjReason}>{a.reason}</span>}
+              <button className={styles.adjRemove} onClick={() => handleRemove(a.id)} title="Rimuovi">×</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Form aggiunta */}
+      <form className={styles.adjForm} onSubmit={handleAdd}>
+        <select
+          className={styles.adjInput}
+          value={form.driver_key + '__' + form.car_class}
+          onChange={handleDriverChange}
+          required
+        >
+          <option value="__">— Pilota —</option>
+          {driverOptions.map(o => (
+            <option key={o.key + o.car_class} value={o.key + '__' + o.car_class}>{o.label}</option>
+          ))}
+        </select>
+
+        <select
+          className={styles.adjInput}
+          value={form.race_id}
+          onChange={e => setForm(f => ({ ...f, race_id: e.target.value }))}
+        >
+          <option value="">Campionato (totale)</option>
+          {rounds.map(r => (
+            <option key={r.race_id} value={r.race_id}>
+              {r.round ? `R${r.round}` : r.race_id} — {r.race_name}
+            </option>
+          ))}
+        </select>
+
+        <input
+          className={styles.adjInput}
+          type="number"
+          placeholder="Δ punti (es. -5)"
+          value={form.delta}
+          onChange={e => setForm(f => ({ ...f, delta: e.target.value }))}
+          required
+        />
+
+        <input
+          className={styles.adjInput}
+          type="text"
+          placeholder="Motivazione (opzionale)"
+          value={form.reason}
+          onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}
+        />
+
+        <button className={styles.adjSubmit} type="submit" disabled={saving}>
+          {saving ? '…' : '+ Aggiungi'}
+        </button>
+      </form>
+
+      {msg && <div className={styles.adjMsg}>{msg}</div>}
+    </section>
   );
 }

@@ -104,6 +104,8 @@ export const api = {
     list: (filters = {}) => call('championships.list', filters),
     importStandings: ({ championship_id, json_data }) =>
       call('championships.importStandings', { championship_id, json_data }),
+    saveAdjustments: ({ championship_id, adjustments }) =>
+      call('championships.saveAdjustments', { championship_id, adjustments }),
   },
 
   standings: {                                                              // ← NEW BLOCK

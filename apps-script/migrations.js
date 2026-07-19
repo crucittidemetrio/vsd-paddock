@@ -140,3 +140,26 @@ function migrate_addIncidentsColumn() {
   
   Logger.log('✅ Colonna `incidents` aggiunta a RaceResults (colonna #' + newColIdx + ')');
 }
+
+/**
+ * migrate_addPointsAdjustmentsColumn
+ * Aggiunge la colonna `points_adjustments_json` al foglio Championships.
+ * Idempotente: se già presente, esce senza modifiche.
+ */
+function migrate_addPointsAdjustmentsColumn() {
+  const ss = SpreadsheetApp.openById('1ADUq7CRy0_PtPqbPYS42iCNgpdxZrNlSMY3HX6T8XQA');
+  const sheet = ss.getSheetByName('Championships');
+  if (!sheet) { Logger.log('❌ Tab Championships non trovato'); return; }
+
+  const lastCol = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+  if (headers.indexOf('points_adjustments_json') !== -1) {
+    Logger.log('⏭️  Colonna `points_adjustments_json` già esistente, migration skippata');
+    return;
+  }
+
+  const newColIdx = lastCol + 1;
+  sheet.getRange(1, newColIdx).setValue('points_adjustments_json');
+  Logger.log('✅ Colonna `points_adjustments_json` aggiunta a Championships (colonna #' + newColIdx + ')');
+}

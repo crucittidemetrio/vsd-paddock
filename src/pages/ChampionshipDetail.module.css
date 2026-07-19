@@ -323,6 +323,101 @@
   border-radius: var(--r-sm);
 }
 
+/* ADJUSTMENTS PANEL */
+.adjPanel {
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--vsd-orange);
+  border-radius: var(--r-md);
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.adjTitle {
+  font-size: var(--fs-md);
+  color: var(--vsd-orange);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.adjBadge {
+  font-size: 9px;
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.1em;
+  background: var(--vsd-orange);
+  color: var(--vsd-bg);
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+}
+.adjList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.adjRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  background: var(--vsd-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-sm);
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-sm);
+  flex-wrap: wrap;
+}
+.adjDelta { font-weight: var(--fw-bold); font-variant-numeric: tabular-nums; min-width: 36px; }
+.adjDriver { font-weight: var(--fw-medium); }
+.adjClass { color: var(--color-text-muted); font-size: var(--fs-xs); }
+.adjRound { color: var(--vsd-cyan); font-size: var(--fs-xs); font-family: var(--font-mono); }
+.adjReason { color: var(--color-text-dim); font-style: italic; font-size: var(--fs-xs); flex: 1; }
+.adjRemove {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: var(--fs-lg);
+  cursor: pointer;
+  padding: 0 var(--sp-1);
+  line-height: 1;
+}
+.adjRemove:hover { color: var(--color-danger); }
+.adjForm {
+  display: flex;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+  align-items: center;
+}
+.adjInput {
+  background: var(--vsd-bg);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--r-sm);
+  color: var(--color-text);
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-sm);
+  font-family: var(--font-body);
+  min-width: 120px;
+  flex: 1;
+}
+.adjInput:focus { outline: none; border-color: var(--vsd-orange); }
+.adjSubmit {
+  background: var(--vsd-orange);
+  color: var(--vsd-bg);
+  border: none;
+  border-radius: var(--r-sm);
+  padding: var(--sp-2) var(--sp-4);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.adjSubmit:hover { opacity: 0.85; }
+.adjSubmit:disabled { opacity: 0.5; cursor: default; }
+.adjMsg {
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}
+
 /* ROUNDS */
 .roundsSection {
   display: flex;
