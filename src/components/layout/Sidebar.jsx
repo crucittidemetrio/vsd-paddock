@@ -100,6 +100,10 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
             <img src={totalPaintLogo} alt="Total Paint" />
           </div>
         </a>
+        <NavLink to="/privacy" className="sidebar-privacy-link" onClick={onMobileClose}>
+          Privacy &amp; Dati
+        </NavLink>
+
         <div className="version">v0.1 · Phase 1</div>
       </div>
     </aside>

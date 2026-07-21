@@ -106,6 +106,19 @@
   align-items: center;
 }
 
+.login-consent {
+  margin-top: var(--sp-2);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--color-text-dim);
+  text-align: center;
+}
+
+.login-consent a {
+  color: var(--vsd-cyan);
+  text-decoration: underline;
+}
+
 .login-hint code {
   font-family: var(--font-mono);
   background: var(--vsd-bg);

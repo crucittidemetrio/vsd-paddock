@@ -40,6 +40,7 @@ const AdminEnduranceForm  = lazy(() => import('./pages/AdminEnduranceForm'));
 const StintPlanner        = lazy(() => import('./pages/StintPlanner'));
 const AdminRaces = lazy(() => import('./pages/AdminRaces'));
 const Compare    = lazy(() => import('./pages/Compare'));
+const Privacy     = lazy(() => import('./pages/Privacy'));
 
 import './App.css';
 
@@ -91,6 +92,7 @@ export default function App() {
               <Route path="/endurance/:auditionId" element={<EnduranceDetail />} />
               <Route path="/ue144" element={<UE144 />} />
               <Route path="/compare" element={<Compare />} />
+              <Route path="/privacy" element={<Privacy />} />
 
               {/* ── Private: richiede pilot_vsd o superiore ── */}
               <Route

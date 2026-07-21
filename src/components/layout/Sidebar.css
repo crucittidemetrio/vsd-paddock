@@ -134,6 +134,20 @@
   background: rgba(245, 166, 35, 0.08);
 }
 
+.sidebar-privacy-link {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-align: center;
+  color: var(--color-text-dim);
+  text-decoration: none;
+  transition: color var(--t-fast);
+}
+
+.sidebar-privacy-link:hover {
+  color: var(--vsd-cyan);
+}
+
 .version {
   font-family: var(--font-mono);
   font-size: 10px;

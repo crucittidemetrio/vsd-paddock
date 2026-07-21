@@ -63,6 +63,12 @@ export default function Login() {
         <div className="login-hint">
           <span>Accedi con il tuo account Discord membro del server VSD.</span>
         </div>
+
+        <div className="login-consent">
+          Accedendo autorizzi VSD-Paddock a leggere il tuo username Discord per
+          associarlo ai tuoi risultati di gara. Consulta la{' '}
+          <a href="/privacy">informativa privacy</a>.
+        </div>
       </div>
     </div>
   );
