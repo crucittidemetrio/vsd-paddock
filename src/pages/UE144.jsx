@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useChampionshipStandings } from '../hooks/useChampionshipStandings';
 import { useDrivers } from '../hooks/useRoster';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { SOCIAL_LINKS } from '../utils/constants';
 import Avatar from '../components/shared/Avatar';
 import styles from './UE144.module.css';
 
@@ -331,9 +332,17 @@ export default function UE144() {
               Link SimGrid — prossimamente
             </span>
           )}
-          <a href="https://discord.gg/hdt8uHEfsy" target="_blank" rel="noopener noreferrer"
+          <a href={SOCIAL_LINKS.DISCORD} target="_blank" rel="noopener noreferrer"
             className={styles.btn}>
             Discord VSD
+          </a>
+          <a href={SOCIAL_LINKS.INSTAGRAM} target="_blank" rel="noopener noreferrer"
+            className={styles.btn}>
+            Instagram
+          </a>
+          <a href={SOCIAL_LINKS.FACEBOOK} target="_blank" rel="noopener noreferrer"
+            className={styles.btn}>
+            Facebook
           </a>
         </div>
       </section>

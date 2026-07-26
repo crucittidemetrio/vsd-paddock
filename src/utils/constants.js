@@ -45,6 +45,13 @@ export const DRIVER_STATUS = {
 // Condizioni gara
 export const CONDITIONS = ['dry', 'wet', 'mixed'];
 
+// Link social ufficiali VSD (unica fonte di verità — evita duplicati sparsi tra le pagine)
+export const SOCIAL_LINKS = {
+  DISCORD: 'https://discord.gg/hdt8uHEfsy',
+  INSTAGRAM: 'https://www.instagram.com/virtualsim_driver/',
+  FACEBOOK: 'https://www.facebook.com/profile.php?id=61590467705317',
+};
+
 // Tipo sessione
 
 

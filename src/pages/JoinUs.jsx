@@ -5,8 +5,11 @@ import { usePageMeta } from '../hooks/usePageMeta';
 import './JoinUs.css';
 import Logo from '../components/shared/Logo';
 import totalPaintLogo from '../assets/total-paint-logo.webp';
+import { SOCIAL_LINKS } from '../utils/constants';
 
-const DISCORD_INVITE = 'https://discord.gg/hdt8uHEfsy';
+const DISCORD_INVITE = SOCIAL_LINKS.DISCORD;
+const INSTAGRAM_URL = SOCIAL_LINKS.INSTAGRAM;
+const FACEBOOK_URL = SOCIAL_LINKS.FACEBOOK;
 const JOIN_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScA6mFauERcpKetn0T58LMPioRZHJ1W5PQpl9e9ytV5QB31Tw/viewform';
 
 // Testimonianze reali di piloti — messaggi spontanei postati su Discord
@@ -310,7 +313,11 @@ export default function JoinUs() {
       {/* FOOTER */}
       <footer className="joinus-footer">
         <div>© 2026 Virtual Sim Driver — Team italiano sim racing</div>
-        <a href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer">Discord</a>
+        <div className="joinus-footer-links">
+          <a href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer">Discord</a>
+          <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer">Instagram</a>
+          <a href={FACEBOOK_URL} target="_blank" rel="noopener noreferrer">Facebook</a>
+        </div>
       </footer>
     </div>
   );

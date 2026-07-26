@@ -8,10 +8,12 @@ import Logo from '../components/shared/Logo';
 import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
 import { formatTrack, formatDate } from '../utils/format';
+import { SOCIAL_LINKS } from '../utils/constants';
 import styles from './LandingPublic.module.css';
 
-const DISCORD_INVITE = 'https://discord.gg/hdt8uHEfsy';
-const INSTAGRAM_URL = 'https://www.instagram.com/virtualsim_driver/';
+const DISCORD_INVITE = SOCIAL_LINKS.DISCORD;
+const INSTAGRAM_URL = SOCIAL_LINKS.INSTAGRAM;
+const FACEBOOK_URL = SOCIAL_LINKS.FACEBOOK;
 
 function getNextRace(races) {
   if (!races || !races.length) return null;
@@ -102,6 +104,14 @@ export default function LandingPublic() {
             className={styles.btn}
           >
             Instagram
+          </a>
+          <a
+            href={FACEBOOK_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.btn}
+          >
+            Facebook
           </a>
           <Link to="/joinus" className={`${styles.btn} ${styles.btnAccent}`}>
             Unisciti al team
@@ -195,6 +205,22 @@ export default function LandingPublic() {
             className={styles.btn}
           >
             Entra nel Discord
+          </a>
+          <a
+            href={INSTAGRAM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.btn}
+          >
+            Instagram
+          </a>
+          <a
+            href={FACEBOOK_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.btn}
+          >
+            Facebook
           </a>
         </div>
       </section>

@@ -641,6 +641,12 @@
   color: var(--vsd-cyan);
 }
 
+.joinus-footer-links {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+
 /* RESPONSIVE */
 
 @media (max-width: 1023px) {
