@@ -110,6 +110,81 @@ function notifyVsdPodium_(driverName, position, race, sessionType) {
 }
 
 /**
+ * Notifica: campionato concluso, incorona il/i campione/i (uno per classe).
+ * Deduplicata via Script Properties — non ripete l'annuncio se il vincitore
+ * non cambia tra un re-import e l'altro dello stesso standings_json.
+ *
+ * @param {Object} championship - { id, name, season }
+ * @param {Array}  classResults - [{ class_name, winner_name, winner_points }]
+ */
+function notifyChampionshipCrowned_(championship, classResults) {
+  if (!championship || !classResults || classResults.length === 0) return;
+
+  const dedupKey = 'champion_notified_' + championship.id;
+  const winnersSignature = JSON.stringify(
+    classResults.map(c => c.class_name + ':' + c.winner_name)
+  );
+  const props = PropertiesService.getScriptProperties();
+  if (props.getProperty(dedupKey) === winnersSignature) return; // già annunciato, nessuna variazione
+  props.setProperty(dedupKey, winnersSignature);
+
+  const fields = classResults.map(c => ({
+    name: c.class_name,
+    value: '🏆 **' + c.winner_name + '** — ' + c.winner_points + ' pt',
+    inline: true,
+  }));
+
+  const payload = {
+    embeds: [{
+      author: { name: 'VSD Paddock' },
+      title: '🏆 Campionato concluso — ' + (championship.name || championship.id),
+      description: 'Stagione ' + (championship.season || '') + ' · Complimenti ai campioni!',
+      color: VSD_COLORS.orange,
+      fields: fields,
+      timestamp: new Date().toISOString(),
+      footer: { text: 'Classifica completa sul Paddock' },
+      url: PADDOCK_URL + '/championships/' + championship.id,
+    }],
+  };
+
+  postToDiscord_(payload);
+}
+
+/**
+ * Notifica: aggiustamento punti manuale applicato da staff/admin
+ * (penalità post-gara, scarto risultato, bonus). Trasparenza verso il team.
+ *
+ * @param {Object} championship - { id, name }
+ * @param {Object} adjustment   - { driver_key, car_class, delta, reason? }
+ */
+function notifyPointsAdjustment_(championship, adjustment) {
+  if (!championship || !adjustment) return;
+
+  const driverName = _snDriverName_(adjustment.driver_key);
+  const delta = Number(adjustment.delta) || 0;
+  const deltaLabel = delta > 0 ? '+' + delta : String(delta);
+  const isPenalty = delta < 0;
+
+  const payload = {
+    embeds: [{
+      author: { name: 'VSD Paddock' },
+      title: (isPenalty ? '⚠️' : '➕') + ' Aggiustamento punti applicato',
+      description: '**' + driverName + '** (' + (adjustment.car_class || '?') + ')\n' +
+                   (championship.name || championship.id),
+      color: isPenalty ? VSD_COLORS.red : VSD_COLORS.blue,
+      fields: [
+        { name: 'Δ Punti', value: deltaLabel, inline: true },
+        { name: 'Motivo',  value: adjustment.reason || '—', inline: true },
+      ],
+      timestamp: new Date().toISOString(),
+      url: PADDOCK_URL + '/championships/' + championship.id,
+    }],
+  };
+
+  postToDiscord_(payload);
+}
+
+/**
  * Helper test — esegui manualmente per verificare che il webhook funzioni.
  * Dropdown function → test_notification → ▶ Esegui
  */
@@ -123,6 +198,18 @@ function test_notification() {
       timestamp: new Date().toISOString(),
     }],
   });
+}
+
+/**
+ * Helper test — verifica l'embed "aggiustamento punti" con dati finti.
+ * Non tocca nessun foglio Google Sheets, nessun campionato reale.
+ * Dropdown function → test_notification_adjustment → ▶ Esegui
+ */
+function test_notification_adjustment() {
+  notifyPointsAdjustment_(
+    { id: 'chmp-test', name: '🧪 Campionato di Prova' },
+    { driver_key: 'TEST_DRIVER_NON_ESISTE', car_class: 'GT3', delta: -5, reason: 'Test — ignora questo messaggio' }
+  );
 }
 // ═══════════════════════════════════════════════════════════
 // STINT NOTIFICATIONS — avvisi Discord pre-cambio pilota

@@ -525,6 +525,9 @@ function handleChampionshipsImportStandings(payload, ctx) {
   const headers = data[0];
   const idIdx = headers.indexOf('id');
   const jsonIdx = headers.indexOf('standings_json');
+  const nameIdx = headers.indexOf('name');
+  const statusIdx = headers.indexOf('status');
+  const seasonIdx = headers.indexOf('season');
 
   if (idIdx < 0) return fail('Colonna id mancante in Championships');
   if (jsonIdx < 0) return fail('Colonna standings_json mancante. Esegui migrate_addStandingsJsonColumn');
@@ -545,6 +548,30 @@ function handleChampionshipsImportStandings(payload, ctx) {
   const matchedVsd = parsed.classes.reduce(
     (sum, c) => sum + c.standings.filter(s => s.is_vsd).length, 0
   );
+
+  // Notifica Discord: se il campionato è concluso, annuncia il/i campione/i.
+  // Fault-tolerant: non deve mai far fallire l'import.
+  try {
+    const rowValues = data[foundRow - 1];
+    const status = statusIdx >= 0 ? rowValues[statusIdx] : null;
+    if (String(status).toLowerCase() === 'completed') {
+      const championshipMeta = {
+        id: payload.championship_id,
+        name: nameIdx >= 0 ? rowValues[nameIdx] : payload.championship_id,
+        season: seasonIdx >= 0 ? rowValues[seasonIdx] : '',
+      };
+      const classResults = parsed.classes
+        .filter(c => c.standings && c.standings.length > 0)
+        .map(c => ({
+          class_name: c.class_name,
+          winner_name: c.standings[0].display_name,
+          winner_points: c.standings[0].total_points,
+        }));
+      notifyChampionshipCrowned_(championshipMeta, classResults);
+    }
+  } catch (e) {
+    Logger.log('⚠️ notifyChampionshipCrowned_ error: ' + e.message);
+  }
 
   return ok({
     championship_id: payload.championship_id,
@@ -640,6 +667,7 @@ function handleChampionshipsSaveAdjustments(payload, ctx) {
   const headers = data[0];
   const idIdx  = headers.indexOf('id');
   const adjIdx = headers.indexOf('points_adjustments_json');
+  const nameIdx = headers.indexOf('name');
 
   if (idIdx  < 0) return fail('Colonna id mancante in Championships');
   if (adjIdx < 0) return fail('Colonna points_adjustments_json mancante — aggiungila al foglio');
@@ -650,10 +678,29 @@ function handleChampionshipsSaveAdjustments(payload, ctx) {
   }
   if (foundRow === -1) return fail('Campionato non trovato: ' + payload.championship_id);
 
+  // Diff con l'array precedente: notifichiamo solo gli aggiustamenti nuovi,
+  // non l'intero array ad ogni save (l'endpoint sovrascrive sempre tutto).
+  const oldAdjustments = parseAdjustments_(data[foundRow - 1][adjIdx]);
+  const oldIds = new Set(oldAdjustments.map(a => a.id));
+  const newOnes = adjustments.filter(a => !oldIds.has(a.id));
+
   sheet.getRange(foundRow, adjIdx + 1).setValue(
     adjustments.length > 0 ? JSON.stringify(adjustments) : ''
   );
   invalidateSheetCache_(SHEETS.CHAMPIONSHIPS);
+
+  // Notifica Discord per ogni nuovo aggiustamento. Fault-tolerant.
+  try {
+    if (newOnes.length > 0) {
+      const championshipMeta = {
+        id: payload.championship_id,
+        name: nameIdx >= 0 ? data[foundRow - 1][nameIdx] : payload.championship_id,
+      };
+      newOnes.forEach(a => notifyPointsAdjustment_(championshipMeta, a));
+    }
+  } catch (e) {
+    Logger.log('⚠️ notifyPointsAdjustment_ error: ' + e.message);
+  }
 
   return ok({ championship_id: payload.championship_id, saved: adjustments.length });
 }
