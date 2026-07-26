@@ -77,7 +77,11 @@ export default async function handler(request) {
       .replaceAll(`content="${DEFAULTS.ogTwitterImage}"`, `content="${data.image}"`)
       .replace(`content="${DEFAULTS.ogImageWidth}"`, `content="${data.imageWidth}"`)
       .replace(`content="${DEFAULTS.ogImageHeight}"`, `content="${data.imageHeight}"`)
-      .replace(`content="${DEFAULTS.ogUrl}"`, `content="${data.url}"`);
+      .replace(`content="${DEFAULTS.ogUrl}"`, `content="${data.url}"`)
+      .replace(
+        `<link rel="canonical" href="${DEFAULTS.ogUrl}" />`,
+        `<link rel="canonical" href="${data.url}" />`
+      );
   }
 
   return new Response(html, {
