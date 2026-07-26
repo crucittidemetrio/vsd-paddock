@@ -108,9 +108,11 @@ export const api = {
       call('championships.saveAdjustments', { championship_id, adjustments }),
   },
 
-  standings: {                                                              // ← NEW BLOCK
+  standings: {
     byChampionship: (championship_id) =>
       call('standings.byChampionship', { championship_id }),
+    byDriver: (driver_id) =>
+      call('standings.byDriver', { driver_id }),
   },
   
   reports: {

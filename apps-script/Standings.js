@@ -55,16 +55,13 @@ function handleStandingsByChampionship(payload, ctx) {
 
       // Hybrid: augmenta con statistiche per-gara da RaceResults (W/P/BEST/DNF/GARE)
       // se ci sono risultati importati per questo campionato
-      Logger.log('[Hybrid] rounds.length=' + rounds.length + ' for ' + championshipId);
       if (rounds.length > 0) {
         const allResults = sheetToObjects(SHEETS.RACE_RESULTS);
         const roundRaceIds = {};
         rounds.forEach(r => { roundRaceIds[r.race_id] = true; });
-        Logger.log('[Hybrid] roundRaceIds=' + JSON.stringify(Object.keys(roundRaceIds)));
         const relevantResults = allResults.filter(r =>
           roundRaceIds[r.race_id] && r.session_type === 'race'
         );
-        Logger.log('[Hybrid] relevantResults.length=' + relevantResults.length);
         if (relevantResults.length > 0) {
           classes = mergeRaceStats_(classes, relevantResults);
         }
@@ -285,6 +282,172 @@ function parseLmuStandingsJson_(rawJson) {
     });
 
   return { classes, points_configured: true };
+}
+
+/**
+ * standings.byDriver — Campionati disputati da un pilota VSD.
+ * Cerca il driver in ogni campionato (standings_json o RaceResults)
+ * e ritorna la lista delle partecipazioni con posizione, punti, classe.
+ */
+function handleStandingsByDriver(payload, ctx) {
+  if (!ctx) return fail('Auth richiesto');
+  var driverId = payload && payload.driver_id;
+  if (!driverId) return fail('driver_id mancante');
+
+  // Driver info
+  var drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
+  var driver = null;
+  for (var i = 0; i < drivers.length; i++) {
+    if (drivers[i].driver_id === driverId) { driver = drivers[i]; break; }
+  }
+  if (!driver) return fail('Driver non trovato: ' + driverId);
+
+  // Name map per matching standings_json (nome esterno → driver_id)
+  var nameMap = buildDriverNameMap_();
+
+  // Tutti i campionati
+  var championships = getCachedSheetData_(SHEETS.CHAMPIONSHIPS, 3600);
+
+  // Tutte le gare → mappa championship_id → [race_id]
+  var allRaces = getCachedSheetData_(SHEETS.RACES, 900);
+  var champRaceIds = {};
+  allRaces.forEach(function(r) {
+    if (r.championship_id && r.event_type === 'championship') {
+      if (!champRaceIds[r.championship_id]) champRaceIds[r.championship_id] = [];
+      champRaceIds[r.championship_id].push(r.race_id);
+    }
+  });
+
+  // Risultati del driver su tutte le gare (una sola scansione del foglio)
+  var allResults = sheetToObjects(SHEETS.RACE_RESULTS);
+  var driverResults = allResults.filter(function(r) {
+    return String(r.is_vsd_driver).toUpperCase() === 'TRUE' &&
+           r.driver_id === driverId &&
+           r.session_type === 'race';
+  });
+
+  // Mappa race_id → [results] per lookup veloce
+  var resultsByRaceId = {};
+  driverResults.forEach(function(r) {
+    if (!resultsByRaceId[r.race_id]) resultsByRaceId[r.race_id] = [];
+    resultsByRaceId[r.race_id].push(r);
+  });
+
+  var participations = [];
+
+  championships.forEach(function(chmp) {
+    if (!chmp.id) return;
+    var raceIds = champRaceIds[chmp.id] || [];
+    var storedJson = chmp.standings_json && String(chmp.standings_json).trim();
+
+    if (storedJson) {
+      // Percorso autorevole: cerca il driver nel JSON per nome → driver_id
+      try {
+        var data = JSON.parse(storedJson);
+        if (!Array.isArray(data)) return;
+
+        data.forEach(function(classGroup) {
+          var standings = classGroup.standings || [];
+          standings.forEach(function(s) {
+            var matchedId = matchDriverNameStrict_(s.id, nameMap);
+            if (matchedId !== driverId) return;
+
+            // Stats da RaceResults per questo campionato
+            var champResults = [];
+            raceIds.forEach(function(rid) {
+              if (resultsByRaceId[rid]) champResults = champResults.concat(resultsByRaceId[rid]);
+            });
+
+            var races_count = 0, wins = 0, podiums = 0;
+            champResults.forEach(function(r) {
+              var isDns = String(r.dns).toUpperCase() === 'TRUE';
+              var isDnf = String(r.dnf).toUpperCase() === 'TRUE';
+              var pos = Number(r.finish_position);
+              if (isDns) return;
+              races_count++;
+              if (isDnf) return;
+              if (pos === 1) wins++;
+              if (pos <= 3) podiums++;
+            });
+
+            participations.push({
+              championship_id: chmp.id,
+              championship_name: chmp.name,
+              sim: chmp.sim,
+              season: chmp.season,
+              status: chmp.status,
+              format: chmp.format || '',
+              banner_url: chmp.banner_url || '',
+              class_name: String(classGroup.carClass || 'Unknown'),
+              position: Number(s.position) || null,
+              total_points: Number(s.actualPoints) || Number(s.championshipScore) || 0,
+              races_count: races_count,
+              wins: wins,
+              podiums: podiums,
+              source: 'standings_json',
+            });
+          });
+        });
+      } catch(e) {
+        Logger.log('[byDriver] parse error for ' + chmp.id + ': ' + e.message);
+      }
+
+    } else if (raceIds.length > 0) {
+      // Percorso computed: aggrega da RaceResults
+      var champResults = [];
+      raceIds.forEach(function(rid) {
+        if (resultsByRaceId[rid]) champResults = champResults.concat(resultsByRaceId[rid]);
+      });
+      if (champResults.length === 0) return;
+
+      // Raggruppa per car_class
+      var classTotals = {};
+      champResults.forEach(function(r) {
+        var cls = r.car_class || 'Unknown';
+        if (!classTotals[cls]) classTotals[cls] = { points: 0, races_count: 0, wins: 0, podiums: 0 };
+        var isDns = String(r.dns).toUpperCase() === 'TRUE';
+        var isDnf = String(r.dnf).toUpperCase() === 'TRUE';
+        var pos = Number(r.finish_position);
+        if (isDns) return;
+        classTotals[cls].races_count++;
+        classTotals[cls].points += Number(r.point_total) || 0;
+        if (isDnf) return;
+        if (pos === 1) classTotals[cls].wins++;
+        if (pos <= 3) classTotals[cls].podiums++;
+      });
+
+      Object.keys(classTotals).forEach(function(cls) {
+        var stats = classTotals[cls];
+        participations.push({
+          championship_id: chmp.id,
+          championship_name: chmp.name,
+          sim: chmp.sim,
+          season: chmp.season,
+          status: chmp.status,
+          format: chmp.format || '',
+          banner_url: chmp.banner_url || '',
+          class_name: cls,
+          position: null,
+          total_points: stats.points,
+          races_count: stats.races_count,
+          wins: stats.wins,
+          podiums: stats.podiums,
+          source: 'computed',
+        });
+      });
+    }
+  });
+
+  // Ordina: completed → active → upcoming → draft, poi season desc
+  var statusOrder = { completed: 0, active: 1, upcoming: 2, draft: 3 };
+  participations.sort(function(a, b) {
+    var ao = statusOrder[a.status] !== undefined ? statusOrder[a.status] : 4;
+    var bo = statusOrder[b.status] !== undefined ? statusOrder[b.status] : 4;
+    if (ao !== bo) return ao - bo;
+    return String(b.season).localeCompare(String(a.season));
+  });
+
+  return ok({ driver_id: driverId, participations: participations });
 }
 
 /**

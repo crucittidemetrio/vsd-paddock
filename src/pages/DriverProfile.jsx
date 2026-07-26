@@ -5,6 +5,7 @@ import { useBestLaps } from '../hooks/useBestLaps';
 import { useRaces, useReports } from '../hooks/useRaces';
 import { useMyRecentRaceResults } from '../hooks/useRaceResults';
 import { useTracks, useCars } from '../hooks/useLookups';
+import { useChampionshipsByDriver } from '../hooks/useChampionshipsByDriver';
 import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
 import StatusDot from '../components/shared/StatusDot';
@@ -26,6 +27,7 @@ export default function DriverProfile() {
   const { data: tracks = [] } = useTracks();
   const { data: cars = [] } = useCars();
   const { data: raceResultsData } = useMyRecentRaceResults(driverId, 200);
+  const { data: champData } = useChampionshipsByDriver(driverId);
   const raceResults = raceResultsData?.results || [];
   const { data: allRaces } = useRaces();
   const racesById = useMemo(() => {
@@ -306,6 +308,9 @@ export default function DriverProfile() {
       {/* CLASSI DOMINANTI */}
       <MyDominantClassesWidget driverId={driverId} />
 
+      {/* CAMPIONATI */}
+      <ChampionshipsSection participations={champData?.participations} />
+
       {/* BEST LAPS PERSONALI */}
       <section className="profile-section">
         <div className="section-head">
@@ -455,6 +460,77 @@ export default function DriverProfile() {
         )}
       </section>
     </div>
+  );
+}
+
+const STATUS_LABEL_CHMP = {
+  completed: 'Completato',
+  active: 'In corso',
+  upcoming: 'Prossimamente',
+  draft: 'Bozza',
+};
+
+function ChampionshipsSection({ participations }) {
+  if (!participations || participations.length === 0) return null;
+
+  return (
+    <section className="profile-section">
+      <div className="section-head">
+        <h3 className="section-title">Campionati</h3>
+        <span className="section-meta">{participations.length} partecipazioni</span>
+      </div>
+      <div className="data-table-wrap">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Campionato</th>
+              <th>Stagione</th>
+              <th>Classe</th>
+              <th className="num">Pos.</th>
+              <th className="num">Punti</th>
+              <th className="num">Gare</th>
+              <th className="num">V</th>
+              <th className="num">P</th>
+              <th>Stato</th>
+            </tr>
+          </thead>
+          <tbody>
+            {participations.map((p, i) => (
+              <tr key={p.championship_id + p.class_name + i}>
+                <td className="cell-race">
+                  <Link
+                    to={`/championships/${p.championship_id}`}
+                    className="cell-race-link"
+                  >
+                    {p.championship_name}
+                  </Link>
+                </td>
+                <td>{p.season}</td>
+                <td>
+                  <span className="chmp-class-badge">{p.class_name}</span>
+                </td>
+                <td className="num">
+                  {p.position != null ? (
+                    <span className={`finish-pos${p.position <= 3 ? ' is-podium' : ''}`}>
+                      P{p.position}
+                    </span>
+                  ) : '—'}
+                </td>
+                <td className="num chmp-pts">{p.total_points}</td>
+                <td className="num">{p.races_count || '—'}</td>
+                <td className="num">{p.wins || '—'}</td>
+                <td className="num">{p.podiums || '—'}</td>
+                <td>
+                  <span className={`chmp-status chmp-status-${p.status}`}>
+                    {STATUS_LABEL_CHMP[p.status] || p.status}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 

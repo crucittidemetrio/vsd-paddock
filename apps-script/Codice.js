@@ -171,6 +171,7 @@ const ACTIONS = {
   // Championships (Wave 9.8)
   'championships.list': handleChampionshipsList,   // ← NEW (Wave 9.8)
   'standings.byChampionship': handleStandingsByChampionship,
+  'standings.byDriver':       handleStandingsByDriver,
   'championships.importStandings':   handleChampionshipsImportStandings,
   'championships.saveAdjustments':   handleChampionshipsSaveAdjustments,
   // ...

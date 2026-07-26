@@ -496,3 +496,50 @@
   border-color: var(--vsd-cyan);
   color: var(--vsd-cyan);
 }
+
+/* ── CHAMPIONSHIPS SECTION ── */
+.chmp-class-badge {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.06em;
+  color: var(--vsd-cyan);
+  background: rgba(0, 212, 255, 0.08);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: var(--r-sm);
+  padding: 1px 6px;
+  font-family: var(--font-mono);
+}
+
+.chmp-pts {
+  font-weight: var(--fw-bold);
+  color: var(--vsd-orange);
+  font-variant-numeric: tabular-nums;
+}
+
+.chmp-status {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  border: 1px solid transparent;
+}
+.chmp-status-completed {
+  color: var(--color-text-muted);
+  border-color: var(--color-border);
+  background: var(--vsd-bg-hover);
+}
+.chmp-status-active {
+  color: #4ade80;
+  border-color: rgba(74, 222, 128, 0.3);
+  background: rgba(74, 222, 128, 0.06);
+}
+.chmp-status-upcoming {
+  color: var(--vsd-cyan);
+  border-color: rgba(0, 212, 255, 0.3);
+  background: rgba(0, 212, 255, 0.06);
+}
+.chmp-status-draft {
+  color: var(--color-text-dim);
+  border-color: var(--color-border);
+}
