@@ -318,6 +318,10 @@
 .cmp-lap-track {
   font-weight: var(--fw-medium);
   color: var(--color-text);
+  text-decoration: none;
+}
+a.cmp-lap-track:hover {
+  color: var(--vsd-cyan);
 }
 
 .cmp-lap-sim {

@@ -1,9 +1,10 @@
 import { useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { useDrivers } from '../hooks/useRoster';
 import { useBestLaps } from '../hooks/useBestLaps';
 import { useMyRecentRaceResults } from '../hooks/useRaceResults';
 import { useTracks, useCars } from '../hooks/useLookups';
+import { useChampionshipsByDriver } from '../hooks/useChampionshipsByDriver';
 import Avatar from '../components/shared/Avatar';
 import { formatTrack, formatCar } from '../utils/format';
 import './Compare.css';
@@ -63,6 +64,36 @@ function computeH2H(resultsA, resultsB) {
     }
   });
   return { aWins, bWins, ties, total: aWins + bWins + ties };
+}
+
+function computeSharedChampionships(partsA, partsB) {
+  const byChampB = new Map();
+  (partsB || []).forEach(p => {
+    if (!byChampB.has(p.championship_id)) byChampB.set(p.championship_id, []);
+    byChampB.get(p.championship_id).push(p);
+  });
+
+  const shared = [];
+  (partsA || []).forEach(pA => {
+    const candidates = byChampB.get(pA.championship_id);
+    if (!candidates || candidates.length === 0) return;
+    // Preferisci match sulla stessa classe, altrimenti prendi il primo disponibile
+    const pB = candidates.find(c => c.class_name === pA.class_name) || candidates[0];
+    shared.push({
+      championship_id: pA.championship_id,
+      championship_name: pA.championship_name,
+      season: pA.season,
+      status: pA.status,
+      classA: pA.class_name,
+      classB: pB.class_name,
+      posA: pA.position,
+      posB: pB.position,
+      ptsA: pA.total_points,
+      ptsB: pB.total_points,
+    });
+  });
+
+  return shared;
 }
 
 function computeLapComparison(lapsA, lapsB) {
@@ -176,6 +207,9 @@ export default function Compare() {
   const { data: lapsA = [] } = useBestLaps(aId ? { driver_id: aId } : {});
   const { data: lapsB = [] } = useBestLaps(bId ? { driver_id: bId } : {});
 
+  const { data: champDataA } = useChampionshipsByDriver(aId);
+  const { data: champDataB } = useChampionshipsByDriver(bId);
+
   const driverMap = useMemo(() => {
     const m = {};
     (allDrivers || []).forEach(d => { m[d.driver_id] = d; });
@@ -200,6 +234,10 @@ export default function Compare() {
   const statsB = useMemo(() => (bId && resultsB.length) ? computeStats(resultsB) : null, [resultsB, bId]);
   const h2h    = useMemo(() => both ? computeH2H(resultsA, resultsB) : null, [resultsA, resultsB, both]);
   const lapCmp = useMemo(() => both ? computeLapComparison(lapsA, lapsB) : [], [lapsA, lapsB, both]);
+  const sharedChamps = useMemo(
+    () => both ? computeSharedChampionships(champDataA?.participations, champDataB?.participations) : [],
+    [champDataA, champDataB, both]
+  );
 
   const nameA = dA?.display_name?.split(' ')[0] || 'A';
   const nameB = dB?.display_name?.split(' ')[0] || 'B';
@@ -283,6 +321,60 @@ export default function Compare() {
                   lowerIsBetter
                 />
               </div>
+            </div>
+          )}
+
+          {/* ── Campionati in comune ── */}
+          {sharedChamps.length > 0 && (
+            <div className="cmp-section">
+              <div className="cmp-section-title">Campionati in Comune · {sharedChamps.length}</div>
+              <div className="cmp-laps-wrap">
+                <table className="cmp-laps">
+                  <thead>
+                    <tr>
+                      <th>Campionato</th>
+                      <th>Classe</th>
+                      <th className="cmp-lap-col cmp-lap-col--a">{nameA}</th>
+                      <th className="cmp-lap-col cmp-lap-col--b">{nameB}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sharedChamps.map(c => {
+                      const aBetter = c.posA != null && c.posB != null && c.posA < c.posB;
+                      const bBetter = c.posA != null && c.posB != null && c.posB < c.posA;
+                      const sameClass = c.classA === c.classB;
+                      return (
+                        <tr key={c.championship_id}>
+                          <td>
+                            <Link to={`/championships/${c.championship_id}`} className="cmp-lap-track">
+                              {c.championship_name}
+                            </Link>
+                            <div className="cmp-lap-sim">Stagione {c.season}</div>
+                          </td>
+                          <td className="cmp-lap-car">
+                            {sameClass ? c.classA : `${c.classA} / ${c.classB}`}
+                          </td>
+                          <td className={`cmp-lap-time ${aBetter ? 'is-faster' : ''}`}>
+                            {c.posA != null ? `P${c.posA}` : '—'}
+                            <div className="cmp-lap-sim">{c.ptsA} pt</div>
+                          </td>
+                          <td className={`cmp-lap-time cmp-lap-time--b ${bBetter ? 'is-faster' : ''}`}>
+                            {c.posB != null ? `P${c.posB}` : '—'}
+                            <div className="cmp-lap-sim">{c.ptsB} pt</div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {sharedChamps.length === 0 && (champDataA || champDataB) && (
+            <div className="cmp-section">
+              <div className="cmp-section-title">Campionati in Comune</div>
+              <p className="cmp-empty">Nessun campionato disputato da entrambi i piloti.</p>
             </div>
           )}
 
