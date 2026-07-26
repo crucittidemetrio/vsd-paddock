@@ -1,5 +1,8 @@
 {
   "rewrites": [
+    { "source": "/ue144", "destination": "/api/og?route=ue144" },
+    { "source": "/joinus", "destination": "/api/og?route=joinus" },
+    { "source": "/championships", "destination": "/api/og?route=championships" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
