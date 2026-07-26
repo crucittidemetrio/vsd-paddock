@@ -10,6 +10,7 @@ import { useRaceResults } from '../hooks/useRaceResults';
 import { useTracks, useCars } from '../hooks/useLookups';
 import { useDrivers } from '../hooks/useRoster';
 import { formatTrackInfo, formatCarInfo } from '../utils/format';
+import { usePageMeta } from '../hooks/usePageMeta';
 import RaceResultsSection from '../components/race/RaceResultsSection';
 import './Page.css';
 import './RaceDetail.css';
@@ -306,6 +307,11 @@ export default function RaceDetail() {
     return m;
   }, [driversRaw]);
   const { data: raceResultsData } = useRaceResults({ race_id: raceId });
+
+  usePageMeta(race ? {
+    title: `${race.race_name || formatTrackInfo(race.track_id, tracks)?.name || 'Gara'} — VSD Paddock`,
+    description: `Risultati, classifica e best lap${race.round ? ` — Round ${race.round}` : ''} di ${race.championship || 'questa gara'} su VSD Paddock.`,
+  } : {});
 
   function refreshRace() {
     queryClient.invalidateQueries({ queryKey: ['race', raceId] });

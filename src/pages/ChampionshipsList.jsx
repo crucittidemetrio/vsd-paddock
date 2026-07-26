@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useChampionships } from '../hooks/useChampionships';
+import { usePageMeta } from '../hooks/usePageMeta';
 import styles from './ChampionshipsList.module.css';
 
 const STATUS_ORDER = ['active', 'upcoming', 'completed', 'draft'];
@@ -25,6 +26,11 @@ function formatDate(iso) {
 
 export default function ChampionshipsList() {
   const { data: championships, isLoading } = useChampionships();
+
+  usePageMeta({
+    title: 'Campionati — VSD Paddock',
+    description: 'Tutti i campionati di Virtual Sim-Driver: classifiche, round e risultati in tempo reale.',
+  });
 
   if (isLoading) {
     return <div className={styles.page}>Caricamento campionati…</div>;

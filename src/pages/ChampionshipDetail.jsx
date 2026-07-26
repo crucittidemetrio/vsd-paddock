@@ -7,6 +7,7 @@ import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
 import { formatDate, formatTrack } from '../utils/format';
 import { api } from '../api/client';
+import { usePageMeta } from '../hooks/usePageMeta';
 import styles from './ChampionshipDetail.module.css';
 
 const STATUS_LABEL = {
@@ -23,6 +24,12 @@ export default function ChampionshipDetail() {
   const { isStaff } = useAuth();
 
   const [selectedClass, setSelectedClass] = useState(null);
+
+  const champMeta = data?.championship;
+  usePageMeta(champMeta ? {
+    title: `${champMeta.name} — VSD Paddock`,
+    description: `Classifica, round e risultati di ${champMeta.name}${champMeta.season ? ` (${champMeta.season})` : ''} — Virtual Sim-Driver.`,
+  } : {});
 
   const driverMap = useMemo(() => {
     const m = {};

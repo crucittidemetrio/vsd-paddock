@@ -6,6 +6,7 @@ import { useRaces, useReports } from '../hooks/useRaces';
 import { useMyRecentRaceResults } from '../hooks/useRaceResults';
 import { useTracks, useCars } from '../hooks/useLookups';
 import { useChampionshipsByDriver } from '../hooks/useChampionshipsByDriver';
+import { usePageMeta } from '../hooks/usePageMeta';
 import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
 import StatusDot from '../components/shared/StatusDot';
@@ -30,6 +31,12 @@ export default function DriverProfile() {
   const { data: champData } = useChampionshipsByDriver(driverId);
   const raceResults = raceResultsData?.results || [];
   const { data: allRaces } = useRaces();
+
+  usePageMeta(driver ? {
+    title: `${driver.display_name} — VSD Paddock`,
+    description: `Statistiche, campionati e best lap di ${driver.display_name}, pilota Virtual Sim-Driver.`,
+  } : {});
+
   const racesById = useMemo(() => {
     const m = {};
     (allRaces || []).forEach(r => { m[r.race_id] = r; });
