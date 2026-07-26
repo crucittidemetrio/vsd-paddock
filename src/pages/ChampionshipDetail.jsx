@@ -115,7 +115,9 @@ export default function ChampionshipDetail() {
       {/* Banner se punti non configurati */}
       {!points_configured && rounds.length > 0 && (
         <div className={styles.warningBanner}>
-          ⚠️ Punti non configurati nel JSON sorgente. La classifica usa solo i tie-break (vittorie → podi → miglior piazzamento).
+          {data.source === 'computed'
+            ? '⚠️ Nessun risultato di gara ancora disputato/importato. La classifica si popolerà automaticamente man mano che le gare vengono giocate e importate.'
+            : '⚠️ Punti non configurati nel JSON importato. La classifica usa solo i tie-break (vittorie → podi → miglior piazzamento).'}
         </div>
       )}
 
