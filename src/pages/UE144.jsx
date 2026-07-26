@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useChampionshipStandings } from '../hooks/useChampionshipStandings';
 import { useDrivers } from '../hooks/useRoster';
+import { usePageMeta } from '../hooks/usePageMeta';
 import Avatar from '../components/shared/Avatar';
 import styles from './UE144.module.css';
 
@@ -118,6 +119,11 @@ const CALENDAR = [
 ];
 
 export default function UE144() {
+  usePageMeta({
+    title: 'Ultimate Endurance 144\' — Campionato Le Mans Ultimate Aperto a Tutti | VSD',
+    description: 'Campionato endurance gratuito su Le Mans Ultimate (LMU): 6 round, 3 classi (Hypercar, LMP2, LMGT3), gare da 144 minuti a pilota singolo. Aperto a tutti, nessun requisito di membership. Iscriviti su SimGrid.',
+  });
+
   return (
     <div className={styles.page}>
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useShowcase } from '../hooks/useShowcase';
+import { usePageMeta } from '../hooks/usePageMeta';
 import './JoinUs.css';
 import Logo from '../components/shared/Logo';
 import totalPaintLogo from '../assets/total-paint-logo.webp';
@@ -55,6 +56,11 @@ function formatDuration(minutes) {
 }
 
 export default function JoinUs() {
+  usePageMeta({
+    title: 'Unisciti a VSD — Virtual Sim Driver | Team Italiano di Sim Racing',
+    description: 'Candidati per entrare nel team Virtual Sim Driver: sim racing endurance su Le Mans Ultimate, iRacing e Assetto Corsa Evo. Community italiana, campionati, eventi, fair play.',
+  });
+
   const { data, isLoading } = useShowcase();
 
   if (isLoading) {
