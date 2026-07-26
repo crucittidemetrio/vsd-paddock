@@ -8,6 +8,26 @@ import totalPaintLogo from '../assets/total-paint-logo.webp';
 const DISCORD_INVITE = 'https://discord.gg/hdt8uHEfsy';
 const JOIN_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScA6mFauERcpKetn0T58LMPioRZHJ1W5PQpl9e9ytV5QB31Tw/viewform';
 
+// Testimonianze reali di piloti — messaggi spontanei postati su Discord
+// a fine campionato, riportati con il loro consenso implicito (pubblici nel server).
+const TESTIMONIALS = [
+  {
+    quote: 'Gare dure ma sempre corrette. Ho visto sempre molta attenzione, e non è una cosa consueta.',
+    name: 'Renzo O.',
+    context: 'Toyota GR86 "Zero Cost" Championship',
+  },
+  {
+    quote: 'Alla mia prima esperienza in un campionato: siete davvero tutti molto forti e soprattutto corretti.',
+    name: 'Daniele F.',
+    context: 'Toyota GR86 "Zero Cost" Championship',
+  },
+  {
+    quote: 'Grazie a tutti i partecipanti e a VSD per l\'organizzazione.',
+    name: 'Giovanni P.',
+    context: 'Toyota GR86 "Zero Cost" Championship',
+  },
+];
+
 // Funzione per formattare la data della gara
 function formatRaceDate(iso) {
   if (!iso) return '—';
@@ -195,6 +215,24 @@ export default function JoinUs() {
           </div>
         </section>
       )}
+
+      {/* TESTIMONIANZE */}
+      <section className="joinus-section">
+        <div className="joinus-section-head">
+          <div className="joinus-section-eyebrow">VOCI DAL PADDOCK</div>
+          <h2 className="joinus-section-title">Cosa dicono i piloti</h2>
+        </div>
+        <div className="joinus-testimonials-grid">
+          {TESTIMONIALS.map((t, i) => (
+            <div key={i} className="joinus-testimonial-card">
+              <div className="joinus-testimonial-mark">"</div>
+              <p className="joinus-testimonial-quote">{t.quote}</p>
+              <div className="joinus-testimonial-name">{t.name}</div>
+              <div className="joinus-testimonial-context">{t.context}</div>
+            </div>
+          ))}
+        </div>
+      </section>
 
       {/* COME UNIRSI */}
       <section className="joinus-section joinus-join-section" id="unisciti">

@@ -428,6 +428,63 @@
   border-radius: var(--r-sm);
 }
 
+/* TESTIMONIANZE */
+
+.joinus-testimonials-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-4);
+}
+
+.joinus-testimonial-card {
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg, 12px);
+  padding: var(--sp-6) var(--sp-5) var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  transition: all var(--t-fast);
+}
+
+.joinus-testimonial-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--vsd-cyan);
+}
+
+.joinus-testimonial-mark {
+  font-family: var(--font-display);
+  font-size: 3rem;
+  line-height: 1;
+  color: var(--vsd-cyan);
+  opacity: 0.35;
+  margin-bottom: var(--sp-2);
+}
+
+.joinus-testimonial-quote {
+  font-size: var(--fs-sm);
+  line-height: 1.6;
+  color: var(--color-text);
+  font-style: italic;
+  margin: 0 0 var(--sp-4);
+  flex: 1;
+}
+
+.joinus-testimonial-name {
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+}
+
+.joinus-testimonial-context {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--color-text-dim);
+  margin-top: 2px;
+}
+
 /* COME UNIRSI */
 
 .joinus-join-section {
@@ -594,6 +651,9 @@
     grid-template-columns: repeat(3, 1fr);
   }
   .joinus-races-list {
+    grid-template-columns: 1fr;
+  }
+  .joinus-testimonials-grid {
     grid-template-columns: 1fr;
   }
 }
