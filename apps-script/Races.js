@@ -163,6 +163,57 @@ function handleRacesUpdatePoster(payload, ctx) {
 }
 
 /**
+ * races.updateGallery — admin only.
+ * Imposta la lista di URL screenshot (galleria) per una gara.
+ * Ogni URL viene normalizzato (es. Google Drive share link → diretto)
+ * e validato. Sovrascrive sempre l'intera lista.
+ */
+function handleRacesUpdateGallery(payload, ctx) {
+  if (!ctx) return fail('Auth richiesto');
+  if (!ctx.isStaff) return fail('Forbidden: solo staff o admin può modificare la galleria');
+  if (!payload || !payload.race_id) return fail('race_id mancante');
+
+  const rawUrls = Array.isArray(payload.gallery_urls) ? payload.gallery_urls : [];
+  const cleanUrls = [];
+  for (const raw of rawUrls) {
+    const trimmed = String(raw || '').trim();
+    if (!trimmed) continue;
+    const normalized = normalizeDrivePosterUrl_(trimmed);
+    if (!/^https?:\/\//.test(normalized)) {
+      return fail('URL non valido: "' + trimmed + '" deve iniziare con http:// o https://');
+    }
+    cleanUrls.push(normalized);
+  }
+  if (cleanUrls.length > 20) return fail('Massimo 20 immagini per galleria');
+
+  const sheet = getSheet(SHEETS.RACES);
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const raceIdIdx = headers.indexOf('race_id');
+  const galleryIdx = headers.indexOf('gallery_urls');
+
+  if (raceIdIdx < 0) return fail('Colonna race_id mancante');
+  if (galleryIdx < 0) return fail('Colonna gallery_urls mancante. Esegui migrate_addGalleryUrlsColumn');
+
+  let foundRow = -1;
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][raceIdIdx] === payload.race_id) {
+      foundRow = i + 1;
+      break;
+    }
+  }
+  if (foundRow === -1) return fail('Gara non trovata: ' + payload.race_id);
+
+  sheet.getRange(foundRow, galleryIdx + 1).setValue(cleanUrls.join(','));
+  invalidateSheetCache_(SHEETS.RACES);
+
+  return ok({
+    race_id: payload.race_id,
+    gallery_urls: cleanUrls,
+  });
+}
+
+/**
  * Normalizza URL Google Drive "view" in URL diretto utilizzabile come image src.
  * Trasforma:
  *   https://drive.google.com/file/d/FILE_ID/view?usp=sharing

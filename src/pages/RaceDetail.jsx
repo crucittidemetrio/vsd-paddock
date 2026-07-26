@@ -207,6 +207,91 @@ function ReportCard({ report, drivers }) {
   );
 }
 
+function GallerySection({ race, isStaff, onUpdated }) {
+  const urls = (race.gallery_urls || '')
+    .split(',')
+    .map(u => u.trim())
+    .filter(Boolean);
+
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState(urls.join('\n'));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const [lightbox, setLightbox] = useState(null);
+
+  async function handleSave() {
+    setSaving(true);
+    setError(null);
+    try {
+      const newUrls = text.split('\n').map(u => u.trim()).filter(Boolean);
+      await api.races.updateGallery({ race_id: race.race_id, gallery_urls: newUrls });
+      setEditing(false);
+      onUpdated?.();
+    } catch (err) {
+      setError(err.message || 'Errore salvataggio galleria');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  if (!isStaff && urls.length === 0) return null;
+
+  return (
+    <section className="rd-section">
+      <div className="rd-gallery-header">
+        <h2 className="rd-section-title">📷 Galleria</h2>
+        {isStaff && !editing && (
+          <button className="rd-gallery-edit-btn" onClick={() => { setText(urls.join('\n')); setEditing(true); }}>
+            {urls.length > 0 ? 'Modifica' : '+ Aggiungi foto'}
+          </button>
+        )}
+      </div>
+
+      {editing ? (
+        <div className="rd-gallery-editor">
+          <textarea
+            className="rd-gallery-textarea"
+            value={text}
+            onChange={e => setText(e.target.value)}
+            placeholder="Un URL per riga (Google Drive, Discord, Imgur...)"
+            rows={6}
+          />
+          <div className="rd-gallery-editor-actions">
+            <button className="rd-gallery-save-btn" disabled={saving} onClick={handleSave}>
+              {saving ? 'Salvataggio…' : 'Salva'}
+            </button>
+            <button className="rd-gallery-cancel-btn" disabled={saving} onClick={() => setEditing(false)}>
+              Annulla
+            </button>
+          </div>
+          {error && <div className="rd-gallery-error">{error}</div>}
+        </div>
+      ) : urls.length > 0 ? (
+        <div className="rd-gallery-grid">
+          {urls.map((url, i) => (
+            <button
+              key={url + i}
+              className="rd-gallery-thumb"
+              onClick={() => setLightbox(url)}
+              type="button"
+            >
+              <img src={url} alt={`Scatto gara ${i + 1}`} loading="lazy" />
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="rd-state">Nessuna foto ancora caricata.</div>
+      )}
+
+      {lightbox && (
+        <div className="rd-lightbox" onClick={() => setLightbox(null)}>
+          <img src={lightbox} alt="" />
+        </div>
+      )}
+    </section>
+  );
+}
+
 export default function RaceDetail() {
   const { raceId } = useParams();
   const queryClient = useQueryClient();
@@ -452,6 +537,8 @@ export default function RaceDetail() {
           </RequireTier>
         </section>
       )}
+
+      <GallerySection race={race} isStaff={isStaff} onUpdated={refreshRace} />
     </div>
   );
 }

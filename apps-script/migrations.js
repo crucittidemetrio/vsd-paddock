@@ -187,3 +187,28 @@ function migrate_addRaceNumberColumn() {
   sheet.getRange(1, newColIdx).setValue('race_number');
   Logger.log('✅ Colonna `race_number` aggiunta a Races (colonna #' + newColIdx + ')');
 }
+
+/**
+ * migrate_addGalleryUrlsColumn
+ * Aggiunge la colonna `gallery_urls` al foglio Races.
+ * Contiene una lista di URL immagini (screenshot gara) separati da virgola,
+ * stesso pattern CSV usato per preferred_sims/specialties su Drivers.
+ * Idempotente.
+ */
+function migrate_addGalleryUrlsColumn() {
+  const ss = SpreadsheetApp.openById('1ADUq7CRy0_PtPqbPYS42iCNgpdxZrNlSMY3HX6T8XQA');
+  const sheet = ss.getSheetByName('Races');
+  if (!sheet) { Logger.log('❌ Tab Races non trovato'); return; }
+
+  const lastCol = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+  if (headers.indexOf('gallery_urls') !== -1) {
+    Logger.log('⏭️  Colonna `gallery_urls` già esistente, migration skippata');
+    return;
+  }
+
+  const newColIdx = lastCol + 1;
+  sheet.getRange(1, newColIdx).setValue('gallery_urls');
+  Logger.log('✅ Colonna `gallery_urls` aggiunta a Races (colonna #' + newColIdx + ')');
+}

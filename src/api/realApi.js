@@ -214,6 +214,8 @@ export async function callApi(action, payload = {}, ctx = null) {
         return await showcaseSummaryAdapter(payload);
       case 'races.updatePoster':
         return await racesUpdatePosterAdapter(payload, token);
+      case 'races.updateGallery':
+        return await racesUpdateGalleryAdapter(payload, token);
       case 'endurance.auditions.list':
         return await enduranceAuditionsListAdapter(payload, token);
       case 'endurance.auditions.get':
@@ -548,6 +550,15 @@ async function championshipsImportStandingsAdapter(payload, token) {
  */
 async function racesUpdatePosterAdapter(payload, token) {
   const res = await postToBackend('races.updatePoster', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: races.updateGallery({ race_id, gallery_urls: [...] }) → { race_id, gallery_urls }
+ */
+async function racesUpdateGalleryAdapter(payload, token) {
+  const res = await postToBackend('races.updateGallery', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
 }

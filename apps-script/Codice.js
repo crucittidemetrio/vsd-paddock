@@ -167,6 +167,7 @@ const ACTIONS = {
   'raceResults.list': handleRaceResultsList,
    'raceResults.import': handleRaceResultsImport,   // ← NEW (Wave 9.8)
    'races.updatePoster': handleRacesUpdatePoster,
+  'races.updateGallery': handleRacesUpdateGallery,
 
   // Championships (Wave 9.8)
   'championships.list': handleChampionshipsList,   // ← NEW (Wave 9.8)

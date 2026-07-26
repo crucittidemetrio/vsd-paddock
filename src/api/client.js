@@ -89,6 +89,8 @@ export const api = {
     get: (race_id) => call('races.get', { race_id }),
      updatePoster: ({ race_id, poster_url }) =>
       call('races.updatePoster', { race_id, poster_url }),
+     updateGallery: ({ race_id, gallery_urls }) =>
+      call('races.updateGallery', { race_id, gallery_urls }),
      add: (payload) => call('races.add', payload),
     update: (payload) => call('races.update', payload),
     remove: (race_id) => call('races.remove', { race_id }),
