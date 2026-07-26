@@ -463,6 +463,35 @@
 .form-dim    { background: rgba(255,255,255,0.03);   color: var(--color-text-dim);   border: 1px solid var(--color-border); }
 .form-dnf    { background: rgba(239, 51, 64, 0.12);  color: var(--vsd-red);    border: 1px solid rgba(239, 51, 64, 0.25); }
 
+/* ========== TRAGUARDI (ACHIEVEMENTS) ========== */
+.achievements-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2, 8px);
+}
+
+.achievement-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--r-pill, 999px);
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.02em;
+}
+
+.achievement-icon {
+  font-size: 1em;
+  line-height: 1;
+}
+
+.achievement-gold   { background: rgba(245, 166, 35, 0.16); color: var(--vsd-orange); border: 1px solid rgba(245, 166, 35, 0.35); }
+.achievement-orange { background: rgba(255, 138, 76, 0.14); color: #ff8a4c; border: 1px solid rgba(255, 138, 76, 0.3); }
+.achievement-cyan    { background: rgba(0, 217, 255, 0.12); color: var(--vsd-cyan); border: 1px solid rgba(0, 217, 255, 0.25); }
+.achievement-muted  { background: rgba(255,255,255,0.06); color: var(--color-text-muted); border: 1px solid var(--color-border); }
+
 /* ========== RACE HISTORY ========== */
 .cell-race-link {
   color: var(--vsd-cyan);

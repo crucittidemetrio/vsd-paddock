@@ -173,6 +173,50 @@ export default function DriverProfile() {
     0
   );
 
+  // ── TRAGUARDI (achievements) ──
+  // Calcolati client-side da dati già disponibili, nessuna chiamata extra.
+  // Mostrati solo se guadagnati (nessun badge "bloccato").
+  const titlesWon = (champData?.participations || []).filter(p => p.position === 1).length;
+
+  // Streak podi consecutivi: historyRaces è già ordinato per data desc.
+  let podiumStreak = 0;
+  for (const r of historyRaces) {
+    if (!r.dnf && typeof r.finish_position === 'number' && r.finish_position <= 3) {
+      podiumStreak++;
+    } else {
+      break;
+    }
+  }
+
+  // Pilota pulito: nessun DNF nelle ultime 10 gare disputate.
+  const last10 = historyRaces.slice(0, 10);
+  const cleanStreak = last10.length >= 10 && last10.every(r => !r.dnf);
+
+  // Veterano: soglia più alta raggiunta.
+  const veteranTier =
+    racesCount >= 50 ? { label: 'Veterano', threshold: 50 } :
+    racesCount >= 25 ? { label: 'Esperto', threshold: 25 } :
+    racesCount >= 10 ? { label: 'Attivo', threshold: 10 } :
+    null;
+
+  const achievements = [];
+  if (titlesWon > 0) {
+    achievements.push({
+      icon: '👑',
+      label: titlesWon === 1 ? 'Campione' : `Campione ×${titlesWon}`,
+      tone: 'gold',
+    });
+  }
+  if (podiumStreak >= 3) {
+    achievements.push({ icon: '🔥', label: `Serie Podi ×${podiumStreak}`, tone: 'orange' });
+  }
+  if (cleanStreak) {
+    achievements.push({ icon: '🧊', label: 'Pilota Pulito', tone: 'cyan' });
+  }
+  if (veteranTier) {
+    achievements.push({ icon: '🏁', label: `${veteranTier.label} (${racesCount})`, tone: 'muted' });
+  }
+
   return (
     <div className="page">
       <div className="profile-back">
@@ -274,6 +318,18 @@ export default function DriverProfile() {
         />
         <StatCard label="Membro dal" value={driver.join_date?.split('-')[0] || '—'} sub="anno entrata" />
       </div>
+
+      {/* TRAGUARDI */}
+      {achievements.length > 0 && (
+        <div className="achievements-wrap">
+          {achievements.map(a => (
+            <span key={a.label} className={`achievement-badge achievement-${a.tone}`}>
+              <span className="achievement-icon">{a.icon}</span>
+              {a.label}
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* FORMA RECENTE */}
       {historyRaces.length > 0 && (
