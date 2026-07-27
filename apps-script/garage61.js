@@ -426,20 +426,26 @@ function garage61AddMissingTracks() {
 // ═══════════════════════════════════════════════════════════
 
 /**
- * Individua i tracciati IRC su cui il team ha effettivamente girato
- * (storico completo via /laps, group=none, nessun filtro tracks) ma
+ * Individua i tracciati IRC su cui il team ha effettivamente girato ma
  * che non sono ancora mappati in Tracks.
  *
- * Limite: garage61FetchAll_ si ferma a 5000 lap (50 pagine × 100). Se lo
- * storico del team è più lungo, tracciati usati solo in lap molto
- * datati potrebbero non emergere: il log segnala se il cap è stato
- * raggiunto.
+ * Usa /teams/{slug}/statistics invece di /laps: quest'ultimo richiede
+ * obbligatoriamente il parametro "tracks" lato Garage61 (errore 400 senza),
+ * quindi non permette di chiedere "tutti i tracciati mai guidati" in una
+ * volta. Le statistiche di team invece aggregano per auto/tracciato/
+ * giorno/pilota senza richiedere di sapere già quali tracciati cercare.
  *
- * @returns {{toAdd: Array<Object>, totalLapsScanned: number, alreadyMapped: number, capHit: boolean}}
+ * Lo schema esatto di un record statistiche non è documentato: il campo
+ * track viene letto in modo difensivo e il primo record grezzo finisce nel
+ * log di garage61TestMissingTracksFromHistory() per poter correggere al
+ * volo se necessario.
+ *
+ * @returns {{toAdd: Array<Object>, totalRecords: number, alreadyMapped: number, sampleRecord: Object|null}}
  */
 function garage61FindMissingTracksFromHistory_() {
   const slug = PropertiesService.getScriptProperties().getProperty('GARAGE61_TEAM_SLUG');
-  const allLaps = garage61FetchAll_(`/laps?teams=${slug}&group=none`);
+  const data = garage61Get_(`/teams/${slug}/statistics`);
+  const stats = data.drivingStatistics || data.items || (Array.isArray(data) ? data : []);
 
   const tracksRaw = garage61ReadSheetRaw_(SHEETS.TRACKS);
   const mappedG61Ids = new Set(
@@ -450,8 +456,8 @@ function garage61FindMissingTracksFromHistory_() {
   const existingTrackIds = new Set(tracksRaw.map(t => String(t.track_id || '').trim()).filter(Boolean));
 
   const seen = new Map(); // garage61_id → track object grezzo
-  allLaps.forEach(lap => {
-    const t = lap.track;
+  stats.forEach(rec => {
+    const t = rec.track;
     if (!t || t.id === undefined) return;
     const g61Id = String(t.id);
     if (mappedG61Ids.has(g61Id)) return;
@@ -487,9 +493,9 @@ function garage61FindMissingTracksFromHistory_() {
 
   return {
     toAdd,
-    totalLapsScanned: allLaps.length,
+    totalRecords: stats.length,
     alreadyMapped: mappedG61Ids.size,
-    capHit: allLaps.length >= 5000,
+    sampleRecord: stats.length > 0 ? stats[0] : null,
   };
 }
 
@@ -499,19 +505,20 @@ function garage61FindMissingTracksFromHistory_() {
  */
 function garage61TestMissingTracksFromHistory() {
   const result = garage61FindMissingTracksFromHistory_();
-  Logger.log(`Lap analizzati: ${result.totalLapsScanned}`);
+  Logger.log(`Record statistiche team: ${result.totalRecords}`);
   Logger.log(`Già mappati in Tracks: ${result.alreadyMapped}`);
   Logger.log(`Tracciati usati dal team ma non mappati: ${result.toAdd.length}`);
   Logger.log('───');
   result.toAdd.forEach(t => {
     Logger.log(`  ${t.track_id} | "${t.track_name}"${t.variant ? ' [' + t.variant + ']' : ''} | g61_id=${t.garage61_id}`);
   });
-  if (result.capHit) {
+  if (result.totalRecords === 0) {
+    Logger.log('⚠️ Nessun record statistiche per il team. Verifica GARAGE61_TEAM_SLUG.');
+  } else if (result.toAdd.length === 0 && result.alreadyMapped === 0) {
     Logger.log('───');
-    Logger.log('⚠️ Raggiunto il cap di 5000 lap scansionati: storico più vecchio potrebbe non essere stato controllato.');
-  }
-  if (result.totalLapsScanned === 0) {
-    Logger.log('⚠️ Nessun lap trovato per il team. Verifica GARAGE61_TEAM_SLUG o esegui garage61ExploreLaps() per controllare la shape.');
+    Logger.log('⚠️ 0 tracciati riconosciuti nonostante record presenti: probabile nome campo "track" errato.');
+    Logger.log('Primo record grezzo (per correggere il mapping):');
+    Logger.log(JSON.stringify(result.sampleRecord, null, 2));
   }
 }
 
