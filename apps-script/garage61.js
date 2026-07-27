@@ -514,10 +514,10 @@ function garage61TestMissingTracksFromHistory() {
   });
   if (result.totalRecords === 0) {
     Logger.log('⚠️ Nessun record statistiche per il team. Verifica GARAGE61_TEAM_SLUG.');
-  } else if (result.toAdd.length === 0 && result.alreadyMapped === 0) {
+  } else if (result.toAdd.length === 0) {
     Logger.log('───');
-    Logger.log('⚠️ 0 tracciati riconosciuti nonostante record presenti: probabile nome campo "track" errato.');
-    Logger.log('Primo record grezzo (per correggere il mapping):');
+    Logger.log(`⚠️ 0 tracciati da aggiungere su ${result.totalRecords} record e solo ${result.alreadyMapped} già mappati: sospetto.`);
+    Logger.log('Primo record grezzo (per verificare il nome reale del campo tracciato):');
     Logger.log(JSON.stringify(result.sampleRecord, null, 2));
   }
 }
