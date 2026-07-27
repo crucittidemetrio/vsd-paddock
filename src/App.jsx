@@ -37,6 +37,7 @@ const AdminGarage61Sync   = lazy(() => import('./pages/AdminGarage61Sync'));
 const AdminPosters        = lazy(() => import('./pages/AdminPosters'));
 const AdminEndurance      = lazy(() => import('./pages/AdminEndurance'));
 const AdminEnduranceForm  = lazy(() => import('./pages/AdminEnduranceForm'));
+const AdminBestLaps = lazy(() => import('./pages/AdminBestLaps'));
 const StintPlanner        = lazy(() => import('./pages/StintPlanner'));
 const AdminRaces = lazy(() => import('./pages/AdminRaces'));
 const Compare    = lazy(() => import('./pages/Compare'));
@@ -140,6 +141,10 @@ export default function App() {
               <Route
                 path="/admin/posters"
                 element={<AdminRoute><AdminPosters /></AdminRoute>}
+              />
+              <Route
+                path="/admin/best-laps"
+                element={<AdminRoute><AdminBestLaps /></AdminRoute>}
               />
               <Route
                 path="/admin/endurance"

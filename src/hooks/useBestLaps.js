@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { api } from '../api/client';
 import { useCars as useCarsInternal } from './useLookups';
@@ -389,4 +389,61 @@ export function useMyDominantClasses(driverId, options = {}) {
     isError: teamLeaderboard.isError,
     error: teamLeaderboard.error,
   };
+}
+
+/**
+ * useManualBestLaps — lista grezza dei lap inseriti manualmente (no merge
+ * coi race laps, no dedup). Uso: pagina admin di gestione CRUD.
+ */
+export function useManualBestLaps() {
+  return useQuery({
+    queryKey: ['laps', 'manual'],
+    queryFn: () => api.laps.list({}, undefined),
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// MUTATION HOOKS — inserimento manuale best lap (staff only)
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * useAddBestLap — crea un nuovo lap manuale.
+ * Invalida la cache dei lap manuali al successo.
+ */
+export function useAddBestLap() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload) => api.laps.add(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['laps', 'manual'] });
+    },
+  });
+}
+
+/**
+ * useUpdateBestLap — modifica un lap manuale esistente.
+ * Invalida la cache dei lap manuali al successo.
+ */
+export function useUpdateBestLap() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload) => api.laps.update(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['laps', 'manual'] });
+    },
+  });
+}
+
+/**
+ * useDeleteBestLap — elimina un lap manuale.
+ * Invalida la cache dei lap manuali al successo.
+ */
+export function useDeleteBestLap() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (lap_id) => api.laps.remove(lap_id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['laps', 'manual'] });
+    },
+  });
 }

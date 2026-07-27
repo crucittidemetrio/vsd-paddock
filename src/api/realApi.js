@@ -182,6 +182,12 @@ export async function callApi(action, payload = {}, ctx = null) {
   return await lapsRaceLapsAdapter(payload, token);  
   case 'laps.syncFromGarage61':
         return await lapsSyncFromGarage61Adapter(payload, token);
+      case 'laps.add':
+        return await lapsAddAdapter(payload, token);
+      case 'laps.update':
+        return await lapsUpdateAdapter(payload, token);
+      case 'laps.remove':
+        return await lapsRemoveAdapter(payload, token);
       case 'races.list':
         return await racesListAdapter(payload, token);
       case 'races.upcoming':
@@ -336,6 +342,36 @@ async function lapsRaceLapsAdapter(payload, token) {
  */
 async function lapsSyncFromGarage61Adapter(payload, token) {
   const res = await postToBackend('laps.syncFromGarage61', {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: laps.add(payload) → { lap_id, lap }
+ * Backend:  laps.add → { lap_id, lap }
+ */
+async function lapsAddAdapter(payload, token) {
+  const res = await postToBackend('laps.add', payload, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: laps.update(payload) → { lap_id, updated }
+ * Backend:  laps.update → { lap_id, updated }
+ */
+async function lapsUpdateAdapter(payload, token) {
+  const res = await postToBackend('laps.update', payload, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: laps.remove({ lap_id }) → { lap_id, deleted }
+ * Backend:  laps.remove → { lap_id, deleted }
+ */
+async function lapsRemoveAdapter(payload, token) {
+  const res = await postToBackend('laps.remove', payload, token);
   if (!res.ok) return res;
   return ok(res.data);
 }

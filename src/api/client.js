@@ -80,7 +80,10 @@ export const api = {
     leaderboard: (sim, track_id, car_id) =>
       call('laps.leaderboard', { sim, track_id, car_id }),
     raceLaps: () => call('laps.raceLaps'),
-   syncFromGarage61: () => call('laps.syncFromGarage61'), 
+   syncFromGarage61: () => call('laps.syncFromGarage61'),
+    add: (payload) => call('laps.add', payload),
+    update: (payload) => call('laps.update', payload),
+    remove: (lap_id) => call('laps.remove', { lap_id }),
   },
 
   races: {

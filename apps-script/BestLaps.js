@@ -77,6 +77,184 @@ function handleLapsLeaderboard(payload, ctx) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// MANUAL CRUD — inserimento manuale best lap (staff only)
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Parsa un tempo "M:SS.mmm" in millisecondi. Stessa regex/logica
+ * dell'onEdit trigger in bestLapsAutoMs.js, replicata qui perché
+ * quel trigger non è chiamabile programmaticamente.
+ *
+ * @param {string} display - es. "1:30.333"
+ * @returns {number|null} ms oppure null se formato non valido
+ */
+function parseLapTimeToMs_(display) {
+  const value = String(display || '').trim();
+  const match = value.match(/^(\d+):(\d{1,2})\.(\d{1,3})$/);
+  if (!match) return null;
+
+  const minutes = parseInt(match[1], 10);
+  const seconds = parseInt(match[2], 10);
+  if (seconds >= 60) return null;
+
+  const msPart = match[3].padEnd(3, '0').slice(0, 3);
+  const ms = parseInt(msPart, 10);
+
+  return minutes * 60000 + seconds * 1000 + ms;
+}
+
+/**
+ * laps.add — Inserimento manuale di un best lap. Staff only.
+ *
+ * @param {Object} payload - { driver_id, sim, track_id, car_id, lap_time_display,
+ *   set_date?, conditions?, session_type?, setup_shared?, setup_link?, replay_url?, notes? }
+ * @param {Object} ctx - Auth context (richiesto, staff)
+ * @returns {Object} ok({ lap_id, lap }) oppure fail
+ */
+function handleLapsAdd(payload, ctx) {
+  if (!ctx) return fail('Auth richiesto');
+  if (!ctx.isStaff) return fail('Permessi insufficienti');
+
+  const requiredFields = ['driver_id', 'sim', 'track_id', 'car_id', 'lap_time_display'];
+  for (let i = 0; i < requiredFields.length; i++) {
+    const field = requiredFields[i];
+    if (payload[field] === undefined || payload[field] === null || String(payload[field]).trim() === '') {
+      return fail(`Campo obbligatorio mancante o vuoto: ${field}`);
+    }
+  }
+
+  const lapTimeMs = parseLapTimeToMs_(payload.lap_time_display);
+  if (lapTimeMs === null) {
+    return fail('lap_time_display non valido. Formato atteso: M:SS.mmm (es. 1:30.333)');
+  }
+
+  const sheet = getSheet(SHEETS.BEST_LAPS);
+  if (!sheet) return fail('Foglio BestLaps non trovato');
+
+  // Generazione lap_id: stesso pattern di garage61SyncLaps_ (max scan + 1)
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  let maxLapNum = 0;
+  for (let i = 1; i < data.length; i++) {
+    const id = data[i][0];
+    const m = String(id || '').match(/LAP(\d+)/i);
+    if (m) maxLapNum = Math.max(maxLapNum, parseInt(m[1], 10));
+  }
+  const newLapId = 'LAP' + String(maxLapNum + 1).padStart(3, '0');
+  const now = new Date().toISOString();
+
+  const newLap = {
+    lap_id: newLapId,
+    driver_id: payload.driver_id,
+    sim: payload.sim,
+    track_id: payload.track_id,
+    car_id: payload.car_id,
+    lap_time_ms: lapTimeMs,
+    lap_time_display: msToLapDisplay_(lapTimeMs),
+    set_date: payload.set_date || now.split('T')[0],
+    conditions: payload.conditions || 'dry',
+    session_type: payload.session_type || 'practice',
+    setup_shared: payload.setup_shared || 'FALSE',
+    setup_link: payload.setup_link || '',
+    replay_url: payload.replay_url || '',
+    verified_by: ctx.driver_id || 'staff',
+    verified_at: now,
+    notes: payload.notes || '',
+    created_at: now,
+    garage61_lap_id: '',
+  };
+
+  // Scrittura mappata per nome header (robusta a riordini colonne)
+  const row = headers.map(h => (newLap[h] !== undefined ? newLap[h] : ''));
+  sheet.appendRow(row);
+  invalidateSheetCache_(SHEETS.BEST_LAPS);
+
+  return ok({ lap_id: newLapId, lap: newLap });
+}
+
+/**
+ * laps.update — Modifica un lap manuale esistente. Staff only.
+ * Non altera lap_id né created_at. Se lap_time_display cambia,
+ * ricalcola lap_time_ms automaticamente.
+ *
+ * @param {Object} payload - { lap_id, ...campi da aggiornare }
+ * @param {Object} ctx - Auth context (richiesto, staff)
+ * @returns {Object} ok({ lap_id, updated[] }) oppure fail
+ */
+function handleLapsUpdate(payload, ctx) {
+  if (!ctx) return fail('Auth richiesto');
+  if (!ctx.isStaff) return fail('Permessi insufficienti');
+
+  const lap_id = payload && payload.lap_id;
+  if (!lap_id) return fail('Campo lap_id obbligatorio per l\'aggiornamento');
+
+  const sheet = getSheet(SHEETS.BEST_LAPS);
+  if (!sheet) return fail('Foglio BestLaps non trovato');
+
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 2) return fail('Lap non trovato: ' + lap_id);
+
+  const headers = data[0];
+  const rowIndex = data.findIndex(row => row[0] === lap_id);
+  if (rowIndex === -1) return fail('Lap non trovato: ' + lap_id);
+
+  const payloadToApply = { ...payload };
+  if (payload.lap_time_display) {
+    const lapTimeMs = parseLapTimeToMs_(payload.lap_time_display);
+    if (lapTimeMs === null) {
+      return fail('lap_time_display non valido. Formato atteso: M:SS.mmm (es. 1:30.333)');
+    }
+    payloadToApply.lap_time_ms = lapTimeMs;
+    payloadToApply.lap_time_display = msToLapDisplay_(lapTimeMs);
+  }
+
+  const rowToUpdate = rowIndex + 1; // base-1 per getRange
+  const updatedFields = [];
+
+  for (const key in payloadToApply) {
+    if (key === 'lap_id' || key === 'created_at' || key === 'garage61_lap_id') continue;
+    const colIndex = headers.indexOf(key);
+    if (colIndex !== -1) {
+      sheet.getRange(rowToUpdate, colIndex + 1).setValue(payloadToApply[key]);
+      updatedFields.push(key);
+    }
+  }
+
+  if (updatedFields.length > 0) {
+    invalidateSheetCache_(SHEETS.BEST_LAPS);
+  }
+
+  return ok({ lap_id: lap_id, updated: updatedFields });
+}
+
+/**
+ * laps.remove — Rimuove un lap manuale. Staff only.
+ *
+ * @param {Object} payload - { lap_id }
+ * @param {Object} ctx - Auth context (richiesto, staff)
+ * @returns {Object} ok({ lap_id, deleted }) oppure fail
+ */
+function handleLapsRemove(payload, ctx) {
+  if (!ctx) return fail('Auth richiesto');
+  if (!ctx.isStaff) return fail('Permessi insufficienti');
+
+  const lap_id = payload && payload.lap_id;
+  if (!lap_id) return fail('Campo lap_id obbligatorio per la rimozione');
+
+  const sheet = getSheet(SHEETS.BEST_LAPS);
+  if (!sheet) return fail('Foglio BestLaps non trovato');
+
+  const data = sheet.getDataRange().getValues();
+  const rowIndex = data.findIndex(row => row[0] === lap_id);
+  if (rowIndex === -1) return fail('Lap non trovato: ' + lap_id);
+
+  sheet.deleteRow(rowIndex + 1); // base-1
+  invalidateSheetCache_(SHEETS.BEST_LAPS);
+
+  return ok({ lap_id: lap_id, deleted: true });
+}
+
+// ═══════════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════════
 // RACE LAPS — laps derivati da RaceResults
 // ═══════════════════════════════════════════════════════════
