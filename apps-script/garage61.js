@@ -12,6 +12,9 @@
 //   - garage61BackfillRaceClass()     → copia category in race_class
 //   - garage61PopulateIRacingIds()    → popola iracing_id in Drivers
 //   - garage61PopulateCarIds()        → auto-mapping garage61_id su Cars
+//   - garage61ExploreTracks()         → shape grezza di /tracks e /platforms (debug)
+//   - garage61TestMissingTracks()     → dry-run tracciati IRC mancanti in Tracks
+//   - garage61AddMissingTracks()      → scrive in Tracks i tracciati IRC mancanti
 //
 // API exposed:
 //   - handleLapsSyncFromGarage61(payload, ctx) → action 'laps.syncFromGarage61'
@@ -143,6 +146,22 @@ function garage61ExploreLaps() {
   Logger.log(JSON.stringify(data, null, 2));
 }
 
+/**
+ * Esplora la shape grezza di /platforms e /tracks su Garage61.
+ * Serve a scoprire i nomi esatti dei campi (name, config, country, length...)
+ * prima di fidarsi del mapping automatico in garage61FindMissingTracks_.
+ * Editor-only, nessuna scrittura.
+ */
+function garage61ExploreTracks() {
+  const platforms = garage61Get_('/platforms');
+  Logger.log('── /platforms ──');
+  Logger.log(JSON.stringify(platforms, null, 2));
+
+  const tracks = garage61Get_('/tracks?limit=5');
+  Logger.log('── /tracks (primi 5) ──');
+  Logger.log(JSON.stringify(tracks, null, 2));
+}
+
 function garage61InspectSessionTypes() {
   const slug = PropertiesService.getScriptProperties().getProperty('GARAGE61_TEAM_SLUG');
   const tracksRaw = garage61ReadSheetRaw_(SHEETS.TRACKS);
@@ -269,6 +288,135 @@ function garage61PopulateCarIds() {
     }
   }
   Logger.log(`✅ Match scritti: ${matched}`);
+}
+
+/**
+ * Individua i tracciati iRacing presenti nel catalogo Garage61 ma assenti
+ * nel tab Tracks (nessuna riga IRC con quel garage61_id).
+ *
+ * Filtra per piattaforma iRacing (match case-insensitive su name/shortName
+ * di /platforms) per evitare di importare tracciati di altri sim eventualmente
+ * abilitati sul team Garage61.
+ *
+ * Campi variant/country/length_km sono letti in modo difensivo (più nomi
+ * candidati) perché lo schema esatto di /tracks non è documentato pubblicamente:
+ * se il campo non viene trovato resta vuoto, va verificato/completato a mano.
+ * Usa prima garage61ExploreTracks() per controllare i nomi reali dei campi.
+ *
+ * @returns {{toAdd: Array<Object>, platformName: string, totalG61Tracks: number, alreadyMapped: number}}
+ */
+function garage61FindMissingTracks_() {
+  const platforms = garage61Get_('/platforms');
+  const platformList = platforms.items || platforms || [];
+  const iracingPlatform = platformList.find(p => {
+    const n = String(p.name || p.shortName || '').toLowerCase();
+    return n.includes('iracing');
+  });
+  if (!iracingPlatform) {
+    throw new Error('Piattaforma iRacing non trovata in /platforms. Esegui garage61ExploreTracks() e controlla i nomi.');
+  }
+
+  const allTracks = garage61FetchAll_('/tracks');
+  const iracingTracks = allTracks.filter(t => {
+    if (!t.platform && t.platformId === undefined) return true; // nessun filtro applicabile, tienilo
+    const pid = t.platform ? t.platform.id : t.platformId;
+    return String(pid) === String(iracingPlatform.id);
+  });
+
+  const tracksRaw = garage61ReadSheetRaw_(SHEETS.TRACKS);
+  const mappedG61Ids = new Set(
+    tracksRaw
+      .filter(t => String(t.sim || '').toUpperCase() === 'IRC' && String(t.garage61_id || '').trim())
+      .map(t => String(t.garage61_id).trim())
+  );
+
+  const existingTrackIds = new Set(tracksRaw.map(t => String(t.track_id || '').trim()).filter(Boolean));
+
+  const toAdd = [];
+  iracingTracks.forEach(t => {
+    const g61Id = String(t.id);
+    if (mappedG61Ids.has(g61Id)) return;
+
+    const name = t.name || t.trackName || t.fullName || '(nome sconosciuto)';
+    const variant = (t.config && t.config.name) || t.configName || t.variant || '';
+    const country = t.country || t.countryCode || (t.location && t.location.country) || '';
+    const lengthMeters = t.length || t.lengthMeters || (t.config && t.config.length);
+    const lengthKm = lengthMeters ? Number((Number(lengthMeters) / 1000).toFixed(3)) : '';
+
+    let slug = garage61Slugify_(name);
+    if (variant) slug += '-' + garage61Slugify_(variant);
+    let trackId = 'irc-' + slug;
+    if (existingTrackIds.has(trackId)) {
+      let n = 2;
+      while (existingTrackIds.has(`${trackId}-${n}`)) n++;
+      trackId = `${trackId}-${n}`;
+    }
+    existingTrackIds.add(trackId);
+
+    toAdd.push({
+      track_id: trackId,
+      sim: 'IRC',
+      track_name: name,
+      variant: variant,
+      length_km: lengthKm,
+      country: country,
+      active: 'TRUE',
+      garage61_id: g61Id,
+    });
+  });
+
+  return {
+    toAdd,
+    platformName: iracingPlatform.name || iracingPlatform.shortName,
+    totalG61Tracks: iracingTracks.length,
+    alreadyMapped: mappedG61Ids.size,
+  };
+}
+
+/**
+ * Dry-run: mostra nel log quali tracciati verrebbero aggiunti a Tracks,
+ * senza scrivere nulla. Esegui SEMPRE questo prima di garage61AddMissingTracks().
+ */
+function garage61TestMissingTracks() {
+  const result = garage61FindMissingTracks_();
+  Logger.log(`Piattaforma: ${result.platformName}`);
+  Logger.log(`Tracciati Garage61 (iRacing): ${result.totalG61Tracks}`);
+  Logger.log(`Già mappati in Tracks: ${result.alreadyMapped}`);
+  Logger.log(`Da aggiungere: ${result.toAdd.length}`);
+  Logger.log('───');
+  result.toAdd.forEach(t => {
+    Logger.log(`  ${t.track_id} | "${t.track_name}"${t.variant ? ' [' + t.variant + ']' : ''} | country=${t.country || '?'} | length_km=${t.length_km || '?'} | g61_id=${t.garage61_id}`);
+  });
+  if (result.toAdd.length > 0) {
+    Logger.log('───');
+    Logger.log('Se country/length_km sono vuoti o sbagliati per molte righe, esegui prima garage61ExploreTracks() e correggi i nomi campo in garage61FindMissingTracks_().');
+    Logger.log('Se l\'elenco sembra corretto, esegui garage61AddMissingTracks() per scrivere davvero.');
+  }
+}
+
+/**
+ * Scrittura reale: aggiunge a Tracks le righe individuate da
+ * garage61FindMissingTracks_(). Idempotente (si basa su garage61_id già
+ * presente per evitare doppioni), ma esegui garage61TestMissingTracks()
+ * prima per controllare i dati.
+ */
+function garage61AddMissingTracks() {
+  const result = garage61FindMissingTracks_();
+  if (result.toAdd.length === 0) {
+    Logger.log('Nessun tracciato da aggiungere. Tracks è già allineato con Garage61.');
+    return;
+  }
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.TRACKS);
+  if (!sheet) throw new Error('Sheet "Tracks" non trovato');
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+
+  const rows = result.toAdd.map(t => headers.map(h => (t[h] !== undefined ? t[h] : '')));
+  sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, headers.length).setValues(rows);
+  invalidateSheetCache_(SHEETS.TRACKS);
+
+  Logger.log(`✅ Scritte ${rows.length} righe in Tracks.`);
+  result.toAdd.forEach(t => Logger.log(`  + ${t.track_id} (g61_id=${t.garage61_id})`));
 }
 
 function garage61BackfillCarIds() {
