@@ -294,14 +294,12 @@ function garage61PopulateCarIds() {
  * Individua i tracciati iRacing presenti nel catalogo Garage61 ma assenti
  * nel tab Tracks (nessuna riga IRC con quel garage61_id).
  *
- * Filtra per piattaforma iRacing (match case-insensitive su name/shortName
- * di /platforms) per evitare di importare tracciati di altri sim eventualmente
- * abilitati sul team Garage61.
- *
- * Campi variant/country/length_km sono letti in modo difensivo (più nomi
- * candidati) perché lo schema esatto di /tracks non è documentato pubblicamente:
- * se il campo non viene trovato resta vuoto, va verificato/completato a mano.
- * Usa prima garage61ExploreTracks() per controllare i nomi reali dei campi.
+ * Schema reale di /tracks (confermato via garage61ExploreTracks() il 27/07/2026):
+ *   { id: 498, name: "Adelaide Street Circuit", variant: "", platform: "iracing", platform_id: "580" }
+ * NOTA: "platform" è la stringa id piattaforma (es. "iracing"), non un oggetto.
+ * "platform_id" è l'id interno del layout/config lato piattaforma, non usato qui.
+ * Garage61 NON espone country né lunghezza del tracciato: quei due campi
+ * restano sempre vuoti e vanno eventualmente compilati a mano.
  *
  * @returns {{toAdd: Array<Object>, platformName: string, totalG61Tracks: number, alreadyMapped: number}}
  */
@@ -309,7 +307,7 @@ function garage61FindMissingTracks_() {
   const platforms = garage61Get_('/platforms');
   const platformList = platforms.items || platforms || [];
   const iracingPlatform = platformList.find(p => {
-    const n = String(p.name || p.shortName || '').toLowerCase();
+    const n = String(p.name || p.shortName || p.id || '').toLowerCase();
     return n.includes('iracing');
   });
   if (!iracingPlatform) {
@@ -317,11 +315,7 @@ function garage61FindMissingTracks_() {
   }
 
   const allTracks = garage61FetchAll_('/tracks');
-  const iracingTracks = allTracks.filter(t => {
-    if (!t.platform && t.platformId === undefined) return true; // nessun filtro applicabile, tienilo
-    const pid = t.platform ? t.platform.id : t.platformId;
-    return String(pid) === String(iracingPlatform.id);
-  });
+  const iracingTracks = allTracks.filter(t => String(t.platform) === String(iracingPlatform.id));
 
   const tracksRaw = garage61ReadSheetRaw_(SHEETS.TRACKS);
   const mappedG61Ids = new Set(
@@ -337,11 +331,11 @@ function garage61FindMissingTracks_() {
     const g61Id = String(t.id);
     if (mappedG61Ids.has(g61Id)) return;
 
-    const name = t.name || t.trackName || t.fullName || '(nome sconosciuto)';
-    const variant = (t.config && t.config.name) || t.configName || t.variant || '';
-    const country = t.country || t.countryCode || (t.location && t.location.country) || '';
-    const lengthMeters = t.length || t.lengthMeters || (t.config && t.config.length);
-    const lengthKm = lengthMeters ? Number((Number(lengthMeters) / 1000).toFixed(3)) : '';
+    const name = t.name || '(nome sconosciuto)';
+    const variant = t.variant || '';
+    // Non disponibili dall'API Garage61 — da compilare a mano se servono.
+    const country = '';
+    const lengthKm = '';
 
     let slug = garage61Slugify_(name);
     if (variant) slug += '-' + garage61Slugify_(variant);
@@ -385,11 +379,11 @@ function garage61TestMissingTracks() {
   Logger.log(`Da aggiungere: ${result.toAdd.length}`);
   Logger.log('───');
   result.toAdd.forEach(t => {
-    Logger.log(`  ${t.track_id} | "${t.track_name}"${t.variant ? ' [' + t.variant + ']' : ''} | country=${t.country || '?'} | length_km=${t.length_km || '?'} | g61_id=${t.garage61_id}`);
+    Logger.log(`  ${t.track_id} | "${t.track_name}"${t.variant ? ' [' + t.variant + ']' : ''} | g61_id=${t.garage61_id}`);
   });
   if (result.toAdd.length > 0) {
     Logger.log('───');
-    Logger.log('Se country/length_km sono vuoti o sbagliati per molte righe, esegui prima garage61ExploreTracks() e correggi i nomi campo in garage61FindMissingTracks_().');
+    Logger.log('country e length_km NON sono forniti da Garage61: restano vuoti, compilali a mano su Tracks se ti servono.');
     Logger.log('Se l\'elenco sembra corretto, esegui garage61AddMissingTracks() per scrivere davvero.');
   }
 }
