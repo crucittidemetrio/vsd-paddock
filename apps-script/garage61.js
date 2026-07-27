@@ -13,8 +13,10 @@
 //   - garage61PopulateIRacingIds()    → popola iracing_id in Drivers
 //   - garage61PopulateCarIds()        → auto-mapping garage61_id su Cars
 //   - garage61ExploreTracks()         → shape grezza di /tracks e /platforms (debug)
-//   - garage61TestMissingTracks()     → dry-run tracciati IRC mancanti in Tracks
-//   - garage61AddMissingTracks()      → scrive in Tracks i tracciati IRC mancanti
+//   - garage61TestMissingTracks()     → dry-run: TUTTO il catalogo iRacing mancante (~450)
+//   - garage61AddMissingTracks()      → scrive in Tracks il catalogo completo mancante
+//   - garage61TestMissingTracksFromHistory()  → dry-run: solo tracciati REALMENTE guidati dal team
+//   - garage61AddMissingTracksFromHistory()   → scrive in Tracks solo quelli guidati dal team (consigliato)
 //
 // API exposed:
 //   - handleLapsSyncFromGarage61(payload, ctx) → action 'laps.syncFromGarage61'
@@ -398,6 +400,129 @@ function garage61AddMissingTracks() {
   const result = garage61FindMissingTracks_();
   if (result.toAdd.length === 0) {
     Logger.log('Nessun tracciato da aggiungere. Tracks è già allineato con Garage61.');
+    return;
+  }
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.TRACKS);
+  if (!sheet) throw new Error('Sheet "Tracks" non trovato');
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+
+  const rows = result.toAdd.map(t => headers.map(h => (t[h] !== undefined ? t[h] : '')));
+  sheet.getRange(sheet.getLastRow() + 1, 1, rows.length, headers.length).setValues(rows);
+  invalidateSheetCache_(SHEETS.TRACKS);
+
+  Logger.log(`✅ Scritte ${rows.length} righe in Tracks.`);
+  result.toAdd.forEach(t => Logger.log(`  + ${t.track_id} (g61_id=${t.garage61_id})`));
+}
+
+// ═══════════════════════════════════════════════════════════
+// TRACCIATI MANCANTI — versione mirata (solo storico squadra)
+// ═══════════════════════════════════════════════════════════
+// garage61FindMissingTracks_() confronta con l'INTERO catalogo iRacing
+// (~450 layout: ovali dirt, rallycross, layout storici mai usati dal
+// team). Questa versione invece guarda solo i lap che il team ha
+// REALMENTE registrato su Garage61 e propone solo i tracciati non
+// ancora mappati tra quelli — lista realistica, non il catalogo intero.
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Individua i tracciati IRC su cui il team ha effettivamente girato
+ * (storico completo via /laps, group=none, nessun filtro tracks) ma
+ * che non sono ancora mappati in Tracks.
+ *
+ * Limite: garage61FetchAll_ si ferma a 5000 lap (50 pagine × 100). Se lo
+ * storico del team è più lungo, tracciati usati solo in lap molto
+ * datati potrebbero non emergere: il log segnala se il cap è stato
+ * raggiunto.
+ *
+ * @returns {{toAdd: Array<Object>, totalLapsScanned: number, alreadyMapped: number, capHit: boolean}}
+ */
+function garage61FindMissingTracksFromHistory_() {
+  const slug = PropertiesService.getScriptProperties().getProperty('GARAGE61_TEAM_SLUG');
+  const allLaps = garage61FetchAll_(`/laps?teams=${slug}&group=none`);
+
+  const tracksRaw = garage61ReadSheetRaw_(SHEETS.TRACKS);
+  const mappedG61Ids = new Set(
+    tracksRaw
+      .filter(t => String(t.sim || '').toUpperCase() === 'IRC' && String(t.garage61_id || '').trim())
+      .map(t => String(t.garage61_id).trim())
+  );
+  const existingTrackIds = new Set(tracksRaw.map(t => String(t.track_id || '').trim()).filter(Boolean));
+
+  const seen = new Map(); // garage61_id → track object grezzo
+  allLaps.forEach(lap => {
+    const t = lap.track;
+    if (!t || t.id === undefined) return;
+    const g61Id = String(t.id);
+    if (mappedG61Ids.has(g61Id)) return;
+    if (!seen.has(g61Id)) seen.set(g61Id, t);
+  });
+
+  const toAdd = [];
+  seen.forEach((t, g61Id) => {
+    const name = t.name || '(nome sconosciuto)';
+    const variant = t.variant || '';
+
+    let slug2 = garage61Slugify_(name);
+    if (variant) slug2 += '-' + garage61Slugify_(variant);
+    let trackId = 'irc-' + slug2;
+    if (existingTrackIds.has(trackId)) {
+      let n = 2;
+      while (existingTrackIds.has(`${trackId}-${n}`)) n++;
+      trackId = `${trackId}-${n}`;
+    }
+    existingTrackIds.add(trackId);
+
+    toAdd.push({
+      track_id: trackId,
+      sim: 'IRC',
+      track_name: name,
+      variant: variant,
+      length_km: '',
+      country: '',
+      active: 'TRUE',
+      garage61_id: g61Id,
+    });
+  });
+
+  return {
+    toAdd,
+    totalLapsScanned: allLaps.length,
+    alreadyMapped: mappedG61Ids.size,
+    capHit: allLaps.length >= 5000,
+  };
+}
+
+/**
+ * Dry-run mirato: mostra solo i tracciati che il team ha davvero guidato
+ * e non sono ancora mappati. Esegui SEMPRE prima di garage61AddMissingTracksFromHistory().
+ */
+function garage61TestMissingTracksFromHistory() {
+  const result = garage61FindMissingTracksFromHistory_();
+  Logger.log(`Lap analizzati: ${result.totalLapsScanned}`);
+  Logger.log(`Già mappati in Tracks: ${result.alreadyMapped}`);
+  Logger.log(`Tracciati usati dal team ma non mappati: ${result.toAdd.length}`);
+  Logger.log('───');
+  result.toAdd.forEach(t => {
+    Logger.log(`  ${t.track_id} | "${t.track_name}"${t.variant ? ' [' + t.variant + ']' : ''} | g61_id=${t.garage61_id}`);
+  });
+  if (result.capHit) {
+    Logger.log('───');
+    Logger.log('⚠️ Raggiunto il cap di 5000 lap scansionati: storico più vecchio potrebbe non essere stato controllato.');
+  }
+  if (result.totalLapsScanned === 0) {
+    Logger.log('⚠️ Nessun lap trovato per il team. Verifica GARAGE61_TEAM_SLUG o esegui garage61ExploreLaps() per controllare la shape.');
+  }
+}
+
+/**
+ * Scrittura reale (versione mirata): aggiunge a Tracks solo i tracciati
+ * che il team ha davvero guidato e non sono ancora mappati.
+ */
+function garage61AddMissingTracksFromHistory() {
+  const result = garage61FindMissingTracksFromHistory_();
+  if (result.toAdd.length === 0) {
+    Logger.log('Nessun tracciato da aggiungere. Tracks copre già tutto lo storico del team.');
     return;
   }
 
