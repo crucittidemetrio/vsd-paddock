@@ -293,19 +293,16 @@ function garage61PopulateCarIds() {
 }
 
 /**
- * Individua i tracciati iRacing presenti nel catalogo Garage61 ma assenti
- * nel tab Tracks (nessuna riga IRC con quel garage61_id).
+ * Scarica il catalogo tracciati Garage61 filtrato alla piattaforma iRacing.
  *
  * Schema reale di /tracks (confermato via garage61ExploreTracks() il 27/07/2026):
  *   { id: 498, name: "Adelaide Street Circuit", variant: "", platform: "iracing", platform_id: "580" }
  * NOTA: "platform" è la stringa id piattaforma (es. "iracing"), non un oggetto.
  * "platform_id" è l'id interno del layout/config lato piattaforma, non usato qui.
- * Garage61 NON espone country né lunghezza del tracciato: quei due campi
- * restano sempre vuoti e vanno eventualmente compilati a mano.
  *
- * @returns {{toAdd: Array<Object>, platformName: string, totalG61Tracks: number, alreadyMapped: number}}
+ * @returns {{tracks: Array<Object>, platformName: string}}
  */
-function garage61FindMissingTracks_() {
+function garage61FetchIracingTracksCatalog_() {
   const platforms = garage61Get_('/platforms');
   const platformList = platforms.items || platforms || [];
   const iracingPlatform = platformList.find(p => {
@@ -319,52 +316,71 @@ function garage61FindMissingTracks_() {
   const allTracks = garage61FetchAll_('/tracks');
   const iracingTracks = allTracks.filter(t => String(t.platform) === String(iracingPlatform.id));
 
+  return {
+    tracks: iracingTracks,
+    platformName: iracingPlatform.name || iracingPlatform.shortName,
+  };
+}
+
+/**
+ * Genera un track_id univoco (slug) per un tracciato Garage61 e lo registra
+ * nel set di track_id già usati, per evitare collisioni tra più righe da
+ * aggiungere nella stessa passata.
+ */
+function garage61BuildTrackRow_(name, variant, g61Id, existingTrackIds) {
+  let slug = garage61Slugify_(name);
+  if (variant) slug += '-' + garage61Slugify_(variant);
+  let trackId = 'irc-' + slug;
+  if (existingTrackIds.has(trackId)) {
+    let n = 2;
+    while (existingTrackIds.has(`${trackId}-${n}`)) n++;
+    trackId = `${trackId}-${n}`;
+  }
+  existingTrackIds.add(trackId);
+
+  return {
+    track_id: trackId,
+    sim: 'IRC',
+    track_name: name,
+    variant: variant,
+    // country e length_km non sono forniti dall'API Garage61 — vuoti per design.
+    length_km: '',
+    country: '',
+    active: 'TRUE',
+    garage61_id: g61Id,
+  };
+}
+
+/**
+ * Individua i tracciati iRacing presenti nel catalogo Garage61 ma assenti
+ * nel tab Tracks (nessuna riga IRC con quel garage61_id). Confronta con
+ * l'INTERO catalogo iRacing (~450 layout) — vedi garage61FindMissingTracksFromHistory_
+ * per la versione mirata solo allo storico squadra.
+ *
+ * @returns {{toAdd: Array<Object>, platformName: string, totalG61Tracks: number, alreadyMapped: number}}
+ */
+function garage61FindMissingTracks_() {
+  const catalog = garage61FetchIracingTracksCatalog_();
+
   const tracksRaw = garage61ReadSheetRaw_(SHEETS.TRACKS);
   const mappedG61Ids = new Set(
     tracksRaw
       .filter(t => String(t.sim || '').toUpperCase() === 'IRC' && String(t.garage61_id || '').trim())
       .map(t => String(t.garage61_id).trim())
   );
-
   const existingTrackIds = new Set(tracksRaw.map(t => String(t.track_id || '').trim()).filter(Boolean));
 
   const toAdd = [];
-  iracingTracks.forEach(t => {
+  catalog.tracks.forEach(t => {
     const g61Id = String(t.id);
     if (mappedG61Ids.has(g61Id)) return;
-
-    const name = t.name || '(nome sconosciuto)';
-    const variant = t.variant || '';
-    // Non disponibili dall'API Garage61 — da compilare a mano se servono.
-    const country = '';
-    const lengthKm = '';
-
-    let slug = garage61Slugify_(name);
-    if (variant) slug += '-' + garage61Slugify_(variant);
-    let trackId = 'irc-' + slug;
-    if (existingTrackIds.has(trackId)) {
-      let n = 2;
-      while (existingTrackIds.has(`${trackId}-${n}`)) n++;
-      trackId = `${trackId}-${n}`;
-    }
-    existingTrackIds.add(trackId);
-
-    toAdd.push({
-      track_id: trackId,
-      sim: 'IRC',
-      track_name: name,
-      variant: variant,
-      length_km: lengthKm,
-      country: country,
-      active: 'TRUE',
-      garage61_id: g61Id,
-    });
+    toAdd.push(garage61BuildTrackRow_(t.name || '(nome sconosciuto)', t.variant || '', g61Id, existingTrackIds));
   });
 
   return {
     toAdd,
-    platformName: iracingPlatform.name || iracingPlatform.shortName,
-    totalG61Tracks: iracingTracks.length,
+    platformName: catalog.platformName,
+    totalG61Tracks: catalog.tracks.length,
     alreadyMapped: mappedG61Ids.size,
   };
 }
@@ -435,12 +451,15 @@ function garage61AddMissingTracks() {
  * volta. Le statistiche di team invece aggregano per auto/tracciato/
  * giorno/pilota senza richiedere di sapere già quali tracciati cercare.
  *
- * Lo schema esatto di un record statistiche non è documentato: il campo
- * track viene letto in modo difensivo e il primo record grezzo finisce nel
- * log di garage61TestMissingTracksFromHistory() per poter correggere al
- * volo se necessario.
+ * Schema reale di un record statistiche (confermato in produzione il
+ * 27/07/2026): il campo "track" è solo l'ID numerico Garage61, NON un
+ * oggetto — a differenza di /laps dove lap.track è un oggetto con nome.
+ * Es: { day: "2024-05-12", user: "...", car: 8, track: 31, sessionType: 1,
+ *       events: 2, timeOnTrack: 1820.06, lapsDriven: 20, cleanLapsDriven: 15 }
+ * Per risalire a nome/variante si incrocia con il catalogo tracciati
+ * (garage61FetchIracingTracksCatalog_, stesso usato da garage61FindMissingTracks_).
  *
- * @returns {{toAdd: Array<Object>, totalRecords: number, alreadyMapped: number, sampleRecord: Object|null}}
+ * @returns {{toAdd: Array<Object>, totalRecords: number, distinctTracksUsed: number, alreadyMapped: number, unresolvedTrackIds: Array<string>, sampleRecord: Object|null}}
  */
 function garage61FindMissingTracksFromHistory_() {
   const slug = PropertiesService.getScriptProperties().getProperty('GARAGE61_TEAM_SLUG');
@@ -455,46 +474,36 @@ function garage61FindMissingTracksFromHistory_() {
   );
   const existingTrackIds = new Set(tracksRaw.map(t => String(t.track_id || '').trim()).filter(Boolean));
 
-  const seen = new Map(); // garage61_id → track object grezzo
+  // ID Garage61 dei tracciati usati dal team (numero o oggetto {id}, difensivo).
+  const usedG61Ids = new Set();
   stats.forEach(rec => {
-    const t = rec.track;
-    if (!t || t.id === undefined) return;
-    const g61Id = String(t.id);
-    if (mappedG61Ids.has(g61Id)) return;
-    if (!seen.has(g61Id)) seen.set(g61Id, t);
+    if (rec.track === undefined || rec.track === null) return;
+    const rawId = (typeof rec.track === 'object') ? rec.track.id : rec.track;
+    if (rawId === undefined || rawId === null) return;
+    usedG61Ids.add(String(rawId));
   });
 
+  const catalog = garage61FetchIracingTracksCatalog_();
+  const catalogById = new Map(catalog.tracks.map(t => [String(t.id), t]));
+
   const toAdd = [];
-  seen.forEach((t, g61Id) => {
-    const name = t.name || '(nome sconosciuto)';
-    const variant = t.variant || '';
-
-    let slug2 = garage61Slugify_(name);
-    if (variant) slug2 += '-' + garage61Slugify_(variant);
-    let trackId = 'irc-' + slug2;
-    if (existingTrackIds.has(trackId)) {
-      let n = 2;
-      while (existingTrackIds.has(`${trackId}-${n}`)) n++;
-      trackId = `${trackId}-${n}`;
+  const unresolvedTrackIds = [];
+  usedG61Ids.forEach(g61Id => {
+    if (mappedG61Ids.has(g61Id)) return;
+    const t = catalogById.get(g61Id);
+    if (!t) {
+      unresolvedTrackIds.push(g61Id); // usato dal team ma assente dal catalogo iRacing corrente
+      return;
     }
-    existingTrackIds.add(trackId);
-
-    toAdd.push({
-      track_id: trackId,
-      sim: 'IRC',
-      track_name: name,
-      variant: variant,
-      length_km: '',
-      country: '',
-      active: 'TRUE',
-      garage61_id: g61Id,
-    });
+    toAdd.push(garage61BuildTrackRow_(t.name || '(nome sconosciuto)', t.variant || '', g61Id, existingTrackIds));
   });
 
   return {
     toAdd,
     totalRecords: stats.length,
+    distinctTracksUsed: usedG61Ids.size,
     alreadyMapped: mappedG61Ids.size,
+    unresolvedTrackIds,
     sampleRecord: stats.length > 0 ? stats[0] : null,
   };
 }
@@ -506,18 +515,23 @@ function garage61FindMissingTracksFromHistory_() {
 function garage61TestMissingTracksFromHistory() {
   const result = garage61FindMissingTracksFromHistory_();
   Logger.log(`Record statistiche team: ${result.totalRecords}`);
+  Logger.log(`Tracciati distinti usati dal team: ${result.distinctTracksUsed}`);
   Logger.log(`Già mappati in Tracks: ${result.alreadyMapped}`);
-  Logger.log(`Tracciati usati dal team ma non mappati: ${result.toAdd.length}`);
+  Logger.log(`Da aggiungere: ${result.toAdd.length}`);
   Logger.log('───');
   result.toAdd.forEach(t => {
     Logger.log(`  ${t.track_id} | "${t.track_name}"${t.variant ? ' [' + t.variant + ']' : ''} | g61_id=${t.garage61_id}`);
   });
+  if (result.unresolvedTrackIds.length > 0) {
+    Logger.log('───');
+    Logger.log(`⚠️ ${result.unresolvedTrackIds.length} garage61_id usati dal team ma assenti dal catalogo /tracks corrente (layout rimossi/rinominati?): ${result.unresolvedTrackIds.join(', ')}`);
+  }
   if (result.totalRecords === 0) {
     Logger.log('⚠️ Nessun record statistiche per il team. Verifica GARAGE61_TEAM_SLUG.');
-  } else if (result.toAdd.length === 0) {
+  } else if (result.distinctTracksUsed === 0) {
     Logger.log('───');
-    Logger.log(`⚠️ 0 tracciati da aggiungere su ${result.totalRecords} record e solo ${result.alreadyMapped} già mappati: sospetto.`);
-    Logger.log('Primo record grezzo (per verificare il nome reale del campo tracciato):');
+    Logger.log('⚠️ 0 tracciati distinti riconosciuti nonostante record presenti: probabile campo "track" ancora diverso da quanto atteso.');
+    Logger.log('Primo record grezzo:');
     Logger.log(JSON.stringify(result.sampleRecord, null, 2));
   }
 }
