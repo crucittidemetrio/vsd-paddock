@@ -392,13 +392,22 @@ export function useMyDominantClasses(driverId, options = {}) {
 }
 
 /**
- * useManualBestLaps — lista grezza dei lap inseriti manualmente (no merge
+ * useManualBestLaps — lap DAVVERO inseriti a mano dallo staff (no merge
  * coi race laps, no dedup). Uso: pagina admin di gestione CRUD.
+ *
+ * ['laps','manual'] in laps.list contiene TUTTO il tab BestLaps, comprese
+ * le righe scritte da garage61SyncLaps_ (import telemetria automatico).
+ * Le righe importate hanno sempre garage61_lap_id valorizzato; quelle
+ * scritte a mano da handleLapsAdd lo lasciano vuoto — è l'unico campo
+ * affidabile per distinguerle. Filtro qui via `select` (non tocca la
+ * cache condivisa con useBestLaps, che sulla stessa query key vuole
+ * invece TUTTI i lap per classifiche/leaderboard).
  */
 export function useManualBestLaps() {
   return useQuery({
     queryKey: ['laps', 'manual'],
     queryFn: () => api.laps.list({}, undefined),
+    select: (laps) => (laps || []).filter(l => !l.garage61_lap_id),
   });
 }
 
