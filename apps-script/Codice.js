@@ -177,6 +177,9 @@ const ACTIONS = {
 
   // Academy / Pilot Rating (VPR) — Fase 1
   'academy.ranking': handleAcademyRanking,
+
+  // Season Recap — Fase 1
+  'recap.mine': handleSeasonRecap,
   'standings.byChampionship': handleStandingsByChampionship,
   'standings.byDriver':       handleStandingsByDriver,
   'championships.importStandings':   handleChampionshipsImportStandings,

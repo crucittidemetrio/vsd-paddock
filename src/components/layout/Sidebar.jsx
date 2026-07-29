@@ -23,6 +23,7 @@ const PILOT_ITEMS = [
   { to: '/reports', label: LABELS.nav_reports, icon: '◣' },
   { to: '/ue144', label: 'UE144', icon: '🏁' },
   { to: '/academy', label: 'Pilot Rating', icon: '◇' },
+  { to: '/recap', label: 'Season Recap', icon: '✦' },
 ];
 
 // Voci future "soon" — solo pilota loggato

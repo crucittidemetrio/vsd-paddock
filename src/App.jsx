@@ -38,6 +38,7 @@ const AdminPosters        = lazy(() => import('./pages/AdminPosters'));
 const AdminEndurance      = lazy(() => import('./pages/AdminEndurance'));
 const AdminEnduranceForm  = lazy(() => import('./pages/AdminEnduranceForm'));
 const AdminBestLaps = lazy(() => import('./pages/AdminBestLaps'));
+const SeasonRecap = lazy(() => import('./pages/SeasonRecap'));
 const StintPlanner        = lazy(() => import('./pages/StintPlanner'));
 const AdminRaces = lazy(() => import('./pages/AdminRaces'));
 const Compare    = lazy(() => import('./pages/Compare'));
@@ -117,6 +118,14 @@ export default function App() {
                 element={
                   <RequireTier minTier="pilot_vsd" fallback={<LoginPrompt feature="VSD Academy" />}>
                     <Academy />
+                  </RequireTier>
+                }
+              />
+              <Route
+                path="/recap"
+                element={
+                  <RequireTier minTier="pilot_vsd" fallback={<LoginPrompt feature="il Season Recap" />}>
+                    <SeasonRecap />
                   </RequireTier>
                 }
               />

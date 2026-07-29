@@ -206,6 +206,8 @@ export async function callApi(action, payload = {}, ctx = null) {
         return await raceResultsImportAdapter(payload, token); // ← NEW
       case 'academy.ranking':
         return await academyRankingAdapter(payload, token);
+      case 'recap.mine':
+        return await recapMineAdapter(payload, token);
       case 'championships.list':                              // ← NEW
         return await championshipsListAdapter(payload, token); // ← NEW
       case 'championships.importStandings':
@@ -515,6 +517,17 @@ async function enduranceAuditionsUpdateAdapter(payload, token) {
  */
 async function academyRankingAdapter(payload, token) {
   const res = await postToBackend('academy.ranking', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: recap.mine() → { season_start, races, podiums, dnfs,
+ *   bestFinish, bestLap, mostRacedTrack, bySim }
+ * Backend:  recap.mine({}) → stesso shape
+ */
+async function recapMineAdapter(payload, token) {
+  const res = await postToBackend('recap.mine', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
 }

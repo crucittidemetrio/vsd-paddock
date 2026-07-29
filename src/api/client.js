@@ -109,6 +109,10 @@ export const api = {
     ranking: (sim) => call('academy.ranking', { sim }),
   },
 
+  recap: {
+    mine: () => call('recap.mine', {}),
+  },
+
  championships: {
     list: (filters = {}) => call('championships.list', filters),
     importStandings: ({ championship_id, json_data }) =>
