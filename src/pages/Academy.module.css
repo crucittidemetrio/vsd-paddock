@@ -54,6 +54,93 @@
   color: #00d4ff;
 }
 
+.infoToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 18px;
+  margin-bottom: 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.02);
+  color: rgba(255, 255, 255, 0.7);
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  font-size: 14px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.infoToggle:hover {
+  border-color: rgba(0, 212, 255, 0.3);
+  color: #fff;
+}
+
+.infoToggleIcon {
+  color: #00d4ff;
+  font-size: 18px;
+  font-weight: 400;
+}
+
+.infoPanel {
+  padding: 18px 20px;
+  margin-bottom: 20px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.infoText {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  line-height: 1.6;
+  color: rgba(255, 255, 255, 0.65);
+  margin: 0 0 16px;
+}
+
+.infoText:last-child {
+  margin-bottom: 0;
+}
+
+.infoText strong {
+  color: #00d4ff;
+  font-weight: 600;
+}
+
+.infoTable {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.infoTableCell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.infoTablePos {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.infoTablePts {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  color: #00d4ff;
+}
+
 .tabs {
   display: flex;
   gap: 8px;
@@ -210,5 +297,8 @@
   .tableRow {
     grid-template-columns: 32px 1fr 70px 60px;
     padding: 10px 12px;
+  }
+  .infoTable {
+    grid-template-columns: repeat(4, 1fr);
   }
 }
