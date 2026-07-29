@@ -92,7 +92,7 @@ export default function SeasonRecap() {
             )}
 
             {recap.mostRacedTrack && (
-              <div className={styles.statCard}>
+              <div className={`${styles.statCard} ${styles.statCardWide}`}>
                 <div className={styles.statLabel}>Pista preferita</div>
                 <div className={styles.statMain}>
                   {trackLabel(recap.mostRacedTrack.track_id, tracksById) || recap.mostRacedTrack.track_id}
