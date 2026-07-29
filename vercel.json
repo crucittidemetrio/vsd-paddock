@@ -3,6 +3,8 @@
     { "source": "/ue144", "destination": "/api/og?route=ue144" },
     { "source": "/joinus", "destination": "/api/og?route=joinus" },
     { "source": "/championships", "destination": "/api/og?route=championships" },
+    { "source": "/championships/:id", "destination": "/api/og?route=championship-detail&id=:id" },
+    { "source": "/race/:id", "destination": "/api/og?route=race&id=:id" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
