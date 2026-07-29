@@ -22,12 +22,12 @@ const PUBLIC_ITEMS = [
 const PILOT_ITEMS = [
   { to: '/reports', label: LABELS.nav_reports, icon: '◣' },
   { to: '/ue144', label: 'UE144', icon: '🏁' },
+  { to: '/academy', label: 'Pilot Rating', icon: '◇' },
 ];
 
 // Voci future "soon" — solo pilota loggato
 const FUTURE_ITEMS = [
   { to: '/training', label: LABELS.nav_training, icon: '◆' },
-  { to: '/academy', label: LABELS.nav_academy, icon: '◇' },
 ];
 
 const ADMIN_ITEMS = [

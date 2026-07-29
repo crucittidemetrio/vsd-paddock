@@ -21,8 +21,8 @@ export default function Academy() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <div className={styles.eyebrow}>ACADEMY · VSD PILOT RATING</div>
-        <h1 className={styles.title}>Academy</h1>
+        <div className={styles.eyebrow}>VSD PILOT RATING</div>
+        <h1 className={styles.title}>Pilot Rating</h1>
         <p className={styles.sub}>
           Classifica VR (Valore Rating) per simulatore, calcolata dai risultati gara.
         </p>
