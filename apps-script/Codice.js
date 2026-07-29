@@ -174,6 +174,9 @@ const ACTIONS = {
 
   // Championships (Wave 9.8)
   'championships.list': handleChampionshipsList,   // ← NEW (Wave 9.8)
+
+  // Academy / Pilot Rating (VPR) — Fase 1
+  'academy.ranking': handleAcademyRanking,
   'standings.byChampionship': handleStandingsByChampionship,
   'standings.byDriver':       handleStandingsByDriver,
   'championships.importStandings':   handleChampionshipsImportStandings,

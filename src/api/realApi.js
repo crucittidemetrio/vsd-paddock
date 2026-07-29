@@ -204,6 +204,8 @@ export async function callApi(action, payload = {}, ctx = null) {
         return await raceResultsListAdapter(payload, token);
      case 'raceResults.import':                              // ← NEW
         return await raceResultsImportAdapter(payload, token); // ← NEW
+      case 'academy.ranking':
+        return await academyRankingAdapter(payload, token);
       case 'championships.list':                              // ← NEW
         return await championshipsListAdapter(payload, token); // ← NEW
       case 'championships.importStandings':
@@ -503,6 +505,18 @@ async function enduranceAuditionsUpdateAdapter(payload, token) {
   const res = await postToBackend('endurance.auditions.update', payload, token);
   if (!res.ok) return res;
   return ok(res.data.audition);
+}
+
+/**
+ * Frontend: academy.ranking(sim) → { sim, ranking: [...], count }
+ * Backend:  academy.ranking({ sim }) → { sim, ranking: [...], count }
+ * (Fase 1 — vedi apps-script/Academy.js per lo scope esatto: solo PM,
+ * niente PP/badge/scarto ancora.)
+ */
+async function academyRankingAdapter(payload, token) {
+  const res = await postToBackend('academy.ranking', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
 }
 
 /**

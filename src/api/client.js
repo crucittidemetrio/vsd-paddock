@@ -105,6 +105,10 @@ export const api = {
       call('raceResults.import', { race_id, json_data }),
   },
 
+  academy: {
+    ranking: (sim) => call('academy.ranking', { sim }),
+  },
+
  championships: {
     list: (filters = {}) => call('championships.list', filters),
     importStandings: ({ championship_id, json_data }) =>
