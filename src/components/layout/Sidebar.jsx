@@ -24,6 +24,7 @@ const PILOT_ITEMS = [
   { to: '/ue144', label: 'UE144', icon: '🏁' },
   { to: '/academy', label: 'Pilot Rating', icon: '◇' },
   { to: '/recap', label: 'Season Recap', icon: '✦' },
+  { to: '/records', label: 'Muro dei Record', icon: '🏆' },
 ];
 
 // Voci future "soon" — solo pilota loggato

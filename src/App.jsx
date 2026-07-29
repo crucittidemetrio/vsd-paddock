@@ -39,6 +39,7 @@ const AdminEndurance      = lazy(() => import('./pages/AdminEndurance'));
 const AdminEnduranceForm  = lazy(() => import('./pages/AdminEnduranceForm'));
 const AdminBestLaps = lazy(() => import('./pages/AdminBestLaps'));
 const SeasonRecap = lazy(() => import('./pages/SeasonRecap'));
+const TeamRecords = lazy(() => import('./pages/TeamRecords'));
 const StintPlanner        = lazy(() => import('./pages/StintPlanner'));
 const AdminRaces = lazy(() => import('./pages/AdminRaces'));
 const Compare    = lazy(() => import('./pages/Compare'));
@@ -126,6 +127,14 @@ export default function App() {
                 element={
                   <RequireTier minTier="pilot_vsd" fallback={<LoginPrompt feature="il Season Recap" />}>
                     <SeasonRecap />
+                  </RequireTier>
+                }
+              />
+              <Route
+                path="/records"
+                element={
+                  <RequireTier minTier="pilot_vsd" fallback={<LoginPrompt feature="il Muro dei Record" />}>
+                    <TeamRecords />
                   </RequireTier>
                 }
               />

@@ -208,6 +208,8 @@ export async function callApi(action, payload = {}, ctx = null) {
         return await academyRankingAdapter(payload, token);
       case 'recap.mine':
         return await recapMineAdapter(payload, token);
+      case 'records.team':
+        return await recordsTeamAdapter(payload, token);
       case 'championships.list':                              // ← NEW
         return await championshipsListAdapter(payload, token); // ← NEW
       case 'championships.importStandings':
@@ -528,6 +530,16 @@ async function academyRankingAdapter(payload, token) {
  */
 async function recapMineAdapter(payload, token) {
   const res = await postToBackend('recap.mine', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: records.team(sim?) → { records: [...], count }
+ * Backend:  records.team({ sim? }) → stesso shape
+ */
+async function recordsTeamAdapter(payload, token) {
+  const res = await postToBackend('records.team', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
 }

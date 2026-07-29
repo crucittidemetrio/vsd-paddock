@@ -113,6 +113,10 @@ export const api = {
     mine: () => call('recap.mine', {}),
   },
 
+  records: {
+    team: (sim) => call('records.team', { sim }),
+  },
+
  championships: {
     list: (filters = {}) => call('championships.list', filters),
     importStandings: ({ championship_id, json_data }) =>

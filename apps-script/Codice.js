@@ -180,6 +180,9 @@ const ACTIONS = {
 
   // Season Recap — Fase 1
   'recap.mine': handleSeasonRecap,
+
+  // Muro dei Record — Fase 1
+  'records.team': handleTeamRecords,
   'standings.byChampionship': handleStandingsByChampionship,
   'standings.byDriver':       handleStandingsByDriver,
   'championships.importStandings':   handleChampionshipsImportStandings,
