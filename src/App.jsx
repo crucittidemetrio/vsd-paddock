@@ -44,6 +44,7 @@ const StintPlanner        = lazy(() => import('./pages/StintPlanner'));
 const AdminRaces = lazy(() => import('./pages/AdminRaces'));
 const Compare    = lazy(() => import('./pages/Compare'));
 const Privacy     = lazy(() => import('./pages/Privacy'));
+const SocialManager = lazy(() => import('./pages/SocialManager'));
 
 import './App.css';
 
@@ -74,6 +75,14 @@ export default function App() {
             {/* ════ Standalone (senza AppShell) ════ */}
             <Route path="/login" element={<Login />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route
+              path="/admin/social-manager"
+              element={
+                <RequireTier minTier="admin" fallback={<Navigate to="/" replace />}>
+                  <SocialManager />
+                </RequireTier>
+              }
+            />
 
             {/* ════ Dentro AppShell — sidebar + topbar ════ */}
             <Route element={<AppShell />}>

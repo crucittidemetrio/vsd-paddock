@@ -21,6 +21,8 @@ const SHEETS = {
   ENDURANCE_PARTICIPANTS: 'EnduranceParticipants',
   ENDURANCE_AUDITION_STINTS: 'EnduranceAuditionStints',
   ENDURANCE_STINTS: 'EnduranceStints',
+  SOCIAL_POSTS: 'SocialPosts',
+  SOCIAL_METRICS: 'SocialMetrics',
 };
 
 // Token TTL: 7 giorni
@@ -183,6 +185,15 @@ const ACTIONS = {
 
   // Muro dei Record — Fase 1
   'records.team': handleTeamRecords,
+
+  // Social Manager — admin only
+  'social.posts.list': handleSocialPostsList,
+  'social.posts.create': handleSocialPostsCreate,
+  'social.posts.update': handleSocialPostsUpdate,
+  'social.posts.remove': handleSocialPostsRemove,
+  'social.metrics.list': handleSocialMetricsList,
+  'social.metrics.add': handleSocialMetricsAdd,
+  'social.generateText': handleSocialGenerateText,
   'standings.byChampionship': handleStandingsByChampionship,
   'standings.byDriver':       handleStandingsByDriver,
   'championships.importStandings':   handleChampionshipsImportStandings,

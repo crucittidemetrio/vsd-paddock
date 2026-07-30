@@ -117,6 +117,16 @@ export const api = {
     team: (sim) => call('records.team', { sim }),
   },
 
+  social: {
+    postsList: (status) => call('social.posts.list', { status }),
+    postsCreate: (payload) => call('social.posts.create', payload),
+    postsUpdate: (payload) => call('social.posts.update', payload),
+    postsRemove: (post_id) => call('social.posts.remove', { post_id }),
+    metricsList: (platform) => call('social.metrics.list', { platform }),
+    metricsAdd: (payload) => call('social.metrics.add', payload),
+    generateText: (prompt) => call('social.generateText', { prompt }),
+  },
+
  championships: {
     list: (filters = {}) => call('championships.list', filters),
     importStandings: ({ championship_id, json_data }) =>

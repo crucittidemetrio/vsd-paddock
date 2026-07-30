@@ -210,6 +210,20 @@ export async function callApi(action, payload = {}, ctx = null) {
         return await recapMineAdapter(payload, token);
       case 'records.team':
         return await recordsTeamAdapter(payload, token);
+      case 'social.posts.list':
+        return await socialPostsListAdapter(payload, token);
+      case 'social.posts.create':
+        return await socialPostsCreateAdapter(payload, token);
+      case 'social.posts.update':
+        return await socialPostsUpdateAdapter(payload, token);
+      case 'social.posts.remove':
+        return await socialPostsRemoveAdapter(payload, token);
+      case 'social.metrics.list':
+        return await socialMetricsListAdapter(payload, token);
+      case 'social.metrics.add':
+        return await socialMetricsAddAdapter(payload, token);
+      case 'social.generateText':
+        return await socialGenerateTextAdapter(payload, token);
       case 'championships.list':                              // ← NEW
         return await championshipsListAdapter(payload, token); // ← NEW
       case 'championships.importStandings':
@@ -540,6 +554,76 @@ async function recapMineAdapter(payload, token) {
  */
 async function recordsTeamAdapter(payload, token) {
   const res = await postToBackend('records.team', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: social.postsList(status?) → array di post
+ * Backend:  social.posts.list({ status? }) → { posts: [...], count }
+ */
+async function socialPostsListAdapter(payload, token) {
+  const res = await postToBackend('social.posts.list', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data.posts);
+}
+
+/**
+ * Frontend: social.postsCreate({ content, platforms, scheduled_date?, link_destination? })
+ * Backend:  social.posts.create({...}) → { post_id, post }
+ */
+async function socialPostsCreateAdapter(payload, token) {
+  const res = await postToBackend('social.posts.create', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: social.postsUpdate({ post_id, ...campi })
+ * Backend:  social.posts.update({...}) → { post_id, updated }
+ */
+async function socialPostsUpdateAdapter(payload, token) {
+  const res = await postToBackend('social.posts.update', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: social.postsRemove(post_id)
+ * Backend:  social.posts.remove({ post_id }) → { post_id, deleted }
+ */
+async function socialPostsRemoveAdapter(payload, token) {
+  const res = await postToBackend('social.posts.remove', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: social.metricsList(platform?) → array di rilevazioni
+ * Backend:  social.metrics.list({ platform? }) → { metrics: [...], count }
+ */
+async function socialMetricsListAdapter(payload, token) {
+  const res = await postToBackend('social.metrics.list', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data.metrics);
+}
+
+/**
+ * Frontend: social.metricsAdd({ platform, followers, recorded_date? })
+ * Backend:  social.metrics.add({...}) → { metric_id, metric }
+ */
+async function socialMetricsAddAdapter(payload, token) {
+  const res = await postToBackend('social.metrics.add', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: social.generateText(prompt) → { text }
+ * Backend:  social.generateText({ prompt }) → { text }
+ */
+async function socialGenerateTextAdapter(payload, token) {
+  const res = await postToBackend('social.generateText', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
 }

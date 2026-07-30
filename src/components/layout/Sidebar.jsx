@@ -43,6 +43,12 @@ const ADMIN_ITEMS = [
   { to: '/admin/endurance', label: 'Endurance Admin', icon: '◐' },
 ];
 
+// Voci riservate ad admin/Team Principal — sottoinsieme più ristretto
+// dell'area Admin (isStaff include anche staff generico, questo no).
+const ADMIN_ONLY_ITEMS = [
+  { to: '/admin/social-manager', label: 'Social Manager', icon: '📣' },
+];
+
 function renderNavItem(item, onMobileClose, extraClass = '') {
   return (
     <NavLink
@@ -60,7 +66,7 @@ function renderNavItem(item, onMobileClose, extraClass = '') {
 }
 
 export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {} }) {
-  const { isVsdPilot, isStaff } = useAuth();
+  const { isVsdPilot, isStaff, isAdmin } = useAuth();
 
   return (
     <aside className={`sidebar${isMobileOpen ? ' is-mobile-open' : ''}`}>
@@ -84,6 +90,7 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
           <>
             <div className="nav-section-label">Admin</div>
             {ADMIN_ITEMS.map(item => renderNavItem(item, onMobileClose))}
+            {isAdmin && ADMIN_ONLY_ITEMS.map(item => renderNavItem(item, onMobileClose))}
           </>
         )}
       </nav>
