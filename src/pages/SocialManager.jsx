@@ -1,6 +1,9 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts';
+import {
   useSocialPosts,
   useCreateSocialPost,
   useUpdateSocialPost,
@@ -98,63 +101,112 @@ export default function SocialManager() {
 // ═══════════════════════════════════════════════════════════
 
 function DashboardHome({ posts, metrics, postsQuery, metricsQuery }) {
-  const counts = useMemo(() => {
-    const c = { bozza: 0, programmato: 0, pubblicato: 0 };
-    posts.forEach(p => { if (c[p.status] !== undefined) c[p.status]++; });
-    return c;
-  }, [posts]);
-
   const trends = useMemo(() => computePlatformTrends(metrics), [metrics]);
+  const chartData = useMemo(() => buildFollowerSeries(metrics), [metrics]);
 
-  const recentPosts = useMemo(() => posts.slice(0, 5), [posts]);
+  const igTrend = trends.find(t => t.platform === 'instagram');
+  const fbTrend = trends.find(t => t.platform === 'facebook');
+
+  const postiInCoda = posts.filter(p => p.status === 'programmato').length;
+  const now = new Date();
+  const pubblicatiMese = posts.filter(p => {
+    if (p.status !== 'pubblicato' || !p.published_at) return false;
+    const d = new Date(p.published_at);
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  }).length;
+
+  const recentPublished = useMemo(
+    () => posts.filter(p => p.status === 'pubblicato').slice(0, 5),
+    [posts]
+  );
 
   return (
     <div className={styles.section}>
       {postsQuery.isLoading && <div className={styles.loading}>Caricamento post…</div>}
       {postsQuery.error && <div className={styles.errorBox}>Errore: {postsQuery.error.message}</div>}
+      {metricsQuery.error && <div className={styles.errorBox}>Errore metriche: {metricsQuery.error.message}</div>}
 
       <div className={styles.statGrid}>
-        <StatCard icon="📝" label="Bozze" value={counts.bozza} />
-        <StatCard icon="⏰" label="Programmati" value={counts.programmato} />
-        <StatCard icon="✅" label="Pubblicati" value={counts.pubblicato} />
+        <IconStatCard
+          badgeClass={styles.badgeInstagram}
+          icon="📷"
+          label="Follower Instagram"
+          value={igTrend ? igTrend.latest.toLocaleString('it-IT') : '—'}
+          delta={igTrend?.delta ?? null}
+        />
+        <IconStatCard
+          badgeClass={styles.badgeFacebook}
+          icon="📘"
+          label="Follower Facebook"
+          value={fbTrend ? fbTrend.latest.toLocaleString('it-IT') : '—'}
+          delta={fbTrend?.delta ?? null}
+        />
+        <IconStatCard
+          badgeClass={styles.badgeQueue}
+          icon="⏰"
+          label="Post programmati"
+          value={postiInCoda}
+        />
+        <IconStatCard
+          badgeClass={styles.badgeCheck}
+          icon="✅"
+          label="Pubblicati questo mese"
+          value={pubblicatiMese}
+        />
       </div>
 
-      <h2 className={styles.sectionTitle}>Follower</h2>
-      {metricsQuery.isLoading && <div className={styles.loading}>Caricamento metriche…</div>}
-      {!metricsQuery.isLoading && trends.length === 0 && (
-        <div className={styles.empty}>
-          Nessuna rilevazione follower ancora. Aggiungine una dalla tab Metriche.
-        </div>
-      )}
-      {trends.length > 0 && (
-        <div className={styles.statGrid}>
-          {trends.map(t => (
-            <div key={t.platform} className={styles.followerCard}>
-              <div className={styles.followerHead}>
-                <span>{t.platform === 'instagram' ? '📷' : '📘'}</span>
-                <span className={styles.followerPlatform}>
-                  {t.platform === 'instagram' ? 'Instagram' : 'Facebook'}
-                </span>
-              </div>
-              <div className={styles.followerValue}>{t.latest.toLocaleString('it-IT')}</div>
-              {t.delta !== null && (
-                <div className={`${styles.followerDelta}${t.delta >= 0 ? ' ' + styles.deltaUp : ' ' + styles.deltaDown}`}>
-                  {t.delta >= 0 ? '▲' : '▼'} {Math.abs(t.delta)} dall'ultima rilevazione
-                </div>
-              )}
-              <div className={styles.followerDate}>Aggiornato: {fmtDate(t.date)}</div>
+      <div className={styles.dashboardGrid}>
+        <div className={styles.chartCard}>
+          <h2 className={styles.sectionTitle} style={{ margin: 0 }}>Crescita follower</h2>
+          {metricsQuery.isLoading && <div className={styles.loading}>Caricamento…</div>}
+          {!metricsQuery.isLoading && chartData.length < 2 && (
+            <div className={styles.empty}>
+              Servono almeno 2 rilevazioni per disegnare il grafico. Aggiungile dalla tab Metriche.
             </div>
-          ))}
+          )}
+          {chartData.length >= 2 && (
+            <div className={styles.chartWrap}>
+              <ResponsiveContainer width="100%" height={260}>
+                <AreaChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="igGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#e1306c" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="#e1306c" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="fbGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#3b8bff" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="#3b8bff" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
+                  <XAxis dataKey="dateLabel" tick={{ fill: '#8a96b0', fontSize: 11 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: '#8a96b0', fontSize: 11 }} axisLine={false} tickLine={false} width={44} />
+                  <Tooltip
+                    contentStyle={{ background: '#0d1730', border: '1px solid #1f2a4a', borderRadius: 8, fontSize: 12 }}
+                    labelStyle={{ color: '#8a96b0' }}
+                  />
+                  <Area type="monotone" dataKey="instagram" name="Instagram" stroke="#e1306c"
+                    fill="url(#igGrad)" strokeWidth={2} connectNulls dot={{ r: 3 }} />
+                  <Area type="monotone" dataKey="facebook" name="Facebook" stroke="#3b8bff"
+                    fill="url(#fbGrad)" strokeWidth={2} connectNulls dot={{ r: 3 }} />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </div>
-      )}
 
-      <h2 className={styles.sectionTitle}>Ultimi post</h2>
-      {recentPosts.length === 0 && <div className={styles.empty}>Nessun post ancora creato.</div>}
-      {recentPosts.length > 0 && (
-        <div className={styles.postList}>
-          {recentPosts.map(p => <PostRow key={p.post_id} post={p} readOnly />)}
+        <div className={styles.recentPostsCard}>
+          <h2 className={styles.sectionTitle} style={{ margin: 0 }}>Ultimi post pubblicati</h2>
+          {recentPublished.length === 0 && (
+            <div className={styles.empty}>Nessun post ancora segnato come pubblicato.</div>
+          )}
+          {recentPublished.length > 0 && (
+            <div className={styles.postList}>
+              {recentPublished.map(p => <PostRow key={p.post_id} post={p} readOnly />)}
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -179,12 +231,31 @@ function computePlatformTrends(metrics) {
   });
 }
 
-function StatCard({ icon, label, value }) {
+function buildFollowerSeries(metrics) {
+  const byDate = {};
+  metrics.forEach(m => {
+    const key = m.recorded_date;
+    if (!byDate[key]) byDate[key] = { date: key };
+    byDate[key][m.platform] = Number(m.followers);
+  });
+  return Object.values(byDate)
+    .sort((a, b) => String(a.date).localeCompare(String(b.date)))
+    .map(row => ({ ...row, dateLabel: fmtDate(row.date) }));
+}
+
+function IconStatCard({ badgeClass, icon, label, value, delta }) {
   return (
     <div className={styles.statCard}>
-      <div className={styles.statIcon}>{icon}</div>
-      <div className={styles.statValue}>{value}</div>
-      <div className={styles.statLabel}>{label}</div>
+      <div className={`${styles.iconBadge} ${badgeClass}`}>{icon}</div>
+      <div className={styles.statCardBody}>
+        <div className={styles.statValue}>{value}</div>
+        <div className={styles.statLabel}>{label}</div>
+        {delta !== null && delta !== undefined && (
+          <div className={delta >= 0 ? styles.deltaUp : styles.deltaDown}>
+            {delta >= 0 ? '▲' : '▼'} {Math.abs(delta)}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
