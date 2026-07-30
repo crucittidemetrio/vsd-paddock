@@ -35,8 +35,8 @@ const EMPTY_FORM = {
 };
 
 const AI_PROVIDERS = [
-  { id: 'gemini', label: 'Gemini (Google) — gratuito' },
-  { id: 'anthropic', label: 'Claude (Anthropic) — a pagamento' },
+  { id: 'gemini', label: 'Gemini — gratis' },
+  { id: 'anthropic', label: 'Claude — a pagamento' },
 ];
 
 function fmtDate(d) {
