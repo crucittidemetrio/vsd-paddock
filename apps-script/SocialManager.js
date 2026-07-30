@@ -275,14 +275,21 @@ function handleSocialMetricsAdd(payload, ctx) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// GENERAZIONE TESTO — Anthropic API
+// GENERAZIONE TESTO — Anthropic API o Gemini API, a scelta
 // ═══════════════════════════════════════════════════════════
 //
-// Chiave letta da Script Property ANTHROPIC_API_KEY — mai in chiaro
-// nel codice, mai esposta al frontend. Configurazione manuale:
-// editor Apps Script → ⚙ Impostazioni progetto → Proprietà script →
-// Aggiungi proprietà script → nome ANTHROPIC_API_KEY, valore la tua
-// chiave da console.anthropic.com.
+// Due provider disponibili, selezionabili dal frontend (payload.provider):
+//  - 'anthropic' (default) → richiede ANTHROPIC_API_KEY nelle Proprietà
+//    script, chiave a pagamento da console.anthropic.com.
+//  - 'gemini' → richiede GEMINI_API_KEY nelle Proprietà script, chiave
+//    gratuita da aistudio.google.com/apikey (modelli Flash restano nel
+//    tier gratuito). NB: un abbonamento Gemini consumer (Google AI Pro/
+//    Ultra sull'account personale) NON dà accesso alla API — è un
+//    sistema di billing separato, serve comunque una chiave dedicata.
+//
+// Chiavi mai in chiaro nel codice, mai esposte al frontend.
+// Configurazione manuale: editor Apps Script → ⚙ Impostazioni progetto →
+// Proprietà script → Aggiungi proprietà script.
 
 const SOCIAL_AI_SYSTEM_PROMPT =
   'Sei il copywriter social di Virtual Sim-Driver (VSD), team italiano di ' +
@@ -293,8 +300,8 @@ const SOCIAL_AI_SYSTEM_PROMPT =
   'parole. Rispondi SOLO col testo del post, nessuna premessa o spiegazione.';
 
 /**
- * social.generateText — Genera un testo di post via Claude (Anthropic API).
- * @param {Object} payload - { prompt: string }
+ * social.generateText — Genera un testo di post via AI.
+ * @param {Object} payload - { prompt: string, provider?: 'anthropic'|'gemini' }
  */
 function handleSocialGenerateText(payload, ctx) {
   if (!ctx || !ctx.isAdmin) return fail('Accesso riservato ad admin/team principal');
@@ -302,44 +309,99 @@ function handleSocialGenerateText(payload, ctx) {
   const prompt = payload && String(payload.prompt || '').trim();
   if (!prompt) return fail('prompt obbligatorio');
 
+  // Default Gemini: tier gratuito, nessun costo. Anthropic resta disponibile
+  // come opzione a pagamento se in futuro si vuole confrontare la qualità.
+  const provider = (payload && payload.provider === 'anthropic') ? 'anthropic' : 'gemini';
+
+  try {
+    const text = provider === 'gemini'
+      ? generateWithGemini_(prompt)
+      : generateWithAnthropic_(prompt);
+    return ok({ text: text.trim(), provider });
+  } catch (e) {
+    return fail(e.message);
+  }
+}
+
+function generateWithAnthropic_(prompt) {
   const apiKey = PropertiesService.getScriptProperties().getProperty('ANTHROPIC_API_KEY');
   if (!apiKey) {
-    return fail(
-      'Chiave AI non configurata. Aggiungi ANTHROPIC_API_KEY nelle Proprietà ' +
+    throw new Error(
+      'Chiave Anthropic non configurata. Aggiungi ANTHROPIC_API_KEY nelle Proprietà ' +
       'script del progetto Apps Script (⚙ Impostazioni progetto → Proprietà script).'
     );
   }
 
-  try {
-    const response = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
-      method: 'post',
-      contentType: 'application/json',
-      headers: {
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-      },
-      payload: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 300,
-        system: SOCIAL_AI_SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-      muteHttpExceptions: true,
-    });
+  const response = UrlFetchApp.fetch('https://api.anthropic.com/v1/messages', {
+    method: 'post',
+    contentType: 'application/json',
+    headers: {
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    payload: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 300,
+      system: SOCIAL_AI_SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: prompt }],
+    }),
+    muteHttpExceptions: true,
+  });
 
-    const status = response.getResponseCode();
-    const body = JSON.parse(response.getContentText());
+  const status = response.getResponseCode();
+  const body = JSON.parse(response.getContentText());
 
-    if (status !== 200) {
-      const msg = (body && body.error && body.error.message) || ('HTTP ' + status);
-      return fail('Errore Anthropic API: ' + msg);
-    }
-
-    const text = body.content && body.content[0] && body.content[0].text;
-    if (!text) return fail('Risposta AI vuota o in formato inatteso');
-
-    return ok({ text: text.trim() });
-  } catch (e) {
-    return fail('Errore chiamata AI: ' + e.message);
+  if (status !== 200) {
+    const msg = (body && body.error && body.error.message) || ('HTTP ' + status);
+    throw new Error('Errore Anthropic API: ' + msg);
   }
+
+  const text = body.content && body.content[0] && body.content[0].text;
+  if (!text) throw new Error('Risposta Anthropic vuota o in formato inatteso');
+  return text;
+}
+
+function generateWithGemini_(prompt) {
+  const apiKey = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY');
+  if (!apiKey) {
+    throw new Error(
+      'Chiave Gemini non configurata. Aggiungi GEMINI_API_KEY nelle Proprietà ' +
+      'script del progetto Apps Script (⚙ Impostazioni progetto → Proprietà script). ' +
+      'Chiave gratuita da aistudio.google.com/apikey — un abbonamento Gemini ' +
+      'personale non basta, serve una API key dedicata.'
+    );
+  }
+
+  const response = UrlFetchApp.fetch('https://generativelanguage.googleapis.com/v1beta/interactions', {
+    method: 'post',
+    contentType: 'application/json',
+    headers: {
+      'x-goog-api-key': apiKey,
+    },
+    payload: JSON.stringify({
+      model: 'gemini-2.5-flash',
+      system_instruction: SOCIAL_AI_SYSTEM_PROMPT,
+      input: prompt,
+      generation_config: {
+        thinking_level: 'low',
+        max_output_tokens: 400,
+      },
+    }),
+    muteHttpExceptions: true,
+  });
+
+  const status = response.getResponseCode();
+  const body = JSON.parse(response.getContentText());
+
+  if (status !== 200) {
+    const msg = (body && body.error && body.error.message) || ('HTTP ' + status);
+    throw new Error('Errore Gemini API: ' + msg);
+  }
+
+  const steps = body.steps || [];
+  const modelStep = steps.reverse().find(s => s.type === 'model_output');
+  const textBlock = modelStep && (modelStep.content || []).find(c => c.type === 'text');
+  const text = textBlock && textBlock.text;
+  if (!text) throw new Error('Risposta Gemini vuota o in formato inatteso');
+  return text;
 }

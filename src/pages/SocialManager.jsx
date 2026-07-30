@@ -34,6 +34,11 @@ const EMPTY_FORM = {
   link_destination: '',
 };
 
+const AI_PROVIDERS = [
+  { id: 'gemini', label: 'Gemini (Google) — gratuito' },
+  { id: 'anthropic', label: 'Claude (Anthropic) — a pagamento' },
+];
+
 function fmtDate(d) {
   if (!d) return '—';
   try {
@@ -192,6 +197,7 @@ function PostCreator({ posts, postsQuery }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [aiTopic, setAiTopic] = useState('');
+  const [aiProvider, setAiProvider] = useState('gemini');
   const [error, setError] = useState('');
 
   const createMutation = useCreateSocialPost();
@@ -242,7 +248,7 @@ function PostCreator({ posts, postsQuery }) {
       return;
     }
     const prompt = `Scrivi un post social per questo argomento: ${topic}`;
-    generateMutation.mutate(prompt, {
+    generateMutation.mutate({ prompt, provider: aiProvider }, {
       onSuccess: (data) => update('content', data.text || ''),
       onError: (err) => setError(err.message || 'Errore generazione AI'),
     });
@@ -303,6 +309,16 @@ function PostCreator({ posts, postsQuery }) {
               value={aiTopic}
               onChange={e => setAiTopic(e.target.value)}
             />
+            <select
+              className={styles.select}
+              value={aiProvider}
+              onChange={e => setAiProvider(e.target.value)}
+              title="Provider AI"
+            >
+              {AI_PROVIDERS.map(p => (
+                <option key={p.id} value={p.id}>{p.label}</option>
+              ))}
+            </select>
             <button
               type="button"
               className={styles.btnSecondary}

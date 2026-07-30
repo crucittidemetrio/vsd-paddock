@@ -57,6 +57,6 @@ export function useAddSocialMetric() {
 
 export function useGenerateSocialText() {
   return useMutation({
-    mutationFn: (prompt) => api.social.generateText(prompt),
+    mutationFn: ({ prompt, provider }) => api.social.generateText(prompt, provider),
   });
 }

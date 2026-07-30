@@ -124,7 +124,7 @@ export const api = {
     postsRemove: (post_id) => call('social.posts.remove', { post_id }),
     metricsList: (platform) => call('social.metrics.list', { platform }),
     metricsAdd: (payload) => call('social.metrics.add', payload),
-    generateText: (prompt) => call('social.generateText', { prompt }),
+    generateText: (prompt, provider) => call('social.generateText', { prompt, provider }),
   },
 
  championships: {
