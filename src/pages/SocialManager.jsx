@@ -401,8 +401,8 @@ function PostCreator({ posts, postsQuery }) {
           </div>
 
           <textarea
-            className={styles.textarea}
-            rows={6}
+            className={`${styles.textarea} ${styles.postTextarea}`}
+            rows={14}
             value={form.content}
             onChange={e => update('content', e.target.value)}
             placeholder="Testo del post…"

@@ -272,6 +272,11 @@
   background: rgba(255,255,255,0.06);
 }
 .textarea { resize: vertical; line-height: 1.5; }
+.postTextarea {
+  min-height: 320px;
+  font-size: var(--fs-md);
+  line-height: 1.6;
+}
 .select { cursor: pointer; }
 .select option { background-color: #0e1729; color: #fff; }
 
