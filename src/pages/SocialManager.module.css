@@ -172,6 +172,7 @@
   background: radial-gradient(circle at 30% 110%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);
 }
 .badgeFacebook { background: linear-gradient(135deg, #3b8bff, #1959c9); }
+.badgeDiscord { background: linear-gradient(135deg, #5865f2, #3a44b8); }
 .badgeQueue { background: linear-gradient(135deg, var(--vsd-orange), #c07800); }
 .badgeCheck { background: linear-gradient(135deg, var(--color-success), #1a8f66); }
 
@@ -391,6 +392,115 @@
 .btnEdit:hover { background: rgba(0,212,255,0.12); border-color: var(--vsd-cyan); color: var(--vsd-cyan); }
 .btnDelete:hover:not(:disabled) { background: rgba(239,51,64,0.12); border-color: var(--vsd-red); color: var(--vsd-red); }
 .btnDelete:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Pillar banner (post collegato a un pilastro editoriale) */
+.pillarBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(88, 101, 242, 0.1);
+  border: 1px solid rgba(88, 101, 242, 0.3);
+  border-radius: var(--r-md);
+  font-size: var(--fs-sm);
+  color: var(--color-text);
+}
+
+/* Discord fetch row (tab Metriche) */
+.discordFetchRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.discordFetchHint {
+  font-size: var(--fs-xs);
+  color: var(--color-success);
+}
+
+/* Piano editoriale — card gara + pillar chip */
+.raceCard {
+  background: linear-gradient(180deg, rgba(255,255,255,0.025), rgba(255,255,255,0.01));
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.raceCardHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.raceCardName {
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-md);
+  color: #fff;
+}
+.raceCardMeta {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--color-text-muted);
+}
+
+.pillarRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.pillarChip {
+  border-radius: var(--r-md);
+  padding: 10px 12px;
+  border: 1px dashed var(--color-border-strong);
+  background: rgba(255,255,255,0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 92px;
+}
+.pillarChipTop { display: flex; align-items: center; gap: 6px; }
+.pillarChipLabel {
+  font-size: 11px;
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+  line-height: 1.2;
+}
+.pillarChipDate {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text-dim);
+}
+.pillarChipStatus {
+  font-size: 11px;
+  font-weight: var(--fw-semibold);
+  margin-top: auto;
+}
+
+.pillarMissing { border-style: dashed; }
+.pillarStatus_bozza {
+  border-style: solid;
+  border-color: rgba(138,150,176,0.35);
+  background: rgba(138,150,176,0.06);
+}
+.pillarStatus_bozza .pillarChipStatus { color: var(--color-text-muted); }
+.pillarStatus_programmato {
+  border-style: solid;
+  border-color: rgba(245,166,35,0.35);
+  background: rgba(245,166,35,0.06);
+}
+.pillarStatus_programmato .pillarChipStatus { color: var(--vsd-orange); }
+.pillarStatus_pubblicato {
+  border-style: solid;
+  border-color: rgba(52,211,153,0.35);
+  background: rgba(52,211,153,0.06);
+}
+.pillarStatus_pubblicato .pillarChipStatus { color: var(--color-success); }
 
 /* Calendar */
 .calendarGroup { display: flex; flex-direction: column; gap: 8px; }

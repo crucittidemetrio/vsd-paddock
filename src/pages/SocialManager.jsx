@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -11,13 +11,31 @@ import {
   useSocialMetrics,
   useAddSocialMetric,
   useGenerateSocialText,
+  useDiscordStats,
 } from '../hooks/useSocialManager';
+import { useRaces } from '../hooks/useRaces';
 import styles from './SocialManager.module.css';
 
 const PLATFORM_OPTIONS = [
   { id: 'facebook', label: 'Facebook', icon: '📘' },
   { id: 'instagram', label: 'Instagram', icon: '📷' },
+  { id: 'discord', label: 'Discord', icon: '💬' },
 ];
+
+// Pilastri del calendario editoriale, offset in giorni rispetto alla
+// data gara (negativo = prima, positivo = dopo). Formati e timing
+// ripresi da outputs/calendario_editoriale_ue144.md, generalizzati a
+// qualunque gara nel foglio Races (non solo UE144) usando le pagine
+// reali già esistenti come link di destinazione.
+const PILLARS = [
+  { id: 'anteprima', label: 'Anteprima gara', icon: '📣', offsetDays: -7 },
+  { id: 'iscrizioni', label: 'Iscrizioni/entry list', icon: '📝', offsetDays: -2 },
+  { id: 'live', label: 'Live/race day', icon: '🔴', offsetDays: 0 },
+  { id: 'risultati', label: 'Risultati', icon: '🏆', offsetDays: 1 },
+  { id: 'highlight', label: 'Highlight/storytelling', icon: '🎬', offsetDays: 3 },
+];
+const PILLAR_BY_ID = Object.fromEntries(PILLARS.map(p => [p.id, p]));
+const PLATFORM_ICON = Object.fromEntries(PLATFORM_OPTIONS.map(p => [p.id, p.icon]));
 
 const STATUS_FLOW = ['bozza', 'programmato', 'pubblicato'];
 const STATUS_LABEL = { bozza: 'Bozza', programmato: 'Programmato', pubblicato: 'Pubblicato' };
@@ -35,6 +53,8 @@ const EMPTY_FORM = {
   platforms: ['facebook', 'instagram'],
   scheduled_date: '',
   link_destination: '',
+  race_id: '',
+  pillar: '',
 };
 
 const AI_PROVIDERS = [
@@ -53,12 +73,18 @@ function fmtDate(d) {
 
 export default function SocialManager() {
   const [tab, setTab] = useState('dashboard');
+  const [suggestion, setSuggestion] = useState(null);
 
   const postsQuery = useSocialPosts();
   const metricsQuery = useSocialMetrics();
 
   const posts = postsQuery.data || [];
   const metrics = metricsQuery.data || [];
+
+  function handleCreateFromSuggestion(sug) {
+    setSuggestion(sug);
+    setTab('post');
+  }
 
   return (
     <div className={styles.app}>
@@ -88,8 +114,17 @@ export default function SocialManager() {
         {tab === 'dashboard' && (
           <DashboardHome posts={posts} metrics={metrics} postsQuery={postsQuery} metricsQuery={metricsQuery} />
         )}
-        {tab === 'post' && <PostCreator posts={posts} postsQuery={postsQuery} />}
-        {tab === 'calendario' && <CalendarView posts={posts} postsQuery={postsQuery} />}
+        {tab === 'post' && (
+          <PostCreator
+            posts={posts}
+            postsQuery={postsQuery}
+            suggestion={suggestion}
+            onConsumeSuggestion={() => setSuggestion(null)}
+          />
+        )}
+        {tab === 'calendario' && (
+          <CalendarView posts={posts} postsQuery={postsQuery} onCreateFromSuggestion={handleCreateFromSuggestion} />
+        )}
         {tab === 'metriche' && <MetricsView metrics={metrics} metricsQuery={metricsQuery} />}
       </main>
     </div>
@@ -106,6 +141,7 @@ function DashboardHome({ posts, metrics, postsQuery, metricsQuery }) {
 
   const igTrend = trends.find(t => t.platform === 'instagram');
   const fbTrend = trends.find(t => t.platform === 'facebook');
+  const dcTrend = trends.find(t => t.platform === 'discord');
 
   const postiInCoda = posts.filter(p => p.status === 'programmato').length;
   const now = new Date();
@@ -140,6 +176,13 @@ function DashboardHome({ posts, metrics, postsQuery, metricsQuery }) {
           label="Follower Facebook"
           value={fbTrend ? fbTrend.latest.toLocaleString('it-IT') : '—'}
           delta={fbTrend?.delta ?? null}
+        />
+        <IconStatCard
+          badgeClass={styles.badgeDiscord}
+          icon="💬"
+          label="Membri Discord"
+          value={dcTrend ? dcTrend.latest.toLocaleString('it-IT') : '—'}
+          delta={dcTrend?.delta ?? null}
         />
         <IconStatCard
           badgeClass={styles.badgeQueue}
@@ -177,6 +220,10 @@ function DashboardHome({ posts, metrics, postsQuery, metricsQuery }) {
                       <stop offset="0%" stopColor="#3b8bff" stopOpacity={0.35} />
                       <stop offset="100%" stopColor="#3b8bff" stopOpacity={0} />
                     </linearGradient>
+                    <linearGradient id="dcGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#5865f2" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="#5865f2" stopOpacity={0} />
+                    </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
                   <XAxis dataKey="dateLabel" tick={{ fill: '#8a96b0', fontSize: 11 }} axisLine={false} tickLine={false} />
@@ -189,6 +236,8 @@ function DashboardHome({ posts, metrics, postsQuery, metricsQuery }) {
                     fill="url(#igGrad)" strokeWidth={2} connectNulls dot={{ r: 3 }} />
                   <Area type="monotone" dataKey="facebook" name="Facebook" stroke="#3b8bff"
                     fill="url(#fbGrad)" strokeWidth={2} connectNulls dot={{ r: 3 }} />
+                  <Area type="monotone" dataKey="discord" name="Discord" stroke="#5865f2"
+                    fill="url(#dcGrad)" strokeWidth={2} connectNulls dot={{ r: 3 }} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -264,7 +313,7 @@ function IconStatCard({ badgeClass, icon, label, value, delta }) {
 // POST CREATOR (crea + gestisce post esistenti)
 // ═══════════════════════════════════════════════════════════
 
-function PostCreator({ posts, postsQuery }) {
+function PostCreator({ posts, postsQuery, suggestion, onConsumeSuggestion }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState(null);
   const [aiTopic, setAiTopic] = useState('');
@@ -279,8 +328,33 @@ function PostCreator({ posts, postsQuery }) {
   const isEdit = Boolean(editingId);
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
+  // Arrivo da "+ Crea bozza" nel piano editoriale (tab Calendario):
+  // precompila argomento/piattaforme/link/race_id/pillar, poi si
+  // autoconsuma per non riapplicarsi ai render successivi.
+  useEffect(() => {
+    if (!suggestion) return;
+    setEditingId(null);
+    setForm({
+      content: '',
+      platforms: suggestion.platforms || ['facebook', 'instagram'],
+      scheduled_date: suggestion.scheduled_date || '',
+      link_destination: suggestion.link_destination || '',
+      race_id: suggestion.race_id || '',
+      pillar: suggestion.pillar || '',
+    });
+    setAiTopic(suggestion.topic || '');
+    setError('');
+    onConsumeSuggestion();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [suggestion]);
+
   function update(field, value) {
     setForm(prev => ({ ...prev, [field]: value }));
+  }
+
+  function unlinkFromRace() {
+    setForm(prev => ({ ...prev, race_id: '', pillar: '' }));
   }
 
   function togglePlatform(id) {
@@ -306,6 +380,8 @@ function PostCreator({ posts, postsQuery }) {
       platforms: post.platforms ? String(post.platforms).split(',').filter(Boolean) : [],
       scheduled_date: post.scheduled_date || '',
       link_destination: post.link_destination || '',
+      race_id: post.race_id || '',
+      pillar: post.pillar || '',
     });
     setError('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -336,6 +412,8 @@ function PostCreator({ posts, postsQuery }) {
       platforms: form.platforms,
       scheduled_date: form.scheduled_date || '',
       link_destination: form.link_destination.trim(),
+      race_id: form.race_id || '',
+      pillar: form.pillar || '',
     };
 
     const onSuccess = () => resetForm();
@@ -371,6 +449,16 @@ function PostCreator({ posts, postsQuery }) {
       <form onSubmit={handleSubmit} className={styles.form}>
         <div className={styles.formCard}>
           <h2 className={styles.sectionTitle}>{isEdit ? `Modifica post — ${editingId}` : 'Nuovo post'}</h2>
+
+          {form.pillar && (
+            <div className={styles.pillarBanner}>
+              <span>
+                {PILLAR_BY_ID[form.pillar]?.icon} Collegato al pilastro <strong>{PILLAR_BY_ID[form.pillar]?.label || form.pillar}</strong>
+                {form.race_id ? ` — ${form.race_id}` : ''}
+              </span>
+              <button type="button" className={styles.btnMini} onClick={unlinkFromRace}>✕ Scollega</button>
+            </div>
+          )}
 
           <div className={styles.aiRow}>
             <input
@@ -493,7 +581,7 @@ function PostRow({ post, onEdit, onDelete, onStatusChange, deleting, readOnly })
           </span>
           {platforms.map(p => (
             <span key={p} className={styles.platformBadge}>
-              {p === 'instagram' ? '📷' : '📘'}
+              {PLATFORM_ICON[p] || '•'}
             </span>
           ))}
           {post.scheduled_date && <span className={styles.postDate}>{fmtDate(post.scheduled_date)}</span>}
@@ -533,7 +621,73 @@ function PostRow({ post, onEdit, onDelete, onStatusChange, deleting, readOnly })
 // CALENDARIO — post raggruppati per data programmata
 // ═══════════════════════════════════════════════════════════
 
-function CalendarView({ posts, postsQuery }) {
+function addDays(date, n) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + n);
+  return d;
+}
+
+function pillarLinkDestination(race, pillarId) {
+  if (pillarId === 'highlight') return '/joinus';
+  if (pillarId === 'risultati') {
+    return race.championship_id ? `/championships/${race.championship_id}` : `/race/${race.race_id}`;
+  }
+  return `/race/${race.race_id}`;
+}
+
+function pillarTopic(race, pillarId, dateLabel) {
+  const name = race.race_name || race.race_id;
+  switch (pillarId) {
+    case 'anteprima': return `Anteprima gara ${name} (${race.sim}), in programma ${dateLabel}`;
+    case 'iscrizioni': return `Ultimo richiamo iscrizioni per ${name}, chiusura imminente`;
+    case 'live': return `Aggiornamento live durante ${name}`;
+    case 'risultati': return `Risultati e podio di ${name}`;
+    case 'highlight': return `Momento più bello di ${name} (sorpasso, incidente, onboard)`;
+    default: return name;
+  }
+}
+
+// Finestra di rilevanza: gare da 10 giorni fa a 45 giorni nel futuro —
+// abbastanza per coprire tutti i pilastri (T-7...T+3) di ogni round
+// senza riempire la vista con l'intera storia del team.
+function useEditorialPlan(posts) {
+  const racesQuery = useRaces();
+  const races = racesQuery.data || [];
+
+  const plan = useMemo(() => {
+    const now = new Date();
+    const windowStart = addDays(now, -10);
+    const windowEnd = addDays(now, 45);
+
+    return races
+      .filter(r => {
+        const d = r.date ? new Date(r.date) : null;
+        return d && !isNaN(d.getTime()) && d >= windowStart && d <= windowEnd;
+      })
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .map(race => {
+        const raceDate = new Date(race.date);
+        const pillars = PILLARS.map(pillar => {
+          const pillarDate = addDays(raceDate, pillar.offsetDays);
+          const dateStr = pillarDate.toISOString().slice(0, 10);
+          const match = posts.find(p => p.race_id === race.race_id && p.pillar === pillar.id);
+          return {
+            ...pillar,
+            date: dateStr,
+            dateLabel: fmtDate(dateStr),
+            post: match || null,
+          };
+        });
+        return { race, pillars };
+      });
+  }, [races, posts]);
+
+  return { plan, isLoading: racesQuery.isLoading, error: racesQuery.error };
+}
+
+function CalendarView({ posts, postsQuery, onCreateFromSuggestion }) {
+  const { plan, isLoading: racesLoading, error: racesError } = useEditorialPlan(posts);
+
   const grouped = useMemo(() => {
     const withDate = posts.filter(p => p.scheduled_date);
     const withoutDate = posts.filter(p => !p.scheduled_date);
@@ -549,8 +703,60 @@ function CalendarView({ posts, postsQuery }) {
 
   const dates = Object.keys(grouped.groups);
 
+  function handlePillarCreate(race, pillar) {
+    onCreateFromSuggestion({
+      race_id: race.race_id,
+      pillar: pillar.id,
+      scheduled_date: pillar.date,
+      link_destination: pillarLinkDestination(race, pillar.id),
+      platforms: pillar.id === 'highlight' ? ['instagram'] : ['facebook', 'instagram'],
+      topic: pillarTopic(race, pillar.id, pillar.dateLabel),
+    });
+  }
+
   return (
     <div className={styles.section}>
+      <h2 className={styles.sectionTitle} style={{ margin: 0 }}>Piano editoriale</h2>
+      {racesLoading && <div className={styles.loading}>Caricamento gare…</div>}
+      {racesError && <div className={styles.errorBox}>Errore gare: {racesError.message}</div>}
+      {!racesLoading && plan.length === 0 && (
+        <div className={styles.empty}>Nessuna gara nella finestra ±45 giorni. Torna a controllare più vicino alla prossima gara.</div>
+      )}
+
+      {plan.map(({ race, pillars }) => (
+        <div key={race.race_id} className={styles.raceCard}>
+          <div className={styles.raceCardHead}>
+            <span className={styles.raceCardName}>{race.race_name}</span>
+            <span className={styles.raceCardMeta}>{race.sim} · {fmtDate(race.date)}</span>
+          </div>
+          <div className={styles.pillarRow}>
+            {pillars.map(pillar => (
+              <div
+                key={pillar.id}
+                className={`${styles.pillarChip} ${pillar.post ? styles['pillarStatus_' + pillar.post.status] : styles.pillarMissing}`}
+                title={`${pillar.label} — ${pillar.dateLabel}`}
+              >
+                <div className={styles.pillarChipTop}>
+                  <span>{pillar.icon}</span>
+                  <span className={styles.pillarChipLabel}>{pillar.label}</span>
+                </div>
+                <div className={styles.pillarChipDate}>{pillar.dateLabel}</div>
+                {pillar.post ? (
+                  <div className={styles.pillarChipStatus}>
+                    {STATUS_ICON[pillar.post.status]} {STATUS_LABEL[pillar.post.status]}
+                  </div>
+                ) : (
+                  <button type="button" className={styles.btnMini} onClick={() => handlePillarCreate(race, pillar)}>
+                    + Crea bozza
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+
+      <h2 className={styles.sectionTitle}>Post programmati</h2>
       {postsQuery.isLoading && <div className={styles.loading}>Caricamento…</div>}
 
       {dates.length === 0 && grouped.withoutDate.length === 0 && (
@@ -582,16 +788,24 @@ function CalendarView({ posts, postsQuery }) {
 // METRICHE — tracking follower manuale
 // ═══════════════════════════════════════════════════════════
 
+const METRICS_PLATFORMS = [
+  { id: 'instagram', label: 'Instagram', icon: '📷' },
+  { id: 'facebook', label: 'Facebook', icon: '📘' },
+  { id: 'discord', label: 'Discord', icon: '💬' },
+];
+
 function MetricsView({ metrics, metricsQuery }) {
   const [platform, setPlatform] = useState('instagram');
   const [followers, setFollowers] = useState('');
   const [recordedDate, setRecordedDate] = useState('');
   const [error, setError] = useState('');
+  const [discordInfo, setDiscordInfo] = useState(null);
 
   const addMutation = useAddSocialMetric();
+  const discordStatsMutation = useDiscordStats();
 
   const grouped = useMemo(() => {
-    const g = { instagram: [], facebook: [] };
+    const g = { instagram: [], facebook: [], discord: [] };
     metrics.forEach(m => { if (g[m.platform]) g[m.platform].push(m); });
     Object.keys(g).forEach(k => {
       g[k].sort((a, b) => String(b.recorded_date).localeCompare(String(a.recorded_date)));
@@ -603,15 +817,27 @@ function MetricsView({ metrics, metricsQuery }) {
     e.preventDefault();
     setError('');
     const n = Number(followers);
-    if (!followers || n < 0) { setError('Numero follower non valido'); return; }
+    if (!followers || n < 0) { setError('Numero non valido'); return; }
 
     addMutation.mutate(
       { platform, followers: n, recorded_date: recordedDate || undefined },
       {
-        onSuccess: () => { setFollowers(''); setRecordedDate(''); },
+        onSuccess: () => { setFollowers(''); setRecordedDate(''); setDiscordInfo(null); },
         onError: (err) => setError(err.message || 'Errore salvataggio'),
       }
     );
+  }
+
+  function handleFetchDiscord() {
+    setError('');
+    setDiscordInfo(null);
+    discordStatsMutation.mutate(undefined, {
+      onSuccess: (data) => {
+        if (data.member_count != null) setFollowers(String(data.member_count));
+        setDiscordInfo(data);
+      },
+      onError: (err) => setError(err.message || 'Errore recupero dati Discord'),
+    });
   }
 
   return (
@@ -619,17 +845,18 @@ function MetricsView({ metrics, metricsQuery }) {
       {error && <div className={styles.alertError}>❌ {error}</div>}
 
       <form onSubmit={handleSubmit} className={styles.formCard}>
-        <h2 className={styles.sectionTitle}>Nuova rilevazione follower</h2>
+        <h2 className={styles.sectionTitle}>Nuova rilevazione</h2>
         <div className={styles.row3}>
           <div className={styles.field}>
             <label className={styles.fieldLabel}>Piattaforma</label>
-            <select className={styles.select} value={platform} onChange={e => setPlatform(e.target.value)}>
-              <option value="instagram">📷 Instagram</option>
-              <option value="facebook">📘 Facebook</option>
+            <select className={styles.select} value={platform} onChange={e => { setPlatform(e.target.value); setDiscordInfo(null); }}>
+              {METRICS_PLATFORMS.map(p => (
+                <option key={p.id} value={p.id}>{p.icon} {p.label}</option>
+              ))}
             </select>
           </div>
           <div className={styles.field}>
-            <label className={styles.fieldLabel}>Follower</label>
+            <label className={styles.fieldLabel}>{platform === 'discord' ? 'Membri' : 'Follower'}</label>
             <input
               type="number" min="0" className={styles.input}
               value={followers} onChange={e => setFollowers(e.target.value)}
@@ -644,6 +871,27 @@ function MetricsView({ metrics, metricsQuery }) {
             />
           </div>
         </div>
+
+        {platform === 'discord' && (
+          <div className={styles.discordFetchRow}>
+            <button
+              type="button"
+              className={styles.btnSecondary}
+              onClick={handleFetchDiscord}
+              disabled={discordStatsMutation.isPending}
+            >
+              {discordStatsMutation.isPending ? '🔄 Recupero…' : '🔄 Aggiorna da Discord'}
+            </button>
+            {discordInfo && (
+              <span className={styles.discordFetchHint}>
+                {discordInfo.guild_name ? `${discordInfo.guild_name} — ` : ''}
+                {discordInfo.member_count?.toLocaleString('it-IT')} membri
+                {discordInfo.online_count != null ? `, ${discordInfo.online_count.toLocaleString('it-IT')} online` : ''} (dato reale, appena recuperato)
+              </span>
+            )}
+          </div>
+        )}
+
         <div className={styles.actions}>
           <button type="submit" className={styles.btnPrimary} disabled={addMutation.isPending}>
             {addMutation.isPending ? 'Salvataggio…' : '+ Registra'}
@@ -653,19 +901,19 @@ function MetricsView({ metrics, metricsQuery }) {
 
       {metricsQuery.isLoading && <div className={styles.loading}>Caricamento…</div>}
 
-      {['instagram', 'facebook'].map(p => (
-        <div key={p} className={styles.section}>
-          <h2 className={styles.sectionTitle}>{p === 'instagram' ? '📷 Instagram' : '📘 Facebook'} — storico</h2>
-          {grouped[p].length === 0 && <div className={styles.empty}>Nessuna rilevazione.</div>}
-          {grouped[p].length > 0 && (
+      {METRICS_PLATFORMS.map(p => (
+        <div key={p.id} className={styles.section}>
+          <h2 className={styles.sectionTitle}>{p.icon} {p.label} — storico</h2>
+          {grouped[p.id].length === 0 && <div className={styles.empty}>Nessuna rilevazione.</div>}
+          {grouped[p.id].length > 0 && (
             <div className={styles.table}>
               <div className={styles.tableHeaderRow}>
                 <span>Data</span>
-                <span>Follower</span>
+                <span>{p.id === 'discord' ? 'Membri' : 'Follower'}</span>
                 <span>Variazione</span>
               </div>
-              {grouped[p].map((m, i) => {
-                const prev = grouped[p][i + 1];
+              {grouped[p.id].map((m, i) => {
+                const prev = grouped[p.id][i + 1];
                 const delta = prev ? Number(m.followers) - Number(prev.followers) : null;
                 return (
                   <div key={m.metric_id} className={styles.tableRow}>

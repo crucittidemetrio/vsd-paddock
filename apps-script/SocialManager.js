@@ -27,6 +27,12 @@
 const SOCIAL_POSTS_HEADERS = [
   'post_id', 'content', 'platforms', 'status', 'scheduled_date',
   'link_destination', 'created_by', 'created_at', 'updated_at', 'published_at',
+  // race_id/pillar (opzionali): collegano un post a una gara e a un
+  // pilastro del calendario editoriale (anteprima/iscrizioni/live/
+  // risultati/highlight) — usati da handleSocialEditorialPlan lato
+  // frontend per capire quali post mancano ancora. Append in fondo,
+  // non in mezzo, per non spostare le colonne di righe già esistenti.
+  'race_id', 'pillar',
 ];
 
 const SOCIAL_METRICS_HEADERS = [
@@ -52,7 +58,35 @@ function setupSocialManagerTabs() {
     let sheet = ss.getSheetByName(tab.name);
 
     if (sheet) {
-      results.push(`⚠  Tab "${tab.name}" già esistente — skip`);
+      // Migrazione idempotente: se lo schema atteso ha più colonne di
+      // quelle già presenti (es. race_id/pillar aggiunte dopo), le
+      // aggiunge in coda senza toccare le colonne/righe esistenti.
+      const lastCol = sheet.getLastColumn();
+      const currentHeaders = lastCol > 0
+        ? sheet.getRange(1, 1, 1, lastCol).getValues()[0].map(h => String(h || ''))
+        : [];
+      const missing = tab.headers.filter(h => currentHeaders.indexOf(h) === -1);
+
+      if (missing.length === 0) {
+        results.push(`⚠  Tab "${tab.name}" già esistente e aggiornato — skip`);
+        return;
+      }
+
+      const startCol = currentHeaders.length + 1;
+      const range = sheet.getRange(1, startCol, 1, missing.length);
+      range.setValues([missing]);
+      range.setFontWeight('bold');
+      range.setBackground('#1f2a44');
+      range.setFontColor('#ffffff');
+      range.setFontSize(10);
+      range.setHorizontalAlignment('left');
+      for (let i = 0; i < missing.length; i++) {
+        const col = startCol + i;
+        sheet.autoResizeColumn(col);
+        if (sheet.getColumnWidth(col) < 100) sheet.setColumnWidth(col, 100);
+      }
+
+      results.push(`✓  Tab "${tab.name}" aggiornato: colonne aggiunte [${missing.join(', ')}]`);
       return;
     }
 
@@ -145,6 +179,8 @@ function handleSocialPostsCreate(payload, ctx) {
     created_at: now,
     updated_at: now,
     published_at: '',
+    race_id: payload.race_id || '',
+    pillar: payload.pillar || '',
   };
 
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
@@ -414,4 +450,61 @@ function generateWithGemini_(prompt) {
     throw new Error('Risposta Gemini vuota o in formato inatteso' + statusInfo);
   }
   return text;
+}
+
+// ═══════════════════════════════════════════════════════════
+// DISCORD — numero membri reale via invito pubblico
+// ═══════════════════════════════════════════════════════════
+//
+// Nessun bot da creare, nessun token segreto: l'endpoint pubblico di
+// Discord /invites/{code}?with_counts=true restituisce il numero
+// approssimativo di membri e online per un server, a partire dal
+// codice di un invito permanente — non serve autenticazione.
+// Config: Script Property DISCORD_INVITE_CODE — accetta sia il solo
+// codice (es. "abcDEF12") sia l'URL completo (es. "discord.gg/abcDEF12"),
+// viene estratto l'ultimo segmento del path.
+
+/**
+ * social.discord.stats — Membri reali del server Discord VSD.
+ * Non salva nulla: il frontend usa il risultato per precompilare il
+ * campo "followers" di una rilevazione in SocialMetrics, che l'utente
+ * conferma esplicitamente col bottone "Registra" come le altre.
+ */
+function handleSocialDiscordStats(payload, ctx) {
+  if (!ctx || !ctx.isAdmin) return fail('Accesso riservato ad admin/team principal');
+
+  const raw = PropertiesService.getScriptProperties().getProperty('DISCORD_INVITE_CODE');
+  if (!raw) {
+    return fail(
+      'Codice invito Discord non configurato. Aggiungi DISCORD_INVITE_CODE nelle ' +
+      'Proprietà script (⚙ Impostazioni progetto → Proprietà script) — va bene sia ' +
+      'il solo codice (es. "abcDEF12") sia il link completo (es. "discord.gg/abcDEF12"). ' +
+      'Deve essere un invito permanente, non scaduto, del server VSD.'
+    );
+  }
+
+  const parts = String(raw).trim().replace(/\/+$/, '').split('/');
+  const code = parts[parts.length - 1];
+
+  try {
+    const response = UrlFetchApp.fetch(
+      `https://discord.com/api/v10/invites/${encodeURIComponent(code)}?with_counts=true`,
+      { method: 'get', muteHttpExceptions: true }
+    );
+    const status = response.getResponseCode();
+    const body = JSON.parse(response.getContentText());
+
+    if (status !== 200) {
+      const msg = (body && body.message) || ('HTTP ' + status);
+      return fail('Errore Discord API: ' + msg + ' — verifica che l\'invito sia valido e non scaduto.');
+    }
+
+    return ok({
+      guild_name: (body.guild && body.guild.name) || null,
+      member_count: body.approximate_member_count != null ? body.approximate_member_count : null,
+      online_count: body.approximate_presence_count != null ? body.approximate_presence_count : null,
+    });
+  } catch (e) {
+    return fail('Errore chiamata Discord: ' + e.message);
+  }
 }

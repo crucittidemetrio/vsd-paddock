@@ -125,6 +125,7 @@ export const api = {
     metricsList: (platform) => call('social.metrics.list', { platform }),
     metricsAdd: (payload) => call('social.metrics.add', payload),
     generateText: (prompt, provider) => call('social.generateText', { prompt, provider }),
+    discordStats: () => call('social.discord.stats', {}),
   },
 
  championships: {

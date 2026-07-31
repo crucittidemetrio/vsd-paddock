@@ -224,6 +224,8 @@ export async function callApi(action, payload = {}, ctx = null) {
         return await socialMetricsAddAdapter(payload, token);
       case 'social.generateText':
         return await socialGenerateTextAdapter(payload, token);
+      case 'social.discord.stats':
+        return await socialDiscordStatsAdapter(payload, token);
       case 'championships.list':                              // ← NEW
         return await championshipsListAdapter(payload, token); // ← NEW
       case 'championships.importStandings':
@@ -624,6 +626,16 @@ async function socialMetricsAddAdapter(payload, token) {
  */
 async function socialGenerateTextAdapter(payload, token) {
   const res = await postToBackend('social.generateText', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: social.discordStats() → { guild_name, member_count, online_count }
+ * Backend:  social.discord.stats({}) → stessa forma
+ */
+async function socialDiscordStatsAdapter(payload, token) {
+  const res = await postToBackend('social.discord.stats', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
 }

@@ -194,6 +194,7 @@ const ACTIONS = {
   'social.metrics.list': handleSocialMetricsList,
   'social.metrics.add': handleSocialMetricsAdd,
   'social.generateText': handleSocialGenerateText,
+  'social.discord.stats': handleSocialDiscordStats,
   'standings.byChampionship': handleStandingsByChampionship,
   'standings.byDriver':       handleStandingsByDriver,
   'championships.importStandings':   handleChampionshipsImportStandings,

@@ -60,3 +60,11 @@ export function useGenerateSocialText() {
     mutationFn: ({ prompt, provider }) => api.social.generateText(prompt, provider),
   });
 }
+
+// ── Discord (numero membri reale via invito pubblico) ─────
+
+export function useDiscordStats() {
+  return useMutation({
+    mutationFn: () => api.social.discordStats(),
+  });
+}
