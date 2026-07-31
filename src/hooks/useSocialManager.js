@@ -68,3 +68,29 @@ export function useDiscordStats() {
     mutationFn: () => api.social.discordStats(),
   });
 }
+
+// ── Media Gallery (file caricati su Vercel Blob) ──────────
+
+export function useSocialMedia(tag) {
+  return useQuery({
+    queryKey: ['social', 'media', tag || 'all'],
+    queryFn: () => api.social.mediaList(tag),
+    staleTime: 30_000,
+  });
+}
+
+export function useAddSocialMedia() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload) => api.social.mediaAdd(payload),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['social', 'media'] }),
+  });
+}
+
+export function useRemoveSocialMedia() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (media_id) => api.social.mediaRemove(media_id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['social', 'media'] }),
+  });
+}

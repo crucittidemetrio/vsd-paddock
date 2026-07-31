@@ -1,5 +1,6 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
+import { upload } from '@vercel/blob/client';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
@@ -12,6 +13,9 @@ import {
   useAddSocialMetric,
   useGenerateSocialText,
   useDiscordStats,
+  useSocialMedia,
+  useAddSocialMedia,
+  useRemoveSocialMedia,
 } from '../hooks/useSocialManager';
 import { useRaces } from '../hooks/useRaces';
 import styles from './SocialManager.module.css';
@@ -43,8 +47,10 @@ const STATUS_ICON = { bozza: '📝', programmato: '⏰', pubblicato: '✅' };
 
 const TABS = [
   { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+  { id: 'piano', label: 'Piano editoriale', icon: '🗓️' },
   { id: 'post', label: 'Post', icon: '✨' },
   { id: 'calendario', label: 'Calendario', icon: '📅' },
+  { id: 'gallery', label: 'Media Gallery', icon: '🖼️' },
   { id: 'metriche', label: 'Metriche', icon: '📈' },
 ];
 
@@ -55,6 +61,7 @@ const EMPTY_FORM = {
   link_destination: '',
   race_id: '',
   pillar: '',
+  media_url: '',
 };
 
 const AI_PROVIDERS = [
@@ -82,7 +89,12 @@ export default function SocialManager() {
   const metrics = metricsQuery.data || [];
 
   function handleCreateFromSuggestion(sug) {
-    setSuggestion(sug);
+    setSuggestion({ type: 'pillar', ...sug });
+    setTab('post');
+  }
+
+  function handleUseMediaInPost(media) {
+    setSuggestion({ type: 'media', media_url: media.url });
     setTab('post');
   }
 
@@ -114,6 +126,9 @@ export default function SocialManager() {
         {tab === 'dashboard' && (
           <DashboardHome posts={posts} metrics={metrics} postsQuery={postsQuery} metricsQuery={metricsQuery} />
         )}
+        {tab === 'piano' && (
+          <EditorialPlanView posts={posts} onCreateFromSuggestion={handleCreateFromSuggestion} />
+        )}
         {tab === 'post' && (
           <PostCreator
             posts={posts}
@@ -123,7 +138,10 @@ export default function SocialManager() {
           />
         )}
         {tab === 'calendario' && (
-          <CalendarView posts={posts} postsQuery={postsQuery} onCreateFromSuggestion={handleCreateFromSuggestion} />
+          <CalendarView posts={posts} postsQuery={postsQuery} />
+        )}
+        {tab === 'gallery' && (
+          <MediaGalleryView onUseInPost={handleUseMediaInPost} />
         )}
         {tab === 'metriche' && <MetricsView metrics={metrics} metricsQuery={metricsQuery} />}
       </main>
@@ -328,11 +346,21 @@ function PostCreator({ posts, postsQuery, suggestion, onConsumeSuggestion }) {
   const isEdit = Boolean(editingId);
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
-  // Arrivo da "+ Crea bozza" nel piano editoriale (tab Calendario):
-  // precompila argomento/piattaforme/link/race_id/pillar, poi si
-  // autoconsuma per non riapplicarsi ai render successivi.
+  // Arrivo da "+ Crea bozza" nel piano editoriale (tab omonima): resetta
+  // il form e precompila argomento/piattaforme/link/race_id/pillar.
+  // Arrivo da "Usa nel post" nella Media Gallery: NON resetta il form,
+  // aggiunge solo l'immagine a quello che si sta già scrivendo.
+  // In entrambi i casi si autoconsuma per non riapplicarsi ai render
+  // successivi.
   useEffect(() => {
     if (!suggestion) return;
+
+    if (suggestion.type === 'media') {
+      setForm(prev => ({ ...prev, media_url: suggestion.media_url || '' }));
+      onConsumeSuggestion();
+      return;
+    }
+
     setEditingId(null);
     setForm({
       content: '',
@@ -341,6 +369,7 @@ function PostCreator({ posts, postsQuery, suggestion, onConsumeSuggestion }) {
       link_destination: suggestion.link_destination || '',
       race_id: suggestion.race_id || '',
       pillar: suggestion.pillar || '',
+      media_url: '',
     });
     setAiTopic(suggestion.topic || '');
     setError('');
@@ -355,6 +384,10 @@ function PostCreator({ posts, postsQuery, suggestion, onConsumeSuggestion }) {
 
   function unlinkFromRace() {
     setForm(prev => ({ ...prev, race_id: '', pillar: '' }));
+  }
+
+  function removeMedia() {
+    setForm(prev => ({ ...prev, media_url: '' }));
   }
 
   function togglePlatform(id) {
@@ -382,6 +415,7 @@ function PostCreator({ posts, postsQuery, suggestion, onConsumeSuggestion }) {
       link_destination: post.link_destination || '',
       race_id: post.race_id || '',
       pillar: post.pillar || '',
+      media_url: post.media_url || '',
     });
     setError('');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -414,6 +448,7 @@ function PostCreator({ posts, postsQuery, suggestion, onConsumeSuggestion }) {
       link_destination: form.link_destination.trim(),
       race_id: form.race_id || '',
       pillar: form.pillar || '',
+      media_url: form.media_url || '',
     };
 
     const onSuccess = () => resetForm();
@@ -457,6 +492,22 @@ function PostCreator({ posts, postsQuery, suggestion, onConsumeSuggestion }) {
                 {form.race_id ? ` — ${form.race_id}` : ''}
               </span>
               <button type="button" className={styles.btnMini} onClick={unlinkFromRace}>✕ Scollega</button>
+            </div>
+          )}
+
+          {form.media_url ? (
+            <div className={styles.mediaAttached}>
+              {form.media_url.match(/\.(mp4|mov|webm)(\?|$)/i) ? (
+                <video src={form.media_url} className={styles.mediaAttachedThumb} muted />
+              ) : (
+                <img src={form.media_url} alt="" className={styles.mediaAttachedThumb} />
+              )}
+              <span className={styles.mediaAttachedLabel}>🖼️ Immagine allegata dalla Media Gallery</span>
+              <button type="button" className={styles.btnMini} onClick={removeMedia}>✕ Rimuovi</button>
+            </div>
+          ) : (
+            <div className={styles.mediaAttachedHint}>
+              📎 Nessuna immagine collegata — scegline una dalla tab "Media Gallery" con "Usa nel post".
             </div>
           )}
 
@@ -685,23 +736,8 @@ function useEditorialPlan(posts) {
   return { plan, isLoading: racesQuery.isLoading, error: racesQuery.error };
 }
 
-function CalendarView({ posts, postsQuery, onCreateFromSuggestion }) {
+function EditorialPlanView({ posts, onCreateFromSuggestion }) {
   const { plan, isLoading: racesLoading, error: racesError } = useEditorialPlan(posts);
-
-  const grouped = useMemo(() => {
-    const withDate = posts.filter(p => p.scheduled_date);
-    const withoutDate = posts.filter(p => !p.scheduled_date);
-    const sorted = [...withDate].sort((a, b) => String(a.scheduled_date).localeCompare(String(b.scheduled_date)));
-    const groups = {};
-    sorted.forEach(p => {
-      const key = p.scheduled_date;
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(p);
-    });
-    return { groups, withoutDate };
-  }, [posts]);
-
-  const dates = Object.keys(grouped.groups);
 
   function handlePillarCreate(race, pillar) {
     onCreateFromSuggestion({
@@ -717,6 +753,11 @@ function CalendarView({ posts, postsQuery, onCreateFromSuggestion }) {
   return (
     <div className={styles.section}>
       <h2 className={styles.sectionTitle} style={{ margin: 0 }}>Piano editoriale</h2>
+      <p className={styles.subtleHint}>
+        Ogni gara nella finestra ±45 giorni genera automaticamente 5 slot di contenuto
+        (anteprima, iscrizioni, live, risultati, highlight). Quelli mancanti hanno un
+        bottone rapido per creare la bozza già precompilata.
+      </p>
       {racesLoading && <div className={styles.loading}>Caricamento gare…</div>}
       {racesError && <div className={styles.errorBox}>Errore gare: {racesError.message}</div>}
       {!racesLoading && plan.length === 0 && (
@@ -755,8 +796,29 @@ function CalendarView({ posts, postsQuery, onCreateFromSuggestion }) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
 
-      <h2 className={styles.sectionTitle}>Post programmati</h2>
+function CalendarView({ posts, postsQuery }) {
+  const grouped = useMemo(() => {
+    const withDate = posts.filter(p => p.scheduled_date);
+    const withoutDate = posts.filter(p => !p.scheduled_date);
+    const sorted = [...withDate].sort((a, b) => String(a.scheduled_date).localeCompare(String(b.scheduled_date)));
+    const groups = {};
+    sorted.forEach(p => {
+      const key = p.scheduled_date;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(p);
+    });
+    return { groups, withoutDate };
+  }, [posts]);
+
+  const dates = Object.keys(grouped.groups);
+
+  return (
+    <div className={styles.section}>
+      <h2 className={styles.sectionTitle} style={{ margin: 0 }}>Post programmati</h2>
       {postsQuery.isLoading && <div className={styles.loading}>Caricamento…</div>}
 
       {dates.length === 0 && grouped.withoutDate.length === 0 && (
@@ -933,6 +995,197 @@ function MetricsView({ metrics, metricsQuery }) {
           )}
         </div>
       ))}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// MEDIA GALLERY — libreria file (upload diretto su Vercel Blob)
+// ═══════════════════════════════════════════════════════════
+
+function isVideoUrl(url) {
+  return /\.(mp4|mov|webm)(\?|$)/i.test(url || '');
+}
+
+function MediaGalleryView({ onUseInPost }) {
+  const [search, setSearch] = useState('');
+  const [pendingTags, setPendingTags] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState('');
+  const [error, setError] = useState('');
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const mediaQuery = useSocialMedia();
+  const addMutation = useAddSocialMedia();
+  const removeMutation = useRemoveSocialMedia();
+
+  const media = mediaQuery.data || [];
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return media;
+    return media.filter(m =>
+      String(m.filename || '').toLowerCase().includes(q) ||
+      String(m.tags || '').toLowerCase().includes(q)
+    );
+  }, [media, search]);
+
+  async function handleFiles(fileList) {
+    const files = Array.from(fileList || []);
+    if (files.length === 0) return;
+    setError('');
+    setUploading(true);
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        setUploadProgress(`Caricamento ${i + 1}/${files.length}: ${file.name}…`);
+        const blob = await upload(file.name, file, {
+          access: 'public',
+          handleUploadUrl: '/api/media-upload',
+        });
+        await addMutation.mutateAsync({
+          url: blob.url,
+          filename: file.name,
+          media_type: file.type.startsWith('video') ? 'video' : 'image',
+          tags: pendingTags.trim(),
+        });
+      }
+      setPendingTags('');
+    } catch (err) {
+      setError(err.message || 'Errore durante il caricamento');
+    } finally {
+      setUploading(false);
+      setUploadProgress('');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
+  function handleDrop(e) {
+    e.preventDefault();
+    setDragOver(false);
+    handleFiles(e.dataTransfer.files);
+  }
+
+  async function handleDelete(m) {
+    const ok = window.confirm(`Eliminare "${m.filename || m.url}"? Non si può annullare.`);
+    if (!ok) return;
+    setError('');
+    try {
+      await fetch('/api/media-delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: m.url }),
+      });
+    } catch {
+      // Se la cancellazione del file su Blob fallisce, rimuoviamo comunque
+      // il record: meglio un link morto raro che un file orfano bloccante.
+    }
+    removeMutation.mutate(m.media_id, {
+      onError: (err) => setError(err.message || 'Errore eliminazione'),
+    });
+  }
+
+  function handleCopyUrl(url) {
+    if (navigator.clipboard) navigator.clipboard.writeText(url);
+  }
+
+  return (
+    <div className={styles.section}>
+      {error && <div className={styles.alertError}>❌ {error}</div>}
+
+      <div
+        className={`${styles.dropzone}${dragOver ? ' ' + styles.dropzoneActive : ''}`}
+        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+        onDragLeave={() => setDragOver(false)}
+        onDrop={handleDrop}
+        onClick={() => fileInputRef.current?.click()}
+      >
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*,video/mp4,video/quicktime,video/webm"
+          multiple
+          style={{ display: 'none' }}
+          onChange={(e) => handleFiles(e.target.files)}
+        />
+        {uploading ? (
+          <span>⏳ {uploadProgress || 'Caricamento…'}</span>
+        ) : (
+          <span>📤 Trascina qui foto/video, oppure clicca per scegliere i file</span>
+        )}
+      </div>
+
+      <div className={styles.field}>
+        <label className={styles.fieldLabel}>Tag per il prossimo upload (opzionale, es. "sebring, poster")</label>
+        <input
+          type="text"
+          className={styles.input}
+          value={pendingTags}
+          onChange={(e) => setPendingTags(e.target.value)}
+          placeholder="separati da virgola…"
+        />
+      </div>
+
+      <div className={styles.field}>
+        <label className={styles.fieldLabel}>Cerca in libreria</label>
+        <input
+          type="text"
+          className={styles.input}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="nome file o tag…"
+        />
+      </div>
+
+      {mediaQuery.isLoading && <div className={styles.loading}>Caricamento…</div>}
+      {mediaQuery.error && <div className={styles.errorBox}>Errore: {mediaQuery.error.message}</div>}
+      {!mediaQuery.isLoading && filtered.length === 0 && (
+        <div className={styles.empty}>
+          {media.length === 0 ? 'Nessun file ancora caricato.' : 'Nessun risultato per questa ricerca.'}
+        </div>
+      )}
+
+      {filtered.length > 0 && (
+        <div className={styles.mediaGrid}>
+          {filtered.map(m => (
+            <div key={m.media_id} className={styles.mediaCard}>
+              <div className={styles.mediaThumbWrap}>
+                {isVideoUrl(m.url) ? (
+                  <video src={m.url} className={styles.mediaThumb} muted controls />
+                ) : (
+                  <img src={m.url} alt={m.filename} className={styles.mediaThumb} loading="lazy" />
+                )}
+              </div>
+              <div className={styles.mediaCardBody}>
+                <div className={styles.mediaFilename} title={m.filename}>{m.filename || '—'}</div>
+                {m.tags && (
+                  <div className={styles.mediaTags}>
+                    {String(m.tags).split(',').map(t => t.trim()).filter(Boolean).map(t => (
+                      <span key={t} className={styles.mediaTag}>{t}</span>
+                    ))}
+                  </div>
+                )}
+                <div className={styles.mediaCardActions}>
+                  <button type="button" className={styles.btnMini} onClick={() => onUseInPost(m)}>
+                    ✨ Usa nel post
+                  </button>
+                  <button type="button" className={styles.btnMini} onClick={() => handleCopyUrl(m.url)}>
+                    🔗 Copia URL
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.btnDelete}
+                    onClick={() => handleDelete(m)}
+                    disabled={removeMutation.isPending}
+                    title="Elimina"
+                  >✕</button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -23,6 +23,7 @@ const SHEETS = {
   ENDURANCE_STINTS: 'EnduranceStints',
   SOCIAL_POSTS: 'SocialPosts',
   SOCIAL_METRICS: 'SocialMetrics',
+  SOCIAL_MEDIA: 'SocialMedia',
 };
 
 // Token TTL: 7 giorni
@@ -195,6 +196,9 @@ const ACTIONS = {
   'social.metrics.add': handleSocialMetricsAdd,
   'social.generateText': handleSocialGenerateText,
   'social.discord.stats': handleSocialDiscordStats,
+  'social.media.list': handleSocialMediaList,
+  'social.media.add': handleSocialMediaAdd,
+  'social.media.remove': handleSocialMediaRemove,
   'standings.byChampionship': handleStandingsByChampionship,
   'standings.byDriver':       handleStandingsByDriver,
   'championships.importStandings':   handleChampionshipsImportStandings,

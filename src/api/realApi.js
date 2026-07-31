@@ -226,6 +226,12 @@ export async function callApi(action, payload = {}, ctx = null) {
         return await socialGenerateTextAdapter(payload, token);
       case 'social.discord.stats':
         return await socialDiscordStatsAdapter(payload, token);
+      case 'social.media.list':
+        return await socialMediaListAdapter(payload, token);
+      case 'social.media.add':
+        return await socialMediaAddAdapter(payload, token);
+      case 'social.media.remove':
+        return await socialMediaRemoveAdapter(payload, token);
       case 'championships.list':                              // ← NEW
         return await championshipsListAdapter(payload, token); // ← NEW
       case 'championships.importStandings':
@@ -636,6 +642,36 @@ async function socialGenerateTextAdapter(payload, token) {
  */
 async function socialDiscordStatsAdapter(payload, token) {
   const res = await postToBackend('social.discord.stats', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: social.mediaList(tag?) → array di file in libreria
+ * Backend:  social.media.list({ tag? }) → { media: [...], count }
+ */
+async function socialMediaListAdapter(payload, token) {
+  const res = await postToBackend('social.media.list', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data.media);
+}
+
+/**
+ * Frontend: social.mediaAdd({ url, filename, media_type, tags? })
+ * Backend:  social.media.add({...}) → { media_id, media }
+ */
+async function socialMediaAddAdapter(payload, token) {
+  const res = await postToBackend('social.media.add', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: social.mediaRemove(media_id)
+ * Backend:  social.media.remove({ media_id }) → { media_id, deleted }
+ */
+async function socialMediaRemoveAdapter(payload, token) {
+  const res = await postToBackend('social.media.remove', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
 }

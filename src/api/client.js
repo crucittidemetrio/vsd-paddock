@@ -126,6 +126,9 @@ export const api = {
     metricsAdd: (payload) => call('social.metrics.add', payload),
     generateText: (prompt, provider) => call('social.generateText', { prompt, provider }),
     discordStats: () => call('social.discord.stats', {}),
+    mediaList: (tag) => call('social.media.list', { tag }),
+    mediaAdd: (payload) => call('social.media.add', payload),
+    mediaRemove: (media_id) => call('social.media.remove', { media_id }),
   },
 
  championships: {

@@ -33,10 +33,18 @@ const SOCIAL_POSTS_HEADERS = [
   // frontend per capire quali post mancano ancora. Append in fondo,
   // non in mezzo, per non spostare le colonne di righe già esistenti.
   'race_id', 'pillar',
+  // media_url (opzionale): URL di un file caricato in Media Gallery
+  // (SocialMedia) scelto per illustrare il post. Sempre append-only.
+  'media_url',
 ];
 
 const SOCIAL_METRICS_HEADERS = [
   'metric_id', 'platform', 'followers', 'recorded_date', 'recorded_by',
+];
+
+const SOCIAL_MEDIA_HEADERS = [
+  'media_id', 'url', 'filename', 'media_type', 'tags',
+  'uploaded_by', 'uploaded_at',
 ];
 
 /**
@@ -50,6 +58,7 @@ function setupSocialManagerTabs() {
   const tabs = [
     { name: SHEETS.SOCIAL_POSTS, headers: SOCIAL_POSTS_HEADERS },
     { name: SHEETS.SOCIAL_METRICS, headers: SOCIAL_METRICS_HEADERS },
+    { name: SHEETS.SOCIAL_MEDIA, headers: SOCIAL_MEDIA_HEADERS },
   ];
 
   const results = [];
@@ -181,6 +190,7 @@ function handleSocialPostsCreate(payload, ctx) {
     published_at: '',
     race_id: payload.race_id || '',
     pillar: payload.pillar || '',
+    media_url: payload.media_url || '',
   };
 
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
@@ -507,4 +517,86 @@ function handleSocialDiscordStats(payload, ctx) {
   } catch (e) {
     return fail('Errore chiamata Discord: ' + e.message);
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+// MEDIA GALLERY — libreria file caricati (Vercel Blob)
+// ═══════════════════════════════════════════════════════════
+//
+// Il file vero e proprio vive su Vercel Blob (upload diretto dal
+// browser, vedi api/media-upload.js e api/media-delete.js nel repo
+// frontend — Apps Script non tocca mai i byte del file). Questo tab
+// salva solo i metadati: URL pubblico, nome file, tipo, tag, chi e
+// quando l'ha caricato. Il frontend chiama social.media.add subito
+// dopo che l'upload su Blob è andato a buon fine.
+
+/**
+ * social.media.list — Tutta la libreria media, filtro opzionale per tag
+ * (match case-insensitive su una sottostringa del campo tags).
+ * @param {Object} payload - { tag? }
+ */
+function handleSocialMediaList(payload, ctx) {
+  if (!ctx || !ctx.isAdmin) return fail('Accesso riservato ad admin/team principal');
+
+  let media = sheetToObjects(SHEETS.SOCIAL_MEDIA);
+  const tagFilter = payload && payload.tag && String(payload.tag).trim().toLowerCase();
+  if (tagFilter) {
+    media = media.filter(m => String(m.tags || '').toLowerCase().indexOf(tagFilter) !== -1);
+  }
+
+  media.sort((a, b) => String(b.uploaded_at || '').localeCompare(String(a.uploaded_at || '')));
+
+  return ok({ media, count: media.length });
+}
+
+/**
+ * social.media.add — Registra un file già caricato su Vercel Blob.
+ * @param {Object} payload - { url, filename, media_type, tags? }
+ */
+function handleSocialMediaAdd(payload, ctx) {
+  if (!ctx || !ctx.isAdmin) return fail('Accesso riservato ad admin/team principal');
+  if (!payload || !String(payload.url || '').trim()) return fail('url obbligatorio');
+
+  const sheet = getSheet(SHEETS.SOCIAL_MEDIA);
+  if (!sheet) return fail('Foglio SocialMedia non trovato — esegui setupSocialManagerTabs() prima');
+
+  const mediaId = socialNextId_(sheet, 'SMED');
+  const newMedia = {
+    media_id: mediaId,
+    url: payload.url.trim(),
+    filename: payload.filename || '',
+    media_type: payload.media_type || (String(payload.url).match(/\.(mp4|mov|webm)(\?|$)/i) ? 'video' : 'image'),
+    tags: Array.isArray(payload.tags) ? payload.tags.join(',') : (payload.tags || ''),
+    uploaded_by: ctx.driver_id || '',
+    uploaded_at: new Date().toISOString(),
+  };
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const row = headers.map(h => (newMedia[h] !== undefined ? newMedia[h] : ''));
+  sheet.appendRow(row);
+
+  return ok({ media_id: mediaId, media: newMedia });
+}
+
+/**
+ * social.media.remove — Elimina il record dalla libreria. NON cancella
+ * il file su Vercel Blob (lo fa il frontend chiamando api/media-delete
+ * prima di questa action, coi permessi separati del token Blob).
+ * @param {Object} payload - { media_id }
+ */
+function handleSocialMediaRemove(payload, ctx) {
+  if (!ctx || !ctx.isAdmin) return fail('Accesso riservato ad admin/team principal');
+
+  const mediaId = payload && payload.media_id;
+  if (!mediaId) return fail('media_id obbligatorio');
+
+  const sheet = getSheet(SHEETS.SOCIAL_MEDIA);
+  if (!sheet) return fail('Foglio SocialMedia non trovato');
+
+  const data = sheet.getDataRange().getValues();
+  const rowIndex = data.findIndex(row => row[0] === mediaId);
+  if (rowIndex === -1) return fail('Media non trovato: ' + mediaId);
+
+  sheet.deleteRow(rowIndex + 1);
+  return ok({ media_id: mediaId, deleted: true });
 }
