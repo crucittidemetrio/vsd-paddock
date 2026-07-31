@@ -379,7 +379,7 @@ function generateWithGemini_(prompt) {
       'x-goog-api-key': apiKey,
     },
     payload: JSON.stringify({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.5-flash',
       system_instruction: SOCIAL_AI_SYSTEM_PROMPT,
       input: prompt,
       generation_config: {
