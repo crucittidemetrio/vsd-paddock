@@ -110,16 +110,18 @@ export default function SocialManager() {
       </header>
 
       <nav className={styles.tabs}>
-        {TABS.map(t => (
-          <button
-            key={t.id}
-            type="button"
-            className={`${styles.tabBtn}${tab === t.id ? ' ' + styles.tabBtnActive : ''}`}
-            onClick={() => setTab(t.id)}
-          >
-            <span>{t.icon}</span> {t.label}
-          </button>
-        ))}
+        <div className={styles.tabsInner}>
+          {TABS.map(t => (
+            <button
+              key={t.id}
+              type="button"
+              className={`${styles.tabBtn}${tab === t.id ? ' ' + styles.tabBtnActive : ''}`}
+              onClick={() => setTab(t.id)}
+            >
+              <span>{t.icon}</span> {t.label}
+            </button>
+          ))}
+        </div>
       </nav>
 
       <main className={styles.content}>
