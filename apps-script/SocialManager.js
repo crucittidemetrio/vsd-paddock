@@ -383,8 +383,11 @@ function generateWithGemini_(prompt) {
       system_instruction: SOCIAL_AI_SYSTEM_PROMPT,
       input: prompt,
       generation_config: {
-        thinking_level: 'low',
-        max_output_tokens: 400,
+        // 'minimal': per un post breve non serve budget di ragionamento —
+        // con 'low' il modello consumava token di thinking e troncava
+        // l'output vero e proprio prima della fine (risposte a frammenti).
+        thinking_level: 'minimal',
+        max_output_tokens: 600,
       },
     }),
     muteHttpExceptions: true,
@@ -399,9 +402,16 @@ function generateWithGemini_(prompt) {
   }
 
   const steps = body.steps || [];
-  const modelStep = steps.reverse().find(s => s.type === 'model_output');
-  const textBlock = modelStep && (modelStep.content || []).find(c => c.type === 'text');
-  const text = textBlock && textBlock.text;
-  if (!text) throw new Error('Risposta Gemini vuota o in formato inatteso');
+  const modelStep = [...steps].reverse().find(s => s.type === 'model_output');
+  // Concatena TUTTI i blocchi di testo dello step, non solo il primo —
+  // con più blocchi (es. testo spezzato) prendere solo find() troncava
+  // silenziosamente la risposta a metà.
+  const textBlocks = (modelStep && modelStep.content || []).filter(c => c.type === 'text');
+  const text = textBlocks.map(b => b.text).join('');
+
+  if (!text) {
+    const statusInfo = body.status && body.status !== 'completed' ? ` (status: ${body.status})` : '';
+    throw new Error('Risposta Gemini vuota o in formato inatteso' + statusInfo);
+  }
   return text;
 }
