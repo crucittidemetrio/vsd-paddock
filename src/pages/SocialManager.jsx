@@ -38,7 +38,21 @@ const PILLARS = [
   { id: 'risultati', label: 'Risultati', icon: '🏆', offsetDays: 1 },
   { id: 'highlight', label: 'Highlight/storytelling', icon: '🎬', offsetDays: 3 },
 ];
-const PILLAR_BY_ID = Object.fromEntries(PILLARS.map(p => [p.id, p]));
+
+// Pilastri "evergreen" — vita di squadra e community, non legati a una
+// gara. A differenza dei pilastri sopra (generati nella finestra ±45gg
+// attorno a un evento) questi ricompaiono su una cadenza fissa, così il
+// piano editoriale non resta vuoto/vuoto-di-persone nei periodi senza
+// gare in calendario. Cadenza uniforme a 14gg (ogni 2 settimane) per
+// ciascuna categoria, decisa insieme a Demetrio il 1 ago 2026.
+const EVERGREEN_PILLARS = [
+  { id: 'spotlight', label: 'Pilot spotlight', icon: '🎙️', cadenceDays: 14 },
+  { id: 'dietro_quinte', label: 'Dietro le quinte', icon: '🔧', cadenceDays: 14 },
+  { id: 'milestone', label: 'News/milestone squadra', icon: '📰', cadenceDays: 14 },
+  { id: 'community', label: 'Community engagement', icon: '💬', cadenceDays: 14 },
+];
+
+const PILLAR_BY_ID = Object.fromEntries([...PILLARS, ...EVERGREEN_PILLARS].map(p => [p.id, p]));
 const PLATFORM_ICON = Object.fromEntries(PLATFORM_OPTIONS.map(p => [p.id, p.icon]));
 
 const STATUS_FLOW = ['bozza', 'programmato', 'pubblicato'];
@@ -772,8 +786,90 @@ function useEditorialPlan(posts) {
   return { plan, isLoading: racesQuery.isLoading, error: racesQuery.error };
 }
 
+function daysBetween(from, to) {
+  return Math.floor((to.getTime() - from.getTime()) / (24 * 60 * 60 * 1000));
+}
+
+function evergreenTopic(pillarId) {
+  switch (pillarId) {
+    case 'spotlight': return 'Pilot spotlight — presentazione di un pilota del roster';
+    case 'dietro_quinte': return 'Dietro le quinte — setup, telemetria o lavoro di squadra';
+    case 'milestone': return 'News/milestone squadra';
+    case 'community': return 'Community engagement — sondaggio, Q&A o shoutout alla community';
+    default: return '';
+  }
+}
+
+function evergreenLinkDestination(pillarId) {
+  if (pillarId === 'spotlight') return '/roster';
+  return '';
+}
+
+// Stato dei pilastri evergreen: a differenza dei pilastri gara (legati a
+// una data fissa), qui guardiamo l'ultimo post pubblicato/programmato per
+// quella categoria e calcoliamo se è "in ritardo" rispetto alla cadenza.
+function useEvergreenPlan(posts) {
+  return useMemo(() => {
+    const now = new Date();
+    return EVERGREEN_PILLARS.map(pillar => {
+      const matches = posts.filter(p => p.pillar === pillar.id && !p.race_id);
+      const sorted = [...matches].sort((a, b) => {
+        const da = String(a.scheduled_date || a.created_at || '');
+        const db = String(b.scheduled_date || b.created_at || '');
+        return db.localeCompare(da);
+      });
+      const last = sorted[0] || null;
+      const lastDateStr = last ? (last.scheduled_date || last.created_at) : null;
+      const lastDate = lastDateStr ? new Date(lastDateStr) : null;
+      const daysSince = lastDate && !isNaN(lastDate.getTime()) ? daysBetween(lastDate, now) : null;
+      const isDue = daysSince === null || daysSince >= pillar.cadenceDays;
+      const daysUntilDue = daysSince === null ? 0 : Math.max(0, pillar.cadenceDays - daysSince);
+      return { ...pillar, last, daysSince, isDue, daysUntilDue };
+    });
+  }, [posts]);
+}
+
+function EvergreenPlanView({ evergreenPlan, onCreate }) {
+  return (
+    <div className={styles.raceCard}>
+      <div className={styles.raceCardHead}>
+        <span className={styles.raceCardName}>Vita di squadra &amp; community</span>
+        <span className={styles.raceCardMeta}>cadenza 14gg per categoria, non legata al calendario gare</span>
+      </div>
+      <div className={styles.pillarRow}>
+        {evergreenPlan.map(item => (
+          <div
+            key={item.id}
+            className={`${styles.pillarChip} ${item.isDue ? styles.pillarStatus_programmato : styles.pillarStatus_bozza}`}
+            title={item.label}
+          >
+            <div className={styles.pillarChipTop}>
+              <span>{item.icon}</span>
+              <span className={styles.pillarChipLabel}>{item.label}</span>
+            </div>
+            <div className={styles.pillarChipDate}>
+              {item.last
+                ? `Ultimo: ${fmtDate(item.last.scheduled_date || item.last.created_at)}`
+                : 'Mai creato'}
+            </div>
+            <div className={styles.pillarChipStatus}>
+              {item.isDue
+                ? (item.daysSince === null ? 'Tocca a te' : `In ritardo di ${item.daysSince - item.cadenceDays} gg`)
+                : `Prossimo tra ${item.daysUntilDue} gg`}
+            </div>
+            <button type="button" className={styles.btnMini} onClick={() => onCreate(item)}>
+              + Crea bozza
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function EditorialPlanView({ posts, onCreateFromSuggestion }) {
   const { plan, isLoading: racesLoading, error: racesError } = useEditorialPlan(posts);
+  const evergreenPlan = useEvergreenPlan(posts);
 
   function handlePillarCreate(race, pillar) {
     onCreateFromSuggestion({
@@ -786,14 +882,30 @@ function EditorialPlanView({ posts, onCreateFromSuggestion }) {
     });
   }
 
+  function handleEvergreenCreate(pillar) {
+    onCreateFromSuggestion({
+      race_id: '',
+      pillar: pillar.id,
+      scheduled_date: new Date().toISOString().slice(0, 10),
+      link_destination: evergreenLinkDestination(pillar.id),
+      platforms: ['facebook', 'instagram'],
+      topic: evergreenTopic(pillar.id),
+    });
+  }
+
   return (
     <div className={styles.section}>
       <h2 className={styles.sectionTitle} style={{ margin: 0 }}>Piano editoriale</h2>
       <p className={styles.subtleHint}>
         Ogni gara nella finestra ±45 giorni genera automaticamente 5 slot di contenuto
-        (anteprima, iscrizioni, live, risultati, highlight). Quelli mancanti hanno un
-        bottone rapido per creare la bozza già precompilata.
+        (anteprima, iscrizioni, live, risultati, highlight). A questi si affiancano 4
+        categorie di vita di squadra e community, indipendenti dal calendario gare —
+        così il piano non resta vuoto nei periodi senza eventi. Ogni slot mancante ha
+        un bottone rapido per creare la bozza già precompilata.
       </p>
+
+      <EvergreenPlanView evergreenPlan={evergreenPlan} onCreate={handleEvergreenCreate} />
+
       {racesLoading && <div className={styles.loading}>Caricamento gare…</div>}
       {racesError && <div className={styles.errorBox}>Errore gare: {racesError.message}</div>}
       {!racesLoading && plan.length === 0 && (
