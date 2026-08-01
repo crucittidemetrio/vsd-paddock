@@ -64,6 +64,32 @@
 
 .readinessHeader {
   margin-bottom: 14px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.trackSelect {
+  flex-shrink: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.8);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.trackSelect:hover {
+  border-color: rgba(255, 191, 63, 0.4);
+}
+
+.trackSelect option {
+  background: #0a0e17;
+  color: #fff;
 }
 
 .readinessEyebrow {

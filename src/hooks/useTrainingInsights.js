@@ -7,11 +7,13 @@ import { api } from '../api/client';
  * BestLaps (vedi apps-script/TrainingInsights.js per lo scope esatto).
  *
  * @param {'LMU'|'IRC'|'ACE'} [sim] - default 'LMU' lato backend
+ * @param {string} [trackId] - forza la readiness su questo tracciato
+ *   invece che sulla pista della prossima gara (default lato backend)
  */
-export function useTrainingInsights(sim) {
+export function useTrainingInsights(sim, trackId) {
   return useQuery({
-    queryKey: ['training', 'insights', sim || 'LMU'],
-    queryFn: () => api.training.insights(sim),
+    queryKey: ['training', 'insights', sim || 'LMU', trackId || 'next-race'],
+    queryFn: () => api.training.insights(sim, trackId),
     staleTime: 60_000,
   });
 }

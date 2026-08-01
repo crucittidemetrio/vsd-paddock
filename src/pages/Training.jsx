@@ -12,15 +12,23 @@ function lastSessionLabel(iso) {
 }
 
 export default function Training() {
-  const insightsQuery = useTrainingInsights(SIM);
-  const tracksQuery = useTracks(SIM);
   const [expandedDriverId, setExpandedDriverId] = useState(null);
+  const [selectedTrackId, setSelectedTrackId] = useState(''); // '' = usa la prossima gara (default)
+
+  const insightsQuery = useTrainingInsights(SIM, selectedTrackId || undefined);
+  const tracksQuery = useTracks(SIM);
 
   const tracks = tracksQuery.data || [];
+  const sortedTracks = [...tracks].sort((a, b) =>
+    formatTrack(a.track_id, tracks).localeCompare(formatTrack(b.track_id, tracks))
+  );
+
   const data = insightsQuery.data;
   const drivers = data?.drivers || [];
   const nextRace = data?.next_race || null;
   const readiness = data?.readiness || null;
+  const isCustomTrack = Boolean(selectedTrackId);
+  const readinessTrackId = data?.readiness_track_id || null;
 
   return (
     <div className={styles.container}>
@@ -38,27 +46,53 @@ export default function Training() {
         <div className={styles.errorBox}>Errore: {insightsQuery.error.message}</div>
       )}
 
-      {nextRace && readiness && (
+      {(nextRace || tracks.length > 0) && (
         <section className={styles.readinessCard}>
           <div className={styles.readinessHeader}>
             <div>
-              <div className={styles.readinessEyebrow}>PROSSIMA GARA · {formatCountdown(nextRace.date)}</div>
-              <div className={styles.readinessTitle}>{nextRace.race_name}</div>
-              <div className={styles.readinessSub}>
-                {formatTrack(nextRace.track_id, tracks)} · {formatRaceDateTime(nextRace.date)}
-              </div>
+              {!isCustomTrack && nextRace ? (
+                <>
+                  <div className={styles.readinessEyebrow}>PROSSIMA GARA · {formatCountdown(nextRace.date)}</div>
+                  <div className={styles.readinessTitle}>{nextRace.race_name}</div>
+                  <div className={styles.readinessSub}>
+                    {formatTrack(nextRace.track_id, tracks)} · {formatRaceDateTime(nextRace.date)}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className={styles.readinessEyebrow}>TRACCIATO SELEZIONATO</div>
+                  <div className={styles.readinessTitle}>
+                    {readinessTrackId ? formatTrack(readinessTrackId, tracks) : 'Nessuna gara programmata'}
+                  </div>
+                  {!nextRace && !isCustomTrack && (
+                    <div className={styles.readinessSub}>Scegli un tracciato per vedere chi vi si è già allenato.</div>
+                  )}
+                </>
+              )}
             </div>
+            <select
+              className={styles.trackSelect}
+              value={selectedTrackId}
+              onChange={e => setSelectedTrackId(e.target.value)}
+            >
+              <option value="">Prossima gara (automatico)</option>
+              {sortedTracks.map(t => (
+                <option key={t.track_id} value={t.track_id}>{formatTrack(t.track_id, tracks)}</option>
+              ))}
+            </select>
           </div>
-          <div className={styles.readinessList}>
-            {readiness.map(r => (
-              <div key={r.driver_id} className={styles.readinessRow}>
-                <span className={styles.readinessName}>{r.display_name}</span>
-                <span className={r.laps_on_track === 0 ? styles.readinessLapsZero : styles.readinessLaps}>
-                  {r.laps_on_track === 0 ? 'Nessun giro qui' : `${r.laps_on_track} ${r.laps_on_track === 1 ? 'giro' : 'giri'} qui`}
-                </span>
-              </div>
-            ))}
-          </div>
+          {readiness && (
+            <div className={styles.readinessList}>
+              {readiness.map(r => (
+                <div key={r.driver_id} className={styles.readinessRow}>
+                  <span className={styles.readinessName}>{r.display_name}</span>
+                  <span className={r.laps_on_track === 0 ? styles.readinessLapsZero : styles.readinessLaps}>
+                    {r.laps_on_track === 0 ? 'Nessun giro qui' : `${r.laps_on_track} ${r.laps_on_track === 1 ? 'giro' : 'giri'} qui`}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
         </section>
       )}
 

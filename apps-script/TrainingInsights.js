@@ -57,7 +57,12 @@ function trainingParseDate_(value) {
  * training.insights — riepilogo allenamento per pilota + readiness
  * pre-gara, calcolato da BestLaps.
  *
- * @param {Object} payload - { sim? } — default 'LMU'
+ * @param {Object} payload - { sim?, track_id? } — sim default 'LMU'.
+ *   track_id opzionale: forza la readiness su quel tracciato invece che
+ *   sulla pista della prossima gara (che resta comunque il default se
+ *   track_id è assente). Utile per guardare la preparazione su una gara
+ *   futura non ancora la prossima in calendario, o su un tracciato
+ *   qualsiasi indipendente dal calendario gare.
  * @param {Object} ctx - richiede ctx.driver_id (stesso gate di records.team)
  */
 function handleTrainingInsights(payload, ctx) {
@@ -182,14 +187,19 @@ function handleTrainingInsights(payload, ctx) {
     .sort((a, b) => trainingParseDate_(a.date).getTime() - trainingParseDate_(b.date).getTime());
   const nextRace = upcomingSimRaces.length > 0 ? upcomingSimRaces[0] : null;
 
+  // Tracciato della readiness: se il chiamante ne passa uno esplicito
+  // (dropdown manuale in UI) ha priorità; altrimenti default al
+  // comportamento di sempre, la pista della prossima gara.
+  const requestedTrackId = payload && payload.track_id;
+  const readinessTrackId = requestedTrackId || (nextRace && nextRace.track_id) || null;
+
   let readiness = null;
-  if (nextRace && nextRace.track_id) {
-    const trackId = nextRace.track_id;
+  if (readinessTrackId) {
     readiness = driverSummaries
       .map(d => ({
         driver_id: d.driver_id,
         display_name: d.display_name,
-        laps_on_track: (byDriver[d.driver_id].lapsByTrack[trackId]) || 0,
+        laps_on_track: (byDriver[d.driver_id].lapsByTrack[readinessTrackId]) || 0,
       }))
       .sort((a, b) => b.laps_on_track - a.laps_on_track);
   }
@@ -204,6 +214,7 @@ function handleTrainingInsights(payload, ctx) {
       track_id: nextRace.track_id,
       date: nextRace.date,
     } : null,
+    readiness_track_id: readinessTrackId,
     readiness,
   });
 }

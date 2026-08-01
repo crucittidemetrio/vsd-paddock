@@ -118,7 +118,7 @@ export const api = {
   },
 
   training: {
-    insights: (sim) => call('training.insights', { sim }),
+    insights: (sim, track_id) => call('training.insights', { sim, track_id }),
   },
 
   social: {
