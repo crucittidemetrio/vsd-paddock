@@ -1,0 +1,38 @@
+name: CI
+
+# Rete di sicurezza minima: build + unit test su ogni push/PR verso main.
+# Deliberatamente esclude "npm run lint" — il repo ha ~1400 problemi di
+# lint pre-esistenti (in gran parte react-hooks/rules-of-hooks in una
+# pagina admin e un setState sincrono in un effect di SocialManager.jsx),
+# quindi bloccare la CI sul lint oggi la renderebbe rossa da subito su
+# ogni push. Vedi commit "chore: aggiungi CI (build+test)" per i dettagli.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build (vite build)
+        run: npm run build
+
+      - name: Unit test (vitest)
+        run: npm run test:run
+        env:
+          # GitHub Actions imposta già CI=true di default, ma esplicito
+          # per sicurezza — verificato in locale che senza questa env
+          # var "vitest run" può non terminare (vedi nota sopra).
+          CI: true
