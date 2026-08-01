@@ -210,6 +210,8 @@ export async function callApi(action, payload = {}, ctx = null) {
         return await recapMineAdapter(payload, token);
       case 'records.team':
         return await recordsTeamAdapter(payload, token);
+      case 'training.insights':
+        return await trainingInsightsAdapter(payload, token);
       case 'social.posts.list':
         return await socialPostsListAdapter(payload, token);
       case 'social.posts.create':
@@ -562,6 +564,16 @@ async function recapMineAdapter(payload, token) {
  */
 async function recordsTeamAdapter(payload, token) {
   const res = await postToBackend('records.team', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: training.insights(sim?) → { sim, drivers, next_race, readiness }
+ * Backend:  training.insights({ sim? }) → stesso shape
+ */
+async function trainingInsightsAdapter(payload, token) {
+  const res = await postToBackend('training.insights', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
 }

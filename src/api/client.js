@@ -117,6 +117,10 @@ export const api = {
     team: (sim) => call('records.team', { sim }),
   },
 
+  training: {
+    insights: (sim) => call('training.insights', { sim }),
+  },
+
   social: {
     postsList: (status) => call('social.posts.list', { status }),
     postsCreate: (payload) => call('social.posts.create', payload),

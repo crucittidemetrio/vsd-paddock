@@ -187,6 +187,9 @@ const ACTIONS = {
   // Muro dei Record — Fase 1
   'records.team': handleTeamRecords,
 
+  // Training Insights — Fase 1 (solo lettura, calcolato da BestLaps)
+  'training.insights': handleTrainingInsights,
+
   // Social Manager — admin only
   'social.posts.list': handleSocialPostsList,
   'social.posts.create': handleSocialPostsCreate,

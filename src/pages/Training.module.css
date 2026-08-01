@@ -1,0 +1,289 @@
+.container {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+
+.header {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: #00d4ff;
+  text-transform: uppercase;
+}
+
+.title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin: 8px 0 12px;
+  color: #fff;
+  text-transform: uppercase;
+}
+
+.sub {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.5);
+  max-width: 560px;
+}
+
+.loading,
+.errorBox,
+.empty {
+  padding: 32px 24px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 14px;
+}
+
+.errorBox {
+  color: #ef3340;
+  border-color: rgba(239, 51, 64, 0.2);
+}
+
+/* ─── Readiness banner ─── */
+
+.readinessCard {
+  margin-bottom: 28px;
+  padding: 18px 20px;
+  border-radius: 10px;
+  background: rgba(255, 191, 63, 0.04);
+  border: 1px solid rgba(255, 191, 63, 0.2);
+}
+
+.readinessHeader {
+  margin-bottom: 14px;
+}
+
+.readinessEyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: #ffbf3f;
+  text-transform: uppercase;
+}
+
+.readinessTitle {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+  margin: 4px 0 2px;
+}
+
+.readinessSub {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.readinessList {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.readinessRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 4px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+}
+
+.readinessName {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.readinessLaps {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: #00d4ff;
+}
+
+.readinessLapsZero {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: #ef3340;
+}
+
+/* ─── Leaderboard ─── */
+
+.leaderboardHeader {
+  display: grid;
+  grid-template-columns: 1fr 90px 90px 120px;
+  gap: 12px;
+  padding: 0 18px 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.35);
+  text-transform: uppercase;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.driverBlock {
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  overflow: hidden;
+}
+
+.driverRow {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr 90px 90px 120px;
+  gap: 12px;
+  align-items: center;
+  padding: 14px 18px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+
+.driverRow:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.driverName {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.expandIcon {
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 11px;
+  width: 10px;
+}
+
+.laps7d {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  color: #00d4ff;
+}
+
+.lapsZero {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 15px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.25);
+}
+
+.laps30d {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.lastSession {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+/* ─── Track detail (accordion) ─── */
+
+.trackDetail {
+  padding: 4px 18px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.trackDetailEmpty {
+  padding: 10px 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.trackRow {
+  display: grid;
+  grid-template-columns: 1fr 70px 90px 140px;
+  gap: 12px;
+  align-items: center;
+  padding: 8px 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.trackRow:last-child {
+  border-bottom: none;
+}
+
+.trackName {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.trackLaps {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.trackBest {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: #ffbf3f;
+}
+
+.trackGap {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: right;
+}
+
+@media (max-width: 640px) {
+  .container {
+    padding: 24px 16px 60px;
+  }
+  .title {
+    font-size: 28px;
+  }
+  .leaderboardHeader {
+    display: none;
+  }
+  .driverRow {
+    grid-template-columns: 1fr auto;
+    row-gap: 4px;
+  }
+  .laps30d,
+  .lastSession {
+    grid-column: 2 / 3;
+    justify-self: end;
+    font-size: 11px;
+  }
+  .trackRow {
+    grid-template-columns: 1fr 1fr;
+    row-gap: 4px;
+  }
+  .trackGap {
+    text-align: left;
+  }
+}
