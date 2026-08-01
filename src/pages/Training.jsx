@@ -1,22 +1,38 @@
 import { useState } from 'react';
 import { useTrainingInsights } from '../hooks/useTrainingInsights';
 import { useTracks } from '../hooks/useLookups';
+import { SIM_LIST } from '../utils/constants';
 import { formatTrack, formatGapPercent, formatDate, formatRaceDateTime, formatCountdown } from '../utils/format';
 import styles from './Training.module.css';
-
-const SIM = 'LMU'; // Fase 1: solo LMU (vedi apps-script/TrainingInsights.js per il perché)
 
 function lastSessionLabel(iso) {
   if (!iso) return 'Mai';
   return formatDate(iso);
 }
 
+// Il backend (training.insights) è generico su sim fin dall'inizio — vedi
+// apps-script/TrainingInsights.js. Estendere a IRC/ACE è quindi solo UI:
+// nessuna modifica backend, nessun redeploy Apps Script richiesto.
+function subCopy(sim) {
+  if (sim === 'IRC') {
+    return 'Calcolato dai giri sincronizzati automaticamente da Garage61 — nessun log da compilare. Solo giri di prova e time trial contano come allenamento.';
+  }
+  return 'Calcolato dai giri già presenti in Best Laps (inseriti dallo staff) — nessun log separato da compilare. Solo giri di prova e time trial contano come allenamento.';
+}
+
 export default function Training() {
+  const [activeSim, setActiveSim] = useState(SIM_LIST[0]?.id || 'LMU');
   const [expandedDriverId, setExpandedDriverId] = useState(null);
   const [selectedTrackId, setSelectedTrackId] = useState(''); // '' = usa la prossima gara (default)
 
-  const insightsQuery = useTrainingInsights(SIM, selectedTrackId || undefined);
-  const tracksQuery = useTracks(SIM);
+  function handleSimChange(simId) {
+    setActiveSim(simId);
+    setSelectedTrackId(''); // la lista tracciati cambia per sim, torna al default
+    setExpandedDriverId(null);
+  }
+
+  const insightsQuery = useTrainingInsights(activeSim, selectedTrackId || undefined);
+  const tracksQuery = useTracks(activeSim);
 
   const tracks = tracksQuery.data || [];
   const sortedTracks = [...tracks].sort((a, b) =>
@@ -33,13 +49,23 @@ export default function Training() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <div className={styles.eyebrow}>TRAINING · LMU</div>
+        <div className={styles.eyebrow}>TRAINING · {activeSim}</div>
         <h1 className={styles.title}>Allenamento</h1>
-        <p className={styles.sub}>
-          Calcolato dai giri già presenti in Best Laps — nessun log separato da compilare.
-          Solo giri di prova e time trial contano come allenamento.
-        </p>
+        <p className={styles.sub}>{subCopy(activeSim)}</p>
       </header>
+
+      <div className={styles.tabs}>
+        {SIM_LIST.map(s => (
+          <button
+            key={s.id}
+            type="button"
+            className={`${styles.tab} ${activeSim === s.id ? styles.tabActive : ''}`}
+            onClick={() => handleSimChange(s.id)}
+          >
+            {s.short || s.name || s.id}
+          </button>
+        ))}
+      </div>
 
       {insightsQuery.isLoading && <div className={styles.loading}>Caricamento…</div>}
       {insightsQuery.error && (
@@ -97,7 +123,7 @@ export default function Training() {
       )}
 
       {!insightsQuery.isLoading && !insightsQuery.error && drivers.length === 0 && (
-        <div className={styles.empty}>Nessun dato di allenamento disponibile per {SIM}.</div>
+        <div className={styles.empty}>Nessun dato di allenamento disponibile per {activeSim}.</div>
       )}
 
       {drivers.length > 0 && (
