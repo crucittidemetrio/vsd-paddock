@@ -2,20 +2,30 @@
 // VSD PADDOCK — Training Insights
 // ═══════════════════════════════════════════════════════════
 //
-// Dashboard di allenamento calcolata a runtime da BestLaps (manuali +
-// import Garage61), stesso principio di Records.js / Academy.js: nessuna
-// tabella dedicata, nessun log manuale richiesto ai piloti.
+// Dashboard di allenamento calcolata a runtime da BestLaps, stesso
+// principio di Records.js / Academy.js: nessuna tabella dedicata, nessun
+// SECONDO log da compilare oltre a quello che già esiste.
 //
 // Motivazione: il tab TrainingSessions (log manuale di sessioni) è rimasto
-// vuoto — i piloti non compilano un form per qualcosa che l'app potrebbe
-// già dedurre dai giri già sincronizzati da Garage61. Questa è la metà
-// "a costo zero" della feature: nessun input, solo lettura.
+// vuoto — inutile chiedere ai piloti un secondo form quando il dato può
+// essere derivato da BestLaps, che è già la fonte di verità in uso.
 //
-// Scope Fase 1 (deciso 1 ago 2026): solo sim=LMU di default, perché è
-// dove la squadra ha un obiettivo comune (campionato UE144, 6 round,
-// via dal 13/9/2026) — non perché LMU abbia più volume di giri (IRC ne
-// ha di più). Il parametro `sim` resta generico apposta: quando si
-// costruisce la sezione IRC la stessa action si riusa senza modifiche.
+// ATTENZIONE — precisazione importante (corretta 1 ago 2026, la prima
+// versione di questo commento affermava il contrario): l'integrazione
+// Garage61 (garage61.js) sincronizza SOLO IRC — vedi i filtri
+// `platform === 'iracing'` / `sim: 'IRC'` in tutto il file. I giri LMU in
+// BestLaps NON arrivano da sync automatico: sono inseriti a mano da uno
+// staff via laps.add (richiede ctx.isStaff, non self-service piloti).
+// Quindi per IRC questa dashboard è davvero "a costo zero" (il dato
+// arriva da solo); per LMU mostra dati che qualcuno ha comunque dovuto
+// trascrivere — il vantaggio reale su LMU è "niente SECONDO log", non
+// "niente log".
+//
+// Scope Fase 1 (deciso 1 ago 2026): solo sim=LMU di default, per le
+// stakes competitive (campionato UE144, 6 round, via dal 13/9/2026), non
+// per volume di dati o per costo-zero — su quei due criteri IRC vincerebbe.
+// Il parametro `sim` resta generico apposta: quando si costruisce la
+// sezione IRC la stessa action si riusa senza modifiche.
 //
 // Definizione "giro di allenamento": session_type 'practice' o
 // 'time_trial'. La qualifica/gara NON conta come allenamento anche se

@@ -28,7 +28,7 @@ export default function Training() {
         <div className={styles.eyebrow}>TRAINING · LMU</div>
         <h1 className={styles.title}>Allenamento</h1>
         <p className={styles.sub}>
-          Calcolato dai giri già sincronizzati da Garage61 — nessun log da compilare.
+          Calcolato dai giri già presenti in Best Laps — nessun log separato da compilare.
           Solo giri di prova e time trial contano come allenamento.
         </p>
       </header>
@@ -54,7 +54,7 @@ export default function Training() {
               <div key={r.driver_id} className={styles.readinessRow}>
                 <span className={styles.readinessName}>{r.display_name}</span>
                 <span className={r.laps_on_track === 0 ? styles.readinessLapsZero : styles.readinessLaps}>
-                  {r.laps_on_track === 0 ? 'Nessun giro qui' : `${r.laps_on_track} giri qui`}
+                  {r.laps_on_track === 0 ? 'Nessun giro qui' : `${r.laps_on_track} ${r.laps_on_track === 1 ? 'giro' : 'giri'} qui`}
                 </span>
               </div>
             ))}
@@ -102,7 +102,7 @@ export default function Training() {
                       {d.tracks.map(t => (
                         <div key={t.track_id} className={styles.trackRow}>
                           <span className={styles.trackName}>{formatTrack(t.track_id, tracks)}</span>
-                          <span className={styles.trackLaps}>{t.laps} giri</span>
+                          <span className={styles.trackLaps}>{t.laps} {t.laps === 1 ? 'giro' : 'giri'}</span>
                           <span className={styles.trackBest}>{t.personal_best_display}</span>
                           <span className={styles.trackGap}>{formatGapPercent(t.personal_best_ms, t.team_best_ms)}</span>
                         </div>

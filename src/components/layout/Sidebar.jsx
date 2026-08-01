@@ -25,12 +25,11 @@ const PILOT_ITEMS = [
   { to: '/academy', label: 'Pilot Rating', icon: '◇' },
   { to: '/recap', label: 'Season Recap', icon: '✦' },
   { to: '/records', label: 'Muro dei Record', icon: '🏆' },
+  { to: '/training', label: LABELS.nav_training, icon: '◆' },
 ];
 
 // Voci future "soon" — solo pilota loggato
-const FUTURE_ITEMS = [
-  { to: '/training', label: LABELS.nav_training, icon: '◆' },
-];
+const FUTURE_ITEMS = [];
 
 const ADMIN_ITEMS = [
   { to: '/admin/best-laps', label: 'Best Laps', icon: '⏱️' },
