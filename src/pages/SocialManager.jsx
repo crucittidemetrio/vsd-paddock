@@ -680,6 +680,40 @@ function addDays(date, n) {
   return d;
 }
 
+function addMonths(date, n) {
+  return new Date(date.getFullYear(), date.getMonth() + n, 1);
+}
+
+function startOfMonth(date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function dateKey(date) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+function capitalize(s) {
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+}
+
+const WEEKDAY_LABELS = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+const MONTH_LABEL_FMT = new Intl.DateTimeFormat('it-IT', { month: 'long', year: 'numeric' });
+
+// Griglia fissa 6 settimane (42 celle), lunedì-domenica, così l'altezza
+// del calendario non "salta" cambiando mese.
+function buildMonthGrid(monthCursor) {
+  const first = startOfMonth(monthCursor);
+  const jsDay = first.getDay(); // 0=Dom..6=Sab
+  const offset = (jsDay + 6) % 7; // giorni da sottrarre per arrivare al lunedì
+  const gridStart = addDays(first, -offset);
+  const days = [];
+  for (let i = 0; i < 42; i++) days.push(addDays(gridStart, i));
+  return days;
+}
+
 function pillarLinkDestination(race, pillarId) {
   if (pillarId === 'highlight') return '/joinus';
   if (pillarId === 'risultati') {
@@ -803,46 +837,134 @@ function EditorialPlanView({ posts, onCreateFromSuggestion }) {
 }
 
 function CalendarView({ posts, postsQuery }) {
-  const grouped = useMemo(() => {
-    const withDate = posts.filter(p => p.scheduled_date);
-    const withoutDate = posts.filter(p => !p.scheduled_date);
-    const sorted = [...withDate].sort((a, b) => String(a.scheduled_date).localeCompare(String(b.scheduled_date)));
-    const groups = {};
-    sorted.forEach(p => {
-      const key = p.scheduled_date;
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(p);
+  const [monthCursor, setMonthCursor] = useState(() => startOfMonth(new Date()));
+  const [selectedDate, setSelectedDate] = useState(null);
+
+  const postsByDate = useMemo(() => {
+    const map = {};
+    posts.forEach(p => {
+      if (!p.scheduled_date) return;
+      const key = String(p.scheduled_date).slice(0, 10);
+      if (!map[key]) map[key] = [];
+      map[key].push(p);
     });
-    return { groups, withoutDate };
+    return map;
   }, [posts]);
 
-  const dates = Object.keys(grouped.groups);
+  const withoutDate = useMemo(() => posts.filter(p => !p.scheduled_date), [posts]);
+
+  const days = useMemo(() => buildMonthGrid(monthCursor), [monthCursor]);
+  const todayKey = dateKey(new Date());
+  const currentMonth = monthCursor.getMonth();
+
+  const monthTotals = useMemo(() => {
+    const totals = { bozza: 0, programmato: 0, pubblicato: 0 };
+    days.forEach(d => {
+      if (d.getMonth() !== currentMonth) return;
+      (postsByDate[dateKey(d)] || []).forEach(p => {
+        if (totals[p.status] !== undefined) totals[p.status]++;
+      });
+    });
+    return totals;
+  }, [days, postsByDate, currentMonth]);
+
+  function goToMonth(offset) {
+    setMonthCursor(m => addMonths(m, offset));
+    setSelectedDate(null);
+  }
+
+  function goToToday() {
+    setMonthCursor(startOfMonth(new Date()));
+    setSelectedDate(null);
+  }
+
+  const selectedPosts = selectedDate ? (postsByDate[selectedDate] || []) : [];
 
   return (
     <div className={styles.section}>
-      <h2 className={styles.sectionTitle} style={{ margin: 0 }}>Post programmati</h2>
+      <div className={styles.calendarHead}>
+        <h2 className={styles.sectionTitle} style={{ margin: 0 }}>Calendario</h2>
+        <div className={styles.calendarNav}>
+          <button type="button" className={styles.btnMini} onClick={() => goToMonth(-1)}>‹</button>
+          <span className={styles.calendarMonthLabel}>{capitalize(MONTH_LABEL_FMT.format(monthCursor))}</span>
+          <button type="button" className={styles.btnMini} onClick={() => goToMonth(1)}>›</button>
+          <button type="button" className={styles.btnMini} onClick={goToToday}>Oggi</button>
+        </div>
+      </div>
+
+      <div className={styles.calendarSummary}>
+        <span className={styles.calendarSummaryItem}>{STATUS_ICON.bozza} {monthTotals.bozza} bozze</span>
+        <span className={styles.calendarSummaryItem}>{STATUS_ICON.programmato} {monthTotals.programmato} programmati</span>
+        <span className={styles.calendarSummaryItem}>{STATUS_ICON.pubblicato} {monthTotals.pubblicato} pubblicati</span>
+      </div>
+
       {postsQuery.isLoading && <div className={styles.loading}>Caricamento…</div>}
 
-      {dates.length === 0 && grouped.withoutDate.length === 0 && (
-        <div className={styles.empty}>Nessun post programmato. Crea un post dalla tab "Post".</div>
-      )}
+      <div className={styles.calendarGrid}>
+        {WEEKDAY_LABELS.map(w => (
+          <div key={w} className={styles.calendarWeekday}>{w}</div>
+        ))}
+        {days.map(d => {
+          const key = dateKey(d);
+          const dayPosts = postsByDate[key] || [];
+          const inMonth = d.getMonth() === currentMonth;
+          const isToday = key === todayKey;
+          const isSelected = selectedDate === key;
+          const counts = { bozza: 0, programmato: 0, pubblicato: 0 };
+          dayPosts.forEach(p => { if (counts[p.status] !== undefined) counts[p.status]++; });
 
-      {dates.map(date => (
-        <div key={date} className={styles.calendarGroup}>
-          <h3 className={styles.calendarDate}>📅 {fmtDate(date)}</h3>
+          return (
+            <button
+              type="button"
+              key={key}
+              className={[
+                styles.calendarCell,
+                !inMonth && styles.calendarCellMuted,
+                isToday && styles.calendarCellToday,
+                isSelected && styles.calendarCellSelected,
+              ].filter(Boolean).join(' ')}
+              onClick={() => dayPosts.length > 0 && setSelectedDate(isSelected ? null : key)}
+              disabled={dayPosts.length === 0}
+            >
+              <span className={styles.calendarCellNum}>{d.getDate()}</span>
+              {dayPosts.length > 0 && (
+                <span className={styles.calendarCellBadges}>
+                  {counts.programmato > 0 && (
+                    <span className={`${styles.calendarBadge} ${styles.badgeProgrammato}`}>{counts.programmato}</span>
+                  )}
+                  {counts.pubblicato > 0 && (
+                    <span className={`${styles.calendarBadge} ${styles.badgePubblicato}`}>{counts.pubblicato}</span>
+                  )}
+                  {counts.bozza > 0 && (
+                    <span className={`${styles.calendarBadge} ${styles.badgeBozza}`}>{counts.bozza}</span>
+                  )}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {selectedDate && selectedPosts.length > 0 && (
+        <div className={styles.calendarDetail}>
+          <h3 className={styles.calendarDate}>📅 {fmtDate(selectedDate)}</h3>
           <div className={styles.postList}>
-            {grouped.groups[date].map(p => <PostRow key={p.post_id} post={p} readOnly />)}
+            {selectedPosts.map(p => <PostRow key={p.post_id} post={p} readOnly />)}
           </div>
         </div>
-      ))}
+      )}
 
-      {grouped.withoutDate.length > 0 && (
+      {withoutDate.length > 0 && (
         <div className={styles.calendarGroup}>
           <h3 className={styles.calendarDate}>🗂️ Senza data</h3>
           <div className={styles.postList}>
-            {grouped.withoutDate.map(p => <PostRow key={p.post_id} post={p} readOnly />)}
+            {withoutDate.map(p => <PostRow key={p.post_id} post={p} readOnly />)}
           </div>
         </div>
+      )}
+
+      {posts.length === 0 && (
+        <div className={styles.empty}>Nessun post ancora creato. Crea un post dalla tab "Post".</div>
       )}
     </div>
   );

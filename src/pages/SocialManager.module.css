@@ -521,6 +521,121 @@
   letter-spacing: 0.5px;
 }
 
+.calendarHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.calendarNav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.calendarMonthLabel {
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-sm);
+  color: #fff;
+  min-width: 130px;
+  text-align: center;
+  text-transform: capitalize;
+}
+
+.calendarSummary {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  font-size: var(--fs-xs);
+  color: var(--color-text-muted);
+}
+
+.calendarSummaryItem { display: flex; align-items: center; gap: 4px; }
+
+.calendarGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.calendarWeekday {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  padding-bottom: 4px;
+}
+
+.calendarCell {
+  min-height: 64px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--color-border);
+  background: rgba(255,255,255,0.02);
+  color: var(--color-text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 4px;
+  padding: 6px 4px;
+  cursor: pointer;
+  transition: border-color var(--t-fast), background var(--t-fast);
+}
+.calendarCell:hover:not(:disabled) { border-color: var(--vsd-cyan); }
+.calendarCell:disabled { cursor: default; }
+
+.calendarCellMuted { opacity: 0.35; }
+
+.calendarCellToday { border-color: var(--vsd-orange); }
+
+.calendarCellSelected {
+  border-color: var(--vsd-cyan);
+  background: rgba(0,212,255,0.08);
+}
+
+.calendarCellNum {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--color-text-muted);
+}
+
+.calendarCellBadges {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.calendarBadge {
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.badgeBozza { background: rgba(138,150,176,0.18); color: var(--color-text-muted); }
+.badgeProgrammato { background: rgba(245,166,35,0.18); color: var(--vsd-orange); }
+.badgePubblicato { background: rgba(52,211,153,0.18); color: var(--color-success); }
+
+.calendarDetail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--color-border);
+}
+
 /* Metrics table */
 .table { display: flex; flex-direction: column; gap: 6px; }
 .tableHeaderRow, .tableRow {
@@ -674,4 +789,8 @@
   .tableHeaderRow { display: none; }
   .tableRow { grid-template-columns: 1fr; gap: 4px; }
   .mediaGrid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  .calendarCell { min-height: 48px; }
+  .calendarCellNum { font-size: 10px; }
+  .calendarBadge { min-width: 14px; height: 14px; font-size: 9px; }
+  .calendarMonthLabel { min-width: auto; }
 }
