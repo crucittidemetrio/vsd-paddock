@@ -18,11 +18,11 @@ import LandingPublic from './LandingPublic';
 export default function Landing() {
   const { driver, isStaff, isVsdPilot } = useAuth();
 
-  // Visitatori anonimi e guest → showcase pubblico
-  if (!isVsdPilot) return <LandingPublic />;
-
   // Una sola fetch verso landing.data invece di ~9 chiamate separate.
   // Pre-popola anche le cache degli hook esistenti per gli altri componenti.
+  // Chiamato sempre (regola degli hook): la query è disabled internamente
+  // quando manca driver_id (enabled: Boolean(driverId) in useLandingData),
+  // quindi zero fetch per visitatori anonimi/guest — nessun costo reale.
   const { data: ld, isLoading: ldLoading } = useLandingData(driver?.driver_id);
 
   // Dati derivati dall'aggregato
@@ -147,6 +147,17 @@ const feed = useMemo(() => {
   );
 
   const firstName = driver?.display_name?.split(' ')[0] || 'pilota';
+
+  // Visitatori anonimi e guest → showcase pubblico. Il return anticipato
+  // sta qui, DOPO tutti gli hook sopra (useLandingData + gli useMemo):
+  // React richiede lo stesso numero/ordine di hook a ogni render dello
+  // stesso componente — prima era sopra il primo hook, quindi quando
+  // isVsdPilot passava da false a true tra un render e l'altro (caso
+  // reale: al boot tier parte "anonymous" e diventa "pilot_vsd/staff/
+  // admin" appena l'effetto di restore-sessione in AuthContext finisce),
+  // React vedeva comparire ~9 hook in più sullo stesso fiber e lanciava
+  // "Rendered more hooks than during the previous render".
+  if (!isVsdPilot) return <LandingPublic />;
 
   return (
     <div className="page mc-page">
