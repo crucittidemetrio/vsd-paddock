@@ -185,6 +185,49 @@ function notifyPointsAdjustment_(championship, adjustment) {
 }
 
 /**
+ * Notifica: nuovo record di squadra su una pista — il giro più veloce
+ * mai fatto lì da un tesserato attivo, qualsiasi session_type (stesso
+ * criterio del Muro dei Record, Records.js). Chiamata da handleLapsAdd
+ * in BestLaps.js solo quando il giro appena inserito batte il record
+ * precedente (o è il primo giro mai registrato su quella pista/sim).
+ *
+ * @param {Object} lap - { driver_name, sim, track_name, lap_time_display }
+ * @param {string|null} previousDisplay - tempo del record precedente,
+ *   o null se è il primo giro mai registrato su quella pista/sim
+ */
+function notifyNewTeamRecord_(lap, previousDisplay) {
+  if (!lap) return;
+
+  const payload = {
+    embeds: [{
+      author: { name: 'VSD Paddock' },
+      title: '🏆 Nuovo record di squadra!',
+      description: '**' + lap.driver_name + '** — ' + lap.track_name + ' (' + lap.sim + ')\n' +
+                   '⏱️ **' + lap.lap_time_display + '**' +
+                   (previousDisplay ? ' _(precedente: ' + previousDisplay + ')_' : ' _(primo tempo registrato su questa pista)_'),
+      color: VSD_COLORS.purple,
+      timestamp: new Date().toISOString(),
+      footer: { text: 'Muro dei Record' },
+      url: PADDOCK_URL + '/records',
+    }],
+  };
+
+  postToDiscord_(payload);
+}
+
+/**
+ * Helper test — verifica l'embed "nuovo record" con dati finti.
+ * Non tocca nessun foglio Google Sheets, nessun giro reale.
+ * Dropdown function → test_notification_record → ▶ Esegui
+ */
+function test_notification_record() {
+  notifyNewTeamRecord_(
+    { driver_name: '🧪 Pilota Test', sim: 'LMU', track_name: 'Circuito di Prova', lap_time_display: '1:30.000' },
+    '1:31.500'
+  );
+}
+
+/**
  * Helper test — esegui manualmente per verificare che il webhook funzioni.
  * Dropdown function → test_notification → ▶ Esegui
  */
