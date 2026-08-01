@@ -145,14 +145,21 @@ export default function SocialManager() {
         {tab === 'piano' && (
           <EditorialPlanView posts={posts} onCreateFromSuggestion={handleCreateFromSuggestion} />
         )}
-        {tab === 'post' && (
+        {/* Sempre montato (a differenza delle altre tab) e nascosto via CSS
+            invece che smontato: la bozza in corso (form interno a
+            PostCreator) deve sopravvivere quando si va su Media Gallery a
+            scegliere una foto e si torna indietro — con il rendering
+            condizionale precedente il componente si smontava e la bozza
+            si perdeva. Vedi anche il fix nel branch "pillar" della
+            useEffect in PostCreator, che ora preserva media_url. */}
+        <div className={tab === 'post' ? undefined : styles.tabPanelHidden}>
           <PostCreator
             posts={posts}
             postsQuery={postsQuery}
             suggestion={suggestion}
             onConsumeSuggestion={() => setSuggestion(null)}
           />
-        )}
+        </div>
         {tab === 'calendario' && (
           <CalendarView posts={posts} postsQuery={postsQuery} />
         )}
@@ -363,7 +370,11 @@ function PostCreator({ posts, postsQuery, suggestion, onConsumeSuggestion }) {
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
   // Arrivo da "+ Crea bozza" nel piano editoriale (tab omonima): resetta
-  // il form e precompila argomento/piattaforme/link/race_id/pillar.
+  // il form e precompila argomento/piattaforme/link/race_id/pillar — MA
+  // preserva media_url se una foto era già stata scelta da Media Gallery
+  // in questa sessione di bozza, altrimenti l'ordine "prima foto, poi
+  // pillar" perdeva la foto. Il resto (contenuto/argomento/collegamenti)
+  // resta un reset pieno: è comunque l'inizio di una bozza nuova.
   // Arrivo da "Usa nel post" nella Media Gallery: NON resetta il form,
   // aggiunge solo l'immagine a quello che si sta già scrivendo.
   // In entrambi i casi si autoconsuma per non riapplicarsi ai render
@@ -378,15 +389,15 @@ function PostCreator({ posts, postsQuery, suggestion, onConsumeSuggestion }) {
     }
 
     setEditingId(null);
-    setForm({
+    setForm(prev => ({
       content: '',
       platforms: suggestion.platforms || ['facebook', 'instagram'],
       scheduled_date: suggestion.scheduled_date || '',
       link_destination: suggestion.link_destination || '',
       race_id: suggestion.race_id || '',
       pillar: suggestion.pillar || '',
-      media_url: '',
-    });
+      media_url: prev.media_url || '',
+    }));
     setAiTopic(suggestion.topic || '');
     setError('');
     onConsumeSuggestion();
