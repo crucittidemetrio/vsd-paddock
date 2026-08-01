@@ -857,6 +857,34 @@ function garage61SyncLaps_(options) {
   Logger.log(`  Lookup: ${driverByIracingId.size} drivers, ${carByG61Id.size} cars, ${trackByG61Id.size} tracks mappati.`);
   Logger.log(`  Dedup: ${existingG61LapIds.size} lap già importati. maxLapNum=${maxLapNum}.`);
 
+  // Record di squadra su IRC PRIMA di questo sync — stesso criterio di
+  // Records.js/handleLapsAdd (giro più veloce di un tesserato attivo,
+  // qualsiasi session_type), serve per capire quali dei lap importati
+  // ora battono il record precedente (notifica Discord, vedi in fondo).
+  const driverRowById = new Map();
+  driversRaw.forEach(d => { if (d.driver_id) driverRowById.set(d.driver_id, d); });
+  const isCurrentTesserato61_ = (driverId) => {
+    const d = driverRowById.get(driverId);
+    if (!d) return false;
+    if (driverId === 'VSD001') return false;
+    if (d.removed_at) return false;
+    return String(d.status || '').toLowerCase() === 'active';
+  };
+  const trackNameByVsdId = new Map();
+  tracksRaw.forEach(t => { if (t.track_id) trackNameByVsdId.set(t.track_id, t.track_name || t.track_id); });
+  const preSyncBestByTrack = new Map(); // vsdTrackId -> { ms, display }
+  bestLapsRaw.forEach(l => {
+    if (l.sim !== 'IRC') return;
+    const ms = Number(l.lap_time_ms);
+    if (!ms || ms <= 0) return;
+    if (!isCurrentTesserato61_(l.driver_id)) return;
+    const cur = preSyncBestByTrack.get(l.track_id);
+    if (!cur || ms < cur.ms) {
+      preSyncBestByTrack.set(l.track_id, { ms, display: l.lap_time_display || garage61FormatTime_(ms) });
+    }
+  });
+  const recordCandidatesByTrack = new Map(); // vsdTrackId -> { ms, display, driverName, previousDisplay }
+
   if (trackByG61Id.size === 0) {
     Logger.log('⚠️ Nessun track IRC mappato. Nulla da sincronizzare.');
     return {
@@ -969,6 +997,24 @@ function garage61SyncLaps_(options) {
         });
         existingG61LapIds.add(lap.id);
         stats.imported++;
+
+        // Candidato record di squadra: confronta col miglior candidato
+        // già trovato in QUESTO sync per questa pista (se più lap dello
+        // stesso batch la migliorano, tiene solo il più veloce finale —
+        // una sola notifica per pista per sync, non una per ogni lap).
+        if (isCurrentTesserato61_(driverId)) {
+          const preSync = preSyncBestByTrack.get(vsdTrackId);
+          const candidate = recordCandidatesByTrack.get(vsdTrackId);
+          const currentBestMs = candidate ? candidate.ms : (preSync ? preSync.ms : null);
+          if (currentBestMs === null || lapTimeMs < currentBestMs) {
+            recordCandidatesByTrack.set(vsdTrackId, {
+              ms: lapTimeMs,
+              display: garage61FormatTime_(lapTimeMs),
+              driverName: (driverRowById.get(driverId) && driverRowById.get(driverId).display_name) || driverId,
+              previousDisplay: preSync ? preSync.display : null,
+            });
+          }
+        }
       });
 
       if (laps.length < perPage) break;
@@ -1023,6 +1069,25 @@ function garage61SyncLaps_(options) {
       Logger.log(`✅ ${rows.length} righe scritte in BestLaps.`);
     } else {
       Logger.log('Nessun nuovo lap da scrivere.');
+    }
+
+    // Notifica un nuovo record di squadra al massimo una volta per
+    // pista per sync (vedi accumulo in recordCandidatesByTrack sopra).
+    // Fault-tolerant: un errore qui non deve mai far fallire il sync.
+    if (recordCandidatesByTrack.size > 0) {
+      try {
+        recordCandidatesByTrack.forEach((rec, vsdTrackId) => {
+          notifyNewTeamRecord_({
+            driver_name: rec.driverName,
+            sim: 'IRC',
+            track_name: trackNameByVsdId.get(vsdTrackId) || vsdTrackId,
+            lap_time_display: rec.display,
+          }, rec.previousDisplay);
+        });
+        Logger.log(`🏆 ${recordCandidatesByTrack.size} nuovo/i record di squadra notificato/i su Discord.`);
+      } catch (e) {
+        Logger.log('⚠️ notifyNewTeamRecord_ (Garage61) error: ' + e.message);
+      }
     }
 
     if (unmappedCarsSeen.size > 0) {
