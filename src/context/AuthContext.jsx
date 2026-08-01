@@ -1,7 +1,6 @@
-import { createContext, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { STORAGE, TIERS, TIER_ORDER } from '../utils/constants';
-
-export const AuthContext = createContext(null);
+import { AuthContext } from './authContextObject';
 
 export function AuthProvider({ children }) {
   const [driver, setDriver] = useState(null);

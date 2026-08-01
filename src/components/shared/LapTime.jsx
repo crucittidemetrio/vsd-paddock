@@ -7,7 +7,7 @@ import './LapTime.css';
  * - emphasis: 'best' | 'normal' | 'dim'
  * - size: 'sm' | 'md' | 'lg'
  */
-export function formatMs(ms) {
+function formatMs(ms) {
   if (typeof ms !== 'number' || isNaN(ms)) return '—';
   const m = Math.floor(ms / 60000);
   const s = Math.floor((ms % 60000) / 1000);
