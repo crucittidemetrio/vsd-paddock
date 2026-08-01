@@ -83,10 +83,19 @@ const AI_PROVIDERS = [
   { id: 'anthropic', label: 'Claude — a pagamento' },
 ];
 
+// Stessa cautela di formatDate in utils/format.js: le stringhe data-pura
+// YYYY-MM-DD (scheduled_date) vanno parsate a mano per evitare il giro
+// UTC→fuso locale che può far apparire il giorno prima (bug osservato
+// 1 ago 2026: post datato 1/8 mostrato come 31/7 in Calendario).
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 function fmtDate(d) {
   if (!d) return '—';
   try {
-    return new Date(d).toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' });
+    const parsed = DATE_ONLY_RE.test(d)
+      ? (() => { const [y, m, day] = d.split('-').map(Number); return new Date(y, m - 1, day); })()
+      : new Date(d);
+    return parsed.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' });
   } catch {
     return d;
   }

@@ -91,15 +91,34 @@ export function formatCarInfo(car_id, cars) {
   };
 }
 
+// Stringhe "data pura" YYYY-MM-DD (senza ora/timezone, es. scheduled_date,
+// set_date) — per spec ECMA-262 `new Date('2026-08-01')` le interpreta come
+// UTC mezzanotte, e toLocaleDateString le riconverte al fuso del browser.
+// Con un fuso negativo (o mal configurato) questo fa apparire il giorno
+// PRIMA di quello reale — bug osservato il 1 ago 2026 (post programmato
+// per il 1/8 mostrato come 31/7). Fix: se la stringa è data-pura, si
+// parsano manualmente i componenti Y/M/D in un Date locale, saltando del
+// tutto il giro UTC→locale. Le stringhe con ora/timezone (timestamp reali)
+// non sono toccate: per quelle la conversione al fuso locale è corretta.
+const DATE_ONLY_RE_ = /^\d{4}-\d{2}-\d{2}$/;
+
+function parseDateSafe_(iso) {
+  if (DATE_ONLY_RE_.test(iso)) {
+    const [y, m, d] = iso.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+  return new Date(iso);
+}
+
 export function formatDate(iso) {
   if (!iso) return '—';
-  const d = new Date(iso);
+  const d = parseDateSafe_(iso);
   return d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: '2-digit' });
 }
 
 export function formatDateTime(iso) {
   if (!iso) return '—';
-  const d = new Date(iso);
+  const d = parseDateSafe_(iso);
   return d.toLocaleString('it-IT', {
     day: '2-digit', month: 'short', year: '2-digit',
     hour: '2-digit', minute: '2-digit',

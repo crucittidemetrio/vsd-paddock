@@ -197,6 +197,21 @@ function handleSocialPostsCreate(payload, ctx) {
   const row = headers.map(h => (newPost[h] !== undefined ? newPost[h] : ''));
   sheet.appendRow(row);
 
+  // scheduled_date è testo puro "YYYY-MM-DD" (nessuna semantica di ora/
+  // fuso). Sheets però auto-rileva stringhe che sembrano date e le
+  // converte in un valore Data reale sul formato "Automatico" della
+  // colonna — poi in lettura via API torna come timestamp UTC completo,
+  // sfasato di un giorno per chi legge/scrive da un fuso diverso da UTC
+  // (bug osservato 1 ago 2026: 2026-08-01 diventato "2026-07-31T22:00...Z").
+  // Forzare la cella a testo DOPO la scrittura e riscrivere il valore
+  // impedisce la conversione automatica.
+  const scheduledDateCol = headers.indexOf('scheduled_date') + 1;
+  if (scheduledDateCol > 0 && newPost.scheduled_date) {
+    const cell = sheet.getRange(sheet.getLastRow(), scheduledDateCol);
+    cell.setNumberFormat('@');
+    cell.setValue(newPost.scheduled_date);
+  }
+
   return ok({ post_id: postId, post: newPost });
 }
 
@@ -240,7 +255,13 @@ function handleSocialPostsUpdate(payload, ctx) {
     if (key === 'post_id' || key === 'created_at' || key === 'created_by') continue;
     const colIndex = headers.indexOf(key);
     if (colIndex !== -1) {
-      sheet.getRange(rowToUpdate, colIndex + 1).setValue(payloadToApply[key]);
+      const cell = sheet.getRange(rowToUpdate, colIndex + 1);
+      // Stesso fix di handleSocialPostsCreate: scheduled_date è testo
+      // puro "YYYY-MM-DD", va forzato a formato testo prima di scrivere
+      // altrimenti Sheets lo auto-converte in Data e lo sfasa di un
+      // giorno in lettura (vedi commento lì per i dettagli).
+      if (key === 'scheduled_date') cell.setNumberFormat('@');
+      cell.setValue(payloadToApply[key]);
       updatedFields.push(key);
     }
   }
