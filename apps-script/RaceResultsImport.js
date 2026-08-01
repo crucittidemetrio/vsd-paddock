@@ -258,6 +258,22 @@ function importRaceResults_(jsonData, metadata) {
 // ═══════════════════════════════════════════════════════════
 
 /**
+ * Normalizza il nome sessione iRacing (simsession_name) in session_type VSD.
+ * Match "morbido" (contains/startsWith) invece di stringa esatta, perché
+ * serie diverse nominano le sessioni in modo diverso:
+ *  - endurance con heat: "QUALIFY", "HEAT 1", "FEATURE"
+ *  - sprint/normali:     "Lone Qualifying", "Race"
+ * Practice/Warmup → null (skip intenzionale, non sono lap da classifica).
+ */
+function normalizeSessionType_(simsessionName) {
+  const n = (simsessionName || '').toUpperCase();
+  if (n.includes('QUALIF')) return 'qualifying';
+  if (n.startsWith('HEAT')) return 'heat';
+  if (n === 'RACE' || n === 'FEATURE') return 'race';
+  return null;
+}
+
+/**
  * Import iRacing event_result JSON.
  * Trasforma in 3 chiamate a importRaceResults_ (qualifying, heat, race).
  * Practice e Warmup vengono skippate (A1).
@@ -271,12 +287,6 @@ function importIRacingEventResult_(raw, metadata) {
   if (sessions.length === 0) {
     throw new Error('iRacing JSON: nessuna session_results trovata');
   }
-
-  const SESSION_MAP = {
-    'QUALIFY':  'qualifying',
-    'HEAT 1':   'heat',
-    'FEATURE':  'race',
-  };
 
   const aggStats = {
     imported: 0,
@@ -293,8 +303,7 @@ function importIRacingEventResult_(raw, metadata) {
 
   for (let s = 0; s < sessions.length; s++) {
     const session = sessions[s];
-    const sessionName = (session.simsession_name || '').toUpperCase();
-    const sessionType = SESSION_MAP[sessionName];
+    const sessionType = normalizeSessionType_(session.simsession_name);
 
     if (!sessionType) {
       aggStats.sessions_skipped++;
