@@ -5,7 +5,7 @@ import { useDrivers } from '../hooks/useRoster';
 import { useAuth } from '../hooks/useAuth';
 import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
-import { formatDate, formatTrack } from '../utils/format';
+import { formatDate } from '../utils/format';
 import { api } from '../api/client';
 import { usePageMeta } from '../hooks/usePageMeta';
 import styles from './ChampionshipDetail.module.css';

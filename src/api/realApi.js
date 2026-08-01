@@ -138,7 +138,7 @@ async function authVerify(payload) {
   const tokenToVerify = payload && payload.token;
   return postToBackend('auth.verify', {}, tokenToVerify);
 }
-async function authDiscordStart(payload) {
+async function authDiscordStart() {
   return postToBackend('auth.discordStart', {}, null);
 }
 
@@ -150,11 +150,16 @@ async function authDiscordCallback(payload) {
 /**
  * @param action  es. 'roster.list'
  * @param payload oggetto parametri
- * @param ctx     oggetto contesto. ctx.token (se valorizzato) viene
- *                propagato al backend per autenticazione. Il ctx
- *                completo è dedotto server-side dal token stesso.
+ *
+ * Nota: un tempo la firma accettava anche un terzo argomento ctx (i
+ * chiamanti in client.js lo passano ancora, es. callApi(action, payload,
+ * ctx)) ma non è mai stato usato qui — il token viene sempre letto da
+ * localStorage via readTokenFromStorage(), non da ctx.token. Rimosso
+ * dalla firma per pulizia: passarlo comunque dai chiamanti non causa
+ * errori (JS ignora argomenti extra), quindi zero rischio a lasciarlo
+ * o toglierlo lato chiamante.
  */
-export async function callApi(action, payload = {}, ctx = null) {
+export async function callApi(action, payload = {}) {
   // Il token vive nel localStorage, gestito da AuthContext.
   const token = readTokenFromStorage();
 

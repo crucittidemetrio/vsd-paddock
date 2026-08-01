@@ -17,6 +17,15 @@ export default defineConfig([
       globals: globals.browser,
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    rules: {
+      // Idioma comune nel repo: destructuring per ESCLUDERE una chiave
+      // prima di inviare il resto altrove (es. `({ _localId, ...rest })
+      // => rest` in useStintPlanner.js). La binding "_localId" è
+      // intenzionalmente non referenziata — è lì solo per toglierla da
+      // "rest" — non un residuo dimenticato. Opzione dedicata di ESLint
+      // per questo esatto pattern, non una disattivazione generica.
+      'no-unused-vars': ['error', { ignoreRestSiblings: true }],
+    },
   },
   {
     // apps-script/** gira come progetto Google Apps Script: tutti i file
@@ -34,6 +43,12 @@ export default defineConfig([
     rules: {
       'no-undef': 'off',
       'no-unused-vars': 'off',
+      // Pattern intenzionale e ripetuto nel repo: cache invalidation
+      // "best effort" dopo un salvataggio riuscito — se fallisce non
+      // deve mai bloccare l'operazione principale (stesso spirito di
+      // postToDiscord_, sempre fault-tolerant). Es. Endurance.js:
+      // `try { invalidateSheetCache_(...) } catch (e) {}`.
+      'no-empty': ['error', { allowEmptyCatch: true }],
     },
   },
   {

@@ -211,7 +211,7 @@ function parseLmuStandingsJson_(rawJson) {
 
   let data;
   try { data = JSON.parse(rawJson); }
-  catch (e) { throw new Error('Parse error: ' + e.message); }
+  catch (e) { throw new Error('Parse error: ' + e.message, { cause: e }); }
 
   if (!Array.isArray(data)) throw new Error('Atteso array di carClass groups');
   if (data.length === 0) throw new Error('Array vuoto');

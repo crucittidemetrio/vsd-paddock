@@ -124,7 +124,7 @@ async function fetchBackend_(action, payload) {
     });
     const json = await res.json();
     return json && json.ok ? json.data : null;
-  } catch (e) {
+  } catch {
     return null;
   }
 }

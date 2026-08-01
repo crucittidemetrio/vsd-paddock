@@ -217,7 +217,7 @@ export default function AdminRaceStints() {
 // STINT FORM (riusato per add ed edit)
 // ═══════════════════════════════════════════════════════════
 
-function StintForm({ mode, initialValues, drivers, existingStints, onSubmit, onCancel, onError }) {
+function StintForm({ mode, initialValues, drivers, onSubmit, onCancel, onError }) {
   const addMutation = useAddStint();
   const updateMutation = useUpdateStint();
 
@@ -516,8 +516,6 @@ function StintRow({ stint, driver, onEdit, onError, onSwap }) {
     });
   }
 
-  const isDnf = stint.status === 'aborted';
-  const isCompleted = stint.status === 'completed';
   const statusClass = `${styles.statusBadge} ${styles['status_' + stint.status]}`;
 
   return (
