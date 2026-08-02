@@ -70,6 +70,11 @@ export const api = {
     get: (driver_id) => call('roster.get', { driver_id }),
   },
 
+  presence: {
+    heartbeat: () => call('presence.heartbeat', {}),
+    online: () => call('presence.online', {}),
+  },
+
   lookups: {
     tracks: (sim) => call('lookups.tracks', { sim }),
     cars: (sim) => call('lookups.cars', { sim }),

@@ -123,6 +123,26 @@ async function rosterGetAdapter(payload, token) {
   return ok(res.data.driver);
 }
 
+/**
+ * Frontend: presence.heartbeat() → { alive: true }
+ * Backend:  presence.heartbeat({}) → stesso shape
+ */
+async function presenceHeartbeatAdapter(payload, token) {
+  const res = await postToBackend('presence.heartbeat', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: presence.online() → { online: [driver_id, ...] }
+ * Backend:  presence.online({}) → stesso shape
+ */
+async function presenceOnlineAdapter(payload, token) {
+  const res = await postToBackend('presence.online', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
 // Wave 10.X: authLogin() rimosso. auth.login è deprecato lato backend
 // e non è più chiamato dal frontend (Discord OAuth è l'unico flusso).
 
@@ -175,6 +195,10 @@ export async function callApi(action, payload = {}) {
         return await rosterListAdapter(payload, token);
       case 'roster.get':
         return await rosterGetAdapter(payload, token);
+      case 'presence.heartbeat':
+        return await presenceHeartbeatAdapter(payload, token);
+      case 'presence.online':
+        return await presenceOnlineAdapter(payload, token);
       case 'lookups.tracks':
         return await lookupsTracksAdapter(payload, token);
       case 'lookups.cars':

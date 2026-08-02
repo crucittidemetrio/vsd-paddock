@@ -150,6 +150,10 @@ const ACTIONS = {
   'roster.list': handleRosterList,
   'roster.get': handleRosterGet,
 
+  // Presence — chi sta usando il sito ORA (CacheService, non Sheets)
+  'presence.heartbeat': handlePresenceHeartbeat,
+  'presence.online': handlePresenceOnline,
+
   // Lookups
   'lookups.tracks': handleLookupsTracks,
   'lookups.cars': handleLookupsCars,

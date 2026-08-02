@@ -3,12 +3,14 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import { useCanonicalUrl } from '../../hooks/useCanonicalUrl';
+import { usePresenceHeartbeat } from '../../hooks/usePresence';
 import './AppShell.css';
 
 export default function AppShell() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   useCanonicalUrl();
+  usePresenceHeartbeat();
 
   const openMenu = () => setIsMobileMenuOpen(true);
   const closeMenu = () => setIsMobileMenuOpen(false);
