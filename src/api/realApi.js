@@ -241,6 +241,18 @@ export async function callApi(action, payload = {}) {
         return await recordsTeamAdapter(payload, token);
       case 'training.insights':
         return await trainingInsightsAdapter(payload, token);
+      case 'clash.participants.list':
+        return await clashParticipantsListAdapter(payload, token);
+      case 'clash.participants.register':
+        return await clashRegisterAdapter(payload, token);
+      case 'clash.standings':
+        return await clashStandingsAdapter(payload, token);
+      case 'clash.results.submitRound':
+        return await clashSubmitRoundResultsAdapter(payload, token);
+      case 'clash.incidents.report':
+        return await clashReportIncidentAdapter(payload, token);
+      case 'clash.incidents.list':
+        return await clashIncidentsListAdapter(payload, token);
       case 'social.posts.list':
         return await socialPostsListAdapter(payload, token);
       case 'social.posts.create':
@@ -603,6 +615,46 @@ async function recordsTeamAdapter(payload, token) {
  */
 async function trainingInsightsAdapter(payload, token) {
   const res = await postToBackend('training.insights', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Clash of Classes — GTE vs GT3. Adapter pass-through: il backend
+ * risponde già nello shape che il frontend consuma direttamente.
+ */
+async function clashParticipantsListAdapter(payload, token) {
+  const res = await postToBackend('clash.participants.list', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+async function clashRegisterAdapter(payload, token) {
+  const res = await postToBackend('clash.participants.register', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+async function clashStandingsAdapter(payload, token) {
+  const res = await postToBackend('clash.standings', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+async function clashSubmitRoundResultsAdapter(payload, token) {
+  const res = await postToBackend('clash.results.submitRound', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+async function clashReportIncidentAdapter(payload, token) {
+  const res = await postToBackend('clash.incidents.report', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+async function clashIncidentsListAdapter(payload, token) {
+  const res = await postToBackend('clash.incidents.list', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
 }

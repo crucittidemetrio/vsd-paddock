@@ -45,6 +45,8 @@ const AdminRaces = lazy(() => import('./pages/AdminRaces'));
 const Compare    = lazy(() => import('./pages/Compare'));
 const Privacy     = lazy(() => import('./pages/Privacy'));
 const SocialManager = lazy(() => import('./pages/SocialManager'));
+const ClashOfClasses = lazy(() => import('./pages/ClashOfClasses'));
+const AdminClashResults = lazy(() => import('./pages/AdminClashResults'));
 
 import './App.css';
 
@@ -103,6 +105,7 @@ export default function App() {
               <Route path="/endurance" element={<Endurance />} />
               <Route path="/endurance/:auditionId" element={<EnduranceDetail />} />
               <Route path="/ue144" element={<UE144 />} />
+              <Route path="/clash-of-classes" element={<ClashOfClasses />} />
               <Route path="/compare" element={<Compare />} />
               <Route path="/privacy" element={<Privacy />} />
 
@@ -196,6 +199,10 @@ export default function App() {
               <Route
                 path="/admin/races"
                 element={<AdminRoute><AdminRaces /></AdminRoute>}
+              />
+              <Route
+                path="/admin/clash-results"
+                element={<AdminRoute><AdminClashResults /></AdminRoute>}
               />
             </Route>
             

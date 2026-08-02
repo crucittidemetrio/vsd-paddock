@@ -16,6 +16,7 @@ const PUBLIC_ITEMS = [
   { to: '/results', label: LABELS.nav_results, icon: '🏁' },
   { to: '/compare', label: 'Confronto', icon: '⚖' },
   { to: '/endurance', label: LABELS.nav_endurance, icon: '◐' },
+  { to: '/clash-of-classes', label: 'Clash of Classes', icon: '⚔' },
 ];
 
 // Voci pilota attive — visibili solo a pilot_vsd, staff, admin
@@ -40,6 +41,7 @@ const ADMIN_ITEMS = [
   { to: '/admin/garage61-sync', label: 'Sync Garage61', icon: '⚡' },
   { to: '/admin/posters', label: 'Race Posters', icon: '🖼️' },
   { to: '/admin/endurance', label: 'Endurance Admin', icon: '◐' },
+  { to: '/admin/clash-results', label: 'Clash of Classes', icon: '⚔' },
 ];
 
 // Voci riservate ad admin/Team Principal — sottoinsieme più ristretto

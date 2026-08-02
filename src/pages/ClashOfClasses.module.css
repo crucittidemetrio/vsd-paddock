@@ -1,0 +1,427 @@
+/* ═══════════════════════════════════════════════
+   Clash of Classes — GTE vs GT3 Event Page
+   ═══════════════════════════════════════════════ */
+
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 24px 80px;
+}
+
+/* ════ HERO ════ */
+.hero {
+  text-align: center;
+  padding: 56px 16px 48px;
+  position: relative;
+}
+
+.heroEyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: var(--vsd-orange);
+  margin-bottom: 16px;
+}
+
+.heroTitle {
+  font-family: var(--font-display);
+  font-size: clamp(40px, 7vw, 72px);
+  font-weight: var(--fw-bold);
+  letter-spacing: 4px;
+  text-transform: uppercase;
+  color: var(--color-text);
+  margin: 0 0 12px;
+  line-height: 1;
+}
+
+.heroTitleAccent { color: var(--vsd-cyan); }
+
+.heroSub {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin: 0 0 28px;
+}
+
+.heroOpen {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+}
+
+.heroBadge {
+  background: rgba(0, 212, 255, 0.08);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+  color: var(--vsd-cyan);
+}
+
+.heroActions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* ════ BUTTONS ════ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 24px;
+  border-radius: var(--r-md);
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border: 1px solid var(--color-border-strong);
+  background: transparent;
+  color: var(--color-text-muted);
+  transition: all var(--t-fast);
+  cursor: pointer;
+}
+.btn:hover { color: var(--color-text); border-color: var(--color-text-muted); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.btnPrimary {
+  background: linear-gradient(90deg, rgba(0,212,255,0.15), rgba(59,139,255,0.08));
+  border-color: var(--vsd-cyan);
+  color: var(--vsd-cyan);
+}
+.btnPrimary:hover { background: rgba(0,212,255,0.25); color: var(--vsd-cyan); }
+
+.btnSecondary { border-color: var(--color-border-strong); color: var(--color-text-muted); }
+.btnSecondary:hover { border-color: var(--color-text-muted); color: var(--color-text); }
+
+/* ════ SECTIONS ════ */
+.section { margin-top: 64px; }
+
+.sectionEyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+  color: var(--vsd-cyan);
+  margin-bottom: 8px;
+}
+
+.sectionTitle {
+  font-family: var(--font-display);
+  font-size: clamp(22px, 3.5vw, 30px);
+  font-weight: var(--fw-bold);
+  color: var(--color-text);
+  margin: 0 0 16px;
+}
+
+.leadText {
+  color: var(--color-text-muted);
+  line-height: 1.65;
+  max-width: 760px;
+  margin: 0 0 20px;
+}
+
+/* ════ CLASSI ════ */
+.classGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+}
+
+.classCard {
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+  padding: 24px;
+}
+.cls_GTE { border-top: 3px solid #94a3b8; }
+.cls_GT3 { border-top: 3px solid var(--vsd-cyan); }
+
+.classHeader { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.classIcon { font-size: 28px; }
+.classLabel { font-family: var(--font-display); font-size: 20px; font-weight: var(--fw-bold); color: var(--color-text); }
+.classSublabel { font-size: 12px; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+.classCar { font-size: 13px; color: var(--vsd-cyan); font-family: var(--font-mono); margin-bottom: 12px; }
+
+.traitList { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.traitItem {
+  font-size: 13px;
+  color: var(--color-text-muted);
+  padding-left: 16px;
+  position: relative;
+}
+.traitItem::before {
+  content: '›';
+  position: absolute;
+  left: 0;
+  color: var(--vsd-cyan);
+}
+
+.classNote { font-size: 13px; color: var(--color-text-muted); margin-top: 16px; font-style: italic; }
+
+/* ════ CALENDARIO ════ */
+.calendarGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+.calendarCard {
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-md);
+  padding: 20px;
+}
+.calendarRound {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--vsd-cyan);
+  margin-bottom: 8px;
+}
+.calendarCircuit { font-family: var(--font-display); font-size: 17px; font-weight: var(--fw-semibold); color: var(--color-text); margin-bottom: 8px; }
+.calendarMeta { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--color-text-muted); margin-bottom: 8px; }
+.calendarNoteTag {
+  background: rgba(0, 212, 255, 0.08);
+  border-radius: 999px;
+  padding: 3px 10px;
+  color: var(--vsd-cyan);
+  font-size: 11px;
+}
+.calendarDate { font-size: 12px; color: var(--color-text-muted); }
+
+/* ════ FORMATO ════ */
+.formatGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.formatCard {
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-md);
+  padding: 20px;
+  text-align: center;
+}
+.formatLabel { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-muted); margin-bottom: 6px; }
+.formatValue { font-family: var(--font-display); font-size: 32px; font-weight: var(--fw-bold); color: var(--vsd-cyan); }
+.formatDetail { font-size: 12px; color: var(--color-text-muted); margin-top: 6px; }
+
+.specGrid { display: flex; flex-direction: column; gap: 1px; background: var(--color-border); border-radius: var(--r-md); overflow: hidden; }
+.specRow { display: flex; justify-content: space-between; gap: 16px; padding: 14px 18px; background: var(--vsd-bg-elevated); }
+.specLabel { color: var(--color-text-muted); font-size: 13px; }
+.specValue { color: var(--color-text); font-size: 13px; text-align: right; }
+
+/* ════ PUNTI ════ */
+.pointsWrap { background: var(--vsd-bg-elevated); border: 1px solid var(--color-border); border-radius: var(--r-md); padding: 20px; }
+.pointsRow { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+.pointsCell {
+  min-width: 52px;
+  text-align: center;
+  padding: 8px 6px;
+  border-radius: 6px;
+  background: var(--vsd-bg);
+  border: 1px solid var(--color-border);
+}
+.pointsPodium { border-color: var(--vsd-cyan); background: rgba(0,212,255,0.06); }
+.pointsPos { font-size: 10px; color: var(--color-text-muted); font-family: var(--font-mono); }
+.pointsPts { font-family: var(--font-display); font-size: 16px; font-weight: var(--fw-bold); color: var(--color-text); }
+.bonusRow { display: flex; flex-wrap: wrap; gap: 8px; }
+.bonusBadge {
+  font-size: 11px;
+  background: rgba(255, 149, 0, 0.08);
+  border: 1px solid rgba(255, 149, 0, 0.25);
+  color: var(--vsd-orange);
+  border-radius: 999px;
+  padding: 4px 12px;
+}
+
+/* ════ TROFEO (explain) ════ */
+.trophyExplain {
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-md);
+  padding: 24px;
+}
+.trophyExplain p { color: var(--color-text-muted); line-height: 1.65; margin: 0 0 14px; }
+.trophyExplain p:last-child { margin-bottom: 0; }
+.trophyTitlesNote { color: var(--vsd-cyan) !important; font-size: 13px; }
+
+/* ════ SANZIONI ════ */
+.sanctionsTableWrap { overflow-x: auto; border: 1px solid var(--color-border); border-radius: var(--r-md); }
+.sanctionsTable { width: 100%; border-collapse: collapse; font-size: 13px; }
+.sanctionsTable th {
+  text-align: left;
+  padding: 12px 16px;
+  background: var(--vsd-bg);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--color-border);
+}
+.sanctionsTable td { padding: 12px 16px; border-bottom: 1px solid var(--color-border); color: var(--color-text-muted); }
+.sanctionsTable tr:last-child td { border-bottom: none; }
+.sanctionLevel { color: var(--color-text); font-weight: var(--fw-semibold); }
+
+/* ════ FORM (iscrizione / segnalazioni) ════ */
+.form { display: flex; flex-direction: column; gap: 16px; max-width: 480px; }
+.formGroup { display: flex; flex-direction: column; gap: 6px; }
+.formLabel { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted); }
+.formStaticValue { color: var(--color-text); font-size: 14px; padding: 10px 0; }
+
+.input, .select, .textarea {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--color-text);
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 14px;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.input:focus, .select:focus, .textarea:focus {
+  outline: none;
+  border-color: rgba(0, 212, 255, 0.5);
+  background: rgba(255, 255, 255, 0.06);
+}
+.select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ffffff80' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+.select option { background-color: #0e1729; color: #fff; padding: 8px; }
+.textarea { resize: vertical; line-height: 1.5; }
+
+.formSuccess { color: #4ade80; font-size: 13px; padding: 10px 0; }
+.formError { color: #fca5a5; font-size: 13px; padding: 10px 0; }
+
+.registrationLayout {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 32px;
+  align-items: start;
+}
+@media (max-width: 720px) {
+  .registrationLayout { grid-template-columns: 1fr; }
+}
+
+.registrationCounts { display: flex; flex-direction: column; gap: 12px; }
+.countCard {
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-md);
+  padding: 16px;
+  text-align: center;
+}
+.countValue { font-family: var(--font-display); font-size: 26px; font-weight: var(--fw-bold); color: var(--vsd-cyan); }
+.countLabel { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); margin-top: 4px; }
+
+/* ════ CLASSIFICHE ════ */
+.standingsSkeleton { display: flex; flex-direction: column; gap: 10px; }
+.skeletonBar { height: 40px; background: var(--vsd-bg-elevated); border-radius: var(--r-md); animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 0.9; } }
+
+.standingsEmpty { text-align: center; padding: 48px 16px; background: var(--vsd-bg-elevated); border: 1px dashed var(--color-border); border-radius: var(--r-md); }
+.standingsEmptyIcon { font-size: 32px; margin-bottom: 8px; }
+.standingsEmptyTitle { font-family: var(--font-display); font-size: 16px; color: var(--color-text); margin-bottom: 4px; }
+.standingsEmptyText { font-size: 13px; color: var(--color-text-muted); }
+
+.standingsTabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 1px solid var(--color-border); flex-wrap: wrap; }
+.standingsTab {
+  padding: 10px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-display);
+  font-size: 13px;
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all var(--t-fast);
+}
+.standingsTab:hover { color: var(--color-text); }
+.standingsTabActive { color: var(--vsd-cyan); border-bottom-color: var(--vsd-cyan); }
+
+.standingsTableWrap { overflow-x: auto; }
+.standingsTable { width: 100%; border-collapse: collapse; font-size: 13px; }
+.standingsTable th {
+  text-align: left;
+  padding: 10px 12px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--color-border);
+}
+.standingsTable td { padding: 10px 12px; border-bottom: 1px solid var(--color-border); color: var(--color-text); }
+.stNum { text-align: right; font-family: var(--font-mono); }
+.stColPos { width: 36px; }
+.stPosBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--vsd-bg-elevated);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--color-text-muted);
+}
+.stDriverLink { color: var(--vsd-cyan); text-decoration: none; }
+.stDriverLink:hover { text-decoration: underline; }
+.stDriverExternal { color: var(--color-text-muted); }
+
+/* ════ TROFEO (dati) ════ */
+.trophyWrap { display: flex; flex-direction: column; gap: 24px; }
+.trophyTotals { display: flex; align-items: center; justify-content: center; gap: 24px; }
+.trophyTotalCard {
+  flex: 1;
+  max-width: 220px;
+  text-align: center;
+  padding: 24px;
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+}
+.trophyLeading { border-color: var(--vsd-cyan); background: rgba(0,212,255,0.06); }
+.trophyClassLabel { font-family: var(--font-display); font-size: 14px; letter-spacing: 0.1em; color: var(--color-text-muted); margin-bottom: 8px; }
+.trophyClassPoints { font-family: var(--font-display); font-size: 40px; font-weight: var(--fw-bold); color: var(--color-text); }
+.trophyVs { font-family: var(--font-mono); font-size: 13px; color: var(--color-text-muted); letter-spacing: 0.2em; }
+.trophyStatus { text-align: center; color: var(--color-text-muted); font-size: 14px; }
+.trophyStatus strong { color: var(--vsd-cyan); }
+.trophyRoundsWrap { max-width: 400px; margin: 0 auto; }
+
+/* ════ CTA ════ */
+.cta {
+  margin-top: 80px;
+  text-align: center;
+  padding: 48px 24px;
+  background: linear-gradient(180deg, rgba(0,212,255,0.06), transparent);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--color-border);
+}
+.ctaTitle { font-family: var(--font-display); font-size: clamp(22px, 4vw, 30px); font-weight: var(--fw-bold); color: var(--color-text); margin: 0 0 12px; }
+.ctaText { color: var(--color-text-muted); margin: 0 0 24px; }
+.ctaActions { display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; margin-bottom: 20px; }
+.ctaStaff { font-size: 12px; color: var(--color-text-muted); font-family: var(--font-mono); }

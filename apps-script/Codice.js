@@ -24,6 +24,9 @@ const SHEETS = {
   SOCIAL_POSTS: 'SocialPosts',
   SOCIAL_METRICS: 'SocialMetrics',
   SOCIAL_MEDIA: 'SocialMedia',
+  CLASH_PARTICIPANTS: 'ClashParticipants',
+  CLASH_RESULTS: 'ClashResults',
+  CLASH_INCIDENT_REPORTS: 'ClashIncidentReports',
 };
 
 // Token TTL: 7 giorni
@@ -193,6 +196,14 @@ const ACTIONS = {
 
   // Training Insights — Fase 1 (solo lettura, calcolato da BestLaps)
   'training.insights': handleTrainingInsights,
+
+  // Clash of Classes — GTE vs GT3 (dominio custom, vedi ClashOfClasses.js)
+  'clash.participants.list': handleClashParticipantsList,
+  'clash.participants.register': handleClashParticipantsRegister,
+  'clash.results.submitRound': handleClashResultsSubmitRound,
+  'clash.standings': handleClashStandings,
+  'clash.incidents.report': handleClashIncidentsReport,
+  'clash.incidents.list': handleClashIncidentsList,
 
   // Social Manager — admin only
   'social.posts.list': handleSocialPostsList,

@@ -126,6 +126,15 @@ export const api = {
     insights: (sim, track_id) => call('training.insights', { sim, track_id }),
   },
 
+  clash: {
+    participantsList: () => call('clash.participants.list', {}),
+    register: (payload) => call('clash.participants.register', payload),
+    standings: () => call('clash.standings', {}),
+    submitRoundResults: (payload) => call('clash.results.submitRound', payload),
+    reportIncident: (payload) => call('clash.incidents.report', payload),
+    incidentsList: () => call('clash.incidents.list', {}),
+  },
+
   social: {
     postsList: (status) => call('social.posts.list', { status }),
     postsCreate: (payload) => call('social.posts.create', payload),
