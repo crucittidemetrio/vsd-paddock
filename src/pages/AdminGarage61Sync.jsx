@@ -78,7 +78,7 @@ export default function AdminGarage61Sync() {
               <p className={styles.muted}>
                 Include anche i lap già presenti/dedup, non solo quelli importati ora.
               </p>
-              <ol className={styles.top3}>
+              <ol className={styles.kvList}>
                 {Object.entries(syncMutation.data.sessionTypeDistributionAll)
                   .sort((a, b) => b[1] - a[1])
                   .map(([type, count]) => (
@@ -95,7 +95,7 @@ export default function AdminGarage61Sync() {
             && Object.keys(syncMutation.data.sessionTypeDistribution).length > 0 && (
             <div className={styles.classBlock}>
               <h3 className={styles.className}>Distribuzione session_type — importati in questo sync</h3>
-              <ol className={styles.top3}>
+              <ol className={styles.kvList}>
                 {Object.entries(syncMutation.data.sessionTypeDistribution)
                   .sort((a, b) => b[1] - a[1])
                   .map(([type, count]) => (
@@ -119,7 +119,7 @@ export default function AdminGarage61Sync() {
                 completa <code>manufacturer</code>, <code>category</code> e <code>race_class</code> per ognuna,
                 poi rilancia il sync per importare i lap.
               </p>
-              <ol className={styles.top3}>
+              <ol className={styles.kvList}>
                 {syncMutation.data.unmappedCarsDraftedList.map(c => (
                   <li key={c.garage61_id}>
                     <span className={styles.driverName}>{c.name}</span>
@@ -141,7 +141,7 @@ export default function AdminGarage61Sync() {
                 oppure piloti VSD con <code>iracing_id</code> mancante o errato.
                 Verifica nel tab Drivers e correggi se necessario.
               </p>
-              <ol className={styles.top3}>
+              <ol className={styles.kvList}>
                 {syncMutation.data.unmappedDrivers.map(d => (
                   <li key={d.slug}>
                     <span className={styles.driverName}>{d.name}</span>
