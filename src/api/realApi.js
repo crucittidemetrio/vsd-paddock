@@ -123,6 +123,26 @@ async function rosterGetAdapter(payload, token) {
   return ok(res.data.driver);
 }
 
+/**
+ * Frontend: presence.heartbeat() → { alive: true }
+ * Backend:  presence.heartbeat({}) → stesso shape
+ */
+async function presenceHeartbeatAdapter(payload, token) {
+  const res = await postToBackend('presence.heartbeat', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: presence.online() → { online: [driver_id, ...] }
+ * Backend:  presence.online({}) → stesso shape
+ */
+async function presenceOnlineAdapter(payload, token) {
+  const res = await postToBackend('presence.online', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
 // Wave 10.X: authLogin() rimosso. auth.login è deprecato lato backend
 // e non è più chiamato dal frontend (Discord OAuth è l'unico flusso).
 
@@ -138,7 +158,7 @@ async function authVerify(payload) {
   const tokenToVerify = payload && payload.token;
   return postToBackend('auth.verify', {}, tokenToVerify);
 }
-async function authDiscordStart(payload) {
+async function authDiscordStart() {
   return postToBackend('auth.discordStart', {}, null);
 }
 
@@ -150,11 +170,16 @@ async function authDiscordCallback(payload) {
 /**
  * @param action  es. 'roster.list'
  * @param payload oggetto parametri
- * @param ctx     oggetto contesto. ctx.token (se valorizzato) viene
- *                propagato al backend per autenticazione. Il ctx
- *                completo è dedotto server-side dal token stesso.
+ *
+ * Nota: un tempo la firma accettava anche un terzo argomento ctx (i
+ * chiamanti in client.js lo passano ancora, es. callApi(action, payload,
+ * ctx)) ma non è mai stato usato qui — il token viene sempre letto da
+ * localStorage via readTokenFromStorage(), non da ctx.token. Rimosso
+ * dalla firma per pulizia: passarlo comunque dai chiamanti non causa
+ * errori (JS ignora argomenti extra), quindi zero rischio a lasciarlo
+ * o toglierlo lato chiamante.
  */
-export async function callApi(action, payload = {}, ctx = null) {
+export async function callApi(action, payload = {}) {
   // Il token vive nel localStorage, gestito da AuthContext.
   const token = readTokenFromStorage();
 
@@ -170,6 +195,10 @@ export async function callApi(action, payload = {}, ctx = null) {
         return await rosterListAdapter(payload, token);
       case 'roster.get':
         return await rosterGetAdapter(payload, token);
+      case 'presence.heartbeat':
+        return await presenceHeartbeatAdapter(payload, token);
+      case 'presence.online':
+        return await presenceOnlineAdapter(payload, token);
       case 'lookups.tracks':
         return await lookupsTracksAdapter(payload, token);
       case 'lookups.cars':
@@ -206,6 +235,46 @@ export async function callApi(action, payload = {}, ctx = null) {
         return await raceResultsImportAdapter(payload, token); // ← NEW
       case 'academy.ranking':
         return await academyRankingAdapter(payload, token);
+      case 'recap.mine':
+        return await recapMineAdapter(payload, token);
+      case 'records.team':
+        return await recordsTeamAdapter(payload, token);
+      case 'training.insights':
+        return await trainingInsightsAdapter(payload, token);
+      case 'clash.participants.list':
+        return await clashParticipantsListAdapter(payload, token);
+      case 'clash.participants.register':
+        return await clashRegisterAdapter(payload, token);
+      case 'clash.standings':
+        return await clashStandingsAdapter(payload, token);
+      case 'clash.results.submitRound':
+        return await clashSubmitRoundResultsAdapter(payload, token);
+      case 'clash.incidents.report':
+        return await clashReportIncidentAdapter(payload, token);
+      case 'clash.incidents.list':
+        return await clashIncidentsListAdapter(payload, token);
+      case 'social.posts.list':
+        return await socialPostsListAdapter(payload, token);
+      case 'social.posts.create':
+        return await socialPostsCreateAdapter(payload, token);
+      case 'social.posts.update':
+        return await socialPostsUpdateAdapter(payload, token);
+      case 'social.posts.remove':
+        return await socialPostsRemoveAdapter(payload, token);
+      case 'social.metrics.list':
+        return await socialMetricsListAdapter(payload, token);
+      case 'social.metrics.add':
+        return await socialMetricsAddAdapter(payload, token);
+      case 'social.generateText':
+        return await socialGenerateTextAdapter(payload, token);
+      case 'social.discord.stats':
+        return await socialDiscordStatsAdapter(payload, token);
+      case 'social.media.list':
+        return await socialMediaListAdapter(payload, token);
+      case 'social.media.add':
+        return await socialMediaAddAdapter(payload, token);
+      case 'social.media.remove':
+        return await socialMediaRemoveAdapter(payload, token);
       case 'championships.list':                              // ← NEW
         return await championshipsListAdapter(payload, token); // ← NEW
       case 'championships.importStandings':
@@ -515,6 +584,187 @@ async function enduranceAuditionsUpdateAdapter(payload, token) {
  */
 async function academyRankingAdapter(payload, token) {
   const res = await postToBackend('academy.ranking', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: recap.mine() → { season_start, races, podiums, dnfs,
+ *   bestFinish, bestLap, mostRacedTrack, bySim }
+ * Backend:  recap.mine({}) → stesso shape
+ */
+async function recapMineAdapter(payload, token) {
+  const res = await postToBackend('recap.mine', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: records.team(sim?) → { records: [...], count }
+ * Backend:  records.team({ sim? }) → stesso shape
+ */
+async function recordsTeamAdapter(payload, token) {
+  const res = await postToBackend('records.team', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: training.insights(sim?) → { sim, drivers, next_race, readiness }
+ * Backend:  training.insights({ sim? }) → stesso shape
+ */
+async function trainingInsightsAdapter(payload, token) {
+  const res = await postToBackend('training.insights', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Clash of Classes — GTE vs GT3. Adapter pass-through: il backend
+ * risponde già nello shape che il frontend consuma direttamente.
+ */
+async function clashParticipantsListAdapter(payload, token) {
+  const res = await postToBackend('clash.participants.list', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+async function clashRegisterAdapter(payload, token) {
+  const res = await postToBackend('clash.participants.register', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+async function clashStandingsAdapter(payload, token) {
+  const res = await postToBackend('clash.standings', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+async function clashSubmitRoundResultsAdapter(payload, token) {
+  const res = await postToBackend('clash.results.submitRound', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+async function clashReportIncidentAdapter(payload, token) {
+  const res = await postToBackend('clash.incidents.report', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+async function clashIncidentsListAdapter(payload, token) {
+  const res = await postToBackend('clash.incidents.list', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: social.postsList(status?) → array di post
+ * Backend:  social.posts.list({ status? }) → { posts: [...], count }
+ */
+async function socialPostsListAdapter(payload, token) {
+  const res = await postToBackend('social.posts.list', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data.posts);
+}
+
+/**
+ * Frontend: social.postsCreate({ content, platforms, scheduled_date?, link_destination? })
+ * Backend:  social.posts.create({...}) → { post_id, post }
+ */
+async function socialPostsCreateAdapter(payload, token) {
+  const res = await postToBackend('social.posts.create', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: social.postsUpdate({ post_id, ...campi })
+ * Backend:  social.posts.update({...}) → { post_id, updated }
+ */
+async function socialPostsUpdateAdapter(payload, token) {
+  const res = await postToBackend('social.posts.update', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: social.postsRemove(post_id)
+ * Backend:  social.posts.remove({ post_id }) → { post_id, deleted }
+ */
+async function socialPostsRemoveAdapter(payload, token) {
+  const res = await postToBackend('social.posts.remove', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: social.metricsList(platform?) → array di rilevazioni
+ * Backend:  social.metrics.list({ platform? }) → { metrics: [...], count }
+ */
+async function socialMetricsListAdapter(payload, token) {
+  const res = await postToBackend('social.metrics.list', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data.metrics);
+}
+
+/**
+ * Frontend: social.metricsAdd({ platform, followers, recorded_date? })
+ * Backend:  social.metrics.add({...}) → { metric_id, metric }
+ */
+async function socialMetricsAddAdapter(payload, token) {
+  const res = await postToBackend('social.metrics.add', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: social.generateText(prompt) → { text }
+ * Backend:  social.generateText({ prompt }) → { text }
+ */
+async function socialGenerateTextAdapter(payload, token) {
+  const res = await postToBackend('social.generateText', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: social.discordStats() → { guild_name, member_count, online_count }
+ * Backend:  social.discord.stats({}) → stessa forma
+ */
+async function socialDiscordStatsAdapter(payload, token) {
+  const res = await postToBackend('social.discord.stats', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: social.mediaList(tag?) → array di file in libreria
+ * Backend:  social.media.list({ tag? }) → { media: [...], count }
+ */
+async function socialMediaListAdapter(payload, token) {
+  const res = await postToBackend('social.media.list', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data.media);
+}
+
+/**
+ * Frontend: social.mediaAdd({ url, filename, media_type, tags? })
+ * Backend:  social.media.add({...}) → { media_id, media }
+ */
+async function socialMediaAddAdapter(payload, token) {
+  const res = await postToBackend('social.media.add', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: social.mediaRemove(media_id)
+ * Backend:  social.media.remove({ media_id }) → { media_id, deleted }
+ */
+async function socialMediaRemoveAdapter(payload, token) {
+  const res = await postToBackend('social.media.remove', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
 }

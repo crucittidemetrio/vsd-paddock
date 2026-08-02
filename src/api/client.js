@@ -70,6 +70,11 @@ export const api = {
     get: (driver_id) => call('roster.get', { driver_id }),
   },
 
+  presence: {
+    heartbeat: () => call('presence.heartbeat', {}),
+    online: () => call('presence.online', {}),
+  },
+
   lookups: {
     tracks: (sim) => call('lookups.tracks', { sim }),
     cars: (sim) => call('lookups.cars', { sim }),
@@ -107,6 +112,41 @@ export const api = {
 
   academy: {
     ranking: (sim) => call('academy.ranking', { sim }),
+  },
+
+  recap: {
+    mine: () => call('recap.mine', {}),
+  },
+
+  records: {
+    team: (sim) => call('records.team', { sim }),
+  },
+
+  training: {
+    insights: (sim, track_id) => call('training.insights', { sim, track_id }),
+  },
+
+  clash: {
+    participantsList: () => call('clash.participants.list', {}),
+    register: (payload) => call('clash.participants.register', payload),
+    standings: () => call('clash.standings', {}),
+    submitRoundResults: (payload) => call('clash.results.submitRound', payload),
+    reportIncident: (payload) => call('clash.incidents.report', payload),
+    incidentsList: () => call('clash.incidents.list', {}),
+  },
+
+  social: {
+    postsList: (status) => call('social.posts.list', { status }),
+    postsCreate: (payload) => call('social.posts.create', payload),
+    postsUpdate: (payload) => call('social.posts.update', payload),
+    postsRemove: (post_id) => call('social.posts.remove', { post_id }),
+    metricsList: (platform) => call('social.metrics.list', { platform }),
+    metricsAdd: (payload) => call('social.metrics.add', payload),
+    generateText: (prompt, provider) => call('social.generateText', { prompt, provider }),
+    discordStats: () => call('social.discord.stats', {}),
+    mediaList: (tag) => call('social.media.list', { tag }),
+    mediaAdd: (payload) => call('social.media.add', payload),
+    mediaRemove: (media_id) => call('social.media.remove', { media_id }),
   },
 
  championships: {

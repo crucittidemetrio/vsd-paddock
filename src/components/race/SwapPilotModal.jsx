@@ -106,7 +106,7 @@ export default function SwapPilotModal({
         planned_duration_min: calc.substituteMin,
         status: 'active',
       });
-    } catch (e) {
+    } catch {
       setBusy(false);
       setError('Swap non riuscito: impossibile creare lo stint del sostituto. Nessuna modifica salvata, riprova.');
       return;
@@ -122,7 +122,7 @@ export default function SwapPilotModal({
         actual_end_time: changeIso,
         actual_duration_min: calc.outgoingMin,
       });
-    } catch (e) {
+    } catch {
       setBusy(false);
       // Stato recuperabile: sostituto creato, uscente non chiuso. Messaggio esplicito.
       setError(

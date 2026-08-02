@@ -21,6 +21,12 @@ const SHEETS = {
   ENDURANCE_PARTICIPANTS: 'EnduranceParticipants',
   ENDURANCE_AUDITION_STINTS: 'EnduranceAuditionStints',
   ENDURANCE_STINTS: 'EnduranceStints',
+  SOCIAL_POSTS: 'SocialPosts',
+  SOCIAL_METRICS: 'SocialMetrics',
+  SOCIAL_MEDIA: 'SocialMedia',
+  CLASH_PARTICIPANTS: 'ClashParticipants',
+  CLASH_RESULTS: 'ClashResults',
+  CLASH_INCIDENT_REPORTS: 'ClashIncidentReports',
 };
 
 // Token TTL: 7 giorni
@@ -147,6 +153,10 @@ const ACTIONS = {
   'roster.list': handleRosterList,
   'roster.get': handleRosterGet,
 
+  // Presence — chi sta usando il sito ORA (CacheService, non Sheets)
+  'presence.heartbeat': handlePresenceHeartbeat,
+  'presence.online': handlePresenceOnline,
+
   // Lookups
   'lookups.tracks': handleLookupsTracks,
   'lookups.cars': handleLookupsCars,
@@ -177,6 +187,36 @@ const ACTIONS = {
 
   // Academy / Pilot Rating (VPR) — Fase 1
   'academy.ranking': handleAcademyRanking,
+
+  // Season Recap — Fase 1
+  'recap.mine': handleSeasonRecap,
+
+  // Muro dei Record — Fase 1
+  'records.team': handleTeamRecords,
+
+  // Training Insights — Fase 1 (solo lettura, calcolato da BestLaps)
+  'training.insights': handleTrainingInsights,
+
+  // Clash of Classes — GTE vs GT3 (dominio custom, vedi ClashOfClasses.js)
+  'clash.participants.list': handleClashParticipantsList,
+  'clash.participants.register': handleClashParticipantsRegister,
+  'clash.results.submitRound': handleClashResultsSubmitRound,
+  'clash.standings': handleClashStandings,
+  'clash.incidents.report': handleClashIncidentsReport,
+  'clash.incidents.list': handleClashIncidentsList,
+
+  // Social Manager — admin only
+  'social.posts.list': handleSocialPostsList,
+  'social.posts.create': handleSocialPostsCreate,
+  'social.posts.update': handleSocialPostsUpdate,
+  'social.posts.remove': handleSocialPostsRemove,
+  'social.metrics.list': handleSocialMetricsList,
+  'social.metrics.add': handleSocialMetricsAdd,
+  'social.generateText': handleSocialGenerateText,
+  'social.discord.stats': handleSocialDiscordStats,
+  'social.media.list': handleSocialMediaList,
+  'social.media.add': handleSocialMediaAdd,
+  'social.media.remove': handleSocialMediaRemove,
   'standings.byChampionship': handleStandingsByChampionship,
   'standings.byDriver':       handleStandingsByDriver,
   'championships.importStandings':   handleChampionshipsImportStandings,

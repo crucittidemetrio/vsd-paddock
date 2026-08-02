@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useDrivers } from '../hooks/useRoster';
+import { usePresenceOnline } from '../hooks/usePresence';
 import DriverCard from '../components/shared/DriverCard';
 import { SIM_LIST, DRIVER_STATUS } from '../utils/constants';
 import './Roster.css';
@@ -22,6 +23,14 @@ export default function Roster() {
   const [showEx, setShowEx] = useState(false);
 
   const { data: drivers, isLoading, error } = useDrivers({ includeRemoved: true });
+  const { data: presenceData } = usePresenceOnline();
+  // undefined finché il primo poll non risponde: StatusDot lo interpreta come
+  // "dato non disponibile" e mantiene il vecchio comportamento (verde fisso)
+  // invece di mostrare per un istante tutti offline.
+  const onlineSet = useMemo(
+    () => (presenceData ? new Set(presenceData.online || []) : null),
+    [presenceData]
+  );
 
   // Separa piloti attivi/inattivi dagli ex-VSD
   const activeDrivers = useMemo(() => (drivers || []).filter(d => !d.is_ex_vsd), [drivers]);
@@ -118,7 +127,13 @@ export default function Roster() {
 
       {!isLoading && filtered.length > 0 && (
         <div className="roster-grid">
-          {filtered.map(d => <DriverCard key={d.driver_id} driver={d} />)}
+          {filtered.map(d => (
+            <DriverCard
+              key={d.driver_id}
+              driver={d}
+              online={onlineSet ? onlineSet.has(d.driver_id) : undefined}
+            />
+          ))}
         </div>
       )}
 

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useStintPlanner } from '../hooks/useStintPlanner';
 import { useStints } from '../hooks/useEnduranceStints';
 import { useRace } from '../hooks/useRaces';

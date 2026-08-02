@@ -5,7 +5,7 @@ import { useDrivers } from '../hooks/useRoster';
 import { useAuth } from '../hooks/useAuth';
 import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
-import { formatDate, formatTrack } from '../utils/format';
+import { formatDate } from '../utils/format';
 import { api } from '../api/client';
 import { usePageMeta } from '../hooks/usePageMeta';
 import styles from './ChampionshipDetail.module.css';
@@ -371,7 +371,13 @@ function AdjustmentsPanel({ championshipId, adjustments, classes, rounds, onSave
     if (!form.driver_key || !form.car_class || form.delta === '') return;
     const delta = Number(form.delta);
     if (isNaN(delta)) return;
+    // Date.now() qui è sicuro: handleAdd gira solo dentro onSubmit (riga
+    // ~430), mai durante il render. La regola react-hooks/purity non
+    // distingue "chiamato nel corpo del componente durante il render" da
+    // "chiamato dentro un event handler definito nel componente" — falso
+    // positivo confermato, non una violazione reale.
     const newAdj = {
+      // eslint-disable-next-line react-hooks/purity
       id: 'adj_' + Date.now(),
       driver_key: form.driver_key,
       car_class: form.car_class,

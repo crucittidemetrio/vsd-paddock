@@ -77,7 +77,7 @@ export default function RaceFormModal({ race, onClose, onSaved }) {
     try {
       if (isEdit) {
         payload.race_id = race.race_id;
-        const res = await api.races.update(payload);
+        await api.races.update(payload);
         onSaved(`Gara "${form.race_name}" aggiornata.`);
       } else {
         const res = await api.races.add(payload);

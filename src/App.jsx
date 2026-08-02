@@ -38,10 +38,15 @@ const AdminPosters        = lazy(() => import('./pages/AdminPosters'));
 const AdminEndurance      = lazy(() => import('./pages/AdminEndurance'));
 const AdminEnduranceForm  = lazy(() => import('./pages/AdminEnduranceForm'));
 const AdminBestLaps = lazy(() => import('./pages/AdminBestLaps'));
+const SeasonRecap = lazy(() => import('./pages/SeasonRecap'));
+const TeamRecords = lazy(() => import('./pages/TeamRecords'));
 const StintPlanner        = lazy(() => import('./pages/StintPlanner'));
 const AdminRaces = lazy(() => import('./pages/AdminRaces'));
 const Compare    = lazy(() => import('./pages/Compare'));
 const Privacy     = lazy(() => import('./pages/Privacy'));
+const SocialManager = lazy(() => import('./pages/SocialManager'));
+const ClashOfClasses = lazy(() => import('./pages/ClashOfClasses'));
+const AdminClashResults = lazy(() => import('./pages/AdminClashResults'));
 
 import './App.css';
 
@@ -72,6 +77,14 @@ export default function App() {
             {/* ════ Standalone (senza AppShell) ════ */}
             <Route path="/login" element={<Login />} />
             <Route path="/auth/callback" element={<AuthCallback />} />
+            <Route
+              path="/admin/social-manager"
+              element={
+                <RequireTier minTier="admin" fallback={<Navigate to="/" replace />}>
+                  <SocialManager />
+                </RequireTier>
+              }
+            />
 
             {/* ════ Dentro AppShell — sidebar + topbar ════ */}
             <Route element={<AppShell />}>
@@ -92,6 +105,7 @@ export default function App() {
               <Route path="/endurance" element={<Endurance />} />
               <Route path="/endurance/:auditionId" element={<EnduranceDetail />} />
               <Route path="/ue144" element={<UE144 />} />
+              <Route path="/clash-of-classes" element={<ClashOfClasses />} />
               <Route path="/compare" element={<Compare />} />
               <Route path="/privacy" element={<Privacy />} />
 
@@ -117,6 +131,22 @@ export default function App() {
                 element={
                   <RequireTier minTier="pilot_vsd" fallback={<LoginPrompt feature="VSD Academy" />}>
                     <Academy />
+                  </RequireTier>
+                }
+              />
+              <Route
+                path="/recap"
+                element={
+                  <RequireTier minTier="pilot_vsd" fallback={<LoginPrompt feature="il Season Recap" />}>
+                    <SeasonRecap />
+                  </RequireTier>
+                }
+              />
+              <Route
+                path="/records"
+                element={
+                  <RequireTier minTier="pilot_vsd" fallback={<LoginPrompt feature="il Muro dei Record" />}>
+                    <TeamRecords />
                   </RequireTier>
                 }
               />
@@ -169,6 +199,10 @@ export default function App() {
               <Route
                 path="/admin/races"
                 element={<AdminRoute><AdminRaces /></AdminRoute>}
+              />
+              <Route
+                path="/admin/clash-results"
+                element={<AdminRoute><AdminClashResults /></AdminRoute>}
               />
             </Route>
             

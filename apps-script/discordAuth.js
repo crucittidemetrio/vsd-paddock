@@ -341,7 +341,7 @@ function handleDiscordCallback(payload, ctx) {
 
   // 5. Guild membership + roles
   let memberRoles = [];
-  let isMember = false;
+  let isMember;
   try {
     const memberRes = UrlFetchApp.fetch(
       DISCORD_API_BASE + '/users/@me/guilds/' + guildId + '/member',

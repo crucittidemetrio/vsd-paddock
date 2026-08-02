@@ -128,6 +128,43 @@ function handleLapsAdd(payload, ctx) {
     return fail('lap_time_display non valido. Formato atteso: M:SS.mmm (es. 1:30.333)');
   }
 
+  // Record di squadra precedente su questa (sim, track_id), PRIMA di
+  // aggiungere il nuovo giro — stesso criterio del Muro dei Record
+  // (Records.js): giro più veloce di un tesserato attivo, qualsiasi
+  // session_type. Serve solo per decidere se notificare un nuovo
+  // record su Discord (vedi in fondo alla funzione); un fallimento qui
+  // non deve mai bloccare il salvataggio del giro.
+  let previousBestMs = null;
+  let previousBestDisplay = null;
+  let isNewRecordCandidate = false;
+  try {
+    const existingLaps = sheetToObjects(SHEETS.BEST_LAPS);
+    const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
+    const driverMap = {};
+    drivers.forEach(d => { driverMap[d.driver_id] = d; });
+    const isCurrentTesserato = (driverId) => {
+      const d = driverMap[driverId];
+      if (!d) return false;
+      if (driverId === 'VSD001') return false;
+      if (d.removed_at) return false;
+      return d.status === 'active';
+    };
+    existingLaps.forEach(l => {
+      if (l.sim !== payload.sim || l.track_id !== payload.track_id) return;
+      const ms = Number(l.lap_time_ms);
+      if (!ms || ms <= 0) return;
+      if (!isCurrentTesserato(l.driver_id)) return;
+      if (previousBestMs === null || ms < previousBestMs) {
+        previousBestMs = ms;
+        previousBestDisplay = l.lap_time_display || msToLapDisplay_(ms);
+      }
+    });
+    isNewRecordCandidate = isCurrentTesserato(payload.driver_id)
+      && (previousBestMs === null || lapTimeMs < previousBestMs);
+  } catch (e) {
+    Logger.log('⚠️ calcolo record precedente fallito: ' + e.message);
+  }
+
   const sheet = getSheet(SHEETS.BEST_LAPS);
   if (!sheet) return fail('Foglio BestLaps non trovato');
 
@@ -169,6 +206,27 @@ function handleLapsAdd(payload, ctx) {
   sheet.appendRow(row);
   invalidateSheetCache_(SHEETS.BEST_LAPS);
 
+  if (isNewRecordCandidate) {
+    try {
+      const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
+      const driverRow = drivers.find(d => d.driver_id === payload.driver_id);
+      const driverName = (driverRow && driverRow.display_name) || payload.driver_id;
+
+      const tracks = getCachedSheetData_(SHEETS.TRACKS, 21600);
+      const trackRow = tracks.find(t => t.track_id === payload.track_id);
+      const trackName = (trackRow && trackRow.track_name) || payload.track_id;
+
+      notifyNewTeamRecord_({
+        driver_name: driverName,
+        sim: payload.sim,
+        track_name: trackName,
+        lap_time_display: newLap.lap_time_display,
+      }, previousBestDisplay);
+    } catch (e) {
+      Logger.log('⚠️ notifyNewTeamRecord_ error: ' + e.message);
+    }
+  }
+
   return ok({ lap_id: newLapId, lap: newLap });
 }
 
@@ -208,6 +266,56 @@ function handleLapsUpdate(payload, ctx) {
     payloadToApply.lap_time_display = msToLapDisplay_(lapTimeMs);
   }
 
+  // sim/track_id/driver_id della riga PRIMA della modifica — servono per
+  // il controllo record anche quando non sono tra i campi aggiornati
+  // (caso comune: si corregge solo lap_time_display).
+  const headerIdx = {};
+  headers.forEach((h, i) => { headerIdx[h] = i; });
+  const currentRow = data[rowIndex];
+  const sim = payloadToApply.sim || currentRow[headerIdx.sim];
+  const trackId = payloadToApply.track_id || currentRow[headerIdx.track_id];
+  const driverId = payloadToApply.driver_id || currentRow[headerIdx.driver_id];
+
+  // Record di squadra precedente su (sim, trackId), PRIMA di applicare
+  // la modifica — stesso criterio/pattern di handleLapsAdd. Controllato
+  // solo se il tempo cambia davvero (altrimenti non può mai diventare
+  // un nuovo record). Non serve escludere questa riga dal calcolo: se
+  // era già lei il record, il valore letto qui è comunque il suo
+  // valore PRE-modifica, cioè esattamente "il record prima di questo
+  // cambio" — la semantica corretta per il messaggio di notifica.
+  let previousBestMs = null;
+  let previousBestDisplay = null;
+  let isNewRecordCandidate = false;
+  if (payloadToApply.lap_time_ms !== undefined) {
+    try {
+      const existingLaps = sheetToObjects(SHEETS.BEST_LAPS);
+      const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
+      const driverMap = {};
+      drivers.forEach(d => { driverMap[d.driver_id] = d; });
+      const isCurrentTesserato = (id) => {
+        const d = driverMap[id];
+        if (!d) return false;
+        if (id === 'VSD001') return false;
+        if (d.removed_at) return false;
+        return d.status === 'active';
+      };
+      existingLaps.forEach(l => {
+        if (l.sim !== sim || l.track_id !== trackId) return;
+        const ms = Number(l.lap_time_ms);
+        if (!ms || ms <= 0) return;
+        if (!isCurrentTesserato(l.driver_id)) return;
+        if (previousBestMs === null || ms < previousBestMs) {
+          previousBestMs = ms;
+          previousBestDisplay = l.lap_time_display || msToLapDisplay_(ms);
+        }
+      });
+      isNewRecordCandidate = isCurrentTesserato(driverId)
+        && (previousBestMs === null || payloadToApply.lap_time_ms < previousBestMs);
+    } catch (e) {
+      Logger.log('⚠️ calcolo record precedente (update) fallito: ' + e.message);
+    }
+  }
+
   const rowToUpdate = rowIndex + 1; // base-1 per getRange
   const updatedFields = [];
 
@@ -222,6 +330,27 @@ function handleLapsUpdate(payload, ctx) {
 
   if (updatedFields.length > 0) {
     invalidateSheetCache_(SHEETS.BEST_LAPS);
+  }
+
+  if (isNewRecordCandidate) {
+    try {
+      const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
+      const driverRow = drivers.find(d => d.driver_id === driverId);
+      const driverName = (driverRow && driverRow.display_name) || driverId;
+
+      const tracks = getCachedSheetData_(SHEETS.TRACKS, 21600);
+      const trackRow = tracks.find(t => t.track_id === trackId);
+      const trackName = (trackRow && trackRow.track_name) || trackId;
+
+      notifyNewTeamRecord_({
+        driver_name: driverName,
+        sim: sim,
+        track_name: trackName,
+        lap_time_display: payloadToApply.lap_time_display,
+      }, previousBestDisplay);
+    } catch (e) {
+      Logger.log('⚠️ notifyNewTeamRecord_ (update) error: ' + e.message);
+    }
   }
 
   return ok({ lap_id: lap_id, updated: updatedFields });

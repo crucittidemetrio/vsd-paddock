@@ -124,7 +124,22 @@ function handleAcademyRanking(payload, ctx) {
   const driverMap = {};
   drivers.forEach(d => { driverMap[d.driver_id] = d; });
 
+  // Il VPR è "per i tesserati, punto" (§1 della spec) — un pilota che ha
+  // lasciato il team resta nello storico di RaceResults ma non deve
+  // comparire in una classifica di merito interna corrente. Stesso
+  // filtro di default di handleRosterList (Roster.js): esclude rimossi
+  // (removed_at) e non-attivi (status !== 'active'), account di sistema
+  // escluso a prescindere.
+  function isCurrentTesserato_(driverId) {
+    const d = driverMap[driverId];
+    if (!d) return false; // driver_id in RaceResults senza corrispondenza in Drivers
+    if (driverId === 'VSD001') return false;
+    if (d.removed_at) return false;
+    return d.status === 'active';
+  }
+
   const ranking = Object.keys(pmByDriver)
+    .filter(isCurrentTesserato_)
     .map(driverId => ({
       driver_id: driverId,
       display_name: (driverMap[driverId] && driverMap[driverId].display_name) || driverId,

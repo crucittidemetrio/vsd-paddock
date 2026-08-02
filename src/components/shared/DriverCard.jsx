@@ -10,7 +10,7 @@ import './DriverCard.css';
  * - driver: oggetto pilota completo
  * - compact: layout più stretto (per sidebar/sezioni minori)
  */
-export default function DriverCard({ driver, compact = false }) {
+export default function DriverCard({ driver, compact = false, online }) {
   if (!driver) return null;
 
   const sims = (driver.preferred_sims || '').split(',').filter(Boolean);
@@ -46,7 +46,7 @@ export default function DriverCard({ driver, compact = false }) {
                 )}
               </div>
             )
-            : <StatusDot status={driver.status} />
+            : <StatusDot status={driver.status} online={online} />
           }
         </div>
       </div>

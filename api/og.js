@@ -72,6 +72,42 @@ const OG_MAP = {
     imageHeight: '630',
     url: `${SITE}/championships`,
   },
+  roster: {
+    title: 'Roster piloti — VSD Paddock',
+    description:
+      'Tutti i piloti di Virtual Sim-Driver: profili, numero di gara, simulatori attivi.',
+    image: `${SITE}/og-image.png`,
+    imageWidth: '1200',
+    imageHeight: '630',
+    url: `${SITE}/roster`,
+  },
+  training: {
+    title: 'Allenamento — VSD Paddock',
+    description:
+      'Riepilogo allenamento per pilota su Le Mans Ultimate, iRacing e Assetto Corsa Evo — giri, gap dal record squadra, readiness pre-gara.',
+    image: `${SITE}/og-image.png`,
+    imageWidth: '1200',
+    imageHeight: '630',
+    url: `${SITE}/training`,
+  },
+  records: {
+    title: 'Muro dei Record — VSD Paddock',
+    description:
+      'Il giro più veloce mai registrato dal team, pista per pista, su tutti i simulatori.',
+    image: `${SITE}/og-image.png`,
+    imageWidth: '1200',
+    imageHeight: '630',
+    url: `${SITE}/records`,
+  },
+  recap: {
+    title: 'Season Recap — VSD Paddock',
+    description:
+      'Il riepilogo di stagione di ogni pilota VSD: risultati, punti e momenti salienti.',
+    image: `${SITE}/og-image.png`,
+    imageWidth: '1200',
+    imageHeight: '630',
+    url: `${SITE}/recap`,
+  },
 };
 
 // POST verso il backend Apps Script, stesso protocollo di src/api/realApi.js
@@ -88,7 +124,7 @@ async function fetchBackend_(action, payload) {
     });
     const json = await res.json();
     return json && json.ok ? json.data : null;
-  } catch (e) {
+  } catch {
     return null;
   }
 }

@@ -1,4 +1,3 @@
-import React from 'react';
 import { Link } from 'react-router-dom';
 import { useShowcase } from '../hooks/useShowcase';
 import { usePageMeta } from '../hooks/usePageMeta';
@@ -88,7 +87,7 @@ export default function JoinUs() {
         <div className="joinus-hero-glow" />
         <div className="joinus-hero-content">
           <div className="joinus-hero-logo-wrap">
-            <Logo size={140} withWordmark />
+            <Logo size={140} />
           </div>
           <h1 className="joinus-hero-title">
             La community italiana<br />

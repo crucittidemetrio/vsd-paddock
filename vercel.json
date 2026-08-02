@@ -5,6 +5,10 @@
     { "source": "/championships", "destination": "/api/og?route=championships" },
     { "source": "/championships/:id", "destination": "/api/og?route=championship-detail&id=:id" },
     { "source": "/race/:id", "destination": "/api/og?route=race&id=:id" },
+    { "source": "/roster", "destination": "/api/og?route=roster" },
+    { "source": "/training", "destination": "/api/og?route=training" },
+    { "source": "/records", "destination": "/api/og?route=records" },
+    { "source": "/recap", "destination": "/api/og?route=recap" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

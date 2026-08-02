@@ -13,8 +13,14 @@ function initials(name) {
     .join('');
 }
 
+const PM_BASE_ROWS = [
+  ['1°', 25], ['2°', 18], ['3°', 15], ['4°', 12], ['5°', 10],
+  ['6°', 8], ['7°', 6], ['8°', 4], ['9°', 2], ['10°', 1],
+];
+
 export default function Academy() {
   const [activeSim, setActiveSim] = useState(SIM_LIST[0]?.id || 'LMU');
+  const [infoOpen, setInfoOpen] = useState(false);
   const rankingQuery = useAcademyRanking(activeSim);
   const ranking = rankingQuery.data?.ranking || [];
 
@@ -37,6 +43,56 @@ export default function Academy() {
           successive: questo numero cambierà.
         </span>
       </div>
+
+      <button
+        type="button"
+        className={styles.infoToggle}
+        onClick={() => setInfoOpen(o => !o)}
+        aria-expanded={infoOpen}
+      >
+        <span>Come si calcola il VR</span>
+        <span className={styles.infoToggleIcon}>{infoOpen ? '−' : '+'}</span>
+      </button>
+
+      {infoOpen && (
+        <div className={styles.infoPanel}>
+          <p className={styles.infoText}>
+            Il VR di ogni pilota è la somma dei Punti Merito ottenuti in tutte le gare
+            disponibili per quel simulatore. Il punteggio base dipende dal piazzamento
+            <strong> dentro la propria classe</strong> (non in griglia assoluta), su una
+            scala ispirata alla F1:
+          </p>
+
+          <div className={styles.infoTable}>
+            {PM_BASE_ROWS.map(([pos, pts]) => (
+              <div key={pos} className={styles.infoTableCell}>
+                <span className={styles.infoTablePos}>{pos}</span>
+                <span className={styles.infoTablePts}>{pts}</span>
+              </div>
+            ))}
+            <div className={styles.infoTableCell}>
+              <span className={styles.infoTablePos}>11°+</span>
+              <span className={styles.infoTablePts}>0</span>
+            </div>
+          </div>
+
+          <p className={styles.infoText}>
+            A questo si sommano tre bonus per gara, quando applicabili: <strong>+1</strong>{' '}
+            per il giro più veloce in gara, <strong>+1</strong> per aver completato almeno
+            il 75% dei giri del leader (bonus presenza), <strong>+1</strong> per la pole
+            position — quest'ultimo solo se per quella gara esiste una sessione di
+            qualifica registrata, quindi non sempre disponibile.
+          </p>
+
+          <p className={styles.infoText}>
+            In classifica compaiono solo i piloti tesserati attualmente attivi — chi ha
+            lasciato il team esce dalla classifica anche se ha ancora risultati in
+            archivio. Non sono ancora inclusi: Punti Penalità, badge (Bronzo/Argento/
+            Oro/Platino) e scarto del risultato peggiore. Arrivano nelle fasi successive
+            del sistema — vedi il banner sopra.
+          </p>
+        </div>
+      )}
 
       <div className={styles.tabs}>
         {SIM_LIST.map(s => (
