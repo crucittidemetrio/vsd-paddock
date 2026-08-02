@@ -16,7 +16,6 @@ const PUBLIC_ITEMS = [
   { to: '/results', label: LABELS.nav_results, icon: '🏁' },
   { to: '/compare', label: 'Confronto', icon: '⚖' },
   { to: '/endurance', label: LABELS.nav_endurance, icon: '◐' },
-  { to: '/clash-of-classes', label: 'Clash of Classes', icon: '⚔' },
 ];
 
 // Eventi VSD — formati proprietari interni (non le gare/campionati standard),
