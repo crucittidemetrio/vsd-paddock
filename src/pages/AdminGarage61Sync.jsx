@@ -69,10 +69,32 @@ export default function AdminGarage61Sync() {
             </div>
           </div>
 
+          {syncMutation.data.sessionTypeDistributionAll
+            && Object.keys(syncMutation.data.sessionTypeDistributionAll).length > 0 && (
+            <div className={styles.classBlock}>
+              <h3 className={styles.className}>
+                Distribuzione session_type — tutti i lap Garage61 (team)
+              </h3>
+              <p className={styles.muted}>
+                Include anche i lap già presenti/dedup, non solo quelli importati ora.
+              </p>
+              <ol className={styles.top3}>
+                {Object.entries(syncMutation.data.sessionTypeDistributionAll)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([type, count]) => (
+                    <li key={type}>
+                      <span className={styles.driverName}>{type}</span>
+                      <span className={styles.points}>{count}</span>
+                    </li>
+                  ))}
+              </ol>
+            </div>
+          )}
+
           {syncMutation.data.sessionTypeDistribution
             && Object.keys(syncMutation.data.sessionTypeDistribution).length > 0 && (
             <div className={styles.classBlock}>
-              <h3 className={styles.className}>Distribuzione session_type importati</h3>
+              <h3 className={styles.className}>Distribuzione session_type — importati in questo sync</h3>
               <ol className={styles.top3}>
                 {Object.entries(syncMutation.data.sessionTypeDistribution)
                   .sort((a, b) => b[1] - a[1])

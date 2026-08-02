@@ -912,7 +912,8 @@ function garage61SyncLaps_(options) {
   const unmappedCarsSeen = new Map();
   const unmappedDriversSeen = new Map();
   const newRecords = [];
-  const sessionTypeDistribution = {};
+  const sessionTypeDistribution = {};       // solo lap importati in QUESTO sync
+  const sessionTypeDistributionAll = {};    // tutti i lap ricevuti da Garage61 (anche dedup/quality/unmapped)
   const now = new Date().toISOString();
 
   for (const [g61TrackId, vsdTrackId] of trackByG61Id) {
@@ -937,6 +938,12 @@ function garage61SyncLaps_(options) {
       laps.forEach(lap => {
         stats.lapsTotal++;
         trackLapCount++;
+
+        // Distribuzione grezza: ogni lap ricevuto dall'API, a prescindere da
+        // dedup/qualita/mapping. Serve per rispondere empiricamente a "arrivano
+        // davvero i lap di gara?" anche in un sync dove tutto e gia presente.
+        const rawSessionType = garage61MapSessionType_(lap.sessionType);
+        sessionTypeDistributionAll[rawSessionType] = (sessionTypeDistributionAll[rawSessionType] || 0) + 1;
 
         if (existingG61LapIds.has(lap.id)) { stats.skippedDedup++; return; }
         if (!lap.clean || lap.incomplete || lap.offtrack
@@ -1039,9 +1046,15 @@ function garage61SyncLaps_(options) {
   if (stats.errors > 0) Logger.log(`  ⚠️  Errori API: ${stats.errors}`);
 
   if (Object.keys(sessionTypeDistribution).length > 0) {
-    Logger.log(`  Session type distribution:`);
+    Logger.log(`  Session type distribution (importati questo sync):`);
     Object.keys(sessionTypeDistribution).sort().forEach(st => {
       Logger.log(`    - ${st}: ${sessionTypeDistribution[st]}`);
+    });
+  }
+  if (Object.keys(sessionTypeDistributionAll).length > 0) {
+    Logger.log(`  Session type distribution (TUTTI i lap ricevuti da Garage61):`);
+    Object.keys(sessionTypeDistributionAll).sort().forEach(st => {
+      Logger.log(`    - ${st}: ${sessionTypeDistributionAll[st]}`);
     });
   }
 
@@ -1059,6 +1072,7 @@ function garage61SyncLaps_(options) {
   stats.unmappedCarsDrafted = 0;
   stats.unmappedCarsDraftedList = [];
   stats.sessionTypeDistribution = sessionTypeDistribution;
+  stats.sessionTypeDistributionAll = sessionTypeDistributionAll;
 
   if (writeToSheet) {
     if (newRecords.length > 0) {
