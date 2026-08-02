@@ -79,7 +79,7 @@ export default function LandingPublic() {
       {/* ════ HERO ════ */}
       <section className={styles.hero}>
         <div className={styles.heroLogo}>
-          <Logo size={180} withWordmark glow />
+          <Logo size={180} glow />
         </div>
         <h1 className={styles.heroTitle}>Virtual Sim Driver</h1>
         <p className={styles.heroTagline}>Italian Sim Racing Team</p>

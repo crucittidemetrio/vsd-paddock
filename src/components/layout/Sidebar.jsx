@@ -70,7 +70,7 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
   return (
     <aside className={`sidebar${isMobileOpen ? ' is-mobile-open' : ''}`}>
       <div className="sidebar-brand">
-        <Logo size={48} withWordmark />
+        <Logo size={48} />
       </div>
 
       <nav className="sidebar-nav">

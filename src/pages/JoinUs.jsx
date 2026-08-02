@@ -87,7 +87,7 @@ export default function JoinUs() {
         <div className="joinus-hero-glow" />
         <div className="joinus-hero-content">
           <div className="joinus-hero-logo-wrap">
-            <Logo size={140} withWordmark />
+            <Logo size={140} />
           </div>
           <h1 className="joinus-hero-title">
             La community italiana<br />
