@@ -19,10 +19,16 @@ const PUBLIC_ITEMS = [
   { to: '/clash-of-classes', label: 'Clash of Classes', icon: '⚔' },
 ];
 
+// Eventi VSD — formati proprietari interni (non le gare/campionati standard),
+// visibili a tutti gli utenti, evidenziati con un accento dedicato.
+const EVENTS_ITEMS = [
+  { to: '/ue144', label: 'UE144', icon: '🏁' },
+  { to: '/clash-of-classes', label: 'Clash of Classes', icon: '⚔' },
+];
+
 // Voci pilota attive — visibili solo a pilot_vsd, staff, admin
 const PILOT_ITEMS = [
   { to: '/reports', label: LABELS.nav_reports, icon: '◣' },
-  { to: '/ue144', label: 'UE144', icon: '🏁' },
   { to: '/academy', label: 'Pilot Rating', icon: '◇' },
   { to: '/recap', label: 'Season Recap', icon: '✦' },
   { to: '/records', label: 'Muro dei Record', icon: '🏆' },
@@ -78,6 +84,10 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
       <nav className="sidebar-nav">
         <div className="nav-section-label">Operations</div>
         {PUBLIC_ITEMS.map(item => renderNavItem(item, onMobileClose))}
+
+        <div className="nav-section-label nav-section-label-event">Eventi VSD</div>
+        {EVENTS_ITEMS.map(item => renderNavItem(item, onMobileClose, 'is-event'))}
+
         {isVsdPilot && PILOT_ITEMS.map(item => renderNavItem(item, onMobileClose))}
 
         {isVsdPilot && (
