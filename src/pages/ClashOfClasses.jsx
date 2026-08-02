@@ -89,6 +89,14 @@ export default function ClashOfClasses() {
         <div className={styles.heroActions}>
           <a href="#iscrizione" className={`${styles.btn} ${styles.btnPrimary}`}>Iscriviti</a>
           <a href="#classifiche" className={`${styles.btn} ${styles.btnSecondary}`}>Classifiche</a>
+          <a
+            href="/clash-of-classes_regolamento.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`${styles.btn} ${styles.btnSecondary}`}
+          >
+            📄 Regolamento
+          </a>
         </div>
       </section>
 
