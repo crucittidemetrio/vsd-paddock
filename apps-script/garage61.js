@@ -1134,8 +1134,13 @@ function garage61TestSync() {
  * Operazione idempotente: lap già presenti vengono skippati via dedup.
  * Garage61 upstream ha lag ~1-3h → frequenza ogni 4h è il giusto compromesso.
  *
- * NB: importa solo "best lap puliti" (practice/qualifying clean).
- * Race laps di gara NON vengono importati da questo sync (Wave 9.8 backlog).
+ * NB: importa qualsiasi lap "pulito" (clean, non incomplete/offtrack/pitlane/
+ * discontinuity), a prescindere dal session_type — pratica, qualifica E gara
+ * inclusi. Il session_type per riga è auto-rilevato da lap.sessionType
+ * (v11, vedi garage61MapSessionType_) e scritto nella colonna BestLaps.session_type.
+ * Nessun filtro esclude esplicitamente i lap di gara: verificalo via
+ * sessionTypeDistribution nei log dopo un sync (o nel risultato ritornato
+ * all'admin UI /admin/sync-garage61).
  */
 function garage61RunSync() {
   garage61SyncLaps_({ writeToSheet: true });

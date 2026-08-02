@@ -69,6 +69,23 @@ export default function AdminGarage61Sync() {
             </div>
           </div>
 
+          {syncMutation.data.sessionTypeDistribution
+            && Object.keys(syncMutation.data.sessionTypeDistribution).length > 0 && (
+            <div className={styles.classBlock}>
+              <h3 className={styles.className}>Distribuzione session_type importati</h3>
+              <ol className={styles.top3}>
+                {Object.entries(syncMutation.data.sessionTypeDistribution)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([type, count]) => (
+                    <li key={type}>
+                      <span className={styles.driverName}>{type}</span>
+                      <span className={styles.points}>{count}</span>
+                    </li>
+                  ))}
+              </ol>
+            </div>
+          )}
+
           {syncMutation.data.unmappedCarsDraftedList?.length > 0 && (
             <div className={styles.classBlock}>
               <h3 className={styles.className}>
