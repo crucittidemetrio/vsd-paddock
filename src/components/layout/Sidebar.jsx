@@ -18,17 +18,24 @@ const PUBLIC_ITEMS = [
   { to: '/endurance', label: LABELS.nav_endurance, icon: '◐' },
 ];
 
+// Eventi VSD — formati proprietari interni (non le gare/campionati standard),
+// visibili a tutti gli utenti, evidenziati con un accento dedicato.
+const EVENTS_ITEMS = [
+  { to: '/ue144', label: 'UE144', icon: '🏁' },
+  { to: '/clash-of-classes', label: 'Clash of Classes', icon: '⚔' },
+];
+
 // Voci pilota attive — visibili solo a pilot_vsd, staff, admin
 const PILOT_ITEMS = [
   { to: '/reports', label: LABELS.nav_reports, icon: '◣' },
-  { to: '/ue144', label: 'UE144', icon: '🏁' },
   { to: '/academy', label: 'Pilot Rating', icon: '◇' },
+  { to: '/recap', label: 'Season Recap', icon: '✦' },
+  { to: '/records', label: 'Muro dei Record', icon: '🏆' },
+  { to: '/training', label: LABELS.nav_training, icon: '◆' },
 ];
 
 // Voci future "soon" — solo pilota loggato
-const FUTURE_ITEMS = [
-  { to: '/training', label: LABELS.nav_training, icon: '◆' },
-];
+const FUTURE_ITEMS = [];
 
 const ADMIN_ITEMS = [
   { to: '/admin/best-laps', label: 'Best Laps', icon: '⏱️' },
@@ -39,6 +46,13 @@ const ADMIN_ITEMS = [
   { to: '/admin/garage61-sync', label: 'Sync Garage61', icon: '⚡' },
   { to: '/admin/posters', label: 'Race Posters', icon: '🖼️' },
   { to: '/admin/endurance', label: 'Endurance Admin', icon: '◐' },
+  { to: '/admin/clash-results', label: 'Clash of Classes', icon: '⚔' },
+];
+
+// Voci riservate ad admin/Team Principal — sottoinsieme più ristretto
+// dell'area Admin (isStaff include anche staff generico, questo no).
+const ADMIN_ONLY_ITEMS = [
+  { to: '/admin/social-manager', label: 'Social Manager', icon: '📣' },
 ];
 
 function renderNavItem(item, onMobileClose, extraClass = '') {
@@ -58,7 +72,7 @@ function renderNavItem(item, onMobileClose, extraClass = '') {
 }
 
 export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {} }) {
-  const { isVsdPilot, isStaff } = useAuth();
+  const { isVsdPilot, isStaff, isAdmin } = useAuth();
 
   return (
     <aside className={`sidebar${isMobileOpen ? ' is-mobile-open' : ''}`}>
@@ -69,6 +83,10 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
       <nav className="sidebar-nav">
         <div className="nav-section-label">Operations</div>
         {PUBLIC_ITEMS.map(item => renderNavItem(item, onMobileClose))}
+
+        <div className="nav-section-label nav-section-label-event">Eventi VSD</div>
+        {EVENTS_ITEMS.map(item => renderNavItem(item, onMobileClose, 'is-event'))}
+
         {isVsdPilot && PILOT_ITEMS.map(item => renderNavItem(item, onMobileClose))}
 
         {isVsdPilot && (
@@ -82,6 +100,7 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
           <>
             <div className="nav-section-label">Admin</div>
             {ADMIN_ITEMS.map(item => renderNavItem(item, onMobileClose))}
+            {isAdmin && ADMIN_ONLY_ITEMS.map(item => renderNavItem(item, onMobileClose))}
           </>
         )}
       </nav>
