@@ -26,6 +26,28 @@
   color: rgba(255, 255, 255, 0.5);
 }
 
+.tabs {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 28px;
+}
+.tab {
+  padding: 10px 18px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  cursor: pointer;
+}
+.tab:hover { color: #fff; }
+.tabActive { color: #00d4ff; border-bottom-color: #00d4ff; }
+
 .alertError {
   padding: 14px 18px;
   border-radius: 6px;
@@ -311,7 +333,78 @@
   cursor: not-allowed;
 }
 
+.pendingList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pendingCard {
+  display: grid;
+  grid-template-columns: 96px 1fr auto;
+  gap: 16px;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.pendingThumbLink {
+  display: block;
+  width: 96px;
+  height: 72px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  flex-shrink: 0;
+}
+
+.pendingThumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pendingInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.pendingActions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 120px;
+}
+.pendingActions .btnPrimary,
+.pendingActions .btnDelete {
+  width: 100%;
+  height: auto;
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 12px;
+}
+.pendingActions .btnDelete {
+  background: rgba(239, 51, 64, 0.08);
+}
+
 @media (max-width: 720px) {
+  .pendingCard {
+    grid-template-columns: 1fr;
+  }
+  .pendingThumbLink {
+    width: 100%;
+    height: 140px;
+  }
+  .pendingActions {
+    flex-direction: row;
+  }
+
   .container {
     padding: 24px 16px 60px;
   }

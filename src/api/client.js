@@ -91,6 +91,15 @@ export const api = {
     remove: (lap_id) => call('laps.remove', { lap_id }),
   },
 
+  lapSubmissions: {
+    submit: (payload) => call('lapSubmissions.submit', payload),
+    listMine: () => call('lapSubmissions.listMine', {}),
+    listPending: () => call('lapSubmissions.listPending', {}),
+    approve: (submission_id) => call('lapSubmissions.approve', { submission_id }),
+    reject: (submission_id, review_note) =>
+      call('lapSubmissions.reject', { submission_id, review_note }),
+  },
+
   races: {
     list: (status) => call('races.list', { status }),
     upcoming: () => call('races.upcoming'),

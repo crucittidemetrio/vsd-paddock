@@ -476,6 +476,229 @@ function matchCarName_(externalName, matchMap) {
   return matchMap[key] || null;
 }
 
+// ═══════════════════════════════════════════════════════════
+// LAP SUBMISSIONS — invio autonomo piloti con foto di prova,
+// validazione riservata agli admin (non staff generico).
+// ═══════════════════════════════════════════════════════════
+//
+// Flusso: il pilota carica una foto del tempo su Vercel Blob (frontend,
+// vedi api/media-upload.js), poi invia qui l'url insieme al tempo.
+// La riga resta 'pending' in BestLapSubmissions finché un admin non la
+// approva (→ copiata in BestLaps con la stessa logica di handleLapsAdd,
+// notifica nuovo record inclusa) o rifiuta. In entrambi i casi il
+// frontend cancella la foto da Blob subito dopo la decisione — qui
+// restituiamo sempre evidence_url per permetterglielo.
+
+/**
+ * lapSubmissions.submit — Un pilota VSD invia un proprio tempo con foto
+ * di prova, in attesa di validazione admin.
+ *
+ * @param {Object} payload - { sim, track_id, car_id, lap_time_display,
+ *   evidence_url, set_date?, conditions?, session_type?, notes? }
+ * @param {Object} ctx - Auth context (richiesto, driver_id valorizzato)
+ * @returns {Object} ok({ submission_id }) oppure fail
+ */
+function handleLapSubmissionsSubmit(payload, ctx) {
+  if (!ctx || !ctx.driver_id) return fail('Devi essere loggato come pilota VSD');
+
+  const requiredFields = ['sim', 'track_id', 'car_id', 'lap_time_display', 'evidence_url'];
+  for (let i = 0; i < requiredFields.length; i++) {
+    const field = requiredFields[i];
+    if (payload[field] === undefined || payload[field] === null || String(payload[field]).trim() === '') {
+      return fail(`Campo obbligatorio mancante o vuoto: ${field}`);
+    }
+  }
+
+  const lapTimeMs = parseLapTimeToMs_(payload.lap_time_display);
+  if (lapTimeMs === null) {
+    return fail('lap_time_display non valido. Formato atteso: M:SS.mmm (es. 1:30.333)');
+  }
+
+  const sheet = getSheet(SHEETS.BEST_LAP_SUBMISSIONS);
+  if (!sheet) return fail('Foglio BestLapSubmissions non trovato');
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  let maxNum = 0;
+  for (let i = 1; i < data.length; i++) {
+    const id = data[i][0];
+    const m = String(id || '').match(/SUB(\d+)/i);
+    if (m) maxNum = Math.max(maxNum, parseInt(m[1], 10));
+  }
+  const submissionId = 'SUB' + String(maxNum + 1).padStart(3, '0');
+  const now = new Date().toISOString();
+
+  const newSubmission = {
+    submission_id: submissionId,
+    driver_id: ctx.driver_id,
+    sim: payload.sim,
+    track_id: payload.track_id,
+    car_id: payload.car_id,
+    lap_time_display: msToLapDisplay_(lapTimeMs),
+    lap_time_ms: lapTimeMs,
+    set_date: payload.set_date || now.split('T')[0],
+    conditions: payload.conditions || 'dry',
+    session_type: payload.session_type || 'practice',
+    notes: payload.notes || '',
+    evidence_url: payload.evidence_url,
+    status: 'pending',
+    submitted_at: now,
+    reviewed_by: '',
+    reviewed_at: '',
+    review_note: '',
+  };
+
+  const row = headers.map(h => (newSubmission[h] !== undefined ? newSubmission[h] : ''));
+  sheet.appendRow(row);
+  invalidateSheetCache_(SHEETS.BEST_LAP_SUBMISSIONS);
+
+  return ok({ submission_id: submissionId, submission: newSubmission });
+}
+
+/**
+ * lapSubmissions.listMine — Le richieste inviate dal pilota loggato
+ * (tutti gli stati, per mostrare lo storico "in attesa/approvato/rifiutato").
+ *
+ * @param {Object} payload - {} (ignorato)
+ * @param {Object} ctx - Auth context (richiesto, driver_id valorizzato)
+ * @returns {Object} ok({ submissions: [...] })
+ */
+function handleLapSubmissionsListMine(payload, ctx) {
+  if (!ctx || !ctx.driver_id) return fail('Devi essere loggato come pilota VSD');
+
+  const all = sheetToObjects(SHEETS.BEST_LAP_SUBMISSIONS);
+  const mine = all
+    .filter(s => s.driver_id === ctx.driver_id)
+    .sort((a, b) => String(b.submitted_at).localeCompare(String(a.submitted_at)));
+
+  return ok({ submissions: mine });
+}
+
+/**
+ * lapSubmissions.listPending — Coda di revisione. SOLO admin (non staff
+ * generico): questa validazione richiede prova video/foto e resta
+ * volutamente riservata a te + gli altri admin.
+ *
+ * @param {Object} payload - {} (ignorato)
+ * @param {Object} ctx - Auth context (richiesto, isAdmin)
+ * @returns {Object} ok({ submissions: [...] })
+ */
+function handleLapSubmissionsListPending(payload, ctx) {
+  if (!ctx || !ctx.isAdmin) return fail('Riservato agli admin');
+
+  const all = sheetToObjects(SHEETS.BEST_LAP_SUBMISSIONS);
+  const pending = all
+    .filter(s => s.status === 'pending')
+    .sort((a, b) => String(a.submitted_at).localeCompare(String(b.submitted_at)));
+
+  return ok({ submissions: pending });
+}
+
+function findSubmissionRow_(sheet, submissionId) {
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const rowIndex = data.findIndex(row => row[0] === submissionId);
+  return { data, headers, rowIndex };
+}
+
+/**
+ * lapSubmissions.approve — SOLO admin. Copia la richiesta in BestLaps
+ * riusando handleLapsAdd (stessa validazione, stesso controllo nuovo
+ * record di squadra, stessa notifica Discord), poi marca la richiesta
+ * come 'approved'. Restituisce evidence_url perché il frontend cancelli
+ * subito la foto da Blob — non serve conservarla dopo la validazione.
+ *
+ * @param {Object} payload - { submission_id }
+ * @param {Object} ctx - Auth context (richiesto, isAdmin)
+ * @returns {Object} ok({ submission_id, lap_id, evidence_url }) oppure fail
+ */
+function handleLapSubmissionsApprove(payload, ctx) {
+  if (!ctx || !ctx.isAdmin) return fail('Riservato agli admin');
+
+  const submissionId = payload && payload.submission_id;
+  if (!submissionId) return fail('Campo submission_id obbligatorio');
+
+  const sheet = getSheet(SHEETS.BEST_LAP_SUBMISSIONS);
+  if (!sheet) return fail('Foglio BestLapSubmissions non trovato');
+
+  const { data, headers, rowIndex } = findSubmissionRow_(sheet, submissionId);
+  if (rowIndex === -1) return fail('Richiesta non trovata: ' + submissionId);
+
+  const headerIdx = {};
+  headers.forEach((h, i) => { headerIdx[h] = i; });
+  const row = data[rowIndex];
+  if (row[headerIdx.status] !== 'pending') {
+    return fail('Richiesta già revisionata (stato: ' + row[headerIdx.status] + ')');
+  }
+
+  const addResult = handleLapsAdd({
+    driver_id: row[headerIdx.driver_id],
+    sim: row[headerIdx.sim],
+    track_id: row[headerIdx.track_id],
+    car_id: row[headerIdx.car_id],
+    lap_time_display: row[headerIdx.lap_time_display],
+    set_date: row[headerIdx.set_date],
+    conditions: row[headerIdx.conditions],
+    session_type: row[headerIdx.session_type],
+    notes: row[headerIdx.notes],
+  }, ctx);
+
+  if (!addResult.ok) return addResult;
+
+  const now = new Date().toISOString();
+  const rowToUpdate = rowIndex + 1;
+  sheet.getRange(rowToUpdate, headerIdx.status + 1).setValue('approved');
+  sheet.getRange(rowToUpdate, headerIdx.reviewed_by + 1).setValue(ctx.driver_id || 'admin');
+  sheet.getRange(rowToUpdate, headerIdx.reviewed_at + 1).setValue(now);
+  invalidateSheetCache_(SHEETS.BEST_LAP_SUBMISSIONS);
+
+  return ok({
+    submission_id: submissionId,
+    lap_id: addResult.data.lap_id,
+    evidence_url: row[headerIdx.evidence_url],
+  });
+}
+
+/**
+ * lapSubmissions.reject — SOLO admin. Marca la richiesta come 'rejected'
+ * con un motivo opzionale. Restituisce evidence_url perché il frontend
+ * cancelli comunque la foto da Blob — non serve conservarla nemmeno per
+ * le richieste rifiutate.
+ *
+ * @param {Object} payload - { submission_id, review_note? }
+ * @param {Object} ctx - Auth context (richiesto, isAdmin)
+ * @returns {Object} ok({ submission_id, evidence_url }) oppure fail
+ */
+function handleLapSubmissionsReject(payload, ctx) {
+  if (!ctx || !ctx.isAdmin) return fail('Riservato agli admin');
+
+  const submissionId = payload && payload.submission_id;
+  if (!submissionId) return fail('Campo submission_id obbligatorio');
+
+  const sheet = getSheet(SHEETS.BEST_LAP_SUBMISSIONS);
+  if (!sheet) return fail('Foglio BestLapSubmissions non trovato');
+
+  const { data, headers, rowIndex } = findSubmissionRow_(sheet, submissionId);
+  if (rowIndex === -1) return fail('Richiesta non trovata: ' + submissionId);
+
+  const headerIdx = {};
+  headers.forEach((h, i) => { headerIdx[h] = i; });
+  const row = data[rowIndex];
+  if (row[headerIdx.status] !== 'pending') {
+    return fail('Richiesta già revisionata (stato: ' + row[headerIdx.status] + ')');
+  }
+
+  const now = new Date().toISOString();
+  const rowToUpdate = rowIndex + 1;
+  sheet.getRange(rowToUpdate, headerIdx.status + 1).setValue('rejected');
+  sheet.getRange(rowToUpdate, headerIdx.reviewed_by + 1).setValue(ctx.driver_id || 'admin');
+  sheet.getRange(rowToUpdate, headerIdx.reviewed_at + 1).setValue(now);
+  sheet.getRange(rowToUpdate, headerIdx.review_note + 1).setValue(payload.review_note || '');
+  invalidateSheetCache_(SHEETS.BEST_LAP_SUBMISSIONS);
+
+  return ok({ submission_id: submissionId, evidence_url: row[headerIdx.evidence_url] });
+}
+
 // Test
 function testLapsRaceLaps() {
   const login = handleAuthLogin({ code: 'DEMETRIO-6899' });

@@ -1,11 +1,16 @@
 import { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { upload } from '@vercel/blob/client';
 import {
   useTeamLeaderboard,
   useMyBestLaps,
   useTracks,
   useCars,
 } from '../hooks/useBestLaps';
+import {
+  useMyLapSubmissions,
+  useSubmitLap,
+} from '../hooks/useLapSubmissions';
 import { useDrivers } from '../hooks/useRoster';
 import { useAuth } from '../hooks/useAuth';
 import SimBadge from '../components/shared/SimBadge';
@@ -283,18 +288,28 @@ function MineView({ driver, filters, tracks, cars }) {
   if (!driver) {
     return <Prompt title="Accesso richiesto" text="Effettua il login per vedere i tuoi tempi." />;
   }
-  if (isLoading) return <Prompt text="Caricamento…" />;
-  if (isError) return <Prompt text={`Errore: ${error?.message || 'sconosciuto'}`} />;
-  if (!data || data.length === 0) {
-    return (
-      <Prompt
-        icon="🏁"
-        title="Nessun giro registrato"
-        text="Non risultano tuoi giri per i filtri selezionati."
-      />
-    );
-  }
 
+  return (
+    <>
+      <SubmitLapSection />
+
+      {isLoading && <Prompt text="Caricamento…" />}
+      {isError && <Prompt text={`Errore: ${error?.message || 'sconosciuto'}`} />}
+      {!isLoading && !isError && (!data || data.length === 0) && (
+        <Prompt
+          icon="🏁"
+          title="Nessun giro registrato"
+          text="Non risultano tuoi giri per i filtri selezionati."
+        />
+      )}
+      {!isLoading && !isError && data && data.length > 0 && (
+        <MineTables data={data} tracks={tracks} cars={cars} />
+      )}
+    </>
+  );
+}
+
+function MineTables({ data, tracks, cars }) {
   const classified = data.filter(r => r.race_class);
   const unclassified = data.filter(r => !r.race_class);
 
@@ -376,6 +391,221 @@ function MineView({ driver, filters, tracks, cars }) {
   );
 }
 
+
+const SUBMISSION_STATUS_LABEL = {
+  pending: { label: '⏳ In attesa di validazione', className: 'submit-lap-status-pending' },
+  approved: { label: '✓ Approvato', className: 'submit-lap-status-approved' },
+  rejected: { label: '✕ Rifiutato', className: 'submit-lap-status-rejected' },
+};
+
+const INITIAL_SUBMIT_FORM = {
+  sim: 'LMU',
+  track_id: '',
+  car_id: '',
+  lap_time_display: '',
+  conditions: 'dry',
+  session_type: 'practice',
+  notes: '',
+};
+
+/**
+ * SubmitLapSection — un pilota VSD invia un proprio tempo con foto di
+ * prova (screenshot del tempo a fine giro). Resta 'pending' finché un
+ * admin non lo valida (vedi coda in AdminBestLaps.jsx) — solo allora
+ * finisce nella classifica ufficiale. La foto va caricata: non è un
+ * campo opzionale, è la prova che rende il tempo verificabile.
+ */
+function SubmitLapSection() {
+  const { token } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState(INITIAL_SUBMIT_FORM);
+  const [file, setFile] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
+
+  const tracksQuery = useTracks(form.sim || undefined);
+  const carsQuery = useCars(form.sim || undefined);
+  const submissionsQuery = useMyLapSubmissions(open);
+  const submitMutation = useSubmitLap();
+
+  function update(field, value) {
+    setForm(prev => {
+      const next = { ...prev, [field]: value };
+      if (field === 'sim') {
+        next.track_id = '';
+        next.car_id = '';
+      }
+      return next;
+    });
+  }
+
+  function resetForm() {
+    setForm(INITIAL_SUBMIT_FORM);
+    setFile(null);
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError('');
+    setSuccess('');
+
+    if (!form.track_id) return setError('Seleziona il tracciato');
+    if (!form.car_id) return setError('Seleziona l\'auto');
+    if (!/^\d+:\d{1,2}\.\d{1,3}$/.test(form.lap_time_display.trim())) {
+      return setError('Tempo non valido. Formato atteso: M:SS.mmm (es. 1:30.333)');
+    }
+    if (!file) return setError('Carica una foto che documenti il tempo — è obbligatoria per la validazione');
+
+    setUploading(true);
+    try {
+      const blob = await upload(file.name, file, {
+        access: 'public',
+        handleUploadUrl: '/api/media-upload',
+        clientPayload: JSON.stringify({ token }),
+      });
+
+      await submitMutation.mutateAsync({
+        sim: form.sim,
+        track_id: form.track_id,
+        car_id: form.car_id,
+        lap_time_display: form.lap_time_display.trim(),
+        conditions: form.conditions,
+        session_type: form.session_type,
+        notes: form.notes,
+        evidence_url: blob.url,
+      });
+
+      setSuccess('Tempo inviato — in attesa di validazione da parte dello staff.');
+      resetForm();
+    } catch (err) {
+      setError(err.message || 'Errore durante l\'invio');
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  const isPending = uploading || submitMutation.isPending;
+  const submissions = submissionsQuery.data || [];
+
+  return (
+    <div className="submit-lap-section">
+      <button
+        type="button"
+        className="submit-lap-toggle"
+        onClick={() => setOpen(v => !v)}
+      >
+        {open ? '− Chiudi' : '+ Invia un nuovo tempo'}
+      </button>
+
+      {open && (
+        <div className="submit-lap-body">
+          <p className="submit-lap-hint">
+            Il tempo resta in attesa finché non viene validato da un admin sulla base della
+            foto inviata. La foto serve solo per la verifica: una volta approvato o rifiutato
+            il tempo viene cancellata automaticamente.
+          </p>
+
+          <form onSubmit={handleSubmit} className="submit-lap-form">
+            <div className="submit-lap-row">
+              <div className="filter-group">
+                <label className="filter-label">Sim</label>
+                <select className="filter-select" value={form.sim}
+                  onChange={e => update('sim', e.target.value)}>
+                  {SIM_LIST.map(s => <option key={s.id} value={s.id}>{s.short || s.name || s.id}</option>)}
+                </select>
+              </div>
+
+              <div className="filter-group">
+                <label className="filter-label">Tracciato</label>
+                <select className="filter-select" value={form.track_id}
+                  onChange={e => update('track_id', e.target.value)}>
+                  <option value="">— Seleziona —</option>
+                  {(tracksQuery.data || []).map(t => (
+                    <option key={t.track_id} value={t.track_id}>{t.track_name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="filter-group">
+                <label className="filter-label">Auto</label>
+                <select className="filter-select" value={form.car_id}
+                  onChange={e => update('car_id', e.target.value)}>
+                  <option value="">— Seleziona —</option>
+                  {(carsQuery.data || []).map(c => (
+                    <option key={c.car_id} value={c.car_id}>
+                      {c.car_name || c.display_name || c.car_id}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="submit-lap-row">
+              <div className="filter-group">
+                <label className="filter-label">Tempo (M:SS.mmm)</label>
+                <input type="text" className="filter-select" value={form.lap_time_display}
+                  onChange={e => update('lap_time_display', e.target.value)}
+                  placeholder="1:30.333" />
+              </div>
+
+              <div className="filter-group">
+                <label className="filter-label">Condizioni</label>
+                <select className="filter-select" value={form.conditions}
+                  onChange={e => update('conditions', e.target.value)}>
+                  <option value="dry">Dry</option>
+                  <option value="wet">Wet</option>
+                </select>
+              </div>
+
+              <div className="filter-group">
+                <label className="filter-label">Sessione</label>
+                <select className="filter-select" value={form.session_type}
+                  onChange={e => update('session_type', e.target.value)}>
+                  <option value="practice">Practice</option>
+                  <option value="qualifying">Qualifying</option>
+                  <option value="time_trial">Time trial</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="filter-group">
+              <label className="filter-label">Foto di prova (obbligatoria)</label>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={e => setFile(e.target.files?.[0] || null)}
+              />
+              {file && <div className="submit-lap-filename">📎 {file.name}</div>}
+            </div>
+
+            <button type="submit" className="reset-btn submit-lap-btn" disabled={isPending}>
+              {isPending ? 'Invio…' : 'Invia per validazione'}
+            </button>
+
+            {error && <div className="submit-lap-error">❌ {error}</div>}
+            {success && <div className="submit-lap-success">✓ {success}</div>}
+          </form>
+
+          {submissions.length > 0 && (
+            <div className="submit-lap-history">
+              <div className="submit-lap-history-title">Le tue richieste</div>
+              {submissions.map(s => {
+                const status = SUBMISSION_STATUS_LABEL[s.status] || SUBMISSION_STATUS_LABEL.pending;
+                return (
+                  <div key={s.submission_id} className="submit-lap-history-row">
+                    <span>{s.sim} · {s.track_id} · {s.lap_time_display}</span>
+                    <span className={status.className}>{status.label}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function Prompt({ icon, title, text }) {
   return (

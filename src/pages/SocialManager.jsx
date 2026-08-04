@@ -18,6 +18,7 @@ import {
   useRemoveSocialMedia,
 } from '../hooks/useSocialManager';
 import { useRaces } from '../hooks/useRaces';
+import { useAuth } from '../hooks/useAuth';
 import styles from './SocialManager.module.css';
 
 const PLATFORM_OPTIONS = [
@@ -1272,6 +1273,7 @@ function MediaGalleryView({ onUseInPost }) {
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef(null);
 
+  const { token } = useAuth();
   const mediaQuery = useSocialMedia();
   const addMutation = useAddSocialMedia();
   const removeMutation = useRemoveSocialMedia();
@@ -1299,6 +1301,7 @@ function MediaGalleryView({ onUseInPost }) {
         const blob = await upload(file.name, file, {
           access: 'public',
           handleUploadUrl: '/api/media-upload',
+          clientPayload: JSON.stringify({ token }),
         });
         await addMutation.mutateAsync({
           url: blob.url,
@@ -1331,7 +1334,7 @@ function MediaGalleryView({ onUseInPost }) {
       await fetch('/api/media-delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: m.url }),
+        body: JSON.stringify({ url: m.url, token }),
       });
     } catch {
       // Se la cancellazione del file su Blob fallisce, rimuoviamo comunque

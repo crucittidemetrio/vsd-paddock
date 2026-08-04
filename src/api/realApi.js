@@ -217,6 +217,16 @@ export async function callApi(action, payload = {}) {
         return await lapsUpdateAdapter(payload, token);
       case 'laps.remove':
         return await lapsRemoveAdapter(payload, token);
+      case 'lapSubmissions.submit':
+        return await lapSubmissionsSubmitAdapter(payload, token);
+      case 'lapSubmissions.listMine':
+        return await lapSubmissionsListMineAdapter(payload, token);
+      case 'lapSubmissions.listPending':
+        return await lapSubmissionsListPendingAdapter(payload, token);
+      case 'lapSubmissions.approve':
+        return await lapSubmissionsApproveAdapter(payload, token);
+      case 'lapSubmissions.reject':
+        return await lapSubmissionsRejectAdapter(payload, token);
       case 'races.list':
         return await racesListAdapter(payload, token);
       case 'races.upcoming':
@@ -615,6 +625,40 @@ async function recordsTeamAdapter(payload, token) {
  */
 async function trainingInsightsAdapter(payload, token) {
   const res = await postToBackend('training.insights', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Best Lap Submissions — invio autonomo piloti con foto di prova,
+ * validazione solo admin. Adapter pass-through.
+ */
+async function lapSubmissionsSubmitAdapter(payload, token) {
+  const res = await postToBackend('lapSubmissions.submit', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+async function lapSubmissionsListMineAdapter(payload, token) {
+  const res = await postToBackend('lapSubmissions.listMine', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+async function lapSubmissionsListPendingAdapter(payload, token) {
+  const res = await postToBackend('lapSubmissions.listPending', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+async function lapSubmissionsApproveAdapter(payload, token) {
+  const res = await postToBackend('lapSubmissions.approve', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+async function lapSubmissionsRejectAdapter(payload, token) {
+  const res = await postToBackend('lapSubmissions.reject', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
 }

@@ -12,6 +12,7 @@ const SHEETS = {
   TRACKS: 'Tracks',
   CARS: 'Cars',
   BEST_LAPS: 'BestLaps',
+  BEST_LAP_SUBMISSIONS: 'BestLapSubmissions',
   RACES: 'Races',
   RACE_REPORTS: 'RaceReports',
   AUDIT_LOG: 'AuditLog',
@@ -169,6 +170,13 @@ const ACTIONS = {
   'laps.add': handleLapsAdd,
   'laps.update': handleLapsUpdate,
   'laps.remove': handleLapsRemove,
+
+  // Best Lap Submissions — invio autonomo piloti + validazione solo admin
+  'lapSubmissions.submit': handleLapSubmissionsSubmit,
+  'lapSubmissions.listMine': handleLapSubmissionsListMine,
+  'lapSubmissions.listPending': handleLapSubmissionsListPending,
+  'lapSubmissions.approve': handleLapSubmissionsApprove,
+  'lapSubmissions.reject': handleLapSubmissionsReject,
 
   // Races
   'races.list': handleRacesList,

@@ -5,10 +5,34 @@ import {
   useUpdateBestLap,
   useDeleteBestLap,
 } from '../hooks/useBestLaps';
+import {
+  usePendingLapSubmissions,
+  useApproveLapSubmission,
+  useRejectLapSubmission,
+} from '../hooks/useLapSubmissions';
 import { useTracks, useCars } from '../hooks/useLookups';
 import { useDrivers } from '../hooks/useRoster';
+import { useAuth } from '../hooks/useAuth';
 import { SIM_LIST } from '../utils/constants';
 import styles from './AdminBestLaps.module.css';
+
+// Cancella la foto di prova da Vercel Blob dopo la decisione admin (subito
+// dopo approve/reject, per non conservarla più del necessario — vedi
+// api/media-delete.js). Se la cancellazione fallisce non blocchiamo il
+// flusso: la decisione sul tempo è già stata salvata, il file orfano
+// rimane su Blob ma non è più raggiungibile da nessuna UI.
+async function deleteEvidence(evidenceUrl, token) {
+  if (!evidenceUrl) return;
+  try {
+    await fetch('/api/media-delete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url: evidenceUrl, token }),
+    });
+  } catch {
+    // best-effort, vedi commento sopra
+  }
+}
 
 const CONDITIONS_OPTIONS = ['dry', 'wet'];
 const SESSION_TYPE_OPTIONS = ['practice', 'qualifying', 'race', 'time_trial'];
@@ -41,6 +65,50 @@ function carDisplayLabel(car) {
 }
 
 export default function AdminBestLaps() {
+  const { isAdmin } = useAuth();
+  const [tab, setTab] = useState('manual');
+
+  // La route /admin/best-laps è dietro AdminRoute, che accetta staff+admin
+  // (guardia condivisa da tutte le pagine admin). La validazione dei tempi
+  // inviati dai piloti però è riservata ai soli admin per scelta esplicita
+  // — lo staff non-admin vede solo l'inserimento manuale, il backend
+  // rifiuterebbe comunque lapSubmissions.listPending/approve/reject.
+  const activeTab = tab === 'pending' && !isAdmin ? 'manual' : tab;
+
+  return (
+    <div className={styles.container}>
+      <header className={styles.header}>
+        <h1 className={styles.title}>Best Laps — Gestione</h1>
+        <div className={styles.headerMeta}>
+          Inserimento manuale e validazione dei tempi inviati dai piloti.
+        </div>
+      </header>
+
+      <div className={styles.tabs}>
+        <button
+          type="button"
+          className={`${styles.tab} ${activeTab === 'manual' ? styles.tabActive : ''}`}
+          onClick={() => setTab('manual')}
+        >
+          Inserimento manuale
+        </button>
+        {isAdmin && (
+          <button
+            type="button"
+            className={`${styles.tab} ${activeTab === 'pending' ? styles.tabActive : ''}`}
+            onClick={() => setTab('pending')}
+          >
+            Da validare
+          </button>
+        )}
+      </div>
+
+      {activeTab === 'manual' ? <ManualTab /> : <PendingTab />}
+    </div>
+  );
+}
+
+function ManualTab() {
   const [form, setForm] = useState(INITIAL_STATE);
   const [editingLapId, setEditingLapId] = useState(null);
   const [errors, setErrors] = useState({});
@@ -183,14 +251,7 @@ export default function AdminBestLaps() {
   }
 
   return (
-    <div className={styles.container}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>Best Laps — Inserimento Manuale</h1>
-        <div className={styles.headerMeta}>
-          Aggiungi, modifica o elimina i tempi sul giro comunicati dai piloti.
-        </div>
-      </header>
-
+    <>
       {submitError && <div className={styles.alertError}>❌ {submitError}</div>}
 
       <form onSubmit={handleSubmit} className={styles.form}>
@@ -355,7 +416,136 @@ export default function AdminBestLaps() {
           </div>
         )}
       </section>
-    </div>
+    </>
+  );
+}
+
+/**
+ * PendingTab — coda di revisione best lap inviati dai piloti (solo admin,
+ * il backend rifiuta la chiamata a chi non ha ctx.isAdmin). Alla decisione
+ * (approva/rifiuta) la foto di prova viene cancellata subito da Blob, per
+ * scelta esplicita: non serve conservarla dopo la verifica.
+ */
+function PendingTab() {
+  const { token } = useAuth();
+  const [busyId, setBusyId] = useState(null);
+  const [actionError, setActionError] = useState('');
+
+  const pendingQuery = usePendingLapSubmissions();
+  const driversQuery = useDrivers();
+  const approveMutation = useApproveLapSubmission();
+  const rejectMutation = useRejectLapSubmission();
+
+  const driversById = useMemo(() => {
+    const m = {};
+    (driversQuery.data || []).forEach(d => { m[d.driver_id] = d; });
+    return m;
+  }, [driversQuery.data]);
+
+  const submissions = pendingQuery.data || [];
+
+  async function handleApprove(sub) {
+    setActionError('');
+    setBusyId(sub.submission_id);
+    try {
+      const result = await approveMutation.mutateAsync(sub.submission_id);
+      await deleteEvidence(result?.evidence_url || sub.evidence_url, token);
+    } catch (err) {
+      setActionError(err.message || 'Errore durante l\'approvazione');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  async function handleReject(sub) {
+    const note = window.prompt('Motivo del rifiuto (facoltativo):', '') || '';
+    setActionError('');
+    setBusyId(sub.submission_id);
+    try {
+      const result = await rejectMutation.mutateAsync({
+        submission_id: sub.submission_id,
+        review_note: note,
+      });
+      await deleteEvidence(result?.evidence_url || sub.evidence_url, token);
+    } catch (err) {
+      setActionError(err.message || 'Errore durante il rifiuto');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
+  return (
+    <section className={styles.listSection}>
+      <h2 className={styles.sectionTitle}>Tempi da validare ({submissions.length})</h2>
+
+      {actionError && <div className={styles.alertError}>❌ {actionError}</div>}
+
+      {pendingQuery.isLoading && <div className={styles.loading}>Caricamento…</div>}
+      {pendingQuery.error && (
+        <div className={styles.errorBox}>Errore: {pendingQuery.error.message}</div>
+      )}
+
+      {!pendingQuery.isLoading && submissions.length === 0 && (
+        <div className={styles.empty}>Nessuna richiesta in attesa di validazione.</div>
+      )}
+
+      {submissions.length > 0 && (
+        <div className={styles.pendingList}>
+          {submissions.map(sub => {
+            const driver = driversById[sub.driver_id];
+            const isBusy = busyId === sub.submission_id;
+            return (
+              <div key={sub.submission_id} className={styles.pendingCard}>
+                <a
+                  href={sub.evidence_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={styles.pendingThumbLink}
+                >
+                  <img
+                    src={sub.evidence_url}
+                    alt="Foto di prova"
+                    className={styles.pendingThumb}
+                  />
+                </a>
+
+                <div className={styles.pendingInfo}>
+                  <div className={styles.cellDriver}>
+                    {driver?.display_name || sub.driver_id}
+                  </div>
+                  <div>{sub.sim} · {sub.track_id} · {sub.car_id}</div>
+                  <div className={styles.cellTime}>{sub.lap_time_display}</div>
+                  <div className={styles.fieldHint}>
+                    {sub.conditions} · {sub.session_type}
+                    {sub.submitted_at ? ` · inviato ${sub.submitted_at}` : ''}
+                  </div>
+                  {sub.notes && <div className={styles.fieldHint}>Note: {sub.notes}</div>}
+                </div>
+
+                <div className={styles.pendingActions}>
+                  <button
+                    type="button"
+                    className={styles.btnPrimary}
+                    disabled={isBusy}
+                    onClick={() => handleApprove(sub)}
+                  >
+                    {isBusy ? '…' : '✓ Approva'}
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.btnDelete}
+                    disabled={isBusy}
+                    onClick={() => handleReject(sub)}
+                  >
+                    ✕ Rifiuta
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
   );
 }
 
