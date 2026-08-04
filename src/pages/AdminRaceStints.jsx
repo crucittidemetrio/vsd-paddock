@@ -47,6 +47,27 @@ export default function AdminRaceStints() {
   const [actionError, setActionError] = useState(null);
   const [swappingStint, setSwappingStint] = useState(null);
 
+  // Vetture distinte presenti sugli stint di questa gara. Con un solo
+  // equipaggio (o stint pre-migration senza car_number, tutti '') il
+  // gruppo è unico e i tab restano nascosti — nessun cambiamento visivo
+  // per le gare "normali". Compare solo quando VSD schiera più auto sulla
+  // stessa gara (es. 8h di Daytona).
+  const carNumbers = useMemo(() => {
+    const set = new Set(stints.map(s => String(s.car_number || '').trim()));
+    return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  }, [stints]);
+  const showCarTabs = carNumbers.length > 1;
+
+  const [selectedCar, setSelectedCar] = useState('');
+  const activeCar = showCarTabs
+    ? (carNumbers.includes(selectedCar) ? selectedCar : carNumbers[0])
+    : (carNumbers[0] || '');
+
+  const visibleStints = useMemo(() => {
+    if (!showCarTabs) return stints;
+    return stints.filter(s => String(s.car_number || '').trim() === activeCar);
+  }, [stints, showCarTabs, activeCar]);
+
   const editingStint = useMemo(
     () => stints.find(s => s.stint_id === editingStintId) || null,
     [stints, editingStintId]
@@ -68,10 +89,11 @@ export default function AdminRaceStints() {
     );
   }
 
-  // Default stint_order per nuovo stint
-  const nextStintOrder = stints.length === 0
+  // Default stint_order per nuovo stint — scopato alla vettura attiva:
+  // ogni equipaggio ha la propria numerazione indipendente.
+  const nextStintOrder = visibleStints.length === 0
     ? 1
-    : Math.max(...stints.map(s => Number(s.stint_order) || 0)) + 1;
+    : Math.max(...visibleStints.map(s => Number(s.stint_order) || 0)) + 1;
 
   return (
     <div className={styles.page}>
@@ -99,10 +121,28 @@ export default function AdminRaceStints() {
         <div className={styles.alertError}>❌ {actionError}</div>
       )}
 
+      {/* ════ TAB VETTURE — solo se la gara ha più equipaggi ════ */}
+      {showCarTabs && (
+        <div className={styles.tabs}>
+          {carNumbers.map(cn => (
+            <button
+              key={cn || '—'}
+              type="button"
+              className={`${styles.tab} ${activeCar === cn ? styles.tabActive : ''}`}
+              onClick={() => setSelectedCar(cn)}
+            >
+              Vettura #{cn || '—'}
+            </button>
+          ))}
+        </div>
+      )}
+
       {/* ════ TABELLA STINT ════ */}
       <section className={styles.section}>
         <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Stint pianificati</h2>
+          <h2 className={styles.sectionTitle}>
+            Stint pianificati{showCarTabs ? ` — Vettura #${activeCar || '—'}` : ''}
+          </h2>
           <Link to={`/admin/race/${raceId}/stint-planner`} className={styles.addBtn}>
             ⚡ Pianifica automaticamente
           </Link>
@@ -119,6 +159,7 @@ export default function AdminRaceStints() {
             mode="add"
             initialValues={{
               race_id: raceId,
+              car_number: activeCar,
               stint_order: nextStintOrder,
               status: 'planned',
             }}
@@ -130,7 +171,7 @@ export default function AdminRaceStints() {
           />
         )}
 
-        {stints.length === 0 ? (
+        {visibleStints.length === 0 ? (
           <div className={styles.empty}>
             Nessuno stint pianificato. Click "+ Aggiungi stint" per iniziare.
           </div>
@@ -151,7 +192,7 @@ export default function AdminRaceStints() {
                 </tr>
               </thead>
               <tbody>
-                {stints.map(s => (
+                {visibleStints.map(s => (
                   <StintRow
                     key={s.stint_id}
                     stint={s}
@@ -222,6 +263,7 @@ function StintForm({ mode, initialValues, drivers, onSubmit, onCancel, onError }
   const updateMutation = useUpdateStint();
 
   const [form, setForm] = useState(() => ({
+    car_number:           initialValues.car_number || '',
     driver_id:            initialValues.driver_id || '',
     stint_order:          initialValues.stint_order || 1,
     planned_start_time:   initialValues.planned_start_time || '',
@@ -246,6 +288,10 @@ function StintForm({ mode, initialValues, drivers, onSubmit, onCancel, onError }
   function handleSubmit(e) {
     e.preventDefault();
 
+    if (!String(form.car_number || '').trim()) {
+      onError('Numero di gara della vettura obbligatorio (es. "7").');
+      return;
+    }
     if (!form.driver_id) {
       onError('Seleziona un pilota.');
       return;
@@ -296,6 +342,18 @@ function StintForm({ mode, initialValues, drivers, onSubmit, onCancel, onError }
   return (
     <form className={styles.form} onSubmit={handleSubmit}>
       <div className={styles.formGrid}>
+
+        {/* Numero gara vettura */}
+        <div className={styles.field}>
+          <label>Numero gara vettura *</label>
+          <input
+            type="text"
+            value={form.car_number}
+            onChange={e => setField('car_number', e.target.value)}
+            placeholder="es. 7"
+            required
+          />
+        </div>
 
         {/* Pilota */}
         <div className={styles.field}>

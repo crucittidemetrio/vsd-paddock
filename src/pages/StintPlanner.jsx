@@ -47,6 +47,7 @@ export default function StintPlanner() {
   );
 
   // Parametri del form di generazione
+  const [carNumber, setCarNumber] = useState('');
   const [startTime, setStartTime] = useState(race?.date?.slice(0, 16) || '');
   const [totalDuration, setTotalDuration] = useState(race?.duration_minutes || 1440);
   const [targetStint, setTargetStint] = useState(90);
@@ -68,12 +69,21 @@ export default function StintPlanner() {
     setConfirmSuccess(null);
     generate({
       race_id: raceId,
+      car_number: carNumber.trim(),
       race_start_time: startTime,
       total_duration_min: Number(totalDuration),
       target_stint_min: Number(targetStint),
       driver_ids: selectedDrivers,
     });
   }
+
+  // Stint già esistenti per QUESTA vettura — scopa l'avviso di sostituzione:
+  // confermare il piano dell'auto #8 non deve minacciare di sovrascrivere
+  // quelli dell'auto #7 sulla stessa gara.
+  const existingStintsForCar = useMemo(
+    () => existingStints.filter(s => String(s.car_number || '').trim() === carNumber.trim()),
+    [existingStints, carNumber]
+  );
 
  // Validazione live: ricalcola a ogni render quando c'è un piano
   const liveValidation = useMemo(() => {
@@ -98,20 +108,20 @@ export default function StintPlanner() {
       );
       if (!proceed) return;
     }
-    const replaceMsg = existingStints.length > 0
-      ? `Questa gara ha già ${existingStints.length} stint. Confermando, verranno SOSTITUITI dai ${plan.length} nuovi. Procedere?`
-      : `Confermare e scrivere i ${plan.length} stint del piano?`;
+    const replaceMsg = existingStintsForCar.length > 0
+      ? `La vettura #${carNumber} ha già ${existingStintsForCar.length} stint su questa gara. Confermando, verranno SOSTITUITI dai ${plan.length} nuovi. Procedere?`
+      : `Confermare e scrivere i ${plan.length} stint del piano per la vettura #${carNumber}?`;
     const replace = window.confirm(replaceMsg);
     if (!replace) return;
     try {
-      const res = await confirm(raceId, true);
+      const res = await confirm(raceId, true, carNumber.trim());
       setConfirmSuccess(`Piano confermato: ${res?.written ?? plan.length} stint scritti.`);
     } catch (err) {
       setConfirmError(err?.message || 'Errore durante la conferma.');
     }
   }
 
-  const canGenerate = startTime && Number(totalDuration) > 0 && Number(targetStint) > 0 && selectedDrivers.length > 0;
+  const canGenerate = carNumber.trim() && startTime && Number(totalDuration) > 0 && Number(targetStint) > 0 && selectedDrivers.length > 0;
   const hasPlan = plan && plan.length > 0;
 
   return (
@@ -137,6 +147,11 @@ export default function StintPlanner() {
       <section className={styles.panel}>
         <h2 className={styles.panelTitle}>Parametri</h2>
         <div className={styles.paramGrid}>
+          <label className={styles.field}>
+            <span>Numero gara vettura</span>
+            <input type="text" value={carNumber} onChange={e => setCarNumber(e.target.value)}
+              placeholder="es. 7" />
+          </label>
           <label className={styles.field}>
             <span>Inizio gara</span>
             <input type="datetime-local" value={startTime} onChange={e => setStartTime(e.target.value)} />

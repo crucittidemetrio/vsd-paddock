@@ -245,3 +245,31 @@ function migrate_addWeatherColumnsToBestLaps() {
     Logger.log(`✅ "${sheetName}": aggiunte colonne ${toAdd.join(', ')} (da col #${startCol})`);
   });
 }
+
+/**
+ * migrate_addCarNumberToEnduranceStints
+ * Aggiunge la colonna `car_number` al foglio EnduranceStints — permette a
+ * più equipaggi VSD di condividere lo stesso race_id (es. due auto alla
+ * 8h di Daytona), ciascuno col proprio piano stint indipendente.
+ * Nessun backfill: gli stint esistenti restano con car_number vuoto, da
+ * assegnare manualmente (decisione esplicita, vedi thread). Idempotente.
+ */
+function migrate_addCarNumberToEnduranceStints() {
+  const sheet = getSheet(SHEETS.ENDURANCE_STINTS);
+  if (!sheet) {
+    Logger.log('❌ Tab EnduranceStints non trovato');
+    return;
+  }
+
+  const lastCol = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  if (headers.includes('car_number')) {
+    Logger.log('⏭️  Colonna `car_number` già esistente, migration skippata');
+    return;
+  }
+
+  const newColIdx = lastCol + 1;
+  sheet.getRange(1, newColIdx).setValue('car_number');
+  Logger.log('✅ Colonna `car_number` aggiunta a EnduranceStints (colonna #' + newColIdx + ')');
+  Logger.log('⚠️  Gli stint esistenti hanno car_number vuoto — assegnalo manualmente dove serve.');
+}

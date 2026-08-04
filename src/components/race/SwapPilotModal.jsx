@@ -99,6 +99,7 @@ export default function SwapPilotModal({
     try {
       await addStint.mutateAsync({
         race_id: raceId,
+        car_number: stint.car_number,
         driver_id: substituteId,
         stint_order: outgoingOrder + 1,
         planned_start_time: changeIso,

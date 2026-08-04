@@ -90,16 +90,18 @@ export function useStintPlanner() {
    * Rimuove _localId prima dell'invio.
    *
    * @param {string} raceId
-   * @param {boolean} replaceExisting - se true sovrascrive gli stint esistenti della gara.
+   * @param {boolean} replaceExisting - se true sovrascrive gli stint esistenti della STESSA vettura.
+   * @param {string} carNumber - numero di gara della vettura a cui appartiene il piano.
    * @returns {Promise<Object>} risultato al successo.
    */
-  const confirm = useCallback(async (raceId, replaceExisting) => {
+  const confirm = useCallback(async (raceId, replaceExisting, carNumber) => {
     setIsConfirming(true);
     setError(null);
     try {
       const stintsToSave = plan.map(({ _localId, ...rest }) => rest);
       const response = await api.endurance.stints.confirmPlan({
         race_id: raceId,
+        car_number: carNumber,
         stints: stintsToSave,
         replace_existing: replaceExisting,
       });

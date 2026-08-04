@@ -48,7 +48,14 @@ function handleEnduranceStintsList(payload, ctx) {
   if (!raceId) return fail('race_id obbligatorio');
 
   const stints = _esLoadAll_(raceId);
-  const sorted = stints.sort((a, b) => Number(a.stint_order) - Number(b.stint_order));
+  // Ordina per car_number poi per stint_order: con più equipaggi sulla
+  // stessa gara mantiene ogni piano stint raggruppato e leggibile.
+  const sorted = stints.sort((a, b) => {
+    const ca = String(a.car_number || '');
+    const cb = String(b.car_number || '');
+    if (ca !== cb) return ca.localeCompare(cb);
+    return Number(a.stint_order) - Number(b.stint_order);
+  });
 
   return ok({ stints: sorted, count: sorted.length });
 }
@@ -71,10 +78,13 @@ function handleEnduranceStintsAdd(payload, ctx) {
   if (!validation.ok) return fail(validation.error);
 
   const raceId      = payload.race_id;
+  const carNumber   = String(payload.car_number).trim();
   const desiredOrder = Number(payload.stint_order) || 1;
 
-  // Re-numbering: shift +1 di tutti gli stint con order >= desiredOrder
-  _esShiftStintsOrder_(raceId, desiredOrder, +1);
+  // Re-numbering: shift +1 di tutti gli stint della STESSA vettura con
+  // order >= desiredOrder. Scopato per car_number: due equipaggi sulla
+  // stessa gara hanno numerazioni stint indipendenti.
+  _esShiftStintsOrder_(raceId, carNumber, desiredOrder, +1);
 
   // Crea nuovo record
   const stintId = _esGenerateStintId_();
@@ -83,6 +93,7 @@ function handleEnduranceStintsAdd(payload, ctx) {
   const newRow = {
     stint_id:              stintId,
     race_id:               raceId,
+    car_number:            carNumber,
     driver_id:             payload.driver_id,
     stint_order:           desiredOrder,
     planned_start_time:    payload.planned_start_time || '',
@@ -132,14 +143,18 @@ function handleEnduranceStintsUpdate(payload, ctx) {
   if (!validation.ok) return fail(validation.error);
 
   const raceId = existing.race_id;
+  // Re-numbering scopato sulla vettura ATTUALE dello stint (pre-modifica).
+  // Nota: cambiare contemporaneamente car_number e stint_order nello stesso
+  // update non è un caso supportato — usa due chiamate separate.
+  const carNumber = String(existing.car_number || '').trim();
 
   // Se cambia stint_order → re-numbering
   if (payload.stint_order != null && Number(payload.stint_order) !== Number(existing.stint_order)) {
     const oldOrder = Number(existing.stint_order);
     const newOrder = Number(payload.stint_order);
 
-    _esShiftStintsOrder_(raceId, oldOrder + 1, -1, stintId); // chiudi buco
-    _esShiftStintsOrder_(raceId, newOrder, +1, stintId);     // apri spazio
+    _esShiftStintsOrder_(raceId, carNumber, oldOrder + 1, -1, stintId); // chiudi buco
+    _esShiftStintsOrder_(raceId, carNumber, newOrder, +1, stintId);     // apri spazio
   }
 
   // Aggiorna campi consentiti
@@ -148,7 +163,7 @@ function handleEnduranceStintsUpdate(payload, ctx) {
   };
 
   const allowedFields = [
-    'driver_id', 'stint_order',
+    'driver_id', 'stint_order', 'car_number',
     'planned_start_time', 'planned_end_time', 'planned_duration_min',
     'actual_start_time', 'actual_end_time', 'actual_duration_min',
     'tire_compound', 'pit_stop_at_end', 'fuel_loaded_l',
@@ -192,10 +207,11 @@ function handleEnduranceStintsRemove(payload, ctx) {
   if (!existing) return fail('Stint non trovato');
 
   const raceId       = existing.race_id;
+  const carNumber    = String(existing.car_number || '').trim();
   const removedOrder = Number(existing.stint_order);
 
   _esDeleteRowById_(stintId);
-  _esShiftStintsOrder_(raceId, removedOrder + 1, -1);
+  _esShiftStintsOrder_(raceId, carNumber, removedOrder + 1, -1);
   _esInvalidateCache_(raceId);
 
   return ok({ removed: stintId });
@@ -243,14 +259,20 @@ function _esIsStaff_(ctx) {
 }
 
 /**
- * Shift dello stint_order per gli stint di una race.
+ * Shift dello stint_order per gli stint di una race, scopato a una singola
+ * vettura (car_number) — con più equipaggi sulla stessa gara, ogni piano
+ * stint ha la propria numerazione indipendente. car_number confrontato come
+ * stringa: '' (stint pre-migration, mai assegnati) è un gruppo valido come
+ * un altro, così il re-numbering continua a funzionare sulle gare vecchie
+ * a equipaggio singolo finché non vengono etichettate a mano.
  *
  * @param {string} raceId
+ * @param {string} carNumber - vettura a cui scopare lo shift
  * @param {number} fromOrder - shift applicato a stint con order >= fromOrder
  * @param {number} delta - +1 (apri spazio) o -1 (chiudi buco)
  * @param {string} excludeStintId - opzionale, escludi questo stint_id dal shift (per update)
  */
-function _esShiftStintsOrder_(raceId, fromOrder, delta, excludeStintId) {
+function _esShiftStintsOrder_(raceId, carNumber, fromOrder, delta, excludeStintId) {
   const sheet = SpreadsheetApp.openById(ENDURANCE_SS_ID).getSheetByName(SHEETS.ENDURANCE_STINTS);
   if (!sheet) throw new Error('Sheet EnduranceStints non trovato');
 
@@ -260,6 +282,7 @@ function _esShiftStintsOrder_(raceId, fromOrder, delta, excludeStintId) {
   const headers = data[0];
   const idxStintId    = headers.indexOf('stint_id');
   const idxRaceId     = headers.indexOf('race_id');
+  const idxCarNumber  = headers.indexOf('car_number');
   const idxStintOrder = headers.indexOf('stint_order');
   const idxUpdatedAt  = headers.indexOf('updated_at');
 
@@ -267,11 +290,15 @@ function _esShiftStintsOrder_(raceId, fromOrder, delta, excludeStintId) {
     throw new Error('Schema EnduranceStints inconsistente: colonne mancanti');
   }
 
+  const wantedCarNumber = String(carNumber || '').trim();
   const now = new Date().toISOString();
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     if (row[idxRaceId] !== raceId) continue;
+    // idxCarNumber < 0 = colonna non ancora migrata: tratta tutta la gara
+    // come un unico gruppo (comportamento pre-multi-equipaggio).
+    if (idxCarNumber >= 0 && String(row[idxCarNumber] || '').trim() !== wantedCarNumber) continue;
     if (excludeStintId && row[idxStintId] === excludeStintId) continue;
 
     const currentOrder = Number(row[idxStintOrder]);
@@ -364,6 +391,9 @@ function _esValidateStint_(payload, opts) {
 
   if (opts.isCreate) {
     if (!payload.race_id) return { ok: false, error: 'race_id obbligatorio' };
+    if (!payload.car_number || String(payload.car_number).trim() === '') {
+      return { ok: false, error: 'car_number obbligatorio (numero di gara della vettura, es. "7")' };
+    }
     if (!payload.driver_id) return { ok: false, error: 'driver_id obbligatorio' };
     if (payload.stint_order == null || Number(payload.stint_order) < 1) {
       return { ok: false, error: 'stint_order deve essere >= 1' };
@@ -441,6 +471,7 @@ function handleEnduranceStintsGenerate(payload, ctx) {
   // 2. Estrazione e validazione input
   const {
     race_id,
+    car_number,
     race_start_time,
     total_duration_min,
     target_stint_min,
@@ -449,6 +480,9 @@ function handleEnduranceStintsGenerate(payload, ctx) {
 
   if (!race_id || typeof race_id !== 'string' || race_id.trim() === '') {
     return fail('race_id non valido o mancante');
+  }
+  if (!car_number || String(car_number).trim() === '') {
+    return fail('car_number obbligatorio (numero di gara della vettura, es. "7")');
   }
   const startDate = new Date(race_start_time);
   if (isNaN(startDate.getTime())) {
@@ -484,6 +518,7 @@ function handleEnduranceStintsGenerate(payload, ctx) {
 
     stints.push({
       stint_order: i + 1,
+      car_number: String(car_number).trim(),
       driver_id: assignedDriverId,
       planned_start_time: _esToNaiveIso_(new Date(currentStartTimeMs)),
       planned_end_time: _esToNaiveIso_(new Date(currentEndTimeMs)),
@@ -522,7 +557,7 @@ function handleEnduranceStintsValidateCoverage(payload, ctx) {
   if (!_esIsStaff_(ctx)) return fail('Permessi insufficienti');
 
   // 2. Validazione input
-  const { race_id, race_start_time, total_duration_min } = payload || {};
+  const { race_id, car_number, race_start_time, total_duration_min } = payload || {};
 
   if (!race_id || typeof race_id !== 'string' || race_id.trim() === '') {
     return fail('race_id mancante o non valido');
@@ -535,8 +570,16 @@ function handleEnduranceStintsValidateCoverage(payload, ctx) {
     return fail('total_duration_min deve essere un numero > 0');
   }
 
-  // 3. Caricamento stint
-  const stints = _esLoadAll_(race_id);
+  // 3. Caricamento stint — se car_number è passato, la copertura viene
+  // valutata solo sul piano di QUELLA vettura (più equipaggi sulla stessa
+  // gara hanno ciascuno la propria copertura indipendente da validare).
+  // Senza car_number, comportamento pre-esistente: tutti gli stint della
+  // gara (corretto per le gare a equipaggio singolo).
+  let stints = _esLoadAll_(race_id);
+  if (car_number != null && String(car_number).trim() !== '') {
+    const wanted = String(car_number).trim();
+    stints = stints.filter(s => String(s.car_number || '').trim() === wanted);
+  }
   if (!stints || stints.length === 0) {
     return ok({
       valid: false,
@@ -650,11 +693,15 @@ function handleEnduranceStintsConfirmPlan(payload, ctx) {
   if (!_esIsStaff_(ctx)) return fail('Permessi insufficienti');
 
   // 2. Estrazione e Validazione Input Base
-  const { race_id, stints, replace_existing } = payload;
+  const { race_id, car_number, stints, replace_existing } = payload;
 
   if (!race_id || typeof race_id !== 'string' || race_id.trim() === '') {
     return fail('race_id mancante o non valido');
   }
+  if (!car_number || String(car_number).trim() === '') {
+    return fail('car_number obbligatorio (numero di gara della vettura, es. "7")');
+  }
+  const carNumber = String(car_number).trim();
 
   if (!Array.isArray(stints) || stints.length === 0) {
     return fail('stints deve essere un array non vuoto');
@@ -671,15 +718,18 @@ function handleEnduranceStintsConfirmPlan(payload, ctx) {
     }
   }
 
-  // 3. Gestione Stint Esistenti
-  const existingStints = _esLoadAll_(race_id) || [];
+  // 3. Gestione Stint Esistenti — SCOPATA alla vettura car_number: un piano
+  // confermato per l'auto #8 non deve mai toccare gli stint dell'auto #7
+  // sulla stessa gara.
+  const existingStints = (_esLoadAll_(race_id) || [])
+    .filter(s => String(s.car_number || '').trim() === carNumber);
   let replacedCount = 0;
 
   if (existingStints.length > 0) {
     if (replace_existing === false) {
-      return fail(`La gara ha già ${existingStints.length} stint. Imposta replace_existing per sostituirli.`);
+      return fail(`La vettura #${carNumber} ha già ${existingStints.length} stint su questa gara. Imposta replace_existing per sostituirli.`);
     } else {
-      // Sostituzione confermata: elimina tutti i record esistenti per questa gara
+      // Sostituzione confermata: elimina solo i record esistenti di QUESTA vettura
       for (let i = 0; i < existingStints.length; i++) {
         _esDeleteRowById_(existingStints[i].stint_id);
       }
@@ -699,6 +749,7 @@ function handleEnduranceStintsConfirmPlan(payload, ctx) {
     const record = {
       stint_id: _esGenerateStintId_(),
       race_id: race_id,
+      car_number: carNumber,
       stint_order: s.stint_order,
       driver_id: s.driver_id,
       planned_start_time: s.planned_start_time || '',

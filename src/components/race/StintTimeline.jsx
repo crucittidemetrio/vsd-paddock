@@ -93,75 +93,99 @@ export default function StintTimeline({
   if (list.length === 0) return null;
 
   // stint_order ascendente — rispetta override manuale admin (Phase 5), NO sort per orario
-  const ordered = [...list].sort((a, b) => {
+  const byOrder = (a, b) => {
     const ao = Number(a.stint_order); const bo = Number(b.stint_order);
     if (isNaN(ao) && isNaN(bo)) return 0;
     if (isNaN(ao)) return 1;
     if (isNaN(bo)) return -1;
     return ao - bo;
+  };
+
+  // Raggruppa per car_number: con più equipaggi sulla stessa gara (es. 8h
+  // di Daytona) ogni vettura ha la propria numerazione stint indipendente,
+  // quindi una singola tabella ordinata per stint_order mischierebbe righe
+  // di auto diverse. Con un solo equipaggio (o stint pre-migration senza
+  // car_number, tutti '') il gruppo è unico: nessun cambiamento visivo.
+  const groups = new Map();
+  list.forEach(s => {
+    const key = String(s.car_number || '').trim();
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(s);
   });
+  const carNumbers = Array.from(groups.keys()).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+  const showCarHeadings = carNumbers.length > 1;
 
   return (
     <section className="st-section">
       <div className="st-header">
         <h2 className="st-title">Piano Stint</h2>
-        <span className="st-count">{ordered.length} stint</span>
+        <span className="st-count">{list.length} stint</span>
       </div>
 
-      <div className="st-table-wrap">
-        <table className="st-table">
-          <thead>
-            <tr>
-              <th className="st-col-order">#</th>
-              <th className="st-col-driver">Pilota</th>
-              <th className="st-col-time">Inizio</th>
-              <th className="st-col-time">Fine</th>
-              <th className="st-col-dur">Durata</th>
-              <th className="st-col-tire">Gomme</th>
-              <th className="st-col-lap">Best Lap</th>
-              <th className="st-col-status">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ordered.map((s, i) => {
-              const isMine = currentDriverId && s.driver_id === currentDriverId;
-              const effStatus = computeStatus(s, nowMs);
-              const status = STINT_STATUS[effStatus] || { label: (effStatus || '—').toUpperCase(), cls: 'st-status-unknown' };
-              const tire = TIRE_LABELS[s.tire_compound] || (s.tire_compound ? { label: s.tire_compound, cls: 'st-tire-unknown' } : null);
-              const lap = formatLapMs ? formatLapMs(s.best_lap_ms) : null;
-              const isActive = effStatus === 'active';
-              const remain = isActive ? minutesToEnd(s, nowMs) : null;
-              const rowCls = ['st-row', isMine ? 'st-row-mine' : '', isActive ? 'st-row-active' : ''].filter(Boolean).join(' ');
+      {carNumbers.map(carNumber => {
+        const ordered = [...groups.get(carNumber)].sort(byOrder);
+        return (
+          <div key={carNumber || '—'} className="st-car-group">
+            {showCarHeadings && (
+              <div className="st-car-heading">Vettura #{carNumber || '—'}</div>
+            )}
+            <div className="st-table-wrap">
+              <table className="st-table">
+                <thead>
+                  <tr>
+                    <th className="st-col-order">#</th>
+                    <th className="st-col-driver">Pilota</th>
+                    <th className="st-col-time">Inizio</th>
+                    <th className="st-col-time">Fine</th>
+                    <th className="st-col-dur">Durata</th>
+                    <th className="st-col-tire">Gomme</th>
+                    <th className="st-col-lap">Best Lap</th>
+                    <th className="st-col-status">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {ordered.map((s, i) => {
+                    const isMine = currentDriverId && s.driver_id === currentDriverId;
+                    const effStatus = computeStatus(s, nowMs);
+                    const status = STINT_STATUS[effStatus] || { label: (effStatus || '—').toUpperCase(), cls: 'st-status-unknown' };
+                    const tire = TIRE_LABELS[s.tire_compound] || (s.tire_compound ? { label: s.tire_compound, cls: 'st-tire-unknown' } : null);
+                    const lap = formatLapMs ? formatLapMs(s.best_lap_ms) : null;
+                    const isActive = effStatus === 'active';
+                    const remain = isActive ? minutesToEnd(s, nowMs) : null;
+                    const rowCls = ['st-row', isMine ? 'st-row-mine' : '', isActive ? 'st-row-active' : ''].filter(Boolean).join(' ');
 
-              return (
-                <tr key={s.stint_id || `${s.driver_id}-${s.stint_order}-${i}`} className={rowCls}>
-                  <td className="st-pos">{s.stint_order ?? i + 1}</td>
-                  <td className="st-driver">
-                    {getDriverName(s.driver_id, drivers)}
-                    {isMine && <span className="st-mine-tag">TU</span>}
-                  </td>
-                  <td>{formatClock(s.planned_start_time)}</td>
-                  <td>{formatClock(s.planned_end_time)}</td>
-                  <td>{formatDuration ? formatDuration(s.planned_duration_min) : (s.planned_duration_min ?? '—')}</td>
-                  <td>
-                    {tire
-                      ? <span className={`st-tire ${tire.cls}`}>{tire.label}</span>
-                      : <span className="st-dash">—</span>}
-                    {(s.pit_stop_at_end === true || s.pit_stop_at_end === 'TRUE') && (
-                      <span className="st-pit" title="Pit stop a fine stint">PIT</span>
-                    )}
-                  </td>
-                  <td className="st-lap">{lap || <span className="st-dash">—</span>}</td>
-                  <td>
-                    <span className={`st-badge ${status.cls}`}>{status.label}</span>
-                    {remain !== null && <span className="st-countdown">−{remain}min</span>}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                    return (
+                      <tr key={s.stint_id || `${s.driver_id}-${s.stint_order}-${i}`} className={rowCls}>
+                        <td className="st-pos">{s.stint_order ?? i + 1}</td>
+                        <td className="st-driver">
+                          {getDriverName(s.driver_id, drivers)}
+                          {isMine && <span className="st-mine-tag">TU</span>}
+                        </td>
+                        <td>{formatClock(s.planned_start_time)}</td>
+                        <td>{formatClock(s.planned_end_time)}</td>
+                        <td>{formatDuration ? formatDuration(s.planned_duration_min) : (s.planned_duration_min ?? '—')}</td>
+                        <td>
+                          {tire
+                            ? <span className={`st-tire ${tire.cls}`}>{tire.label}</span>
+                            : <span className="st-dash">—</span>}
+                          {(s.pit_stop_at_end === true || s.pit_stop_at_end === 'TRUE') && (
+                            <span className="st-pit" title="Pit stop a fine stint">PIT</span>
+                          )}
+                        </td>
+                        <td className="st-lap">{lap || <span className="st-dash">—</span>}</td>
+                        <td>
+                          <span className={`st-badge ${status.cls}`}>{status.label}</span>
+                          {remain !== null && <span className="st-countdown">−{remain}min</span>}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })}
     </section>
   );
 }
