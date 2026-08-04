@@ -16,27 +16,31 @@ const VSD_COLORS = {
 const PADDOCK_URL = 'https://vsd-paddock.vercel.app';
 
 /**
- * Posta un messaggio JSON a Discord.
- * Mai blocca il chiamante: cattura errori, logga e ritorna.
+ * Posta un messaggio JSON a Discord usando l'URL salvato in una
+ * Script Property. Mai blocca il chiamante: cattura errori, logga
+ * e ritorna.
+ *
+ * @param {Object} payload - embed Discord
+ * @param {string} propertyName - nome della Script Property col webhook URL
  */
-function postToDiscord_(payload) {
+function postToDiscordWebhook_(payload, propertyName) {
   try {
-    const url = PropertiesService.getScriptProperties().getProperty('DISCORD_WEBHOOK_URL');
+    const url = PropertiesService.getScriptProperties().getProperty(propertyName);
     if (!url) {
-      Logger.log('⚠️  DISCORD_WEBHOOK_URL non configurato in Script Properties');
+      Logger.log('⚠️  ' + propertyName + ' non configurato in Script Properties');
       return { ok: false, error: 'webhook_not_configured' };
     }
-    
+
     const response = UrlFetchApp.fetch(url, {
       method: 'post',
       contentType: 'application/json',
       payload: JSON.stringify(payload),
       muteHttpExceptions: true,
     });
-    
+
     const status = response.getResponseCode();
     if (status >= 200 && status < 300) {
-      Logger.log('✅ Discord notification posted');
+      Logger.log('✅ Discord notification posted (' + propertyName + ')');
       return { ok: true };
     }
     Logger.log('⚠️  Discord webhook returned ' + status + ': ' + response.getContentText());
@@ -45,6 +49,23 @@ function postToDiscord_(payload) {
     Logger.log('⚠️  Discord webhook error: ' + e.message);
     return { ok: false, error: e.message };
   }
+}
+
+/**
+ * Posta al webhook pubblico (canale notizie/annunci del team).
+ * Mai blocca il chiamante: cattura errori, logga e ritorna.
+ */
+function postToDiscord_(payload) {
+  return postToDiscordWebhook_(payload, 'DISCORD_WEBHOOK_URL');
+}
+
+/**
+ * Posta al webhook admin/staff-only (canale ⛔staff-only) — usato per
+ * notifiche operative che riguardano solo lo staff (es. coda di
+ * validazione Best Lap), non i piloti in generale.
+ */
+function postToDiscordAdmin_(payload) {
+  return postToDiscordWebhook_(payload, 'DISCORD_WEBHOOK_ADMIN_URL');
 }
 
 /**
@@ -213,6 +234,47 @@ function notifyNewTeamRecord_(lap, previousDisplay) {
   };
 
   postToDiscord_(payload);
+}
+
+/**
+ * Notifica: un pilota VSD ha inviato un nuovo Best Lap con foto di prova,
+ * in attesa di validazione. Va al webhook admin/staff-only (⛔staff-only),
+ * non al canale pubblico — è un compito per lo staff, non un annuncio.
+ * Chiamata da handleLapSubmissionsSubmit in BestLaps.js.
+ *
+ * @param {Object} submission - { driver_name, sim, track_id, lap_time_display, submission_id }
+ */
+function notifyNewLapSubmission_(submission) {
+  if (!submission) return;
+
+  const payload = {
+    embeds: [{
+      author: { name: 'VSD Paddock' },
+      title: '📸 Nuovo Best Lap da validare',
+      description: '**' + submission.driver_name + '** — ' + submission.track_id + ' (' + submission.sim + ')\n' +
+                   '⏱️ **' + submission.lap_time_display + '**',
+      color: VSD_COLORS.orange,
+      timestamp: new Date().toISOString(),
+      footer: { text: submission.submission_id },
+      url: PADDOCK_URL + '/best-laps',
+    }],
+  };
+
+  postToDiscordAdmin_(payload);
+}
+
+/**
+ * Helper test — verifica l'embed "nuovo Best Lap da validare" con dati
+ * finti, sul webhook admin. Dropdown function → test_notification_lap_submission → ▶ Esegui
+ */
+function test_notification_lap_submission() {
+  notifyNewLapSubmission_({
+    driver_name: '🧪 Pilota Test',
+    sim: 'LMU',
+    track_id: 'circuito_di_prova',
+    lap_time_display: '1:30.000',
+    submission_id: 'SUB000',
+  });
 }
 
 /**

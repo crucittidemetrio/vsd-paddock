@@ -556,6 +556,19 @@ function handleLapSubmissionsSubmit(payload, ctx) {
   sheet.appendRow(row);
   invalidateSheetCache_(SHEETS.BEST_LAP_SUBMISSIONS);
 
+  try {
+    const driverName = (ctx.driver && ctx.driver.display_name) || ctx.driver_id;
+    notifyNewLapSubmission_({
+      driver_name: driverName,
+      sim: newSubmission.sim,
+      track_id: newSubmission.track_id,
+      lap_time_display: newSubmission.lap_time_display,
+      submission_id: submissionId,
+    });
+  } catch (e) {
+    Logger.log('⚠️ notifyNewLapSubmission_ error: ' + e.message);
+  }
+
   return ok({ submission_id: submissionId, submission: newSubmission });
 }
 
