@@ -19,6 +19,8 @@ const BEST_LAP_SUBMISSIONS_HEADERS = [
   'lap_time_ms',
   'set_date',
   'conditions',
+  'air_temp_c',
+  'track_temp_c',
   'session_type',
   'notes',
   'evidence_url',

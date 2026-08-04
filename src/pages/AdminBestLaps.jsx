@@ -45,6 +45,8 @@ const INITIAL_STATE = {
   lap_time_display: '',
   set_date: '',
   conditions: 'dry',
+  air_temp_c: '',
+  track_temp_c: '',
   session_type: 'practice',
   setup_link: '',
   replay_url: '',
@@ -172,6 +174,8 @@ function ManualTab() {
       lap_time_display: lap.lap_time_display || '',
       set_date: lap.set_date || '',
       conditions: lap.conditions || 'dry',
+      air_temp_c: lap.air_temp_c ?? '',
+      track_temp_c: lap.track_temp_c ?? '',
       session_type: lap.session_type || 'practice',
       setup_link: lap.setup_link || '',
       replay_url: lap.replay_url || '',
@@ -199,6 +203,12 @@ function ManualTab() {
     if (form.replay_url && !/^https?:\/\//.test(form.replay_url)) {
       e.replay_url = 'URL deve iniziare con http(s)://';
     }
+    if (form.air_temp_c !== '' && Number.isNaN(Number(form.air_temp_c))) {
+      e.air_temp_c = 'Deve essere un numero';
+    }
+    if (form.track_temp_c !== '' && Number.isNaN(Number(form.track_temp_c))) {
+      e.track_temp_c = 'Deve essere un numero';
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   }
@@ -212,6 +222,8 @@ function ManualTab() {
       lap_time_display: form.lap_time_display.trim(),
       set_date: form.set_date || '',
       conditions: form.conditions,
+      air_temp_c: form.air_temp_c !== '' ? Number(form.air_temp_c) : '',
+      track_temp_c: form.track_temp_c !== '' ? Number(form.track_temp_c) : '',
       session_type: form.session_type,
       setup_link: form.setup_link.trim(),
       replay_url: form.replay_url.trim(),
@@ -336,6 +348,22 @@ function ManualTab() {
                   onChange={e => update('session_type', e.target.value)}>
                   {SESSION_TYPE_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
                 </select>
+              </Field>
+            </div>
+
+            <div className={styles.row2}>
+              <Field label="Temp. aria (°C)" error={errors.air_temp_c}
+                hint="Facoltativo">
+                <input type="number" step="0.1" className={styles.input} value={form.air_temp_c}
+                  onChange={e => update('air_temp_c', e.target.value)}
+                  placeholder="es. 22" />
+              </Field>
+
+              <Field label="Temp. pista (°C)" error={errors.track_temp_c}
+                hint="Facoltativo">
+                <input type="number" step="0.1" className={styles.input} value={form.track_temp_c}
+                  onChange={e => update('track_temp_c', e.target.value)}
+                  placeholder="es. 28" />
               </Field>
             </div>
 
@@ -519,6 +547,13 @@ function PendingTab() {
                     {sub.conditions} · {sub.session_type}
                     {sub.submitted_at ? ` · inviato ${sub.submitted_at}` : ''}
                   </div>
+                  {(sub.air_temp_c !== '' && sub.air_temp_c != null) || (sub.track_temp_c !== '' && sub.track_temp_c != null) ? (
+                    <div className={styles.fieldHint}>
+                      🌡️
+                      {sub.air_temp_c !== '' && sub.air_temp_c != null ? ` Aria ${sub.air_temp_c}°C` : ''}
+                      {sub.track_temp_c !== '' && sub.track_temp_c != null ? ` · Pista ${sub.track_temp_c}°C` : ''}
+                    </div>
+                  ) : null}
                   {sub.notes && <div className={styles.fieldHint}>Note: {sub.notes}</div>}
                 </div>
 

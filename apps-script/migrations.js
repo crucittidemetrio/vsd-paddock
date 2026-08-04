@@ -212,3 +212,36 @@ function migrate_addGalleryUrlsColumn() {
   sheet.getRange(1, newColIdx).setValue('gallery_urls');
   Logger.log('✅ Colonna `gallery_urls` aggiunta a Races (colonna #' + newColIdx + ')');
 }
+
+/**
+ * migrate_addWeatherColumnsToBestLaps
+ * Aggiunge le colonne `air_temp_c` e `track_temp_c` (temperatura aria e
+ * pista, °C) ai fogli BestLaps e BestLapSubmissions. Dati facoltativi e
+ * non vincolanti: chi non li rileva/vuole segnalare lascia il campo
+ * vuoto, nessuna validazione a bloccare il salvataggio del tempo.
+ * Idempotente su entrambi i fogli.
+ */
+function migrate_addWeatherColumnsToBestLaps() {
+  const newCols = ['air_temp_c', 'track_temp_c'];
+
+  [SHEETS.BEST_LAPS, SHEETS.BEST_LAP_SUBMISSIONS].forEach(sheetName => {
+    const sheet = getSheet(sheetName);
+    if (!sheet) {
+      Logger.log(`❌ Tab "${sheetName}" non trovato, skip`);
+      return;
+    }
+
+    const lastCol = sheet.getLastColumn();
+    const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+    const toAdd = newCols.filter(c => !headers.includes(c));
+
+    if (toAdd.length === 0) {
+      Logger.log(`⏭️  "${sheetName}": colonne già presenti, skip`);
+      return;
+    }
+
+    const startCol = lastCol + 1;
+    sheet.getRange(1, startCol, 1, toAdd.length).setValues([toAdd]);
+    Logger.log(`✅ "${sheetName}": aggiunte colonne ${toAdd.join(', ')} (da col #${startCol})`);
+  });
+}

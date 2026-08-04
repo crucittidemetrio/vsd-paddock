@@ -404,6 +404,8 @@ const INITIAL_SUBMIT_FORM = {
   car_id: '',
   lap_time_display: '',
   conditions: 'dry',
+  air_temp_c: '',
+  track_temp_c: '',
   session_type: 'practice',
   notes: '',
 };
@@ -456,6 +458,12 @@ function SubmitLapSection() {
       return setError('Tempo non valido. Formato atteso: M:SS.mmm (es. 1:30.333)');
     }
     if (!file) return setError('Carica una foto che documenti il tempo — è obbligatoria per la validazione');
+    if (form.air_temp_c !== '' && Number.isNaN(Number(form.air_temp_c))) {
+      return setError('Temperatura aria non valida');
+    }
+    if (form.track_temp_c !== '' && Number.isNaN(Number(form.track_temp_c))) {
+      return setError('Temperatura pista non valida');
+    }
 
     setUploading(true);
     try {
@@ -471,6 +479,8 @@ function SubmitLapSection() {
         car_id: form.car_id,
         lap_time_display: form.lap_time_display.trim(),
         conditions: form.conditions,
+        air_temp_c: form.air_temp_c !== '' ? Number(form.air_temp_c) : '',
+        track_temp_c: form.track_temp_c !== '' ? Number(form.track_temp_c) : '',
         session_type: form.session_type,
         notes: form.notes,
         evidence_url: blob.url,
@@ -566,6 +576,22 @@ function SubmitLapSection() {
                   <option value="qualifying">Qualifying</option>
                   <option value="time_trial">Time trial</option>
                 </select>
+              </div>
+            </div>
+
+            <div className="submit-lap-row">
+              <div className="filter-group">
+                <label className="filter-label">Temp. aria °C (facoltativo)</label>
+                <input type="number" step="0.1" className="filter-select" value={form.air_temp_c}
+                  onChange={e => update('air_temp_c', e.target.value)}
+                  placeholder="es. 22" />
+              </div>
+
+              <div className="filter-group">
+                <label className="filter-label">Temp. pista °C (facoltativo)</label>
+                <input type="number" step="0.1" className="filter-select" value={form.track_temp_c}
+                  onChange={e => update('track_temp_c', e.target.value)}
+                  placeholder="es. 28" />
               </div>
             </div>
 
