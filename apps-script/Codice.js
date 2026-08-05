@@ -22,6 +22,7 @@ const SHEETS = {
   ENDURANCE_PARTICIPANTS: 'EnduranceParticipants',
   ENDURANCE_AUDITION_STINTS: 'EnduranceAuditionStints',
   ENDURANCE_STINTS: 'EnduranceStints',
+  RACE_CREWS: 'RaceCrews',
   SOCIAL_POSTS: 'SocialPosts',
   SOCIAL_METRICS: 'SocialMetrics',
   SOCIAL_MEDIA: 'SocialMedia',
@@ -257,6 +258,11 @@ const ACTIONS = {
   'endurance.stints.add': handleEnduranceStintsAdd,
   'endurance.stints.update': handleEnduranceStintsUpdate,
   'endurance.stints.remove': handleEnduranceStintsRemove,
+
+  // Race Crews — roster equipaggi per gare endurance multi-vettura
+  'raceCrews.list': handleRaceCrewsList,
+  'raceCrews.add': handleRaceCrewsAdd,
+  'raceCrews.remove': handleRaceCrewsRemove,
 };
 
 // ═══════════════════════════════════════════════════════════

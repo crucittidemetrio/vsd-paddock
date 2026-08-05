@@ -6,6 +6,11 @@ import {
   useUpdateStint,
   useRemoveStint,
 } from '../hooks/useEnduranceStints';
+import {
+  useRaceCrews,
+  useAddCrewMember,
+  useRemoveCrewMember,
+} from '../hooks/useRaceCrews';
 import { useRaces } from '../hooks/useRaces';
 import { useDrivers } from '../hooks/useRoster';
 import Avatar from '../components/shared/Avatar';
@@ -27,6 +32,7 @@ export default function AdminRaceStints() {
   const { data: racesData } = useRaces();
   const { data: drivers = [] } = useDrivers();
   const { data: stintsResponse, isLoading, isError, error } = useStints(raceId);
+  const { data: crews = [] } = useRaceCrews(raceId);
 
   const races = useMemo(() => {
     if (Array.isArray(racesData)) return racesData;
@@ -47,15 +53,18 @@ export default function AdminRaceStints() {
   const [actionError, setActionError] = useState(null);
   const [swappingStint, setSwappingStint] = useState(null);
 
-  // Vetture distinte presenti sugli stint di questa gara. Con un solo
-  // equipaggio (o stint pre-migration senza car_number, tutti '') il
-  // gruppo è unico e i tab restano nascosti — nessun cambiamento visivo
-  // per le gare "normali". Compare solo quando VSD schiera più auto sulla
-  // stessa gara (es. 8h di Daytona).
+  // Vetture distinte presenti su questa gara — unione di stint E roster
+  // equipaggi: così i tab compaiono già assegnando i piloti al roster,
+  // prima ancora di pianificare il primo stint. Con un solo equipaggio (o
+  // dati pre-migration senza car_number, tutti '') il gruppo è unico e i
+  // tab restano nascosti — nessun cambiamento visivo per le gare "normali".
   const carNumbers = useMemo(() => {
-    const set = new Set(stints.map(s => String(s.car_number || '').trim()));
+    const set = new Set([
+      ...stints.map(s => String(s.car_number || '').trim()),
+      ...crews.map(c => String(c.car_number || '').trim()),
+    ]);
     return Array.from(set).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-  }, [stints]);
+  }, [stints, crews]);
   const showCarTabs = carNumbers.length > 1;
 
   const [selectedCar, setSelectedCar] = useState('');
@@ -120,6 +129,15 @@ export default function AdminRaceStints() {
       {actionError && (
         <div className={styles.alertError}>❌ {actionError}</div>
       )}
+
+      {/* ════ EQUIPAGGI — assegna i piloti a una vettura prima di pianificare ════ */}
+      <CrewPanel
+        raceId={raceId}
+        crews={crews}
+        drivers={drivers}
+        driverById={driverById}
+        onError={setActionError}
+      />
 
       {/* ════ TAB VETTURE — solo se la gara ha più equipaggi ════ */}
       {showCarTabs && (
@@ -655,4 +673,111 @@ function truncate(text, max) {
   if (!text) return '';
   if (text.length <= max) return text;
   return text.slice(0, max - 1) + '…';
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// EQUIPAGGI — assegna piloti a una vettura PRIMA di pianificare stint
+// ═══════════════════════════════════════════════════════════
+
+function CrewPanel({ raceId, crews, drivers, driverById, onError }) {
+  const [carNumber, setCarNumber] = useState('');
+  const [driverId, setDriverId] = useState('');
+  const addMutation = useAddCrewMember();
+  const removeMutation = useRemoveCrewMember();
+
+  const grouped = useMemo(() => {
+    const m = new Map();
+    crews.forEach(c => {
+      const key = String(c.car_number || '').trim();
+      if (!m.has(key)) m.set(key, []);
+      m.get(key).push(c);
+    });
+    return Array.from(m.entries()).sort((a, b) => a[0].localeCompare(b[0], undefined, { numeric: true }));
+  }, [crews]);
+
+  // Attivi + trial, coerente col resto della pagina (StintForm)
+  const selectableDrivers = useMemo(
+    () => (drivers || []).filter(d => d.status === 'active' || d.status === 'trial'),
+    [drivers]
+  );
+
+  function handleAdd(e) {
+    e.preventDefault();
+    if (!carNumber.trim()) return onError('Numero di gara della vettura obbligatorio.');
+    if (!driverId) return onError('Seleziona un pilota.');
+
+    addMutation.mutate(
+      { race_id: raceId, car_number: carNumber.trim(), driver_id: driverId },
+      {
+        onSuccess: () => setDriverId(''),
+        onError: (err) => onError(err?.message || 'Errore assegnazione pilota'),
+      }
+    );
+  }
+
+  function handleRemove(crew) {
+    const label = driverById[crew.driver_id]?.display_name || crew.driver_id;
+    const ok = window.confirm(`Rimuovere ${label} dalla vettura #${crew.car_number}?`);
+    if (!ok) return;
+    removeMutation.mutate(
+      { crew_id: crew.crew_id, race_id: raceId },
+      { onError: (err) => onError(err?.message || 'Errore rimozione pilota') }
+    );
+  }
+
+  return (
+    <section className={styles.section}>
+      <div className={styles.sectionHeader}>
+        <h2 className={styles.sectionTitle}>Equipaggi</h2>
+      </div>
+
+      {grouped.length > 0 && (
+        <div className={styles.crewGroups}>
+          {grouped.map(([cn, members]) => (
+            <div key={cn || '—'} className={styles.crewGroup}>
+              <div className={styles.crewGroupTitle}>Vettura #{cn || '—'}</div>
+              <div className={styles.crewChips}>
+                {members.map(c => (
+                  <span key={c.crew_id} className={styles.crewChip}>
+                    {driverById[c.driver_id]?.display_name || c.driver_id}
+                    <button
+                      type="button"
+                      className={styles.crewChipRemove}
+                      onClick={() => handleRemove(c)}
+                      disabled={removeMutation.isPending}
+                      title="Rimuovi"
+                    >×</button>
+                  </span>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <form className={styles.crewAddForm} onSubmit={handleAdd}>
+        <input
+          type="text"
+          className={styles.crewAddInput}
+          value={carNumber}
+          onChange={e => setCarNumber(e.target.value)}
+          placeholder="Numero gara (es. 7)"
+        />
+        <select
+          className={styles.crewAddSelect}
+          value={driverId}
+          onChange={e => setDriverId(e.target.value)}
+        >
+          <option value="">— Seleziona pilota —</option>
+          {selectableDrivers.map(d => (
+            <option key={d.driver_id} value={d.driver_id}>{d.display_name}</option>
+          ))}
+        </select>
+        <button type="submit" className={styles.addBtn} disabled={addMutation.isPending}>
+          {addMutation.isPending ? '…' : '+ Assegna'}
+        </button>
+      </form>
+    </section>
+  );
 }

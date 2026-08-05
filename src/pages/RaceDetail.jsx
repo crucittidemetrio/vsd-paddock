@@ -2,7 +2,9 @@ import { useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import StintTimeline from '../components/race/StintTimeline';
+import CrewRoster from '../components/race/CrewRoster';
 import { useStints } from '../hooks/useEnduranceStints';
+import { useRaceCrews } from '../hooks/useRaceCrews';
 import { useAuth } from '../hooks/useAuth';
 import { useParams, Link } from 'react-router-dom';
 import { useRace, useReports } from '../hooks/useRaces';
@@ -324,6 +326,7 @@ export default function RaceDetail() {
   const isEndurance = race?.format === 'endurance';
   const { data: stintsResp } = useStints(isEndurance ? raceId : null);
   const stints = stintsResp?.stints ?? []; // passthrough adapter: unwrap già in call()
+  const { data: crews = [] } = useRaceCrews(isEndurance ? raceId : null);
 
   const hasOfficialResults = (raceResultsData?.results?.length || 0) > 0;
 
@@ -478,6 +481,15 @@ export default function RaceDetail() {
 
       {/* Risultati Ufficiali — appare solo se ci sono righe in RaceResults */}
       <RaceResultsSection raceId={raceId} drivers={drivers} />
+
+      {/* Equipaggi — solo se la gara ha più vetture VSD (es. 8h Daytona).
+          Con un equipaggio solo l'informazione è già ovvia dagli stint,
+          niente da mostrare in più: nessun cambiamento sulle gare normali. */}
+      {isEndurance && crews.length > 0 && (
+        <RequireTier minTier="pilot_vsd">
+          <CrewRoster crews={crews} drivers={drivers} getDriverName={getDriverName} />
+        </RequireTier>
+      )}
 
       {/* Piano Stint — gare endurance, visibile ai piloti loggati (read-only) */}
       {isEndurance && stints.length > 0 && (

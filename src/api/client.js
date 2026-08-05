@@ -209,5 +209,11 @@ endurance: {
         confirmPlan: (payload) => call('endurance.stints.confirmPlan', payload),
       },
     },
+
+    raceCrews: {
+      list: (race_id) => call('raceCrews.list', { race_id }),
+      add: (payload) => call('raceCrews.add', payload),
+      remove: (crew_id) => call('raceCrews.remove', { crew_id }),
+    },
 };
 

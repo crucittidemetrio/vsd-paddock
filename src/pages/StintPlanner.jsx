@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useStintPlanner } from '../hooks/useStintPlanner';
 import { useStints } from '../hooks/useEnduranceStints';
+import { useRaceCrews } from '../hooks/useRaceCrews';
 import { useRace } from '../hooks/useRaces';
 import { useDrivers } from '../hooks/useRoster';
 import Avatar from '../components/shared/Avatar';
@@ -23,6 +24,7 @@ export default function StintPlanner() {
   const { data: raceData } = useRace(raceId);
   const { data: drivers = [] } = useDrivers();
   const { data: stintsResponse } = useStints(raceId);
+  const { data: crews = [] } = useRaceCrews(raceId);
 
   const existingStints = useMemo(() => stintsResponse?.stints || [], [stintsResponse]);
 
@@ -40,12 +42,6 @@ export default function StintPlanner() {
     generate, updateStintInPlan, validate, confirm, reset,
   } = useStintPlanner();
 
-  // Piloti selezionabili: attivi + trial
-  const selectableDrivers = useMemo(
-    () => (drivers || []).filter(d => d.status === 'active' || d.status === 'trial'),
-    [drivers]
-  );
-
   // Parametri del form di generazione
   const [carNumber, setCarNumber] = useState('');
   const [startTime, setStartTime] = useState(race?.date?.slice(0, 16) || '');
@@ -57,6 +53,23 @@ export default function StintPlanner() {
 
   const [confirmError, setConfirmError] = useState(null);
   const [confirmSuccess, setConfirmSuccess] = useState(null);
+
+  // Piloti selezionabili: se esiste un roster equipaggi per la vettura
+  // inserita (assegnato in AdminRaceStints.jsx PRIMA di pianificare), il
+  // picker mostra SOLO quei piloti — evita di scegliere per sbaglio un
+  // pilota di un'altra vettura sulla stessa gara. Senza roster per quella
+  // vettura, fallback su tutti gli attivi/trial (comportamento pre-esistente,
+  // gare a equipaggio singolo mai gestite col roster restano invariate).
+  const crewForCar = useMemo(
+    () => crews.filter(c => String(c.car_number || '').trim() === carNumber.trim()),
+    [crews, carNumber]
+  );
+  const selectableDrivers = useMemo(() => {
+    const activeOrTrial = (drivers || []).filter(d => d.status === 'active' || d.status === 'trial');
+    if (crewForCar.length === 0) return activeOrTrial;
+    const crewIds = new Set(crewForCar.map(c => c.driver_id));
+    return activeOrTrial.filter(d => crewIds.has(d.driver_id));
+  }, [drivers, crewForCar]);
 
   function toggleDriver(driverId) {
     setSelectedDrivers(prev =>
@@ -179,6 +192,9 @@ export default function StintPlanner() {
         <div className={styles.driversBlock}>
           <div className={styles.driversLabel}>
             Piloti in rotazione <span className={styles.hint}>(l'ordine di selezione è l'ordine di rotazione)</span>
+            {crewForCar.length > 0 && (
+              <span className={styles.hint}> — filtrati sull'equipaggio della vettura #{carNumber.trim()}</span>
+            )}
           </div>
           <div className={styles.driversPicker}>
             {selectableDrivers.map(d => {

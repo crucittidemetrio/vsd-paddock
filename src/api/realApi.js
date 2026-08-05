@@ -333,6 +333,12 @@ export async function callApi(action, payload = {}) {
         return await enduranceStintsValidateCoverageAdapter(payload, token);
       case 'endurance.stints.confirmPlan':
         return await enduranceStintsConfirmPlanAdapter(payload, token);
+      case 'raceCrews.list':
+        return await raceCrewsListAdapter(payload, token);
+      case 'raceCrews.add':
+        return await raceCrewsAddAdapter(payload, token);
+      case 'raceCrews.remove':
+        return await raceCrewsRemoveAdapter(payload, token);
       case 'landing.data':
         return await landingDataAdapter(payload, token);
       default:
@@ -943,6 +949,17 @@ async function enduranceStintsValidateCoverageAdapter(payload, token) {
 }
 async function enduranceStintsConfirmPlanAdapter(payload, token) {
   return await postToBackend('endurance.stints.confirmPlan', payload || {}, token);
+}
+
+// ════ Race Crews adapters ════
+async function raceCrewsListAdapter(payload, token) {
+  return await postToBackend('raceCrews.list', payload || {}, token);
+}
+async function raceCrewsAddAdapter(payload, token) {
+  return await postToBackend('raceCrews.add', payload || {}, token);
+}
+async function raceCrewsRemoveAdapter(payload, token) {
+  return await postToBackend('raceCrews.remove', payload || {}, token);
 }
 
 /**
