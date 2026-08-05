@@ -204,6 +204,11 @@
   min-width: 200px;
 }
 
+.crewAddSelect option {
+  background-color: #0e1729;
+  color: #fff;
+}
+
 .addBtn:hover {
   filter: brightness(1.1);
   transform: translateY(-1px);
