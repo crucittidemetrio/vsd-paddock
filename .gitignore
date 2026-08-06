@@ -26,3 +26,9 @@ dist-ssr
 # clasp auth token - MAI committare
 .clasprc.json
 
+__pycache__/
+*.pyc
+companion/config.json
+companion/dist/
+companion/build/
+companion/*.spec

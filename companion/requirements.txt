@@ -1,0 +1,5 @@
+# fuel_bridge.py usa solo la standard library di Python (json, mmap, ctypes,
+# urllib) — nessuna dipendenza a runtime.
+#
+# Serve solo per compilare l'exe (facoltativo, vedi README.md):
+pyinstaller

@@ -1,0 +1,119 @@
+/* CompanionTokenPanel.css — generazione token per il companion app fuel/energy */
+
+.ctp-section {
+  margin-top: 1.5rem;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  border-radius: 10px;
+  background: rgba(6, 13, 31, 0.6);
+}
+
+.ctp-header {
+  margin-bottom: 0.5rem;
+}
+
+.ctp-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #00d4ff;
+  margin: 0;
+}
+
+.ctp-desc {
+  font-size: 0.85rem;
+  color: #9aa8c7;
+  line-height: 1.5;
+  margin: 0 0 1rem 0;
+  max-width: 640px;
+}
+
+.ctp-generate-btn {
+  padding: 10px 18px;
+  background: rgba(0, 212, 255, 0.12);
+  border: 1px solid rgba(0, 212, 255, 0.35);
+  border-radius: 6px;
+  color: #00d4ff;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ctp-generate-btn:hover:not(:disabled) {
+  background: rgba(0, 212, 255, 0.2);
+}
+
+.ctp-generate-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.ctp-error {
+  margin-top: 0.75rem;
+  color: #f54f4f;
+  font-size: 0.85rem;
+}
+
+.ctp-token-box {
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 8px;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.ctp-token-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: #e8eaf6;
+  word-break: break-all;
+  line-height: 1.5;
+  margin-bottom: 0.75rem;
+}
+
+.ctp-token-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 0.75rem;
+}
+
+.ctp-copy-btn,
+.ctp-regen-btn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.ctp-copy-btn {
+  background: rgba(0, 212, 255, 0.15);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  color: #00d4ff;
+}
+
+.ctp-regen-btn {
+  background: transparent;
+  border: 1px solid rgba(154, 168, 199, 0.3);
+  color: #9aa8c7;
+}
+
+.ctp-regen-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.ctp-token-meta {
+  font-size: 0.78rem;
+  color: #6b7a99;
+  line-height: 1.5;
+}
+
+.ctp-token-meta code {
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: #9aa8c7;
+}

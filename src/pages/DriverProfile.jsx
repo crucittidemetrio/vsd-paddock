@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
 import { useDriver } from '../hooks/useRoster';
 import { useBestLaps } from '../hooks/useBestLaps';
 import { useRaces, useReports } from '../hooks/useRaces';
@@ -12,6 +13,7 @@ import SimBadge from '../components/shared/SimBadge';
 import StatusDot from '../components/shared/StatusDot';
 import LapTime from '../components/shared/LapTime';
 import MyDominantClassesWidget from '../components/dashboard/MyDominantClassesWidget';
+import CompanionTokenPanel from '../components/profile/CompanionTokenPanel';
 import { ROLES } from '../utils/constants';
 import { formatTrack, formatCar, formatDate } from '../utils/format';
 import './DriverProfile.css';
@@ -19,6 +21,8 @@ import './Page.css';
 
 export default function DriverProfile() {
   const { driverId } = useParams();
+  const { driver: authDriver } = useAuth();
+  const isOwnProfile = !!authDriver?.driver_id && authDriver.driver_id === driverId;
   const [showAllLaps, setShowAllLaps] = useState(false);
   const [showAllHistory, setShowAllHistory] = useState(false);
 
@@ -306,6 +310,8 @@ export default function DriverProfile() {
           </div>
         </div>
       </div>
+
+      {isOwnProfile && <CompanionTokenPanel />}
 
       {/* STATS */}
       <div className="stats-grid">
