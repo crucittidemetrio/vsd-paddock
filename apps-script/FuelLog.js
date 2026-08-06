@@ -87,7 +87,8 @@ function handleFuelLogSample(payload, ctx) {
  * @returns {Object} ok({
  *   sample_count, latest,
  *   fuel: { avg_per_lap_l, laps_remaining, needed_for_target_l },
- *   energy: { avg_pct_per_lap, laps_remaining, needed_for_target_pct } | null
+ *   energy: { avg_pct_per_lap, laps_remaining, needed_for_target_pct } | null,
+ *   series: [{ lap_number, fuel_remaining_l, virtual_energy_pct }]  // per il grafico
  * })
  */
 function handleFuelSummary(payload, ctx) {
@@ -164,5 +165,13 @@ function handleFuelSummary(payload, ctx) {
       : null,
   } : null;
 
-  return ok({ sample_count: samples.length, latest, fuel, energy });
+  // Serie per il grafico di tendenza lato frontend — solo i campi
+  // essenziali, un punto per giro (già ordinati per lap_number sopra).
+  const series = samples.map(s => ({
+    lap_number: s.lap_number,
+    fuel_remaining_l: s.fuel_remaining_l,
+    virtual_energy_pct: s.virtual_energy_pct,
+  }));
+
+  return ok({ sample_count: samples.length, latest, fuel, energy, series });
 }

@@ -32,6 +32,12 @@ const PILOT_ITEMS = [
   { to: '/recap', label: 'Season Recap', icon: '✦' },
   { to: '/records', label: 'Muro dei Record', icon: '🏆' },
   { to: '/training', label: LABELS.nav_training, icon: '◆' },
+];
+
+// Strumenti da usare DURANTE una sessione (gara o prova), non pagine di
+// consultazione — sezione separata coi propri accenti visivi, così è
+// chiaro a colpo d'occhio che non è "un'altra pagina di statistiche".
+const TOOLS_ITEMS = [
   { to: '/carburante-energia', label: 'Carburante/Energia', icon: '⛽' },
 ];
 
@@ -57,6 +63,9 @@ const ADMIN_ONLY_ITEMS = [
 ];
 
 function renderNavItem(item, onMobileClose, extraClass = '') {
+  const tagText = extraClass.includes('is-soon') ? 'soon'
+    : extraClass.includes('is-tool') ? 'live'
+    : null;
   return (
     <NavLink
       key={item.to}
@@ -67,7 +76,7 @@ function renderNavItem(item, onMobileClose, extraClass = '') {
     >
       <span className="nav-icon">{item.icon}</span>
       <span className="nav-label">{item.label}</span>
-      {extraClass.includes('is-soon') && <span className="nav-tag">soon</span>}
+      {tagText && <span className={`nav-tag${tagText === 'live' ? ' nav-tag-live' : ''}`}>{tagText}</span>}
     </NavLink>
   );
 }
@@ -89,6 +98,13 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
         {EVENTS_ITEMS.map(item => renderNavItem(item, onMobileClose, 'is-event'))}
 
         {isVsdPilot && PILOT_ITEMS.map(item => renderNavItem(item, onMobileClose))}
+
+        {isVsdPilot && (
+          <>
+            <div className="nav-section-label nav-section-label-tool">Strumenti Gara</div>
+            {TOOLS_ITEMS.map(item => renderNavItem(item, onMobileClose, 'is-tool'))}
+          </>
+        )}
 
         {isVsdPilot && (
           <>

@@ -117,6 +117,22 @@
   color: #7a8aa8;
 }
 
+.fp-chart {
+  margin-top: 16px;
+  padding: 12px 8px 4px;
+  background: rgba(255, 255, 255, 0.015);
+  border: 1px solid rgba(0, 212, 255, 0.1);
+  border-radius: 8px;
+}
+
+.fp-chart-title {
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #7a8aa8;
+  margin: 0 8px 8px;
+}
+
 .fp-warning {
   margin-top: 12px;
   padding: 12px 16px;

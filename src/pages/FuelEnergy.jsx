@@ -42,7 +42,10 @@ export default function FuelEnergy() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <div className={styles.eyebrow}>CARBURANTE / ENERGIA</div>
+        <div className={styles.eyebrow}>
+          CARBURANTE / ENERGIA
+          <span className={styles.liveBadge}>● strumento da gara</span>
+        </div>
         <h1 className={styles.title}>Consumo live</h1>
         <p className={styles.sub}>
           Funziona in gara come nelle sessioni di prova — non serve un evento

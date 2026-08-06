@@ -1,6 +1,12 @@
 import { useState } from 'react';
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, Legend,
+} from 'recharts';
 import { useFuelSummary } from '../../hooks/useFuelLog';
 import './FuelPanel.css';
+
+const FUEL_LABELS = { fuel_remaining_l: 'Carburante', virtual_energy_pct: 'Energia' };
 
 /**
  * FuelPanel — consumo medio ed autonomia stimata, calcolati da
@@ -133,6 +139,95 @@ export default function FuelPanel({ raceId, carNumber }) {
             </>
           )}
         </div>
+
+        {data?.series?.length >= 2 && (
+          <div className="fp-chart">
+            <div className="fp-chart-title">Andamento consumo per giro</div>
+            <ResponsiveContainer width="100%" height={220}>
+              <AreaChart data={data.series} margin={{ top: 8, right: 20, left: 0, bottom: 4 }}>
+                <defs>
+                  <linearGradient id="fpFuelGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#00d4ff" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#00d4ff" stopOpacity={0} />
+                  </linearGradient>
+                  {energy && (
+                    <linearGradient id="fpEnergyGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f5a623" stopOpacity={0.35} />
+                      <stop offset="95%" stopColor="#f5a623" stopOpacity={0} />
+                    </linearGradient>
+                  )}
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                <XAxis
+                  dataKey="lap_number"
+                  stroke="rgba(255,255,255,0.4)"
+                  fontSize={11}
+                  label={{ value: 'Giro', position: 'insideBottom', offset: -2, fill: 'rgba(255,255,255,0.4)', fontSize: 11 }}
+                />
+                <YAxis
+                  yAxisId="fuel"
+                  stroke="#00d4ff"
+                  fontSize={11}
+                  width={46}
+                  tickFormatter={v => `${v}L`}
+                />
+                {energy && (
+                  <YAxis
+                    yAxisId="energy"
+                    orientation="right"
+                    stroke="#f5a623"
+                    fontSize={11}
+                    width={42}
+                    domain={[0, 100]}
+                    tickFormatter={v => `${v}%`}
+                  />
+                )}
+                <Tooltip
+                  contentStyle={{
+                    background: '#0a0e1a',
+                    border: '1px solid rgba(0,212,255,0.3)',
+                    borderRadius: 6,
+                    fontSize: 12,
+                  }}
+                  labelStyle={{ color: '#00d4ff', fontFamily: 'monospace' }}
+                  labelFormatter={l => `Giro ${l}`}
+                  formatter={(value, name) => [
+                    name === 'fuel_remaining_l' ? `${Number(value).toFixed(1)} L` : `${Number(value).toFixed(0)}%`,
+                    FUEL_LABELS[name] || name,
+                  ]}
+                />
+                <Legend
+                  wrapperStyle={{ fontSize: 11, paddingTop: 6 }}
+                  formatter={name => FUEL_LABELS[name] || name}
+                />
+                <Area
+                  yAxisId="fuel"
+                  type="monotone"
+                  dataKey="fuel_remaining_l"
+                  stroke="#00d4ff"
+                  strokeWidth={2}
+                  fill="url(#fpFuelGradient)"
+                  dot={{ r: 2 }}
+                  activeDot={{ r: 5 }}
+                  connectNulls
+                />
+                {energy && (
+                  <Area
+                    yAxisId="energy"
+                    type="monotone"
+                    dataKey="virtual_energy_pct"
+                    stroke="#f5a623"
+                    strokeWidth={2}
+                    fill="url(#fpEnergyGradient)"
+                    dot={{ r: 2 }}
+                    activeDot={{ r: 5 }}
+                    connectNulls
+                  />
+                )}
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
         </>
       )}
 
