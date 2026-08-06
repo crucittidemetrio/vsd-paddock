@@ -9,45 +9,41 @@ Solo Windows, solo Le Mans Ultimate (per ora).
 
 ---
 
-## Per i piloti — uso rapido
+## Guida rapida per i piloti
 
-Non serve installare Python: usa l'eseguibile già pronto
-`vsd-fuel-bridge.exe` (te lo passa lo staff, di solito nel canale Discord
-del team — viene ricompilato automaticamente da GitHub Actions ad ogni
-aggiornamento, vedi sezione staff più sotto).
+Nessuna installazione, nessun Python: un unico file da scaricare e
+avviare.
 
-1. **Abilita i plugin in LMU** — Impostazioni → Gameplay → **Enable
-   Plugins** → ON. Se lo cambi a gioco già aperto, riavvia LMU. Non
-   installa nulla: è una funzione già dentro il gioco.
-2. **Genera il tuo token** — dal tuo profilo su vsd-paddock, bottone
-   **"Genera token companion"**. Dura 180 giorni, è personale: non
-   condividerlo, chi lo ha può mandare dati consumo a tuo nome.
-3. **Doppio click su `vsd-fuel-bridge.exe`.** Si apre una finestra nera
-   (terminale) che al primo avvio fa 3 domande:
-   - il token del passo 2
-   - un ID sessione (per una gara ufficiale usa lo stesso race_id del
-     calendario; per una prova libera va bene un'etichetta a piacere,
-     es. `TEST-monza-06-08` — basta scrivere la STESSA cosa anche nel
-     pannello Carburante/Energia della webapp)
-   - il numero della tua vettura in quella sessione
-4. **Lancia (o passa a) Le Mans Ultimate ed entra in pista.** Ad ogni
-   giro completato la finestra mostra una riga di conferma. Lascia
-   aperta la finestra per tutta la sessione; `Ctrl+C` (o chiudi la
-   finestra) per fermare.
-5. Apri il pannello **Carburante/Energia** sulla webapp con lo stesso ID
-   sessione e numero vettura: dopo 2-3 giri vedi consumo medio,
-   autonomia stimata e il grafico popolarsi.
+**Cosa ti serve prima di iniziare:**
 
-Le volte successive, `vsd-fuel-bridge.exe` riparte diretto senza fare più
-domande (si ricorda i dati). Se cambi vettura o sessione, cancella il file
-`config.json` che si trova nella stessa cartella dell'exe: al prossimo
-avvio richiede di nuovo i 3 dati.
+- LMU con i plugin abilitati (Impostazioni → Gameplay → **Enable
+  Plugins** → ON — se lo cambi a gioco aperto, riavvia LMU)
+- Il tuo token personale, generato una volta dal tuo profilo su
+  vsd-paddock (bottone **"Genera token companion"**). Dura 180 giorni,
+  non va condiviso.
 
-**Se non vedi nulla nel pannello:** controlla di essere davvero in pista
-(non nei menu di LMU), che i plugin siano abilitati, e che token/ID
-sessione/numero vettura coincidano esattamente tra companion app e
-webapp — un errore di battitura in uno dei due basta a non far comparire
-i dati.
+**Ad ogni sessione:**
+
+| Passo | Cosa fare |
+|---|---|
+| 1 | Scarica `vsd-fuel-bridge.exe` da [questa pagina](https://github.com/crucittidemetrio/vsd-paddock/actions/workflows/build-companion.yml) → clicca la run più in alto → in fondo, sezione **Artifacts** → `vsd-fuel-bridge-exe` (serve un account GitHub loggato) |
+| 2 | Fai doppio click sul file scaricato. Si apre una finestra nera |
+| 3 | **Solo la prima volta**, ti chiede 3 cose: il tuo token, un nome per la sessione (es. `TEST-monza-06-08` per una prova, oppure il race_id ufficiale per una gara) e il numero della tua vettura |
+| 4 | Entra in pista su LMU. Ad ogni giro completato vedi una riga confermare l'invio |
+| 5 | Apri il pannello **Carburante/Energia** sul sito (menu laterale → Strumenti Gara), scrivendo lo STESSO nome sessione e numero vettura del passo 3 |
+
+Lascia la finestra nera aperta per tutta la sessione. Per fermare:
+`Ctrl+C` o chiudi la finestra.
+
+Le sessioni dopo la prima non richiedono più le 3 domande — si ricorda
+tutto da solo. Se cambi vettura o sessione, cancella il file
+`config.json` che trovi nella stessa cartella dell'exe: alla prossima
+apertura te le richiede di nuovo.
+
+**Non vedi dati nel pannello?** Controlla, in ordine: sei davvero in
+pista (non nei menu)? I plugin LMU sono su ON? Nome sessione e numero
+vettura sono scritti IDENTICI sia nell'exe che sul sito (attenzione a
+maiuscole/spazi)?
 
 ---
 
@@ -121,7 +117,7 @@ companion/
   requirements.txt        ← solo per il build (pyinstaller)
   vendor/
     lmu_data.py            ← struct ufficiali shared memory LMU (vendorizzato)
-    LICENSE.txt             ← licenza MIT del file vendorizzato
+    LICENSE.txt            ← licenza MIT del file vendorizzato
 ```
 
 `vendor/lmu_data.py` è preso verbatim da
