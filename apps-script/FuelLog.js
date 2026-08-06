@@ -87,7 +87,7 @@ function handleFuelLogSample(payload, ctx) {
  * @returns {Object} ok({
  *   sample_count, latest,
  *   fuel: { avg_per_lap_l, laps_remaining, needed_for_target_l },
- *   energy: { avg_pct_per_lap, laps_remaining } | null
+ *   energy: { avg_pct_per_lap, laps_remaining, needed_for_target_pct } | null
  * })
  */
 function handleFuelSummary(payload, ctx) {
@@ -159,6 +159,9 @@ function handleFuelSummary(payload, ctx) {
   const energy = latest.virtual_energy_pct != null ? {
     avg_pct_per_lap: avgEnergyPctPerLap,
     laps_remaining: avgEnergyPctPerLap ? latest.virtual_energy_pct / avgEnergyPctPerLap : null,
+    needed_for_target_pct: (targetLaps != null && avgEnergyPctPerLap)
+      ? Math.max(0, targetLaps * avgEnergyPctPerLap - latest.virtual_energy_pct)
+      : null,
   } : null;
 
   return ok({ sample_count: samples.length, latest, fuel, energy });

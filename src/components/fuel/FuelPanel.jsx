@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useFuelSummary } from '../../hooks/useFuelLog';
 import './FuelPanel.css';
 
@@ -17,7 +18,14 @@ import './FuelPanel.css';
  * @param {string} carNumber
  */
 export default function FuelPanel({ raceId, carNumber }) {
-  const { data, isLoading } = useFuelSummary(raceId, carNumber);
+  // Giri residui inseriti a mano dal pilota — nessun automatismo legato
+  // a planned_end_time dello stint: vale sia in gara sia nelle prove
+  // libere, dove uno stint ufficiale non esiste nemmeno.
+  const [targetLapsInput, setTargetLapsInput] = useState('');
+  const targetLaps = targetLapsInput.trim() ? Number(targetLapsInput) : null;
+  const validTarget = targetLaps != null && Number.isFinite(targetLaps) && targetLaps > 0;
+
+  const { data, isLoading } = useFuelSummary(raceId, carNumber, validTarget ? targetLaps : null);
 
   const sampleCount = data?.sample_count || 0;
   const latest = data?.latest || null;
@@ -42,6 +50,23 @@ export default function FuelPanel({ raceId, carNumber }) {
           ad ogni giro completato in pista — vedi companion/README.md.
         </div>
       ) : (
+        <>
+        <div className="fp-target">
+          <label htmlFor="fp-target-laps">Quanti giri pensi ti restino?</label>
+          <input
+            id="fp-target-laps"
+            type="number"
+            min="1"
+            inputMode="numeric"
+            value={targetLapsInput}
+            onChange={e => setTargetLapsInput(e.target.value)}
+            placeholder="es. 8"
+          />
+          <span className="fp-target-hint">
+            Inserimento manuale — nessun calcolo automatico da fine gara/stint.
+          </span>
+        </div>
+
         <div className={`fp-grid ${lowWarning ? 'fp-grid-warning' : ''}`}>
           <div className="fp-stat">
             <div className="fp-stat-label">Giro</div>
@@ -65,6 +90,17 @@ export default function FuelPanel({ raceId, carNumber }) {
             </div>
           </div>
 
+          {validTarget && fuel?.needed_for_target_l != null && (
+            <div className="fp-stat fp-stat-target">
+              <div className="fp-stat-label">Rabbocco consigliato ({targetLaps} giri)</div>
+              <div className="fp-stat-value">
+                {fuel.needed_for_target_l > 0
+                  ? `+${fuel.needed_for_target_l.toFixed(1)} L`
+                  : 'Basta quello che hai'}
+              </div>
+            </div>
+          )}
+
           {energy && (
             <>
               <div className="fp-stat">
@@ -83,9 +119,21 @@ export default function FuelPanel({ raceId, carNumber }) {
                   {energy.laps_remaining != null ? `${energy.laps_remaining.toFixed(1)} giri` : '—'}
                 </div>
               </div>
+
+              {validTarget && energy.needed_for_target_pct != null && (
+                <div className="fp-stat fp-stat-target">
+                  <div className="fp-stat-label">Energia consigliata ({targetLaps} giri)</div>
+                  <div className="fp-stat-value">
+                    {energy.needed_for_target_pct > 0
+                      ? `+${energy.needed_for_target_pct.toFixed(0)}%`
+                      : 'Basta quella che hai'}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
+        </>
       )}
 
       {lowWarning && (

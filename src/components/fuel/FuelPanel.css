@@ -39,6 +39,45 @@
   font-size: 0.9rem;
 }
 
+.fp-target {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px dashed rgba(0, 212, 255, 0.25);
+  border-radius: 8px;
+}
+
+.fp-target label {
+  font-size: 0.85rem;
+  color: #9aa8c7;
+}
+
+.fp-target input {
+  width: 80px;
+  padding: 6px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 6px;
+  color: #e8eaf6;
+  font-family: inherit;
+  font-size: 0.9rem;
+}
+
+.fp-target-hint {
+  font-size: 0.75rem;
+  color: #6b7a99;
+  font-style: italic;
+}
+
+.fp-stat-target {
+  border-color: rgba(255, 173, 71, 0.35);
+  background: rgba(255, 173, 71, 0.06);
+}
+
 .fp-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));

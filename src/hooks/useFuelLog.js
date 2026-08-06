@@ -12,11 +12,15 @@ import { api } from '../api/client';
  *
  * @param {string} raceId
  * @param {string} carNumber
+ * @param {number|null} [targetLaps] - se valorizzato (inserito a mano
+ *   dal pilota, nessun automatismo legato allo stint), il backend
+ *   calcola anche il rabbocco necessario per coprire quel numero di
+ *   giri extra (fuel.needed_for_target_l / energy.needed_for_target_pct)
  */
-export function useFuelSummary(raceId, carNumber) {
+export function useFuelSummary(raceId, carNumber, targetLaps) {
   return useQuery({
-    queryKey: ['fuel', 'summary', raceId, carNumber],
-    queryFn: () => api.fuel.summary(raceId, carNumber),
+    queryKey: ['fuel', 'summary', raceId, carNumber, targetLaps || null],
+    queryFn: () => api.fuel.summary(raceId, carNumber, targetLaps ? { target_laps: targetLaps } : {}),
     enabled: !!raceId && !!carNumber,
     refetchInterval: 15 * 1000,
     staleTime: 10 * 1000,
