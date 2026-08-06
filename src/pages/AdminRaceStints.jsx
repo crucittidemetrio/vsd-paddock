@@ -11,11 +11,11 @@ import {
   useAddCrewMember,
   useRemoveCrewMember,
 } from '../hooks/useRaceCrews';
-import { useFuelSummary } from '../hooks/useFuelLog';
 import { useRaces } from '../hooks/useRaces';
 import { useDrivers } from '../hooks/useRoster';
 import Avatar from '../components/shared/Avatar';
 import SwapPilotModal from '../components/race/SwapPilotModal';
+import FuelPanel from '../components/fuel/FuelPanel';
 import styles from './AdminRaceStints.module.css';
 
 const TIRE_COMPOUNDS = ['soft', 'medium', 'hard', 'wet', 'intermediate'];
@@ -782,94 +782,6 @@ function CrewPanel({ raceId, crews, drivers, driverById, onError }) {
           {addMutation.isPending ? '…' : '+ Assegna'}
         </button>
       </form>
-    </section>
-  );
-}
-
-/**
- * FuelPanel — consumo medio ed autonomia stimata, calcolati da
- * fuel.summary sui campioni inviati dal companion app
- * (companion/fuel_bridge.py) ad ogni giro completato. Polling ogni
- * 15s: pensato per essere guardato durante la gara, non solo in fase
- * di pianificazione.
- */
-function FuelPanel({ raceId, carNumber }) {
-  const { data, isLoading } = useFuelSummary(raceId, carNumber);
-
-  const sampleCount = data?.sample_count || 0;
-  const latest = data?.latest || null;
-  const fuel = data?.fuel || null;
-  const energy = data?.energy || null;
-
-  const lapsRemaining = [fuel?.laps_remaining, energy?.laps_remaining]
-    .filter(v => v != null)
-    .reduce((min, v) => (min == null ? v : Math.min(min, v)), null);
-  const lowWarning = lapsRemaining != null && lapsRemaining < 3;
-
-  return (
-    <section className={styles.section}>
-      <div className={styles.sectionHeader}>
-        <h2 className={styles.sectionTitle}>Carburante / Energia — Vettura #{carNumber}</h2>
-        {isLoading && <span className={styles.fuelStale}>aggiornamento…</span>}
-      </div>
-
-      {sampleCount === 0 ? (
-        <div className={styles.empty}>
-          Nessun campione ricevuto ancora. Il companion app manda un campione
-          ad ogni giro completato in pista — vedi companion/README.md.
-        </div>
-      ) : (
-        <div className={`${styles.fuelGrid} ${lowWarning ? styles.fuelGridWarning : ''}`}>
-          <div className={styles.fuelStat}>
-            <div className={styles.fuelStatLabel}>Giro</div>
-            <div className={styles.fuelStatValue}>{latest.lap_number}</div>
-          </div>
-
-          <div className={styles.fuelStat}>
-            <div className={styles.fuelStatLabel}>Carburante residuo</div>
-            <div className={styles.fuelStatValue}>
-              {latest.fuel_remaining_l != null ? `${latest.fuel_remaining_l.toFixed(1)} L` : '—'}
-            </div>
-            {fuel?.avg_per_lap_l != null && (
-              <div className={styles.fuelStatSub}>{fuel.avg_per_lap_l.toFixed(2)} L/giro medio</div>
-            )}
-          </div>
-
-          <div className={styles.fuelStat}>
-            <div className={styles.fuelStatLabel}>Autonomia carburante</div>
-            <div className={styles.fuelStatValue}>
-              {fuel?.laps_remaining != null ? `${fuel.laps_remaining.toFixed(1)} giri` : '—'}
-            </div>
-          </div>
-
-          {energy && (
-            <>
-              <div className={styles.fuelStat}>
-                <div className={styles.fuelStatLabel}>Energia virtuale residua</div>
-                <div className={styles.fuelStatValue}>
-                  {latest.virtual_energy_pct != null ? `${latest.virtual_energy_pct.toFixed(0)}%` : '—'}
-                </div>
-                {energy.avg_pct_per_lap != null && (
-                  <div className={styles.fuelStatSub}>{energy.avg_pct_per_lap.toFixed(1)}%/giro medio</div>
-                )}
-              </div>
-
-              <div className={styles.fuelStat}>
-                <div className={styles.fuelStatLabel}>Autonomia energia</div>
-                <div className={styles.fuelStatValue}>
-                  {energy.laps_remaining != null ? `${energy.laps_remaining.toFixed(1)} giri` : '—'}
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      )}
-
-      {lowWarning && (
-        <div className={styles.alertError}>
-          ⚠ Autonomia stimata sotto i 3 giri — valuta un rientro a breve.
-        </div>
-      )}
     </section>
   );
 }

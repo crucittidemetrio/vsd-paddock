@@ -32,6 +32,7 @@ const PILOT_ITEMS = [
   { to: '/recap', label: 'Season Recap', icon: '✦' },
   { to: '/records', label: 'Muro dei Record', icon: '🏆' },
   { to: '/training', label: LABELS.nav_training, icon: '◆' },
+  { to: '/carburante-energia', label: 'Carburante/Energia', icon: '⛽' },
 ];
 
 // Voci future "soon" — solo pilota loggato

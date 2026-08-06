@@ -49,8 +49,16 @@ Apri `config.json` e compila:
 |---|---|
 | `api_url` | Lo stesso URL Apps Script usato dal frontend (`VITE_API_URL` in `.env.local`) |
 | `token` | Il token generato al passo 2 |
-| `race_id` | L'id della gara (dal calendario) |
-| `car_number` | Il numero di gara della TUA vettura in quella gara |
+| `race_id` | ID sessione — vedi sotto |
+| `car_number` | Il numero della TUA vettura in quella sessione |
+
+**`race_id` non deve per forza essere una gara ufficiale.** È solo
+un'etichetta che raggruppa i campioni: per una gara VSD in calendario usa
+lo stesso race_id (i dati compaiono anche in Admin → Gestione stint), per
+una sessione di prova va bene qualsiasi etichetta a piacere (es.
+`TEST-monza-06-08`) — basta che sia IDENTICA a quella che scrivi nel
+pannello **Carburante/Energia** della webapp (menu laterale, visibile a
+ogni pilota VSD, non solo staff).
 
 `car_number` non viene indovinato automaticamente — se guidi più eventi
 nello stesso weekend, ricontrolla di aver messo il numero giusto prima di

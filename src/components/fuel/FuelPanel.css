@@ -1,0 +1,89 @@
+/* FuelPanel.css — consumo/autonomia live, riusato in Admin e pagina pilota */
+
+.fp-section {
+  margin-top: 1.5rem;
+  padding: 20px;
+  background: rgba(0, 212, 255, 0.03);
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  border-radius: 8px;
+}
+
+.fp-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.fp-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.1rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #00d4ff;
+  margin: 0;
+}
+
+.fp-stale {
+  font-size: 11px;
+  color: #7a8aa8;
+  font-style: italic;
+}
+
+.fp-empty {
+  padding: 24px;
+  text-align: center;
+  color: #7a8aa8;
+  font-size: 0.9rem;
+}
+
+.fp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.fp-grid-warning {
+  outline: 1px solid rgba(245, 79, 79, 0.4);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.fp-stat {
+  padding: 12px 14px;
+  background: rgba(0, 212, 255, 0.03);
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  border-radius: 8px;
+}
+
+.fp-stat-label {
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #7a8aa8;
+  margin-bottom: 6px;
+}
+
+.fp-stat-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #e8eaf6;
+}
+
+.fp-stat-sub {
+  margin-top: 4px;
+  font-size: 12px;
+  color: #7a8aa8;
+}
+
+.fp-warning {
+  margin-top: 12px;
+  padding: 12px 16px;
+  background: rgba(245, 79, 79, 0.1);
+  border: 1px solid rgba(245, 79, 79, 0.3);
+  border-radius: 6px;
+  color: #f54f4f;
+  font-size: 14px;
+}

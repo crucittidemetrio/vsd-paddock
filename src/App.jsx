@@ -25,6 +25,7 @@ const RaceDetail          = lazy(() => import('./pages/RaceDetail'));
 const Reports             = lazy(() => import('./pages/Reports'));
 const LapsDrilldown       = lazy(() => import('./pages/LapsDrilldown'));
 const Training            = lazy(() => import('./pages/Training'));
+const FuelEnergy          = lazy(() => import('./pages/FuelEnergy'));
 const Academy             = lazy(() => import('./pages/Academy'));
 const Endurance           = lazy(() => import('./pages/Endurance'));
 const EnduranceDetail     = lazy(() => import('./pages/EnduranceDetail'));
@@ -147,6 +148,14 @@ export default function App() {
                 element={
                   <RequireTier minTier="pilot_vsd" fallback={<LoginPrompt feature="il Muro dei Record" />}>
                     <TeamRecords />
+                  </RequireTier>
+                }
+              />
+              <Route
+                path="/carburante-energia"
+                element={
+                  <RequireTier minTier="pilot_vsd" fallback={<LoginPrompt feature="il pannello Carburante/Energia" />}>
+                    <FuelEnergy />
                   </RequireTier>
                 }
               />
