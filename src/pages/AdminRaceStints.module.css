@@ -209,6 +209,53 @@
   color: #fff;
 }
 
+/* ════ FUEL/ENERGY PANEL ════ */
+
+.fuelStale {
+  font-size: 11px;
+  color: var(--vsd-text-dim, #7a8aa8);
+  font-style: italic;
+}
+
+.fuelGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.fuelGridWarning {
+  outline: 1px solid rgba(245, 79, 79, 0.4);
+  border-radius: 8px;
+  padding: 8px;
+}
+
+.fuelStat {
+  padding: 12px 14px;
+  background: rgba(0, 212, 255, 0.03);
+  border: 1px solid var(--vsd-border, rgba(0, 212, 255, 0.15));
+  border-radius: 8px;
+}
+
+.fuelStatLabel {
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--vsd-text-dim, #7a8aa8);
+  margin-bottom: 6px;
+}
+
+.fuelStatValue {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--vsd-text, #e8eaf6);
+}
+
+.fuelStatSub {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--vsd-text-dim, #7a8aa8);
+}
+
 .addBtn:hover {
   filter: brightness(1.1);
   transform: translateY(-1px);
