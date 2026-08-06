@@ -36,61 +36,57 @@ condividerlo, chi lo ha può scrivere campioni consumo a tuo nome (stesso
 livello di rischio di un token di sessione normale, solo con validità più
 lunga).
 
-### 3. Configura
-
-```
-cd companion
-cp config.example.json config.json
-```
-
-Apri `config.json` e compila:
-
-| Campo | Cosa metterci |
-|---|---|
-| `api_url` | Lo stesso URL Apps Script usato dal frontend (`VITE_API_URL` in `.env.local`) |
-| `token` | Il token generato al passo 2 |
-| `race_id` | ID sessione — vedi sotto |
-| `car_number` | Il numero della TUA vettura in quella sessione |
-
-**`race_id` non deve per forza essere una gara ufficiale.** È solo
-un'etichetta che raggruppa i campioni: per una gara VSD in calendario usa
-lo stesso race_id (i dati compaiono anche in Admin → Gestione stint), per
-una sessione di prova va bene qualsiasi etichetta a piacere (es.
-`TEST-monza-06-08`) — basta che sia IDENTICA a quella che scrivi nel
-pannello **Carburante/Energia** della webapp (menu laterale, visibile a
-ogni pilota VSD, non solo staff).
-
-`car_number` non viene indovinato automaticamente — se guidi più eventi
-nello stesso weekend, ricontrolla di aver messo il numero giusto prima di
-lanciare lo script.
-
-### 4. Esegui
+### 3. Esegui
 
 ```
 python fuel_bridge.py
 ```
 
+**Non serve editare nessun file a mano.** Al primo avvio, se non trova
+`config.json`, lo script fa 3 domande direttamente nel terminale — token,
+ID sessione, numero vettura — e si salva tutto da solo. Le volte
+successive parte diretto, senza richieste (cancella `config.json` per
+ricominciare, es. se cambi vettura o sessione).
+
+**`race_id`/ID sessione non deve per forza essere una gara ufficiale.** È
+solo un'etichetta che raggruppa i campioni: per una gara VSD in calendario
+usa lo stesso race_id (i dati compaiono anche in Admin → Gestione stint),
+per una sessione di prova va bene qualsiasi etichetta a piacere (es.
+`TEST-monza-06-08`) — basta che sia IDENTICA a quella che scrivi nel
+pannello **Carburante/Energia** della webapp (menu laterale, visibile a
+ogni pilota VSD, non solo staff).
+
 Lancia (o passa a) Le Mans Ultimate ed entra in pista. I log mostrano un
 campione inviato ad ogni giro completato. `Ctrl+C` per fermare.
 
 Se non vedi nulla: controlla di essere davvero in pista (non nei menu),
-che i plugin siano abilitati, e che `api_url`/`token` siano corretti — un
-token scaduto o sbagliato fa fallire silenziosamente ogni invio (log
-`WARNING`, non crash).
+che i plugin siano abilitati, e che il token sia corretto e non scaduto —
+un token sbagliato fa fallire silenziosamente ogni invio (log `WARNING`,
+non crash).
 
-## Build .exe (facoltativo)
+Chi preferisce compilare un file invece di rispondere alle domande può
+ancora copiare `config.example.json` in `config.json` e editarlo a mano
+prima di lanciare lo script.
 
-Per non richiedere Python installato ai piloti:
+## Distribuire un .exe ai piloti senza Python (consigliato)
+
+La maggior parte dei piloti non ha Python installato. Una persona sola
+(chi ha già Python, es. da questo setup) compila **una volta** un
+eseguibile Windows e lo distribuisce a tutti — ogni pilota deve solo
+scaricarlo e fare doppio click, il wizard di configurazione (passo 3
+sopra) parte comunque al primo avvio:
 
 ```
 pip install pyinstaller
+cd companion
 pyinstaller --onefile --name vsd-fuel-bridge fuel_bridge.py
 ```
 
-L'eseguibile finito è in `dist/vsd-fuel-bridge.exe`. Va distribuito
-**insieme** a `config.json` nella stessa cartella (non è incluso nell'exe,
-resta modificabile senza ricompilare — ogni pilota lo compila una volta
-sola con i propri dati).
+L'eseguibile finito è in `dist/vsd-fuel-bridge.exe` — è un file singolo,
+autosufficiente, non serve più portarsi dietro `config.json`: ogni pilota
+lo doppio-clicca, risponde alle 3 domande la prima volta (token/sessione/
+vettura) e da lì in poi parte da solo. Il file va ricompilato solo se
+cambia il codice dello script, non ad ogni gara.
 
 ## Struttura
 

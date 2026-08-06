@@ -9,19 +9,18 @@ un campione a fuel.logSample sul backend VSD Paddock ad ogni cambio
 giro, così l'admin vede consumo medio e autonomia stimata in tempo
 reale nel pannello stint.
 
-Setup:
-  1. pip install -r requirements.txt   (nessuna dipendenza esterna,
-     serve solo per pyinstaller quando compili l'exe — vedi README)
-  2. Copia config.example.json in config.json e compilalo:
-       - api_url:    URL del web app Apps Script (stesso di .env.local
-                      del frontend, VITE_API_URL)
-       - token:      generato dal tuo profilo su vsd-paddock ("Genera
-                      token companion"), valido 180 giorni
-       - race_id:    id della gara (vedi calendario)
-       - car_number: numero di gara della TUA vettura in quella gara
-  3. python fuel_bridge.py
-  4. Lancia Le Mans Ultimate, entra in pista — i campioni partono da
+Setup (pilota, nessuna modifica manuale di file richiesta):
+  1. python fuel_bridge.py  (oppure doppio click su vsd-fuel-bridge.exe,
+     se qualcuno ha già compilato l'exe — vedi sotto)
+  2. Al primo avvio, se non trova config.json, lo script chiede a voce
+     token/race_id/car_number direttamente nel terminale e li salva da
+     solo in config.json accanto allo script — non serve editare JSON
+     a mano. Le volte successive parte diretto, senza richieste.
+  3. Lancia Le Mans Ultimate, entra in pista — i campioni partono da
      soli ad ogni cambio giro. Ctrl+C per fermare.
+
+  (config.example.json resta disponibile per chi preferisce compilare
+  il file a mano invece di rispondere alle domande.)
 
 Build .exe (facoltativo, per non richiedere Python ai piloti):
   pip install pyinstaller
@@ -46,17 +45,57 @@ CONFIG_PATH = Path(__file__).resolve().parent / "config.json"
 POLL_INTERVAL_S = 2.0
 RECONNECT_INTERVAL_S = 5.0
 
+# URL pubblico del backend Apps Script — lo stesso già usato dal
+# frontend (VITE_API_URL), non è un segreto: è l'endpoint a cui il
+# browser di ogni pilota manda già richieste normalmente. Tenerlo qui
+# come default evita che ogni pilota debba andarselo a cercare.
+DEFAULT_API_URL = "https://script.google.com/macros/s/AKfycbyMXxEjZfm5EIsGUnKxpwtBtoeR4hwMG7Pl8ZESF8yG569SS0aIdsWqyu9PdBgR14vLiA/exec"
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 log = logging.getLogger("fuel_bridge")
 
 
+def run_setup_wizard() -> dict:
+    """Primo avvio senza config.json: chiede i 3 dati che cambiano da
+    pilota a pilota (token/race_id/car_number) direttamente a terminale
+    e salva config.json accanto allo script. Pensato per chi non vuole
+    (o non sa) editare un file JSON a mano."""
+    print()
+    print("=== VSD Paddock Fuel Bridge — primo avvio ===")
+    print("Non trovo config.json: rispondi a queste 3 domande e lo creo io.")
+    print()
+
+    token = input("1) Token (dal tuo profilo VSD-Paddock, pulsante 'Genera token companion'): ").strip()
+    while not token:
+        token = input("   Il token è obbligatorio, riprova: ").strip()
+
+    race_id = input("2) ID sessione (es. TEST-monza-06-08, oppure il race_id di una gara ufficiale): ").strip()
+    while not race_id:
+        race_id = input("   L'ID sessione è obbligatorio, riprova: ").strip()
+
+    car_number = input("3) Numero della tua vettura in questa sessione (es. 7): ").strip()
+    while not car_number:
+        car_number = input("   Il numero vettura è obbligatorio, riprova: ").strip()
+
+    cfg = {
+        "api_url": DEFAULT_API_URL,
+        "token": token,
+        "race_id": race_id,
+        "car_number": car_number,
+    }
+    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
+        json.dump(cfg, f, indent=2, ensure_ascii=False)
+
+    print()
+    print(f"Salvato in {CONFIG_PATH.name}. Le prossime volte parte senza fare domande")
+    print("(cancella il file se devi cambiare sessione/vettura/token).")
+    print()
+    return cfg
+
+
 def load_config() -> dict:
     if not CONFIG_PATH.exists():
-        log.error(
-            "config.json non trovato accanto allo script. "
-            "Copia config.example.json in config.json e compilalo."
-        )
-        sys.exit(1)
+        return run_setup_wizard()
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
         cfg = json.load(f)
     required = ["api_url", "token", "race_id", "car_number"]
