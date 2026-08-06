@@ -23,6 +23,7 @@ const SHEETS = {
   ENDURANCE_AUDITION_STINTS: 'EnduranceAuditionStints',
   ENDURANCE_STINTS: 'EnduranceStints',
   RACE_CREWS: 'RaceCrews',
+  FUEL_LOG: 'FuelLog',
   SOCIAL_POSTS: 'SocialPosts',
   SOCIAL_METRICS: 'SocialMetrics',
   SOCIAL_MEDIA: 'SocialMedia',
@@ -263,6 +264,13 @@ const ACTIONS = {
   'raceCrews.list': handleRaceCrewsList,
   'raceCrews.add': handleRaceCrewsAdd,
   'raceCrews.remove': handleRaceCrewsRemove,
+
+  // Device tokens — auth long-lived per companion app fuel/energy
+  'devices.createToken': handleDevicesCreateToken,
+
+  // Fuel/Energy — consumo reale da companion app LMU (shared memory)
+  'fuel.logSample': handleFuelLogSample,
+  'fuel.summary': handleFuelSummary,
 };
 
 // ═══════════════════════════════════════════════════════════

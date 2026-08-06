@@ -339,6 +339,12 @@ export async function callApi(action, payload = {}) {
         return await raceCrewsAddAdapter(payload, token);
       case 'raceCrews.remove':
         return await raceCrewsRemoveAdapter(payload, token);
+      case 'devices.createToken':
+        return await devicesCreateTokenAdapter(payload, token);
+      case 'fuel.logSample':
+        return await fuelLogSampleAdapter(payload, token);
+      case 'fuel.summary':
+        return await fuelSummaryAdapter(payload, token);
       case 'landing.data':
         return await landingDataAdapter(payload, token);
       default:
@@ -960,6 +966,19 @@ async function raceCrewsAddAdapter(payload, token) {
 }
 async function raceCrewsRemoveAdapter(payload, token) {
   return await postToBackend('raceCrews.remove', payload || {}, token);
+}
+
+// ════ Device tokens (companion app fuel/energy) ════
+async function devicesCreateTokenAdapter(payload, token) {
+  return await postToBackend('devices.createToken', payload || {}, token);
+}
+
+// ════ Fuel/Energy adapters ════
+async function fuelLogSampleAdapter(payload, token) {
+  return await postToBackend('fuel.logSample', payload || {}, token);
+}
+async function fuelSummaryAdapter(payload, token) {
+  return await postToBackend('fuel.summary', payload || {}, token);
 }
 
 /**

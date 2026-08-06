@@ -215,5 +215,15 @@ endurance: {
       add: (payload) => call('raceCrews.add', payload),
       remove: (crew_id) => call('raceCrews.remove', { crew_id }),
     },
+
+    devices: {
+      createToken: () => call('devices.createToken', {}),
+    },
+
+    fuel: {
+      logSample: (payload) => call('fuel.logSample', payload),
+      summary: (race_id, car_number, opts = {}) =>
+        call('fuel.summary', { race_id, car_number, ...opts }),
+    },
 };
 
