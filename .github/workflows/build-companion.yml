@@ -1,0 +1,44 @@
+name: Build companion exe
+
+# Compila vsd-fuel-bridge.exe su un runner Windows ad ogni push su main
+# che tocca companion/ — nessun pilota deve avere Python installato: lo
+# staff scarica l'exe già pronto da questa run (tab Actions → run più
+# recente → sezione Artifacts, in fondo alla pagina) e lo distribuisce.
+#
+# L'artifact scade dopo 90 giorni (default GitHub) e richiede un account
+# GitHub loggato per scaricarlo dalla tab Actions. Se serve un link
+# pubblico permanente da condividere senza login, valutare in futuro un
+# workflow separato agganciato a una Release/tag.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'companion/**'
+      - '.github/workflows/build-companion.yml'
+  workflow_dispatch: {}
+
+jobs:
+  build-exe:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: companion
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Installa PyInstaller
+        run: pip install pyinstaller
+
+      - name: Build exe
+        run: pyinstaller --onefile --name vsd-fuel-bridge fuel_bridge.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vsd-fuel-bridge-exe
+          path: companion/dist/vsd-fuel-bridge.exe
+          retention-days: 90

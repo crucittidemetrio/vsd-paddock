@@ -13,7 +13,8 @@ Solo Windows, solo Le Mans Ultimate (per ora).
 
 Non serve installare Python: usa l'eseguibile già pronto
 `vsd-fuel-bridge.exe` (te lo passa lo staff, di solito nel canale Discord
-del team).
+del team — viene ricompilato automaticamente da GitHub Actions ad ogni
+aggiornamento, vedi sezione staff più sotto).
 
 1. **Abilita i plugin in LMU** — Impostazioni → Gameplay → **Enable
    Plugins** → ON. Se lo cambi a gioco già aperto, riavvia LMU. Non
@@ -84,10 +85,21 @@ sezione piloti sopra). Chi preferisce compilare un file invece di
 rispondere alle domande può copiare `config.example.json` in
 `config.json` ed editarlo a mano prima di lanciare lo script.
 
-### Compilare l'eseguibile
+### Scaricare l'eseguibile già compilato (consigliato)
 
-Da fare **una volta sola** (e di nuovo solo se cambia il codice dello
-script, non ad ogni gara):
+Non serve compilare nulla a mano: il workflow GitHub Actions
+`.github/workflows/build-companion.yml` builda `vsd-fuel-bridge.exe` su
+un runner Windows automaticamente ad ogni push su `main` che tocca
+`companion/`.
+
+Per scaricarlo: repo su GitHub → tab **Actions** → workflow **"Build
+companion exe"** → run più recente (spunta verde) → in fondo alla pagina,
+sezione **Artifacts** → `vsd-fuel-bridge-exe`. Richiede di essere
+loggati su GitHub; l'artifact resta disponibile 90 giorni. Da lì lo
+carichi dove preferisci (Discord, drive condiviso) per distribuirlo ai
+piloti.
+
+### Compilare a mano (alternativa, se non vuoi usare GitHub Actions)
 
 ```
 pip install pyinstaller
@@ -98,8 +110,7 @@ pyinstaller --onefile --name vsd-fuel-bridge fuel_bridge.py
 L'eseguibile finito è in `dist/vsd-fuel-bridge.exe` — file singolo,
 autosufficiente, non serve portarci dietro `config.json`: ogni pilota lo
 scarica, lo lancia, risponde alle 3 domande al primo avvio e da lì in poi
-parte da solo. Distribuiscilo (Discord, drive condiviso, ecc.) e comunica
-ai piloti dove trovarlo.
+parte da solo.
 
 ### Struttura
 
