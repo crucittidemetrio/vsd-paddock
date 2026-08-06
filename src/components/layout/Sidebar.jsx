@@ -140,6 +140,9 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
         <NavLink to="/privacy" className="sidebar-privacy-link" onClick={onMobileClose}>
           Privacy &amp; Dati
         </NavLink>
+        <NavLink to="/terms" className="sidebar-privacy-link" onClick={onMobileClose}>
+          Termini di Servizio
+        </NavLink>
 
         <div className="version">v0.1 · Phase 1</div>
       </div>

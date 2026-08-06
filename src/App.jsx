@@ -45,6 +45,7 @@ const StintPlanner        = lazy(() => import('./pages/StintPlanner'));
 const AdminRaces = lazy(() => import('./pages/AdminRaces'));
 const Compare    = lazy(() => import('./pages/Compare'));
 const Privacy     = lazy(() => import('./pages/Privacy'));
+const Terms       = lazy(() => import('./pages/Terms'));
 const SocialManager = lazy(() => import('./pages/SocialManager'));
 const ClashOfClasses = lazy(() => import('./pages/ClashOfClasses'));
 const AdminClashResults = lazy(() => import('./pages/AdminClashResults'));
@@ -109,6 +110,7 @@ export default function App() {
               <Route path="/clash-of-classes" element={<ClashOfClasses />} />
               <Route path="/compare" element={<Compare />} />
               <Route path="/privacy" element={<Privacy />} />
+              <Route path="/terms" element={<Terms />} />
 
               {/* ── Private: richiede pilot_vsd o superiore ── */}
               <Route
