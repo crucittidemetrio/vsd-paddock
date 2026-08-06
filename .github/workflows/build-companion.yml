@@ -35,7 +35,11 @@ jobs:
         run: pip install pyinstaller
 
       - name: Build exe
-        run: pyinstaller --onefile --name vsd-fuel-bridge fuel_bridge.py
+        # --paths/--hidden-import: lmu_data.py è importato a runtime via
+        # sys.path.insert (vedi fuel_bridge.py), che l'analisi statica
+        # di PyInstaller non vede da sola — senza questi due flag l'exe
+        # compila ma crasha al primo avvio con ModuleNotFoundError.
+        run: pyinstaller --onefile --name vsd-fuel-bridge --paths vendor --hidden-import lmu_data fuel_bridge.py
 
       - uses: actions/upload-artifact@v4
         with:

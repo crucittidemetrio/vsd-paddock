@@ -100,8 +100,14 @@ piloti.
 ```
 pip install pyinstaller
 cd companion
-pyinstaller --onefile --name vsd-fuel-bridge fuel_bridge.py
+pyinstaller --onefile --name vsd-fuel-bridge --paths vendor --hidden-import lmu_data fuel_bridge.py
 ```
+
+`--paths vendor --hidden-import lmu_data` sono obbligatori: senza,
+l'exe compila ma va in crash al primo avvio con
+`ModuleNotFoundError: No module named 'lmu_data'` (quel modulo è
+importato a runtime via `sys.path.insert`, che l'analisi statica di
+PyInstaller non vede da sola).
 
 L'eseguibile finito è in `dist/vsd-fuel-bridge.exe` — file singolo,
 autosufficiente, non serve portarci dietro `config.json`: ogni pilota lo

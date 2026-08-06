@@ -22,11 +22,15 @@ Setup (pilota, nessuna modifica manuale di file richiesta):
   (config.example.json resta disponibile per chi preferisce compilare
   il file a mano invece di rispondere alle domande.)
 
-Build .exe (facoltativo, per non richiedere Python ai piloti):
+Build .exe (facoltativo, per non richiedere Python ai piloti — o vedi
+.github/workflows/build-companion.yml, che lo fa automaticamente):
   pip install pyinstaller
-  pyinstaller --onefile --name vsd-fuel-bridge fuel_bridge.py
-  L'exe finito è in dist/vsd-fuel-bridge.exe — copialo insieme a
-  config.json (NON incluso nell'exe, resta editabile a parte).
+  pyinstaller --onefile --name vsd-fuel-bridge --paths vendor --hidden-import lmu_data fuel_bridge.py
+  L'exe finito è in dist/vsd-fuel-bridge.exe, già autosufficiente
+  (vendor/lmu_data.py incluso dentro — --paths/--hidden-import servono
+  perché è importato via sys.path.insert a runtime, che l'analisi
+  statica di PyInstaller non vede da sola). config.json si crea da solo
+  accanto all'exe al primo avvio, non va copiato a mano.
 ═══════════════════════════════════════════════════════════════════
 """
 
@@ -38,10 +42,27 @@ from pathlib import Path
 from urllib import error as urllib_error
 from urllib import request as urllib_request
 
+def _app_dir() -> Path:
+    """Cartella dove si trova DAVVERO l'eseguibile (o lo script) sul
+    disco, usata per config.json — deve restare la stessa tra un avvio
+    e l'altro. In un exe PyInstaller "--onefile", __file__ punta invece
+    alla cartella temporanea di estrazione (sys._MEIPASS), che viene
+    cancellata alla chiusura: salvarci config.json lì dentro vorrebbe
+    dire richiedere di nuovo le 3 domande ad OGNI avvio, non solo al
+    primo."""
+    if getattr(sys, "frozen", False):
+        return Path(sys.executable).resolve().parent
+    return Path(__file__).resolve().parent
+
+
+# vendor/lmu_data.py invece va cercato accanto al sorgente quando si
+# esegue "python fuel_bridge.py"; nell'exe compilato è già impacchettato
+# come modulo (vedi --paths/--hidden-import nelle istruzioni di build in
+# README.md) e questo insert diventa un no-op innocuo.
 sys.path.insert(0, str(Path(__file__).resolve().parent / "vendor"))
 from lmu_data import SimInfo  # noqa: E402  (vendorizzato, vedi vendor/LICENSE.txt)
 
-CONFIG_PATH = Path(__file__).resolve().parent / "config.json"
+CONFIG_PATH = _app_dir() / "config.json"
 POLL_INTERVAL_S = 2.0
 RECONNECT_INTERVAL_S = 5.0
 
