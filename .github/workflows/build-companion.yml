@@ -1,14 +1,23 @@
 name: Build companion exe
 
 # Compila vsd-fuel-bridge.exe su un runner Windows ad ogni push su main
-# che tocca companion/ — nessun pilota deve avere Python installato: lo
-# staff scarica l'exe già pronto da questa run (tab Actions → run più
-# recente → sezione Artifacts, in fondo alla pagina) e lo distribuisce.
+# che tocca companion/ — nessun pilota deve avere Python installato.
 #
-# L'artifact scade dopo 90 giorni (default GitHub) e richiede un account
-# GitHub loggato per scaricarlo dalla tab Actions. Se serve un link
-# pubblico permanente da condividere senza login, valutare in futuro un
-# workflow separato agganciato a una Release/tag.
+# Pubblica l'exe in DUE posti:
+#  1. Artifact della run (richiede login GitHub, utile per lo staff/QA)
+#  2. GitHub Release pubblica a tag fisso "companion-latest" (NESSUN
+#     login richiesto — questo è il link da dare ai piloti). Ogni push
+#     sovrascrive l'asset della stessa release, quindi il link resta
+#     sempre identico: non va ricondiviso ad ogni aggiornamento.
+#
+# Nota per chi lo riceve: l'exe non è firmato digitalmente (una firma
+# codice richiede un'identità aziendale registrata a pagamento), quindi
+# Windows SmartScreen mostrerà "Windows ha protetto il PC" al primo
+# avvio — è normale, va cliccato "Ulteriori informazioni" → "Esegui
+# comunque". Vedi companion/README.md per i dettagli da dare ai piloti.
+
+permissions:
+  contents: write
 
 on:
   push:
@@ -46,3 +55,19 @@ jobs:
           name: vsd-fuel-bridge-exe
           path: companion/dist/vsd-fuel-bridge.exe
           retention-days: 90
+
+      - name: Pubblica/aggiorna la Release pubblica (companion-latest)
+        uses: ncipollo/release-action@v1
+        with:
+          tag: companion-latest
+          commit: main
+          name: "Companion — build automatica"
+          body: >
+            Build automatica dell'ultimo commit su companion/. Scarica
+            vsd-fuel-bridge.exe qui sotto — link stabile, nessun login
+            richiesto. Guida d'uso: companion/README.md.
+          artifacts: companion/dist/vsd-fuel-bridge.exe
+          allowUpdates: true
+          replacesArtifacts: true
+          makeLatest: false
+          token: ${{ secrets.GITHUB_TOKEN }}

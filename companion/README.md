@@ -26,9 +26,9 @@ avviare.
 
 | Passo | Cosa fare |
 |---|---|
-| 1 | Scarica `vsd-fuel-bridge.exe` da [questa pagina](https://github.com/crucittidemetrio/vsd-paddock/actions/workflows/build-companion.yml) → clicca la run più in alto → in fondo, sezione **Artifacts** → `vsd-fuel-bridge-exe` (serve un account GitHub loggato) |
-| 2 | Fai doppio click sul file scaricato. Si apre una finestra nera |
-| 3 | **Solo la prima volta**, ti chiede 3 cose: il tuo token, un nome per la sessione (es. `TEST-monza-06-08` per una prova, oppure il race_id ufficiale per una gara) e il numero della tua vettura |
+| 1 | Scarica `vsd-fuel-bridge.exe` da questo link — **nessun account richiesto, funziona anche da telefono per poi trasferirlo**: https://github.com/crucittidemetrio/vsd-paddock/releases/download/companion-latest/vsd-fuel-bridge.exe |
+| 2 | Fai doppio click sul file scaricato. **Windows probabilmente mostrerà uno schermo blu "Windows ha protetto il PC"** — è normale, non è un virus (vedi spiegazione sotto): clicca **"Ulteriori informazioni"**, poi **"Esegui comunque"** |
+| 3 | Si apre una finestra nera. **Solo la prima volta**, ti chiede 3 cose: il tuo token, un nome per la sessione (es. `TEST-monza-06-08` per una prova, oppure il race_id ufficiale per una gara) e il numero della tua vettura |
 | 4 | Entra in pista su LMU. Ad ogni giro completato vedi una riga confermare l'invio |
 | 5 | Apri il pannello **Carburante/Energia** sul sito (menu laterale → Strumenti Gara), scrivendo lo STESSO nome sessione e numero vettura del passo 3 |
 
@@ -39,6 +39,16 @@ Le sessioni dopo la prima non richiedono più le 3 domande — si ricorda
 tutto da solo. Se cambi vettura o sessione, cancella il file
 `config.json` che trovi nella stessa cartella dell'exe: alla prossima
 apertura te le richiede di nuovo.
+
+**⚠️ Perché Windows/l'antivirus si lamentano?** L'exe non ha una firma
+digitale (costa e richiede una registrazione aziendale a pagamento, non
+ne vale la pena per uno strumento interno di squadra) — Windows tratta
+ogni eseguibile non firmato come potenzialmente sospetto per default,
+a prescindere da cosa faccia davvero. Non è un giudizio sul contenuto
+del file. Se l'antivirus lo mette in quarantena invece di limitarsi ad
+avvisare, va ripristinato manualmente dalle impostazioni dell'antivirus
+(varia da programma a programma — chiedi allo staff se non trovi
+l'opzione).
 
 **Non vedi dati nel pannello?** Controlla, in ordine: sei davvero in
 pista (non nei menu)? I plugin LMU sono su ON? Nome sessione e numero
@@ -86,14 +96,18 @@ rispondere alle domande può copiare `config.example.json` in
 Non serve compilare nulla a mano: il workflow GitHub Actions
 `.github/workflows/build-companion.yml` builda `vsd-fuel-bridge.exe` su
 un runner Windows automaticamente ad ogni push su `main` che tocca
-`companion/`.
+`companion/`, e lo pubblica in due posti:
 
-Per scaricarlo: repo su GitHub → tab **Actions** → workflow **"Build
-companion exe"** → run più recente (spunta verde) → in fondo alla pagina,
-sezione **Artifacts** → `vsd-fuel-bridge-exe`. Richiede di essere
-loggati su GitHub; l'artifact resta disponibile 90 giorni. Da lì lo
-carichi dove preferisci (Discord, drive condiviso) per distribuirlo ai
-piloti.
+- **Link pubblico stabile, da dare ai piloti** (nessun login richiesto,
+  l'URL non cambia mai anche dopo un aggiornamento):
+  `https://github.com/crucittidemetrio/vsd-paddock/releases/download/companion-latest/vsd-fuel-bridge.exe`
+- **Artifact della run** (repo → tab Actions → run più recente →
+  sezione Artifacts) — richiede login GitHub, utile solo per QA interno
+  prima di darlo ai piloti, non per la distribuzione vera.
+
+Usa sempre il link pubblico quando condividi l'exe (Discord, ecc.):
+essendo stabile, puoi pinnarlo una volta sola in un messaggio Discord
+e non serve più aggiornarlo ad ogni build.
 
 ### Compilare a mano (alternativa, se non vuoi usare GitHub Actions)
 
