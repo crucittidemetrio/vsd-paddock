@@ -88,7 +88,10 @@ function handleFuelLogSample(payload, ctx) {
  *   sample_count, latest,
  *   fuel: { avg_per_lap_l, laps_remaining, needed_for_target_l },
  *   energy: { avg_pct_per_lap, laps_remaining, needed_for_target_pct } | null,
- *   series: [{ lap_number, fuel_remaining_l, virtual_energy_pct }]  // per il grafico
+ *   series: [{ lap_number, fuel_remaining_l, virtual_energy_pct }],  // per il grafico
+ *   avg_lap_time_s  // tempo medio reale tra un campione e il successivo,
+ *                    // secondi — usato dal frontend per convertire l'ora
+ *                    // di fine stint in un numero di giri (vedi FuelPanel.jsx)
  * })
  */
 function handleFuelSummary(payload, ctx) {
@@ -127,6 +130,7 @@ function handleFuelSummary(payload, ctx) {
   // dalla media mobile, altrimenti falserebbe la stima di consumo.
   const fuelDeltas = [];
   const energyDeltas = [];
+  const lapTimeDeltas = [];
   for (let i = 1; i < samples.length; i++) {
     const prev = samples[i - 1];
     const cur = samples[i];
@@ -138,6 +142,14 @@ function handleFuelSummary(payload, ctx) {
       const d = prev.virtual_energy_pct - cur.virtual_energy_pct;
       if (d > 0) energyDeltas.push(d);
     }
+    // Tempo reale tra un campione e il successivo — usato per convertire
+    // "minuti a fine stint" in "giri residui" lato frontend (vedi
+    // FuelPanel.jsx, calcolo automatico target laps per gare ufficiali).
+    const prevT = new Date(prev.created_at).getTime();
+    const curT = new Date(cur.created_at).getTime();
+    if (!isNaN(prevT) && !isNaN(curT) && curT > prevT) {
+      lapTimeDeltas.push((curT - prevT) / 1000);
+    }
   }
 
   const recentAvg = arr => {
@@ -148,6 +160,7 @@ function handleFuelSummary(payload, ctx) {
 
   const avgFuelPerLap = recentAvg(fuelDeltas);
   const avgEnergyPctPerLap = recentAvg(energyDeltas);
+  const avgLapTimeS = recentAvg(lapTimeDeltas);
 
   const fuel = latest.fuel_remaining_l != null ? {
     avg_per_lap_l: avgFuelPerLap,
@@ -173,5 +186,5 @@ function handleFuelSummary(payload, ctx) {
     virtual_energy_pct: s.virtual_energy_pct,
   }));
 
-  return ok({ sample_count: samples.length, latest, fuel, energy, series });
+  return ok({ sample_count: samples.length, latest, fuel, energy, series, avg_lap_time_s: avgLapTimeS });
 }

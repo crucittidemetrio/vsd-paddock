@@ -83,6 +83,26 @@
   font-style: italic;
 }
 
+.fp-target-auto {
+  color: #00d4ff;
+  font-style: normal;
+  font-weight: 600;
+}
+
+.fp-target-reset {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #00d4ff;
+  font-size: 0.75rem;
+  text-decoration: underline;
+  cursor: pointer;
+  font-family: inherit;
+}
+.fp-target-reset:hover {
+  color: #33ddff;
+}
+
 .fp-stat-target {
   border-color: rgba(255, 173, 71, 0.35);
   background: rgba(255, 173, 71, 0.06);

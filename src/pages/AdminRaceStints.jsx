@@ -13,6 +13,7 @@ import {
 } from '../hooks/useRaceCrews';
 import { useRaces } from '../hooks/useRaces';
 import { useDrivers } from '../hooks/useRoster';
+import { useNow } from '../hooks/useNow';
 import Avatar from '../components/shared/Avatar';
 import SwapPilotModal from '../components/race/SwapPilotModal';
 import FuelPanel from '../components/fuel/FuelPanel';
@@ -77,6 +78,20 @@ export default function AdminRaceStints() {
     if (!showCarTabs) return stints;
     return stints.filter(s => String(s.car_number || '').trim() === activeCar);
   }, [stints, showCarTabs, activeCar]);
+
+  // Stint attualmente in corso per la vettura attiva (planned_start_time
+  // <= adesso <= planned_end_time) — usato da FuelPanel per calcolare i
+  // giri residui automaticamente invece di farli inserire a mano al
+  // pilota. null se non c'è nessuno stint pianificato che copre l'orario
+  // corrente (prima che la gara inizi, tra uno stint e l'altro, ecc.).
+  const now = useNow(15000);
+  const activeStint = useMemo(() => {
+    return visibleStints.find(s => {
+      const start = new Date(s.planned_start_time).getTime();
+      const end = new Date(s.planned_end_time).getTime();
+      return !isNaN(start) && !isNaN(end) && start <= now && now <= end;
+    }) || null;
+  }, [visibleStints, now]);
 
   const editingStint = useMemo(
     () => stints.find(s => s.stint_id === editingStintId) || null,
@@ -157,7 +172,13 @@ export default function AdminRaceStints() {
       )}
 
       {/* ════ CARBURANTE/ENERGIA — previsione live dal companion app ════ */}
-      {activeCar && <FuelPanel raceId={raceId} carNumber={activeCar} />}
+      {activeCar && (
+        <FuelPanel
+          raceId={raceId}
+          carNumber={activeCar}
+          plannedEndTime={activeStint?.planned_end_time || null}
+        />
+      )}
 
       {/* ════ TABELLA STINT ════ */}
       <section className={styles.section}>

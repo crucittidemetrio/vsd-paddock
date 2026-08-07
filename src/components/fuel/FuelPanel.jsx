@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend,
 } from 'recharts';
 import { useFuelSummary } from '../../hooks/useFuelLog';
+import { useNow } from '../../hooks/useNow';
 import './FuelPanel.css';
 
 const FUEL_LABELS = { fuel_remaining_l: 'Carburante', virtual_energy_pct: 'Energia' };
@@ -22,21 +23,77 @@ const FUEL_LABELS = { fuel_remaining_l: 'Carburante', virtual_energy_pct: 'Energ
  *
  * @param {string} raceId - id gara ufficiale oppure etichetta libera di sessione
  * @param {string} carNumber
+ * @param {string|null} [plannedEndTime] - fine pianificata dello stint attivo
+ *   (planned_end_time di EnduranceStints), passata SOLO da AdminRaceStints
+ *   per gare ufficiali con uno stint in corso. Se presente, i giri residui
+ *   vengono precompilati automaticamente (fine stint / tempo medio sul
+ *   giro) invece di richiedere l'inserimento a mano — il pilota può
+ *   comunque sovrascriverli. Nelle prove libere resta manuale, com'era.
  */
-export default function FuelPanel({ raceId, carNumber }) {
-  // Giri residui inseriti a mano dal pilota — nessun automatismo legato
-  // a planned_end_time dello stint: vale sia in gara sia nelle prove
-  // libere, dove uno stint ufficiale non esiste nemmeno.
-  const [targetLapsInput, setTargetLapsInput] = useState('');
-  const targetLaps = targetLapsInput.trim() ? Number(targetLapsInput) : null;
-  const validTarget = targetLaps != null && Number.isFinite(targetLaps) && targetLaps > 0;
+export default function FuelPanel({ raceId, carNumber, plannedEndTime = null }) {
+  // null = nessun inserimento manuale ancora, segui il calcolo
+  // automatico (se disponibile). Una volta che il pilota scrive
+  // qualcosa (anche vuoto), il suo input vince finché non clicca
+  // "usa il calcolo automatico".
+  const [manualInputText, setManualInputText] = useState(null);
+  const manualTargetLaps = manualInputText?.trim() ? Number(manualInputText) : null;
+  const manualValidTarget = manualTargetLaps != null && Number.isFinite(manualTargetLaps) && manualTargetLaps > 0;
 
-  const { data, isLoading, error } = useFuelSummary(raceId, carNumber, validTarget ? targetLaps : null);
+  // Solo il valore inserito a mano viaggia fino al backend (comportamento
+  // identico a prima per chi lo usa così). Il calcolo automatico è
+  // derivato qui sotto, client-side, dagli stessi ingredienti che il
+  // backend userebbe (fuel.avg_per_lap_l / energy.avg_pct_per_lap /
+  // latest) — evita un giro a vuoto backend->frontend->backend solo per
+  // scoprire un numero che possiamo già calcolare con i dati in mano.
+  const { data, isLoading, error } = useFuelSummary(raceId, carNumber, manualValidTarget ? manualTargetLaps : null);
 
   const sampleCount = data?.sample_count || 0;
   const latest = data?.latest || null;
   const fuel = data?.fuel || null;
   const energy = data?.energy || null;
+
+  // Giri residui calcolati da fine stint pianificata + tempo medio sul
+  // giro osservato in questa sessione — solo se entrambi disponibili.
+  // "now" ticka ogni 15s (stesso ritmo del polling) invece di leggere
+  // Date.now() durante il render, che React considera una lettura
+  // impura e non idempotente.
+  const now = useNow(15000);
+  const autoTargetLaps = useMemo(() => {
+    if (!plannedEndTime || !data?.avg_lap_time_s) return null;
+    const msRemaining = new Date(plannedEndTime).getTime() - now;
+    if (!Number.isFinite(msRemaining) || msRemaining <= 0) return null;
+    return Math.max(1, Math.ceil(msRemaining / (data.avg_lap_time_s * 1000)));
+  }, [plannedEndTime, data?.avg_lap_time_s, now]);
+
+  const usingAuto = manualInputText == null && autoTargetLaps != null;
+  const effectiveTargetLaps = manualValidTarget ? manualTargetLaps : (usingAuto ? autoTargetLaps : null);
+
+  const targetLapsInputValue = manualInputText != null
+    ? manualInputText
+    : (autoTargetLaps != null ? String(autoTargetLaps) : '');
+
+  function handleTargetInputChange(e) {
+    setManualInputText(e.target.value);
+  }
+
+  function resetToAuto() {
+    setManualInputText(null);
+  }
+
+  // Rabbocco consigliato: dal backend se c'è un valore inserito a mano
+  // (fuel.needed_for_target_l già pronto), altrimenti calcolato qui con
+  // la stessa formula per il valore automatico.
+  const fuelNeeded = manualValidTarget
+    ? fuel?.needed_for_target_l
+    : (usingAuto && fuel?.avg_per_lap_l != null && latest?.fuel_remaining_l != null
+        ? Math.max(0, autoTargetLaps * fuel.avg_per_lap_l - latest.fuel_remaining_l)
+        : null);
+
+  const energyNeeded = manualValidTarget
+    ? energy?.needed_for_target_pct
+    : (usingAuto && energy?.avg_pct_per_lap != null && latest?.virtual_energy_pct != null
+        ? Math.max(0, autoTargetLaps * energy.avg_pct_per_lap - latest.virtual_energy_pct)
+        : null);
 
   const lapsRemaining = [fuel?.laps_remaining, energy?.laps_remaining]
     .filter(v => v != null)
@@ -71,13 +128,26 @@ export default function FuelPanel({ raceId, carNumber }) {
             type="number"
             min="1"
             inputMode="numeric"
-            value={targetLapsInput}
-            onChange={e => setTargetLapsInput(e.target.value)}
+            value={targetLapsInputValue}
+            onChange={handleTargetInputChange}
             placeholder="es. 8"
           />
-          <span className="fp-target-hint">
-            Inserimento manuale — nessun calcolo automatico da fine gara/stint.
-          </span>
+          {usingAuto ? (
+            <span className="fp-target-hint fp-target-auto">
+              calcolato da fine stint — modificabile
+            </span>
+          ) : plannedEndTime && autoTargetLaps != null ? (
+            <>
+              <span className="fp-target-hint">inserito a mano</span>
+              <button type="button" className="fp-target-reset" onClick={resetToAuto}>
+                usa il calcolo automatico
+              </button>
+            </>
+          ) : (
+            <span className="fp-target-hint">
+              Inserimento manuale — nessun calcolo automatico in questa sessione.
+            </span>
+          )}
         </div>
 
         <div className={`fp-grid ${lowWarning ? 'fp-grid-warning' : ''}`}>
@@ -103,12 +173,12 @@ export default function FuelPanel({ raceId, carNumber }) {
             </div>
           </div>
 
-          {validTarget && fuel?.needed_for_target_l != null && (
+          {effectiveTargetLaps != null && fuelNeeded != null && (
             <div className="fp-stat fp-stat-target">
-              <div className="fp-stat-label">Rabbocco consigliato ({targetLaps} giri)</div>
+              <div className="fp-stat-label">Rabbocco consigliato ({effectiveTargetLaps} giri)</div>
               <div className="fp-stat-value">
-                {fuel.needed_for_target_l > 0
-                  ? `+${fuel.needed_for_target_l.toFixed(1)} L`
+                {fuelNeeded > 0
+                  ? `+${fuelNeeded.toFixed(1)} L`
                   : 'Basta quello che hai'}
               </div>
             </div>
@@ -133,12 +203,12 @@ export default function FuelPanel({ raceId, carNumber }) {
                 </div>
               </div>
 
-              {validTarget && energy.needed_for_target_pct != null && (
+              {effectiveTargetLaps != null && energyNeeded != null && (
                 <div className="fp-stat fp-stat-target">
-                  <div className="fp-stat-label">Energia consigliata ({targetLaps} giri)</div>
+                  <div className="fp-stat-label">Energia consigliata ({effectiveTargetLaps} giri)</div>
                   <div className="fp-stat-value">
-                    {energy.needed_for_target_pct > 0
-                      ? `+${energy.needed_for_target_pct.toFixed(0)}%`
+                    {energyNeeded > 0
+                      ? `+${energyNeeded.toFixed(0)}%`
                       : 'Basta quella che hai'}
                   </div>
                 </div>
