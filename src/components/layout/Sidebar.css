@@ -92,9 +92,17 @@
   font-size: var(--fs-md);
   width: 20px;
   text-align: center;
-  opacity: 0.7;
+  color: var(--vsd-cyan);
+  opacity: 0.55;
 }
+.nav-item:hover .nav-icon { opacity: 0.85; }
 .nav-item.is-active .nav-icon { opacity: 1; }
+
+/* Icone colorate per sezione, stessi accenti gia' usati per bordi/sfondi
+   qui sotto (evento = arancio, strumento live = verde) — cosi' l'icona
+   comunica la sezione anche a riposo, non solo su hover/attivo. */
+.nav-item.is-event .nav-icon { color: var(--vsd-orange); }
+.nav-item.is-tool .nav-icon { color: #22c55e; }
 
 .nav-label { flex: 1; }
 
