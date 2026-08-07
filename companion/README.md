@@ -55,6 +55,14 @@ pista (non nei menu)? I plugin LMU sono su ON? Nome sessione e numero
 vettura sono scritti IDENTICI sia nell'exe che sul sito (attenzione a
 maiuscole/spazi)?
 
+**Vedi ogni tanto "il backend non ha risposto in tempo, campione
+perso"?** Non è un errore da segnalare: capita occasionalmente perché
+il server a volte risponde più lento del solito. Il giro con quel
+warning non viene registrato, ma quello dopo sì — il consumo medio nel
+pannello resta corretto lo stesso, si ricalcola sui giri che sono
+arrivati. Se lo vedi in continuazione (non ogni tanto) invece controlla
+la tua connessione.
+
 ---
 
 ## Come funziona (per curiosità)

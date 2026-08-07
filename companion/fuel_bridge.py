@@ -37,6 +37,7 @@ Build .exe (facoltativo, per non richiedere Python ai piloti — o vedi
 import json
 import logging
 import sys
+import threading
 import time
 from pathlib import Path
 from urllib import error as urllib_error
@@ -131,7 +132,14 @@ def post_sample(cfg: dict, payload: dict) -> None:
     """Manda un campione a fuel.logSample. Stesso contratto del frontend
     (client.js/realApi.js): body JSON {action, token, payload} come
     text/plain, per evitare complicazioni con i preflight CORS lato
-    Apps Script."""
+    Apps Script.
+
+    Chiamata SEMPRE tramite post_sample_async (thread separato, vedi
+    sotto): Apps Script a volte impiega diversi secondi a rispondere
+    (comportamento noto della piattaforma, non un errore) — se questa
+    funzione girasse nel loop principale, per tutta la durata della
+    richiesta lo script non leggerebbe la telemetria e rischierebbe di
+    perdere il cambio giro successivo."""
     body = json.dumps({
         "action": "fuel.logSample",
         "token": cfg["token"],
@@ -144,7 +152,10 @@ def post_sample(cfg: dict, payload: dict) -> None:
         method="POST",
     )
     try:
-        with urllib_request.urlopen(req, timeout=10) as resp:
+        # 25s: margine ampio sui tempi di risposta occasionalmente lenti
+        # di Apps Script. Innocuo per il loop principale dato che gira
+        # in un thread a parte (vedi post_sample_async).
+        with urllib_request.urlopen(req, timeout=25) as resp:
             result = json.loads(resp.read().decode("utf-8"))
         if not result.get("ok"):
             log.warning("Backend ha rifiutato il campione: %s", result.get("error"))
@@ -157,10 +168,24 @@ def post_sample(cfg: dict, payload: dict) -> None:
                 "Giro %s inviato — carburante %.1fL%s",
                 payload["lap_number"], payload["fuel_remaining_l"], energy_txt,
             )
+    except TimeoutError:
+        log.warning(
+            "Giro %s: il backend non ha risposto in tempo, campione perso "
+            "(capita ogni tanto con Apps Script, riprova al prossimo giro)",
+            payload["lap_number"],
+        )
     except urllib_error.URLError as e:
         log.warning("Errore di rete inviando il campione (riprovo al prossimo giro): %s", e)
     except Exception:  # noqa: BLE001 — non deve mai far crashare il loop principale
         log.exception("Errore inatteso inviando il campione")
+
+
+def post_sample_async(cfg: dict, payload: dict) -> None:
+    """Manda il campione in un thread separato, cosi' il loop principale
+    (lettura shared memory LMU) non si blocca in attesa della risposta
+    di rete. Daemon=True: se il programma viene chiuso con un invio
+    ancora in corso, non lo tiene in vita ad aspettare."""
+    threading.Thread(target=post_sample, args=(cfg, payload), daemon=True).start()
 
 
 def connect() -> SimInfo:
@@ -226,7 +251,7 @@ def main() -> None:
                 if virtual_energy_fraction and virtual_energy_fraction > 0:
                     payload["virtual_energy_pct"] = round(virtual_energy_fraction * 100, 1)
 
-                post_sample(cfg, payload)
+                post_sample_async(cfg, payload)
                 last_sent_lap = lap_number
 
         except Exception:  # noqa: BLE001 — connessione shared memory persa, riconnetti
