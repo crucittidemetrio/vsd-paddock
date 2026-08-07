@@ -64,6 +64,19 @@ function setupTriggers() {
       .create();
   });
 
+  // Archiviazione sessioni FuelLog concluse (FuelLogArchive.js) — tiene
+  // il tab live piccolo per fuel.summary durante le gare. Non è
+  // time-critical, una volta al giorno basta ampiamente (le sessioni
+  // diventano "stale" solo dopo FUEL_LOG_STALE_DAYS giorni di
+  // inattività). Consigliato lanciare previewFuelLogArchive() a mano
+  // prima di attivare questo trigger la prima volta.
+  ensureTimeTrigger('fuelLogArchiveDailyRun', 'archiviazione FuelLog una volta al giorno', () => {
+    ScriptApp.newTrigger('fuelLogArchiveDailyRun')
+      .timeBased()
+      .everyDays(1)
+      .create();
+  });
+
   Logger.log(results.join('\n'));
   return results;
 }

@@ -24,6 +24,8 @@ const SHEETS = {
   ENDURANCE_STINTS: 'EnduranceStints',
   RACE_CREWS: 'RaceCrews',
   FUEL_LOG: 'FuelLog',
+  FUEL_LOG_ARCHIVE: 'FuelLogArchive',
+  FUEL_LOG_SUMMARY: 'FuelLogSummary',
   SOCIAL_POSTS: 'SocialPosts',
   SOCIAL_METRICS: 'SocialMetrics',
   SOCIAL_MEDIA: 'SocialMedia',
