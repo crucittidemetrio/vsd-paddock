@@ -116,8 +116,8 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
         {isStaff && (
           <>
             <div className="nav-section-label">Admin</div>
-            {ADMIN_ITEMS.map(item => renderNavItem(item, onMobileClose))}
-            {isAdmin && ADMIN_ONLY_ITEMS.map(item => renderNavItem(item, onMobileClose))}
+            {ADMIN_ITEMS.map(item => renderNavItem(item, onMobileClose, 'is-admin'))}
+            {isAdmin && ADMIN_ONLY_ITEMS.map(item => renderNavItem(item, onMobileClose, 'is-admin'))}
           </>
         )}
       </nav>

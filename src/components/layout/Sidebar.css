@@ -93,16 +93,19 @@
   width: 20px;
   text-align: center;
   color: var(--vsd-cyan);
-  opacity: 0.55;
+  opacity: 0.75;
 }
-.nav-item:hover .nav-icon { opacity: 0.85; }
+.nav-item:hover .nav-icon { opacity: 0.95; }
 .nav-item.is-active .nav-icon { opacity: 1; }
 
 /* Icone colorate per sezione, stessi accenti gia' usati per bordi/sfondi
-   qui sotto (evento = arancio, strumento live = verde) — cosi' l'icona
-   comunica la sezione anche a riposo, non solo su hover/attivo. */
+   qui sotto (evento = arancio, strumento live = verde, admin = rosso) —
+   cosi' l'icona comunica la sezione anche a riposo, non solo su
+   hover/attivo, e una lista lunga come la sidebar resta scansionabile
+   a colpo d'occhio invece di essere tutta la stessa tinta. */
 .nav-item.is-event .nav-icon { color: var(--vsd-orange); }
 .nav-item.is-tool .nav-icon { color: #22c55e; }
+.nav-item.is-admin .nav-icon { color: var(--vsd-red); }
 
 .nav-label { flex: 1; }
 
