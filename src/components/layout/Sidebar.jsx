@@ -10,10 +10,10 @@ const PUBLIC_ITEMS = [
   { to: '/', label: LABELS.nav_landing, icon: '◉', exact: true },
   { to: '/roster', label: LABELS.nav_roster, icon: '◢' },
   { to: '/race', label: LABELS.nav_race, icon: '◤' },
-  { to: '/calendar', label: 'Calendario', icon: '📅' },
-  { to: '/championships', label: 'Campionati', icon: '🏆' },
+  { to: '/calendar', label: 'Calendario', icon: '▦' },
+  { to: '/championships', label: 'Campionati', icon: '♛' },
   { to: '/laps', label: LABELS.nav_laps, icon: '◈' },
-  { to: '/results', label: LABELS.nav_results, icon: '🏁' },
+  { to: '/results', label: LABELS.nav_results, icon: '⚑' },
   { to: '/compare', label: 'Confronto', icon: '⚖' },
   { to: '/endurance', label: LABELS.nav_endurance, icon: '◐' },
 ];
@@ -21,7 +21,7 @@ const PUBLIC_ITEMS = [
 // Eventi VSD — formati proprietari interni (non le gare/campionati standard),
 // visibili a tutti gli utenti, evidenziati con un accento dedicato.
 const EVENTS_ITEMS = [
-  { to: '/ue144', label: 'UE144', icon: '🏁' },
+  { to: '/ue144', label: 'UE144', icon: '⚑' },
   { to: '/clash-of-classes', label: 'Clash of Classes', icon: '⚔' },
 ];
 
@@ -30,7 +30,7 @@ const PILOT_ITEMS = [
   { to: '/reports', label: LABELS.nav_reports, icon: '◣' },
   { to: '/academy', label: 'Pilot Rating', icon: '◇' },
   { to: '/recap', label: 'Season Recap', icon: '✦' },
-  { to: '/records', label: 'Muro dei Record', icon: '🏆' },
+  { to: '/records', label: 'Muro dei Record', icon: '♛' },
   { to: '/training', label: LABELS.nav_training, icon: '◆' },
 ];
 
@@ -38,20 +38,20 @@ const PILOT_ITEMS = [
 // consultazione — sezione separata coi propri accenti visivi, così è
 // chiaro a colpo d'occhio che non è "un'altra pagina di statistiche".
 const TOOLS_ITEMS = [
-  { to: '/carburante-energia', label: 'Carburante/Energia', icon: '⛽' },
+  { to: '/carburante-energia', label: 'Carburante/Energia', icon: '◔' },
 ];
 
 // Voci future "soon" — solo pilota loggato
 const FUTURE_ITEMS = [];
 
 const ADMIN_ITEMS = [
-  { to: '/admin/best-laps', label: 'Best Laps', icon: '⏱️' },
-  { to: '/admin/races', label: 'Gestione Gare', icon: '🏁' },
-  { to: '/admin/team-dashboard', label: 'Team Dashboard', icon: '📊' },
-  { to: '/admin/import-results', label: 'Import Risultati', icon: '📥' },
-  { to: '/admin/import-standings', label: 'Import Standings', icon: '🏆' },
-  { to: '/admin/garage61-sync', label: 'Sync Garage61', icon: '⚡' },
-  { to: '/admin/posters', label: 'Race Posters', icon: '🖼️' },
+  { to: '/admin/best-laps', label: 'Best Laps', icon: '◷' },
+  { to: '/admin/races', label: 'Gestione Gare', icon: '⚑' },
+  { to: '/admin/team-dashboard', label: 'Team Dashboard', icon: '▥' },
+  { to: '/admin/import-results', label: 'Import Risultati', icon: '▽' },
+  { to: '/admin/import-standings', label: 'Import Standings', icon: '♛' },
+  { to: '/admin/garage61-sync', label: 'Sync Garage61', icon: '↻' },
+  { to: '/admin/posters', label: 'Race Posters', icon: '▭' },
   { to: '/admin/endurance', label: 'Endurance Admin', icon: '◐' },
   { to: '/admin/clash-results', label: 'Clash of Classes', icon: '⚔' },
 ];
@@ -59,7 +59,7 @@ const ADMIN_ITEMS = [
 // Voci riservate ad admin/Team Principal — sottoinsieme più ristretto
 // dell'area Admin (isStaff include anche staff generico, questo no).
 const ADMIN_ONLY_ITEMS = [
-  { to: '/admin/social-manager', label: 'Social Manager', icon: '📣' },
+  { to: '/admin/social-manager', label: 'Social Manager', icon: '◎' },
 ];
 
 function renderNavItem(item, onMobileClose, extraClass = '') {

@@ -376,7 +376,7 @@
 .postRowActions {
   display: flex;
   align-items: flex-start;
-  gap: 6px;
+  gap: 8px;
   flex-shrink: 0;
 }
 
@@ -394,7 +394,7 @@
 .btnMini:hover { background: rgba(0,212,255,0.12); border-color: var(--vsd-cyan); color: var(--vsd-cyan); }
 
 .btnEdit, .btnDelete {
-  width: 28px; height: 28px;
+  width: 36px; height: 36px;
   border-radius: var(--r-sm);
   border: 1px solid var(--color-border-strong);
   background: rgba(255,255,255,0.04);
