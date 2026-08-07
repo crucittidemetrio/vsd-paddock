@@ -24,6 +24,36 @@ export function useClashRegister() {
   });
 }
 
+export function useClashAddParticipant() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload) => api.clash.addParticipant(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['clash', 'participants'] });
+    },
+  });
+}
+
+export function useClashUpdateParticipant() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload) => api.clash.updateParticipant(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['clash', 'participants'] });
+    },
+  });
+}
+
+export function useClashRemoveParticipant() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (participantId) => api.clash.removeParticipant(participantId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['clash', 'participants'] });
+    },
+  });
+}
+
 export function useClashStandings() {
   return useQuery({
     queryKey: ['clash', 'standings'],

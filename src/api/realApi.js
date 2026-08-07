@@ -255,6 +255,12 @@ export async function callApi(action, payload = {}) {
         return await clashParticipantsListAdapter(payload, token);
       case 'clash.participants.register':
         return await clashRegisterAdapter(payload, token);
+      case 'clash.participants.add':
+        return await clashAddParticipantAdapter(payload, token);
+      case 'clash.participants.update':
+        return await clashUpdateParticipantAdapter(payload, token);
+      case 'clash.participants.remove':
+        return await clashRemoveParticipantAdapter(payload, token);
       case 'clash.standings':
         return await clashStandingsAdapter(payload, token);
       case 'clash.results.submitRound':
@@ -687,6 +693,24 @@ async function clashParticipantsListAdapter(payload, token) {
 
 async function clashRegisterAdapter(payload, token) {
   const res = await postToBackend('clash.participants.register', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+async function clashAddParticipantAdapter(payload, token) {
+  const res = await postToBackend('clash.participants.add', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+async function clashUpdateParticipantAdapter(payload, token) {
+  const res = await postToBackend('clash.participants.update', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+async function clashRemoveParticipantAdapter(payload, token) {
+  const res = await postToBackend('clash.participants.remove', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
 }

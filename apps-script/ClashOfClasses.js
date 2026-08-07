@@ -28,6 +28,9 @@
 // Action registrate in Codice.js:
 //   'clash.participants.list'     handleClashParticipantsList
 //   'clash.participants.register' handleClashParticipantsRegister
+//   'clash.participants.add'      handleClashParticipantsAdd      (staff)
+//   'clash.participants.update'   handleClashParticipantsUpdate   (staff)
+//   'clash.participants.remove'   handleClashParticipantsRemove   (staff)
 //   'clash.results.submitRound'   handleClashResultsSubmitRound   (staff)
 //   'clash.standings'             handleClashStandings
 //   'clash.incidents.report'      handleClashIncidentsReport
@@ -155,6 +158,169 @@ function handleClashParticipantsRegister(payload, ctx) {
     registered_at: now,
     status: 'registered',
   });
+}
+
+/**
+ * Trova la riga di un partecipante per participant_id. Ritorna l'oggetto
+ * con tutti i campi più _rowIndex (1-based, comprensivo di header) per
+ * poterla riscrivere sul posto, oppure null se non esiste.
+ */
+function clashFindParticipantRow_(participantId) {
+  if (!participantId) return null;
+  const sheet = getSheet(SHEETS.CLASH_PARTICIPANTS);
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return null;
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const idCol = headers.indexOf('participant_id');
+  const values = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+  for (let i = 0; i < values.length; i++) {
+    if (values[i][idCol] === participantId) {
+      const obj = {};
+      headers.forEach((h, c) => { obj[h] = values[i][c]; });
+      obj._rowIndex = i + 2;
+      obj._headers = headers;
+      return obj;
+    }
+  }
+  return null;
+}
+
+/**
+ * clash.participants.add — iscrizione manuale da parte dello staff.
+ * Auth: staff richiesto. Pensato per riallineare i dati con SimGrid
+ * (fonte "ufficiale" delle iscrizioni per questo evento): un iscritto
+ * su SimGrid ma non ancora presente qui va aggiunto a mano con questa
+ * action, senza dover passare dal form pubblico.
+ *
+ * Stessa validazione di clash.participants.register (classe valida,
+ * griglia non piena, no doppioni), ma driver_id/display_name vengono
+ * dal payload invece che da ctx, perché è lo staff a inserire per
+ * conto di un altro pilota.
+ *
+ * @param {Object} payload - { display_name, class: 'GTE'|'GT3', discord_handle?, driver_id? }
+ */
+function handleClashParticipantsAdd(payload, ctx) {
+  if (!ctx) return fail('Auth richiesto');
+  if (!ctx.isStaff) return fail('Operazione riservata a staff e admin');
+
+  payload = payload || {};
+  const cls = String(payload.class || '').trim().toUpperCase();
+  if (CLASH_VALID_CLASSES.indexOf(cls) === -1) {
+    return fail('Classe non valida. Ammesse: ' + CLASH_VALID_CLASSES.join(', '));
+  }
+  const displayName = String(payload.display_name || '').trim();
+  if (!displayName) return fail('Nome pilota mancante');
+
+  const driverId = String(payload.driver_id || '').trim();
+  const discordHandle = String(payload.discord_handle || '').trim();
+
+  const existing = sheetToObjects(SHEETS.CLASH_PARTICIPANTS)
+    .filter(p => String(p.status || '').trim() !== 'withdrawn');
+
+  if (existing.length >= CLASH_MAX_GRID) {
+    return fail(`Griglia al completo (${CLASH_MAX_GRID}/${CLASH_MAX_GRID})`);
+  }
+
+  const nameKey = displayName.toLowerCase();
+  const dup = existing.find(p =>
+    (driverId && p.driver_id === driverId) ||
+    (String(p.display_name || '').trim().toLowerCase() === nameKey)
+  );
+  if (dup) return fail('Pilota già iscritto (classe ' + dup.class + ') — usa clash.participants.update per modificarlo');
+
+  const participantId = clashGenerateId_('coc');
+  const now = new Date().toISOString();
+  const sheet = getSheet(SHEETS.CLASH_PARTICIPANTS);
+  sheet.appendRow([participantId, driverId, displayName, cls, discordHandle, now, 'registered']);
+
+  return ok({
+    participant_id: participantId,
+    driver_id: driverId,
+    display_name: displayName,
+    class: cls,
+    discord_handle: discordHandle,
+    registered_at: now,
+    status: 'registered',
+  });
+}
+
+/**
+ * clash.participants.update — modifica un iscritto esistente (classe,
+ * nome, discord handle) — es. per correggere un errore di battitura o
+ * allineare la classe a quanto risulta su SimGrid.
+ * Auth: staff richiesto.
+ *
+ * @param {Object} payload - { participant_id, display_name?, class?, discord_handle? }
+ */
+function handleClashParticipantsUpdate(payload, ctx) {
+  if (!ctx) return fail('Auth richiesto');
+  if (!ctx.isStaff) return fail('Operazione riservata a staff e admin');
+
+  payload = payload || {};
+  const participantId = String(payload.participant_id || '').trim();
+  if (!participantId) return fail('participant_id obbligatorio');
+
+  const row = clashFindParticipantRow_(participantId);
+  if (!row) return fail('Iscritto non trovato: ' + participantId);
+
+  if (payload.class !== undefined) {
+    const cls = String(payload.class || '').trim().toUpperCase();
+    if (CLASH_VALID_CLASSES.indexOf(cls) === -1) {
+      return fail('Classe non valida. Ammesse: ' + CLASH_VALID_CLASSES.join(', '));
+    }
+    row.class = cls;
+  }
+  if (payload.display_name !== undefined) {
+    const name = String(payload.display_name || '').trim();
+    if (!name) return fail('display_name non può essere vuoto');
+    row.display_name = name;
+  }
+  if (payload.discord_handle !== undefined) {
+    row.discord_handle = String(payload.discord_handle || '').trim();
+  }
+
+  const headers = row._headers;
+  const sheet = getSheet(SHEETS.CLASH_PARTICIPANTS);
+  const newRow = headers.map(h => (row[h] !== undefined ? row[h] : ''));
+  sheet.getRange(row._rowIndex, 1, 1, newRow.length).setValues([newRow]);
+
+  return ok({
+    participant_id: participantId,
+    display_name: row.display_name,
+    class: row.class,
+    discord_handle: row.discord_handle,
+    driver_id: row.driver_id || '',
+    status: row.status,
+  });
+}
+
+/**
+ * clash.participants.remove — ritira un iscritto.
+ * Auth: staff richiesto. Soft-delete (status → 'withdrawn'), coerente
+ * col filtro già usato da clash.participants.list/register: la riga
+ * resta nello sheet per storico/audit, ma sparisce dal conteggio
+ * griglia e dalla lista pubblica.
+ *
+ * @param {Object} payload - { participant_id }
+ */
+function handleClashParticipantsRemove(payload, ctx) {
+  if (!ctx) return fail('Auth richiesto');
+  if (!ctx.isStaff) return fail('Operazione riservata a staff e admin');
+
+  payload = payload || {};
+  const participantId = String(payload.participant_id || '').trim();
+  if (!participantId) return fail('participant_id obbligatorio');
+
+  const row = clashFindParticipantRow_(participantId);
+  if (!row) return fail('Iscritto non trovato: ' + participantId);
+
+  row.status = 'withdrawn';
+  const headers = row._headers;
+  const sheet = getSheet(SHEETS.CLASH_PARTICIPANTS);
+  const newRow = headers.map(h => (row[h] !== undefined ? row[h] : ''));
+  sheet.getRange(row._rowIndex, 1, 1, newRow.length).setValues([newRow]);
+
+  return ok({ participant_id: participantId, status: 'withdrawn' });
 }
 
 // ═══════════════════════════════════════════════════════════

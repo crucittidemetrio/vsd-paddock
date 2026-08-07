@@ -210,6 +210,9 @@ const ACTIONS = {
   // Clash of Classes — GTE vs GT3 (dominio custom, vedi ClashOfClasses.js)
   'clash.participants.list': handleClashParticipantsList,
   'clash.participants.register': handleClashParticipantsRegister,
+  'clash.participants.add': handleClashParticipantsAdd,
+  'clash.participants.update': handleClashParticipantsUpdate,
+  'clash.participants.remove': handleClashParticipantsRemove,
   'clash.results.submitRound': handleClashResultsSubmitRound,
   'clash.standings': handleClashStandings,
   'clash.incidents.report': handleClashIncidentsReport,

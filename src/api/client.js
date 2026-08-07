@@ -138,6 +138,9 @@ export const api = {
   clash: {
     participantsList: () => call('clash.participants.list', {}),
     register: (payload) => call('clash.participants.register', payload),
+    addParticipant: (payload) => call('clash.participants.add', payload),
+    updateParticipant: (payload) => call('clash.participants.update', payload),
+    removeParticipant: (participant_id) => call('clash.participants.remove', { participant_id }),
     standings: () => call('clash.standings', {}),
     submitRoundResults: (payload) => call('clash.results.submitRound', payload),
     reportIncident: (payload) => call('clash.incidents.report', payload),
