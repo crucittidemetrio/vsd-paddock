@@ -54,6 +54,15 @@ const OG_MAP = {
     imageHeight: '1024',
     url: `${SITE}/ue144`,
   },
+  'clash-of-classes': {
+    title: 'Clash of Classes — GTE vs GT3 | VSD',
+    description:
+      'VSD Clash of Classes: mini-campionato esibizione GTE vs GT3 su Le Mans Ultimate. 3 round — Silverstone, Imola, Spa-Francorchamps. Aperto a tutta la community.',
+    image: `${SITE}/GTE-vs-GT3-Clash-of-Classes.banner.jpg`,
+    imageWidth: '1536',
+    imageHeight: '1024',
+    url: `${SITE}/clash-of-classes`,
+  },
   joinus: {
     title: 'Unisciti a VSD — Virtual Sim Driver',
     description:
