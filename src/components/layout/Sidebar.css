@@ -137,6 +137,22 @@
   background: var(--vsd-orange);
 }
 
+.nav-count {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-pill);
+  background: var(--vsd-red);
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: var(--fw-semibold);
+  line-height: 1;
+}
+
 .nav-tag {
   font-family: var(--font-mono);
   font-size: 9px;

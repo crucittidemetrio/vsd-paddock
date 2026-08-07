@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import { LABELS } from '../../utils/constants';
 import { useAuth } from '../../hooks/useAuth';
+import { usePendingLapSubmissions } from '../../hooks/useLapSubmissions';
 import Logo from '../shared/Logo';
 import totalPaintLogo from '../../assets/total-paint-logo.webp';
 import './Sidebar.css';
@@ -62,7 +63,7 @@ const ADMIN_ONLY_ITEMS = [
   { to: '/admin/social-manager', label: 'Social Manager', icon: '◎' },
 ];
 
-function renderNavItem(item, onMobileClose, extraClass = '') {
+function renderNavItem(item, onMobileClose, extraClass = '', badgeCount = 0) {
   const tagText = extraClass.includes('is-soon') ? 'soon'
     : extraClass.includes('is-tool') ? 'live'
     : null;
@@ -76,6 +77,7 @@ function renderNavItem(item, onMobileClose, extraClass = '') {
     >
       <span className="nav-icon">{item.icon}</span>
       <span className="nav-label">{item.label}</span>
+      {badgeCount > 0 && <span className="nav-count">{badgeCount}</span>}
       {tagText && <span className={`nav-tag${tagText === 'live' ? ' nav-tag-live' : ''}`}>{tagText}</span>}
     </NavLink>
   );
@@ -83,6 +85,13 @@ function renderNavItem(item, onMobileClose, extraClass = '') {
 
 export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {} }) {
   const { isVsdPilot, isStaff, isAdmin } = useAuth();
+
+  // Solo admin: la coda di validazione best lap è riservata a loro (vedi
+  // AdminBestLaps.jsx). Polling ogni 30s già previsto dall'hook — stessa
+  // queryKey usata lì, quindi nessuna chiamata doppia se la pagina è
+  // aperta insieme alla sidebar.
+  const pendingLapsQuery = usePendingLapSubmissions(isAdmin);
+  const pendingLapsCount = pendingLapsQuery.data?.length || 0;
 
   return (
     <aside className={`sidebar${isMobileOpen ? ' is-mobile-open' : ''}`}>
@@ -116,7 +125,10 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
         {isStaff && (
           <>
             <div className="nav-section-label">Admin</div>
-            {ADMIN_ITEMS.map(item => renderNavItem(item, onMobileClose, 'is-admin'))}
+            {ADMIN_ITEMS.map(item => renderNavItem(
+              item, onMobileClose, 'is-admin',
+              item.to === '/admin/best-laps' ? pendingLapsCount : 0
+            ))}
             {isAdmin && ADMIN_ONLY_ITEMS.map(item => renderNavItem(item, onMobileClose, 'is-admin'))}
           </>
         )}

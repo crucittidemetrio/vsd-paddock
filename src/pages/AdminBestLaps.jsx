@@ -77,6 +77,12 @@ export default function AdminBestLaps() {
   // rifiuterebbe comunque lapSubmissions.listPending/approve/reject.
   const activeTab = tab === 'pending' && !isAdmin ? 'manual' : tab;
 
+  // Stessa query di PendingTab qui sotto (stessa queryKey → React Query
+  // condivide la cache, nessuna chiamata doppia): serve solo per mostrare
+  // il conteggio nell'etichetta del tab, anche prima di averlo aperto.
+  const pendingCountQuery = usePendingLapSubmissions(isAdmin);
+  const pendingCount = pendingCountQuery.data?.length || 0;
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -100,7 +106,7 @@ export default function AdminBestLaps() {
             className={`${styles.tab} ${activeTab === 'pending' ? styles.tabActive : ''}`}
             onClick={() => setTab('pending')}
           >
-            Da validare
+            Da validare{pendingCount > 0 ? ` (${pendingCount})` : ''}
           </button>
         )}
       </div>
