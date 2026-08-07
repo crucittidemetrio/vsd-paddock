@@ -31,7 +31,7 @@ export default function FuelPanel({ raceId, carNumber }) {
   const targetLaps = targetLapsInput.trim() ? Number(targetLapsInput) : null;
   const validTarget = targetLaps != null && Number.isFinite(targetLaps) && targetLaps > 0;
 
-  const { data, isLoading } = useFuelSummary(raceId, carNumber, validTarget ? targetLaps : null);
+  const { data, isLoading, error } = useFuelSummary(raceId, carNumber, validTarget ? targetLaps : null);
 
   const sampleCount = data?.sample_count || 0;
   const latest = data?.latest || null;
@@ -50,7 +50,14 @@ export default function FuelPanel({ raceId, carNumber }) {
         {isLoading && <span className="fp-stale">aggiornamento…</span>}
       </div>
 
-      {sampleCount === 0 ? (
+      {error ? (
+        <div className="fp-error">
+          Impossibile caricare i dati ({error.message || 'errore sconosciuto'}).
+          Se il companion app sta comunque inviando campioni (li vedresti loggati
+          nella finestra nera), il problema più probabile è la sessione del sito:
+          prova a ricaricare la pagina o a rifare il login.
+        </div>
+      ) : sampleCount === 0 ? (
         <div className="fp-empty">
           Nessun campione ricevuto ancora. Il companion app manda un campione
           ad ogni giro completato in pista — vedi companion/README.md.

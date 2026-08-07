@@ -39,6 +39,16 @@
   font-size: 0.9rem;
 }
 
+.fp-error {
+  padding: 16px;
+  text-align: center;
+  background: rgba(245, 79, 79, 0.08);
+  border: 1px solid rgba(245, 79, 79, 0.3);
+  border-radius: 8px;
+  color: #f54f4f;
+  font-size: 0.9rem;
+}
+
 .fp-target {
   display: flex;
   flex-wrap: wrap;
