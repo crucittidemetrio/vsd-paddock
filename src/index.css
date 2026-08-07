@@ -5,6 +5,18 @@
   box-sizing: border-box;
 }
 
+/* Rispetta la preferenza di sistema "riduci le animazioni": disattiva
+   transizioni/animazioni/scroll fluido ovunque nell'app senza dover
+   toccare ogni singolo file CSS. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 html, body, #root {
   margin: 0;
   padding: 0;

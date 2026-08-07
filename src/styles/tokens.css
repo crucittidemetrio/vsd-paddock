@@ -15,7 +15,7 @@
   /* SEMANTIC */
   --color-text: #e8edf5;
   --color-text-muted: #8a96b0;
-  --color-text-dim: #5a6480;
+  --color-text-dim: #77829f; /* schiarito da #5a6480: l'originale falliva AA (3.0-3.3:1), ora 4.6-5.0:1 su bg/bg-elevated */
   --color-border: #1f2a4a;
   --color-border-strong: #2d3a5e;
   --color-success: #34d399;
