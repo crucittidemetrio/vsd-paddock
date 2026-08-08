@@ -32,6 +32,7 @@ const SHEETS = {
   CLASH_PARTICIPANTS: 'ClashParticipants',
   CLASH_RESULTS: 'ClashResults',
   CLASH_INCIDENT_REPORTS: 'ClashIncidentReports',
+  CONSENTS: 'Consents',
 };
 
 // Token TTL: 7 giorni
@@ -232,6 +233,11 @@ const ACTIONS = {
   'social.media.list': handleSocialMediaList,
   'social.media.add': handleSocialMediaAdd,
   'social.media.remove': handleSocialMediaRemove,
+  // Consenso privacy — pubblicazione dati su sito pubblico/social
+  'consent.status': handleConsentStatus,
+  'consent.accept': handleConsentAccept,
+  'consent.adminList': handleConsentAdminList,
+
   'standings.byChampionship': handleStandingsByChampionship,
   'standings.byDriver':       handleStandingsByDriver,
   'championships.importStandings':   handleChampionshipsImportStandings,

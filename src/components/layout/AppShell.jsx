@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
+import ConsentGate from '../auth/ConsentGate';
 import { useCanonicalUrl } from '../../hooks/useCanonicalUrl';
 import { usePresenceHeartbeat } from '../../hooks/usePresence';
 import './AppShell.css';
@@ -48,7 +49,9 @@ export default function AppShell() {
       <div className="app-shell-main">
         <TopBar onHamburgerClick={openMenu} />
         <main className="app-shell-content">
-          <Outlet />
+          <ConsentGate>
+            <Outlet />
+          </ConsentGate>
         </main>
       </div>
     </div>

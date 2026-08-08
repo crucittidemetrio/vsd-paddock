@@ -33,6 +33,7 @@ const PILOT_ITEMS = [
   { to: '/recap', label: 'Season Recap', icon: '✦' },
   { to: '/records', label: 'Muro dei Record', icon: '♛' },
   { to: '/training', label: LABELS.nav_training, icon: '◆' },
+  { to: '/consenso', label: 'Consenso dati', icon: '✎' },
 ];
 
 // Strumenti da usare DURANTE una sessione (gara o prova), non pagine di
@@ -61,6 +62,7 @@ const ADMIN_ITEMS = [
 // dell'area Admin (isStaff include anche staff generico, questo no).
 const ADMIN_ONLY_ITEMS = [
   { to: '/admin/social-manager', label: 'Social Manager', icon: '◎' },
+  { to: '/admin/consents', label: 'Consenso dati', icon: '✎' },
 ];
 
 function renderNavItem(item, onMobileClose, extraClass = '', badgeCount = 0) {

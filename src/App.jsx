@@ -46,6 +46,8 @@ const AdminRaces = lazy(() => import('./pages/AdminRaces'));
 const Compare    = lazy(() => import('./pages/Compare'));
 const Privacy     = lazy(() => import('./pages/Privacy'));
 const Terms       = lazy(() => import('./pages/Terms'));
+const ConsentForm = lazy(() => import('./pages/ConsentForm'));
+const AdminConsents = lazy(() => import('./pages/AdminConsents'));
 const SocialManager = lazy(() => import('./pages/SocialManager'));
 const ClashOfClasses = lazy(() => import('./pages/ClashOfClasses'));
 const AdminClashResults = lazy(() => import('./pages/AdminClashResults'));
@@ -161,6 +163,14 @@ export default function App() {
                   </RequireTier>
                 }
               />
+              <Route
+                path="/consenso"
+                element={
+                  <RequireTier minTier="pilot_vsd" fallback={<LoginPrompt feature="il consenso privacy" />}>
+                    <ConsentForm />
+                  </RequireTier>
+                }
+              />
 
               {/* ── Admin/Staff: AdminRoute è già staff-aware ── */}
               <Route
@@ -214,6 +224,10 @@ export default function App() {
               <Route
                 path="/admin/clash-results"
                 element={<AdminRoute><AdminClashResults /></AdminRoute>}
+              />
+              <Route
+                path="/admin/consents"
+                element={<AdminRoute><AdminConsents /></AdminRoute>}
               />
             </Route>
             

@@ -353,6 +353,12 @@ export async function callApi(action, payload = {}) {
         return await fuelSummaryAdapter(payload, token);
       case 'landing.data':
         return await landingDataAdapter(payload, token);
+      case 'consent.status':
+        return await postToBackend('consent.status', payload, token);
+      case 'consent.accept':
+        return await postToBackend('consent.accept', payload, token);
+      case 'consent.adminList':
+        return await postToBackend('consent.adminList', payload, token);
       default:
         return fail(`Action non instradata: ${action}`);
     }

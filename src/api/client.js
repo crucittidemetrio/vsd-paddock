@@ -161,7 +161,13 @@ export const api = {
     mediaRemove: (media_id) => call('social.media.remove', { media_id }),
   },
 
- championships: {
+ consent: {
+    status: () => call('consent.status', {}),
+    accept: (payload) => call('consent.accept', payload),
+    adminList: () => call('consent.adminList', {}),
+  },
+
+  championships: {
     list: (filters = {}) => call('championships.list', filters),
     importStandings: ({ championship_id, json_data }) =>
       call('championships.importStandings', { championship_id, json_data }),
