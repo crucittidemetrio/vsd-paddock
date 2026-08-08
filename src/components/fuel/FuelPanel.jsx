@@ -47,7 +47,6 @@ export default function FuelPanel({ raceId, carNumber, plannedEndTime = null }) 
   // scoprire un numero che possiamo già calcolare con i dati in mano.
   const { data, isLoading, error } = useFuelSummary(raceId, carNumber, manualValidTarget ? manualTargetLaps : null);
 
-  const sampleCount = data?.sample_count || 0;
   const latest = data?.latest || null;
   const fuel = data?.fuel || null;
   const energy = data?.energy || null;
@@ -104,6 +103,7 @@ export default function FuelPanel({ raceId, carNumber, plannedEndTime = null }) 
     <section className="fp-section">
       <div className="fp-header">
         <h2 className="fp-title">Carburante / Energia — Vettura #{carNumber}</h2>
+        {data?.live && <span className="fp-live-badge">● live</span>}
         {isLoading && <span className="fp-stale">aggiornamento…</span>}
       </div>
 
@@ -114,7 +114,7 @@ export default function FuelPanel({ raceId, carNumber, plannedEndTime = null }) 
           nella finestra nera), il problema più probabile è la sessione del sito:
           prova a ricaricare la pagina o a rifare il login.
         </div>
-      ) : sampleCount === 0 ? (
+      ) : !latest ? (
         <div className="fp-empty">
           Nessun campione ricevuto ancora. Il companion app manda un campione
           ad ogni giro completato in pista — vedi companion/README.md.

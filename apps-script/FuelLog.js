@@ -85,6 +85,70 @@ function handleFuelLogSample(payload, ctx) {
 }
 
 /**
+ * fuel.logLive — Ping leggero di stato corrente, mandato dal companion
+ * app ogni ~15s indipendentemente dal cambio giro (a differenza di
+ * fuel.logSample, che scrive un campione solo ad ogni giro completato).
+ * Serve SOLO a mostrare il valore istantaneo nel pannello — non scrive
+ * righe nello sheet e non entra mai nel calcolo di consumo medio per
+ * giro (quello resta fuel.logSample/fuel.summary, invariato). Salvato
+ * in Script Properties: costo quasi zero anche con ping ravvicinati,
+ * niente crescita dello sheet.
+ *
+ * @param {Object} payload - { race_id, car_number, lap_number?, fuel_remaining_l, virtual_energy_pct? }
+ * @param {Object} ctx - Auth context (richiesto)
+ */
+function handleFuelLogLive(payload, ctx) {
+  if (!ctx || !ctx.driver_id) return fail('Auth richiesto');
+
+  payload = payload || {};
+  const raceId = String(payload.race_id || '').trim();
+  const carNumber = String(payload.car_number || '').trim();
+
+  if (!raceId) return fail('race_id obbligatorio');
+  if (!carNumber) return fail('car_number obbligatorio');
+  if (payload.fuel_remaining_l === undefined || payload.fuel_remaining_l === null || payload.fuel_remaining_l === '') {
+    return fail('fuel_remaining_l obbligatorio');
+  }
+
+  const live = {
+    lap_number: payload.lap_number !== undefined && payload.lap_number !== null && payload.lap_number !== ''
+      ? Number(payload.lap_number) : null,
+    fuel_remaining_l: Number(payload.fuel_remaining_l),
+    virtual_energy_pct: payload.virtual_energy_pct !== undefined && payload.virtual_energy_pct !== null && payload.virtual_energy_pct !== ''
+      ? Number(payload.virtual_energy_pct) : null,
+    ts: new Date().toISOString(),
+  };
+
+  PropertiesService.getScriptProperties().setProperty(fuelLiveKey_(raceId, carNumber), JSON.stringify(live));
+
+  return ok({});
+}
+
+function fuelLiveKey_(raceId, carNumber) {
+  return 'fuel_live_' + raceId + '|' + carNumber;
+}
+
+// Ping considerato valido solo se recente — se il companion si chiude
+// a metà sessione (o il pilota smette di giocare), dopo questa soglia
+// fuel.summary ignora il ping congelato e torna silenziosamente
+// all'ultimo campione "ufficiale" per giro, invece di mostrare un
+// valore fantasma che non si muove più.
+const FUEL_LIVE_MAX_AGE_MS = 2 * 60 * 1000;
+
+function readFuelLive_(raceId, carNumber) {
+  try {
+    const raw = PropertiesService.getScriptProperties().getProperty(fuelLiveKey_(raceId, carNumber));
+    if (!raw) return null;
+    const live = JSON.parse(raw);
+    const ageMs = Date.now() - new Date(live.ts).getTime();
+    if (isNaN(ageMs) || ageMs > FUEL_LIVE_MAX_AGE_MS) return null;
+    return live;
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
  * fuel.summary — Consumo medio mobile e proiezione autonomia per una
  * vettura su una gara.
  * Auth: richiesta (qualsiasi utente loggato, stesso livello di
@@ -101,9 +165,11 @@ function handleFuelLogSample(payload, ctx) {
  *   fuel: { avg_per_lap_l, laps_remaining, needed_for_target_l },
  *   energy: { avg_pct_per_lap, laps_remaining, needed_for_target_pct } | null,
  *   series: [{ lap_number, fuel_remaining_l, virtual_energy_pct }],  // per il grafico
- *   avg_lap_time_s  // tempo medio reale tra un campione e il successivo,
+ *   avg_lap_time_s, // tempo medio reale tra un campione e il successivo,
  *                    // secondi — usato dal frontend per convertire l'ora
  *                    // di fine stint in un numero di giri (vedi FuelPanel.jsx)
+ *   live            // true se "latest" viene da un ping fuel.logLive
+ *                    // recente invece che dall'ultimo campione per-giro
  * })
  */
 function handleFuelSummary(payload, ctx) {
@@ -137,11 +203,25 @@ function handleFuelSummary(payload, ctx) {
       return String(a.created_at || '').localeCompare(String(b.created_at || ''));
     });
 
-  if (samples.length === 0) {
+  const liveReading = readFuelLive_(raceId, carNumber);
+
+  if (samples.length === 0 && !liveReading) {
     return ok({ sample_count: 0, latest: null, fuel: null, energy: null });
   }
 
-  const latest = samples[samples.length - 1];
+  const lastLapSample = samples.length ? samples[samples.length - 1] : null;
+
+  // "latest" per la UI: se c'è un ping live recente lo preferiamo per
+  // il valore istantaneo (più fresco di un giro intero), ma le medie/
+  // autonomia qui sotto restano calcolate SOLO sui campioni per-giro
+  // in "samples" — il ping live non li tocca in alcun modo, evitando
+  // di falsare "consumo per giro" con letture infra-giro.
+  const latest = liveReading ? {
+    lap_number: liveReading.lap_number != null ? liveReading.lap_number : (lastLapSample ? lastLapSample.lap_number : null),
+    fuel_remaining_l: liveReading.fuel_remaining_l,
+    virtual_energy_pct: liveReading.virtual_energy_pct != null ? liveReading.virtual_energy_pct : (lastLapSample ? lastLapSample.virtual_energy_pct : null),
+    created_at: liveReading.ts,
+  } : lastLapSample;
 
   // Delta positivo = consumo. Delta negativo = rabbocco (pit) — escluso
   // dalla media mobile, altrimenti falserebbe la stima di consumo.
@@ -203,5 +283,5 @@ function handleFuelSummary(payload, ctx) {
     virtual_energy_pct: s.virtual_energy_pct,
   }));
 
-  return ok({ sample_count: samples.length, latest, fuel, energy, series, avg_lap_time_s: avgLapTimeS });
+  return ok({ sample_count: samples.length, latest, fuel, energy, series, avg_lap_time_s: avgLapTimeS, live: !!liveReading });
 }

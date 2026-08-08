@@ -66,6 +66,10 @@ from lmu_data import SimInfo  # noqa: E402  (vendorizzato, vedi vendor/LICENSE.t
 CONFIG_PATH = _app_dir() / "config.json"
 POLL_INTERVAL_S = 2.0
 RECONNECT_INTERVAL_S = 5.0
+# Ping "live" indipendente dal cambio giro — solo per il valore
+# istantaneo mostrato nel pannello, non entra nel calcolo del consumo
+# medio (quello resta legato al campione per-giro, vedi post_sample).
+LIVE_PING_INTERVAL_S = 15.0
 
 # URL pubblico del backend Apps Script — lo stesso già usato dal
 # frontend (VITE_API_URL), non è un segreto: è l'endpoint a cui il
@@ -188,6 +192,34 @@ def post_sample_async(cfg: dict, payload: dict) -> None:
     threading.Thread(target=post_sample, args=(cfg, payload), daemon=True).start()
 
 
+def post_live(cfg: dict, payload: dict) -> None:
+    """Manda un ping leggero a fuel.logLive — stesso schema di
+    post_sample, ma silenzioso sui successi (altrimenti il terminale
+    si riempirebbe di una riga ogni 15s oltre a quella per giro) e
+    senza dettagli nel log di errore, dato che la perdita di un ping
+    live è innocua (il prossimo arriva tra 15s)."""
+    body = json.dumps({
+        "action": "fuel.logLive",
+        "token": cfg["token"],
+        "payload": payload,
+    }).encode("utf-8")
+    req = urllib_request.Request(
+        cfg["api_url"],
+        data=body,
+        headers={"Content-Type": "text/plain;charset=utf-8"},
+        method="POST",
+    )
+    try:
+        with urllib_request.urlopen(req, timeout=25) as resp:
+            json.loads(resp.read().decode("utf-8"))
+    except Exception:  # noqa: BLE001 — un ping live perso non è mai un problema
+        pass
+
+
+def post_live_async(cfg: dict, payload: dict) -> None:
+    threading.Thread(target=post_live, args=(cfg, payload), daemon=True).start()
+
+
 def connect() -> SimInfo:
     """Prova ad aprire la shared memory finché non è disponibile.
     Non serve che LMU sia già avviato: se il gioco non ha ancora
@@ -214,6 +246,7 @@ def main() -> None:
 
     sim = connect()
     last_sent_lap = None
+    last_live_sent_ts = 0.0
 
     while True:
         try:
@@ -253,6 +286,24 @@ def main() -> None:
 
                 post_sample_async(cfg, payload)
                 last_sent_lap = lap_number
+
+            # Ping live indipendente dal cambio giro — dà l'impressione
+            # di un dato quasi in tempo reale nel pannello senza
+            # sporcare il calcolo del consumo medio (che resta legato
+            # solo ai campioni per-giro sopra).
+            now_ts = time.time()
+            if sane and (now_ts - last_live_sent_ts) >= LIVE_PING_INTERVAL_S:
+                live_payload = {
+                    "race_id": cfg["race_id"],
+                    "car_number": cfg["car_number"],
+                    "lap_number": lap_number,
+                    "fuel_remaining_l": round(fuel_remaining, 2),
+                }
+                if virtual_energy_fraction and virtual_energy_fraction > 0:
+                    live_payload["virtual_energy_pct"] = round(virtual_energy_fraction * 100, 1)
+
+                post_live_async(cfg, live_payload)
+                last_live_sent_ts = now_ts
 
         except Exception:  # noqa: BLE001 — connessione shared memory persa, riconnetti
             log.exception("Errore nel loop di lettura — riconnessione")

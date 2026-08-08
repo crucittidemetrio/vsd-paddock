@@ -281,6 +281,7 @@ const ACTIONS = {
 
   // Fuel/Energy — consumo reale da companion app LMU (shared memory)
   'fuel.logSample': handleFuelLogSample,
+  'fuel.logLive': handleFuelLogLive,
   'fuel.summary': handleFuelSummary,
 };
 
