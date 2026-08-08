@@ -67,6 +67,18 @@ function handleFuelLogSample(payload, ctx) {
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const row = headers.map(h => (sample[h] !== undefined ? sample[h] : ''));
   sheet.appendRow(row);
+
+  // car_number è quasi sempre puramente numerico ("69") — Sheets lo
+  // convertirebbe in automatico in un valore numerico. Forziamo testo
+  // puro sulla cella appena scritta, stessa cautela già usata per
+  // birth_date (Consent.js) e scheduled_date (SocialManager.js).
+  const carNumberCol = headers.indexOf('car_number') + 1;
+  if (carNumberCol > 0) {
+    const cell = sheet.getRange(sheet.getLastRow(), carNumberCol);
+    cell.setNumberFormat('@');
+    cell.setValue(sample.car_number);
+  }
+
   invalidateSheetCache_(SHEETS.FUEL_LOG);
 
   return ok({ sample });
@@ -107,8 +119,13 @@ function handleFuelSummary(payload, ctx) {
   if (!raceId) return fail('race_id obbligatorio');
   if (!carNumber) return fail('car_number obbligatorio');
 
+  // Confronto con String(...).trim() su entrambi i lati: se il numero
+  // vettura è puramente numerico (es. "69"), Google Sheets converte
+  // in automatico la cella in un valore numerico — un uguale stretto
+  // tra stringa e numero fallirebbe sempre, facendo apparire 0
+  // campioni anche quando lo sheet li ha già ricevuti correttamente.
   const samples = sheetToObjects(SHEETS.FUEL_LOG)
-    .filter(s => s.race_id === raceId && s.car_number === carNumber)
+    .filter(s => String(s.race_id).trim() === raceId && String(s.car_number).trim() === carNumber)
     .map(s => ({
       ...s,
       lap_number: Number(s.lap_number),
