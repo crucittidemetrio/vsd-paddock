@@ -35,6 +35,10 @@
   max-width: 560px;
 }
 
+.sub a {
+  color: #00d4ff;
+}
+
 .tabs {
   display: flex;
   gap: 8px;
@@ -137,6 +141,25 @@
   border-radius: 4px;
   padding: 1px 6px;
   text-transform: uppercase;
+}
+
+.classBadge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  color: #ffbf3f;
+  background: rgba(255, 191, 63, 0.1);
+  border: 1px solid rgba(255, 191, 63, 0.25);
+  border-radius: 4px;
+  padding: 1px 6px;
+  text-transform: uppercase;
+}
+
+.cardCar {
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.35);
+  margin-top: 2px;
 }
 
 .cardTime {

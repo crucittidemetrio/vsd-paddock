@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useTeamRecords } from '../hooks/useTeamRecords';
-import { useTracks } from '../hooks/useLookups';
+import { useTracks, useCars } from '../hooks/useLookups';
+import { formatCarInfo } from '../utils/format';
 import { SIM_LIST } from '../utils/constants';
 import styles from './TeamRecords.module.css';
 
@@ -16,6 +18,7 @@ export default function TeamRecords() {
   const [activeSim, setActiveSim] = useState(SIM_LIST[0]?.id || 'LMU');
   const recordsQuery = useTeamRecords(activeSim);
   const tracksQuery = useTracks();
+  const carsQuery = useCars();
 
   const tracksById = useMemo(() => {
     const m = {};
@@ -36,7 +39,9 @@ export default function TeamRecords() {
         <div className={styles.eyebrow}>MURO DEI RECORD</div>
         <h1 className={styles.title}>Record di pista</h1>
         <p className={styles.sub}>
-          Il giro più veloce mai registrato dal team, pista per pista.
+          Il giro più veloce mai registrato dal team su ogni pista — qualsiasi vettura o
+          categoria, non filtrato. Per classifiche divise per categoria/vettura vai su{' '}
+          <Link to="/laps">Best Laps</Link>.
         </p>
       </header>
 
@@ -64,19 +69,26 @@ export default function TeamRecords() {
 
       {records.length > 0 && (
         <div className={styles.list}>
-          {records.map(r => (
-            <div key={`${r.sim}-${r.track_id}`} className={styles.card}>
-              <span className={styles.cardIcon}>🏆</span>
-              <div>
-                <div className={styles.cardTrack}>{trackLabel(r.track_id, tracksById)}</div>
-                <div className={styles.cardHolder}>
-                  {r.display_name}
-                  {r.verified && <span className={styles.verifiedBadge}>Garage61</span>}
+          {records.map(r => {
+            const carInfo = formatCarInfo(r.car_id, carsQuery.data);
+            return (
+              <div key={`${r.sim}-${r.track_id}`} className={styles.card}>
+                <span className={styles.cardIcon}>🏆</span>
+                <div>
+                  <div className={styles.cardTrack}>{trackLabel(r.track_id, tracksById)}</div>
+                  <div className={styles.cardHolder}>
+                    {r.display_name}
+                    {r.verified && <span className={styles.verifiedBadge}>Garage61</span>}
+                    {carInfo.race_class && (
+                      <span className={styles.classBadge}>{carInfo.race_class}</span>
+                    )}
+                  </div>
+                  {r.car_id && <div className={styles.cardCar}>{carInfo.name}</div>}
                 </div>
+                <div className={styles.cardTime}>{r.lap_time_display}</div>
               </div>
-              <div className={styles.cardTime}>{r.lap_time_display}</div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>
