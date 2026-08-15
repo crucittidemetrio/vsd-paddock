@@ -5,6 +5,7 @@ import { useBestLaps } from '../hooks/useBestLaps';
 import { useMyRecentRaceResults } from '../hooks/useRaceResults';
 import { useTracks, useCars } from '../hooks/useLookups';
 import { useChampionshipsByDriver } from '../hooks/useChampionshipsByDriver';
+import { useConsentedDriverPhoto } from '../hooks/useConsent';
 import Avatar from '../components/shared/Avatar';
 import { formatTrack, formatCar } from '../utils/format';
 import './Compare.css';
@@ -134,11 +135,12 @@ function computeLapComparison(lapsA, lapsB) {
 // ─── sub-components ────────────────────────────────────────
 
 function DriverSelector({ value, onChange, options, placeholder, driver }) {
+  const photoUrl = useConsentedDriverPhoto(driver?.driver_id);
   return (
     <div className="cmp-selector">
       {driver ? (
         <div className="cmp-selector-preview">
-          <Avatar name={driver.display_name} driverId={driver.driver_id} size={60} />
+          <Avatar name={driver.display_name} driverId={driver.driver_id} size={60} photoUrl={photoUrl} />
           <div className="cmp-selector-info">
             <div className="cmp-selector-name">{driver.display_name}</div>
             {driver.is_ex_vsd && <span className="cmp-ex-tag">EX VSD</span>}
@@ -219,6 +221,9 @@ export default function Compare() {
   const dA = aId ? driverMap[aId] : null;
   const dB = bId ? driverMap[bId] : null;
 
+  const photoUrlA = useConsentedDriverPhoto(aId);
+  const photoUrlB = useConsentedDriverPhoto(bId);
+
   const optA = useMemo(() => (allDrivers || []).filter(d => d.driver_id !== bId), [allDrivers, bId]);
   const optB = useMemo(() => (allDrivers || []).filter(d => d.driver_id !== aId), [allDrivers, aId]);
 
@@ -283,7 +288,7 @@ export default function Compare() {
           {/* ── Intestazione con avatar ── */}
           <div className="cmp-drivers-header">
             <div className="cmp-dh-side">
-              <Avatar name={dA?.display_name} driverId={aId} size={56} />
+              <Avatar name={dA?.display_name} driverId={aId} size={56} photoUrl={photoUrlA} />
               <div>
                 <div className="cmp-dh-name">{dA?.display_name || aId}</div>
                 {dA?.is_ex_vsd && <span className="cmp-ex-tag">EX VSD</span>}
@@ -295,7 +300,7 @@ export default function Compare() {
                 <div className="cmp-dh-name">{dB?.display_name || bId}</div>
                 {dB?.is_ex_vsd && <span className="cmp-ex-tag">EX VSD</span>}
               </div>
-              <Avatar name={dB?.display_name} driverId={bId} size={56} />
+              <Avatar name={dB?.display_name} driverId={bId} size={56} photoUrl={photoUrlB} />
             </div>
           </div>
 
