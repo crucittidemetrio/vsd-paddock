@@ -33,14 +33,13 @@ export function useConsentAdminList() {
   });
 }
 
-// Solo i flag social_consent per driver_id — per qualsiasi pagina che
-// potrebbe mostrare una foto reale di un pilota (non solo admin).
+// Solo i flag social_consent per driver_id — pubblico, nessun login
+// richiesto: serve anche su pagine viste da visitatori anonimi (es.
+// Roster), che è esattamente dove va decisa la foto vera vs iniziali.
 export function useConsentSocialFlags() {
-  const { isVsdPilot } = useAuth();
   return useQuery({
     queryKey: ['consent', 'socialFlags'],
     queryFn: () => api.consent.socialFlags(),
-    enabled: isVsdPilot,
     staleTime: 5 * 60_000,
   });
 }

@@ -209,17 +209,17 @@ function handleConsentAdminList(payload, ctx) {
 }
 
 /**
- * consent.socialFlags — SOLO il booleano social_consent per driver_id,
- * per qualsiasi utente autenticato (non solo admin) — a differenza di
- * consent.adminList qui non escono nomi/date/dati minorenni, solo "sì
- * o no si può mostrare una foto/video di questa persona". Usato da
- * qualsiasi pagina che potrebbe mostrare una foto reale di un pilota
- * (es. SeasonWrappedCard, in futuro Roster/DriverProfile) per decidere
- * se usare la foto vera o ricadere sull'avatar a iniziali.
+ * consent.socialFlags — SOLO il booleano social_consent per driver_id.
+ * Deliberatamente pubblica, NESSUN auth richiesto (a differenza di
+ * consent.adminList, che ha nomi/date/dati minorenni): il Roster è
+ * visibile anche a visitatori anonimi non loggati, ed è esattamente
+ * lì che serve sapere se mostrare la foto vera di un pilota — quindi
+ * il flag deve essere leggibile pure da loro. Non è un problema di
+ * privacy: dice solo "questa persona ha acconsentito alla pubblicazione
+ * social", lo stesso fatto già implicito dal vedere o non vedere la
+ * sua foto pubblicata.
  */
 function handleConsentSocialFlags(payload, ctx) {
-  if (!ctx || !ctx.driver_id) return fail('Auth richiesto');
-
   const consents = sheetToObjects(SHEETS.CONSENTS)
     .filter(c => c.consent_version === CONSENT_VERSION);
 

@@ -29,7 +29,19 @@ function getInitials(name) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-export default function Avatar({ name, driverId, size = 40, ring = false }) {
+export default function Avatar({ name, driverId, size = 40, ring = false, photoUrl = null }) {
+  if (photoUrl) {
+    return (
+      <img
+        src={photoUrl}
+        alt={name || ''}
+        title={name}
+        className={`avatar avatar-photo${ring ? ' avatar-ring' : ''}`}
+        style={{ width: size, height: size }}
+      />
+    );
+  }
+
   const initials = getInitials(name);
   const [c1, c2] = hashPalette(driverId || name || '');
   return (

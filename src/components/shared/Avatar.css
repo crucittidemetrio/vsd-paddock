@@ -12,3 +12,8 @@
 .avatar-ring {
   box-shadow: 0 0 0 2px var(--vsd-bg), 0 0 0 4px var(--vsd-cyan);
 }
+
+.avatar-photo {
+  object-fit: cover;
+  object-position: top center;
+}

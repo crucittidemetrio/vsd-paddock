@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import Avatar from './Avatar';
 import SimBadge from './SimBadge';
 import StatusDot from './StatusDot';
+import { useConsentedDriverPhoto } from '../../hooks/useConsent';
 import { ROLES } from '../../utils/constants';
 import './DriverCard.css';
 
@@ -9,8 +10,13 @@ import './DriverCard.css';
  * Card pilota riutilizzabile per liste/griglie.
  * - driver: oggetto pilota completo
  * - compact: layout più stretto (per sidebar/sezioni minori)
+ *
+ * Foto reale al posto delle iniziali SOLO se il pilota ha dato
+ * consenso social (useConsentedDriverPhoto — pubblico, funziona anche
+ * per visitatori anonimi, esattamente il pubblico di questa pagina).
  */
 export default function DriverCard({ driver, compact = false, online }) {
+  const photoUrl = useConsentedDriverPhoto(driver?.driver_id);
   if (!driver) return null;
 
   const sims = (driver.preferred_sims || '').split(',').filter(Boolean);
@@ -28,6 +34,7 @@ export default function DriverCard({ driver, compact = false, online }) {
           name={driver.display_name}
           driverId={driver.driver_id}
           size={compact ? 44 : 56}
+          photoUrl={photoUrl}
         />
         <div className="driver-card-id-block">
           <div className="driver-card-id">
