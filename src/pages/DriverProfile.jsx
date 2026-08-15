@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useConsentedDriverPhoto } from '../hooks/useConsent';
 import { useDriver } from '../hooks/useRoster';
 import { useBestLaps } from '../hooks/useBestLaps';
 import { useRaces, useReports } from '../hooks/useRaces';
@@ -27,6 +28,7 @@ export default function DriverProfile() {
   const [showAllHistory, setShowAllHistory] = useState(false);
 
   const { data: driver, isLoading, error } = useDriver(driverId);
+  const photoUrl = useConsentedDriverPhoto(driverId);
   const { data: laps } = useBestLaps({ driver_id: driverId });
   const { data: reports } = useReports({ driver_id: driverId });
   const { data: tracks = [] } = useTracks();
@@ -243,6 +245,7 @@ export default function DriverProfile() {
             driverId={driver.driver_id}
             size={120}
             ring
+            photoUrl={photoUrl}
           />
           <div className="hero-info">
             <div className="hero-meta-line">
