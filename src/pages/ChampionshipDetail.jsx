@@ -6,6 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
 import { useConsentedDriverPhoto } from '../hooks/useConsent';
+import PointsProgressionChart from '../components/championship/PointsProgressionChart';
 import { formatDate } from '../utils/format';
 import { api } from '../api/client';
 import { usePageMeta } from '../hooks/usePageMeta';
@@ -22,7 +23,7 @@ export default function ChampionshipDetail() {
   const { championshipId } = useParams();
   const { data, isLoading, error, refetch } = useChampionshipStandings(championshipId);
   const { data: drivers } = useDrivers();
-  const { isStaff } = useAuth();
+  const { isStaff, driver: currentDriver } = useAuth();
 
   const [selectedClass, setSelectedClass] = useState(null);
 
@@ -221,6 +222,15 @@ export default function ChampionshipDetail() {
                 </table>
               </div>
             </section>
+          )}
+
+          {/* ANDAMENTO PUNTI */}
+          {activeClass && points_configured && (
+            <PointsProgressionChart
+              championshipId={championshipId}
+              className={activeClass.class_name}
+              currentDriverId={currentDriver?.driver_id}
+            />
           )}
 
           {/* AGGIUSTAMENTI PUNTI — solo staff */}

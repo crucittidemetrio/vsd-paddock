@@ -241,6 +241,7 @@ const ACTIONS = {
 
   'standings.byChampionship': handleStandingsByChampionship,
   'standings.byDriver':       handleStandingsByDriver,
+  'standings.progression':    handleStandingsProgression,
   'championships.importStandings':   handleChampionshipsImportStandings,
   'championships.saveAdjustments':   handleChampionshipsSaveAdjustments,
   // ...

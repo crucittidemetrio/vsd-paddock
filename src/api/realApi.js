@@ -299,6 +299,8 @@ export async function callApi(action, payload = {}) {
         return await standingsByChampionshipAdapter(payload, token);         // ← NEW Wave 9.9
       case 'standings.byDriver':
         return await standingsByDriverAdapter(payload, token);
+      case 'standings.progression':
+        return await standingsProgressionAdapter(payload, token);
       case 'reports.list':
         return await reportsListAdapter(payload, token);
       case 'reports.recent':
@@ -883,6 +885,16 @@ async function standingsByChampionshipAdapter(payload, token) {
  */
 async function standingsByDriverAdapter(payload, token) {
   const res = await postToBackend('standings.byDriver', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: standings.progression({ championship_id, class_name? }) → { class_name, rounds, series }
+ * Backend:  standings.progression → { championship, class_name, rounds, series }
+ */
+async function standingsProgressionAdapter(payload, token) {
+  const res = await postToBackend('standings.progression', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
 }

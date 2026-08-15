@@ -285,6 +285,141 @@ function parseLmuStandingsJson_(rawJson) {
 }
 
 /**
+ * standings.progression — andamento punti gara-per-gara di una classe di
+ * un campionato, per la classica curva cumulativa.
+ *
+ * Ricostruita SEMPRE da RaceResults.point_total, mai da standings_json:
+ * il JSON importato da LMU porta solo posizione/dns/dnf per round, non i
+ * punti di quel round — utile per gli standings finali ma non basta per
+ * una curva. RaceResults ha invece point_total per singola gara, la
+ * stessa fonte già usata da mergeRaceStats_ per augmentare gli standings
+ * ibridi: qui la sommiamo in ordine cronologico per ottenere il totale
+ * corrente dopo ogni gara.
+ *
+ * L'asse X è la singola GARA (non il round): un round endurance con
+ * Race 1 + Race 2 produce due punti distinti in sequenza, evitando di
+ * dover sommare/etichettare due risultati come se fossero uno solo.
+ *
+ * payload: { championship_id, class_name? }
+ * Se class_name è omesso, usa la classe con più risultati registrati.
+ */
+function handleStandingsProgression(payload, ctx) {
+  if (!ctx) return fail('Auth richiesto');
+  const championshipId = payload && payload.championship_id;
+  if (!championshipId) return fail('championship_id mancante');
+
+  const championships = getCachedSheetData_(SHEETS.CHAMPIONSHIPS, 3600);
+  const championship = championships.find(c => c.id === championshipId);
+  if (!championship) return fail('Campionato non trovato: ' + championshipId);
+
+  const allRaces = getCachedSheetData_(SHEETS.RACES, 900);
+  const rounds = allRaces
+    .filter(r => r.championship_id === championshipId && r.event_type === 'championship')
+    .sort((a, b) => {
+      const ar = Number(a.round) || 999;
+      const br = Number(b.round) || 999;
+      if (ar !== br) return ar - br;
+      const an = Number(a.race_number) || 1;
+      const bn = Number(b.race_number) || 1;
+      if (an !== bn) return an - bn;
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
+    })
+    .map((r, i) => {
+      const round = Number(r.round) || null;
+      const raceNumber = Number(r.race_number) || 1;
+      return {
+        index: i,
+        race_id: r.race_id,
+        race_name: r.race_name,
+        round,
+        race_number: raceNumber,
+        date: r.date,
+        label: round ? `R${round}${raceNumber > 1 ? '.' + raceNumber : ''}` : r.race_id,
+      };
+    });
+
+  if (rounds.length === 0) {
+    return ok({ championship, class_name: null, rounds: [], series: [] });
+  }
+
+  const raceIndexById = {};
+  rounds.forEach(r => { raceIndexById[r.race_id] = r.index; });
+
+  const allResults = sheetToObjects(SHEETS.RACE_RESULTS);
+  const relevant = allResults.filter(r =>
+    raceIndexById[r.race_id] !== undefined && r.session_type === 'race'
+  );
+
+  let className = payload.class_name || null;
+  if (!className) {
+    const counts = {};
+    relevant.forEach(r => {
+      const cls = r.car_class || 'Unknown';
+      counts[cls] = (counts[cls] || 0) + 1;
+    });
+    className = Object.keys(counts).sort((a, b) => counts[b] - counts[a])[0] || null;
+  }
+  const classResults = className
+    ? relevant.filter(r => (r.car_class || 'Unknown') === className)
+    : relevant;
+
+  const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
+  const driverMap = {};
+  drivers.forEach(d => { driverMap[d.driver_id] = d; });
+
+  const byDriver = {};
+  classResults.forEach(r => {
+    const isVsd = String(r.is_vsd_driver).toUpperCase() === 'TRUE';
+    const driverKey = isVsd ? r.driver_id : (r.driver_name_external || 'UNKNOWN');
+    if (!byDriver[driverKey]) {
+      const driverInfo = isVsd ? driverMap[driverKey] : null;
+      byDriver[driverKey] = {
+        driver_id: isVsd ? driverKey : '',
+        display_name: driverInfo ? driverInfo.display_name : (r.driver_name_external || driverKey),
+        is_vsd: isVsd,
+        pointsByRaceIndex: {},
+      };
+    }
+    const isDns = String(r.dns).toUpperCase() === 'TRUE';
+    if (isDns) return;
+    const idx = raceIndexById[r.race_id];
+    const pts = Number(r.point_total) || 0;
+    byDriver[driverKey].pointsByRaceIndex[idx] =
+      (byDriver[driverKey].pointsByRaceIndex[idx] || 0) + pts;
+  });
+
+  const series = Object.values(byDriver)
+    .map(d => {
+      let cum = 0;
+      const points = rounds.map(r => {
+        cum += (d.pointsByRaceIndex[r.index] || 0);
+        return cum;
+      });
+      return {
+        driver_id: d.driver_id,
+        display_name: d.display_name,
+        is_vsd: d.is_vsd,
+        total: cum,
+        points,
+      };
+    })
+    .sort((a, b) => b.total - a.total);
+
+  return ok({
+    championship,
+    class_name: className,
+    rounds: rounds.map(r => ({
+      race_id: r.race_id,
+      label: r.label,
+      round: r.round,
+      race_number: r.race_number,
+      date: r.date,
+    })),
+    series,
+  });
+}
+
+/**
  * standings.byDriver — Campionati disputati da un pilota VSD.
  * Cerca il driver in ogni campionato (standings_json o RaceResults)
  * e ritorna la lista delle partecipazioni con posizione, punti, classe.

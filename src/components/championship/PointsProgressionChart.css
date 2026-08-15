@@ -1,0 +1,36 @@
+/* ========== ANDAMENTO PUNTI ========== */
+
+.ppc-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.ppc-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.ppc-section-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+}
+
+.ppc-section-meta {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.2em;
+  color: var(--color-text-dim);
+  text-transform: uppercase;
+}
+
+.ppc-card {
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+}

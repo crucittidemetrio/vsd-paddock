@@ -181,6 +181,8 @@ export const api = {
       call('standings.byChampionship', { championship_id }),
     byDriver: (driver_id) =>
       call('standings.byDriver', { driver_id }),
+    progression: (championship_id, class_name) =>
+      call('standings.progression', { championship_id, class_name }),
   },
   
   reports: {
