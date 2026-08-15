@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  AreaChart, Area, ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend,
 } from 'recharts';
 import { useFuelSummary } from '../../hooks/useFuelLog';
@@ -8,6 +8,13 @@ import { useNow } from '../../hooks/useNow';
 import './FuelPanel.css';
 
 const FUEL_LABELS = { fuel_remaining_l: 'Carburante', virtual_energy_pct: 'Energia' };
+
+function formatLapTimeS(s) {
+  if (s == null || !Number.isFinite(s)) return '—';
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}:${sec.toFixed(1).padStart(4, '0')}`;
+}
 
 /**
  * FuelPanel — consumo medio ed autonomia stimata, calcolati da
@@ -98,6 +105,13 @@ export default function FuelPanel({ raceId, carNumber, plannedEndTime = null }) 
     .filter(v => v != null)
     .reduce((min, v) => (min == null ? v : Math.min(min, v)), null);
   const lowWarning = lapsRemaining != null && lapsRemaining < 3;
+
+  // Passo gara stimato dal tempo reale tra due campioni consecutivi del
+  // companion (un campione per giro completato) — NON è il timer di
+  // sessione del gioco, quindi include eventuali ritardi di rete. Utile
+  // per vedere l'ANDAMENTO (tiene? cala? un pit si vede come picco), non
+  // per confrontare tempi assoluti con la classifica ufficiale.
+  const paceSeries = (data?.series || []).filter(p => p.lap_time_s != null);
 
   return (
     <section className="fp-section">
@@ -302,6 +316,55 @@ export default function FuelPanel({ raceId, carNumber, plannedEndTime = null }) 
                   />
                 )}
               </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+
+        {paceSeries.length >= 3 && (
+          <div className="fp-chart">
+            <div className="fp-chart-title">
+              Passo Gara (stimato)
+              <span className="fp-chart-caveat">
+                dal tempo tra i campioni, non dal timer di sessione — i picchi sono probabili pit stop
+              </span>
+            </div>
+            <ResponsiveContainer width="100%" height={180}>
+              <ComposedChart data={paceSeries} margin={{ top: 8, right: 20, left: 0, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                <XAxis
+                  dataKey="lap_number"
+                  stroke="rgba(255,255,255,0.4)"
+                  fontSize={11}
+                  label={{ value: 'Giro', position: 'insideBottom', offset: -2, fill: 'rgba(255,255,255,0.4)', fontSize: 11 }}
+                />
+                <YAxis
+                  stroke="rgba(255,255,255,0.4)"
+                  fontSize={11}
+                  width={50}
+                  domain={['dataMin - 2', 'dataMax + 2']}
+                  tickFormatter={formatLapTimeS}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: '#0a0e1a',
+                    border: '1px solid rgba(0,212,255,0.3)',
+                    borderRadius: 6,
+                    fontSize: 12,
+                  }}
+                  labelStyle={{ color: '#00d4ff', fontFamily: 'monospace' }}
+                  labelFormatter={l => `Giro ${l}`}
+                  formatter={value => [formatLapTimeS(value), 'Passo stimato']}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="lap_time_s"
+                  stroke="var(--vsd-cyan)"
+                  strokeWidth={2}
+                  dot={{ r: 3 }}
+                  activeDot={{ r: 5 }}
+                  isAnimationActive={false}
+                />
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         )}

@@ -164,7 +164,7 @@ function readFuelLive_(raceId, carNumber) {
  *   sample_count, latest,
  *   fuel: { avg_per_lap_l, laps_remaining, needed_for_target_l },
  *   energy: { avg_pct_per_lap, laps_remaining, needed_for_target_pct } | null,
- *   series: [{ lap_number, fuel_remaining_l, virtual_energy_pct }],  // per il grafico
+ *   series: [{ lap_number, fuel_remaining_l, virtual_energy_pct, lap_time_s }],  // per il grafico
  *   avg_lap_time_s, // tempo medio reale tra un campione e il successivo,
  *                    // secondi — usato dal frontend per convertire l'ora
  *                    // di fine stint in un numero di giri (vedi FuelPanel.jsx)
@@ -245,7 +245,13 @@ function handleFuelSummary(payload, ctx) {
     const prevT = new Date(prev.created_at).getTime();
     const curT = new Date(cur.created_at).getTime();
     if (!isNaN(prevT) && !isNaN(curT) && curT > prevT) {
-      lapTimeDeltas.push((curT - prevT) / 1000);
+      const lapTimeS = (curT - prevT) / 1000;
+      lapTimeDeltas.push(lapTimeS);
+      // Riattaccato al campione stesso (non solo all'array flat delle
+      // delta) così la series sotto può esporre il passo giro-per-giro
+      // per il grafico "Passo Gara" — approssimato dal tempo reale tra
+      // due campioni consecutivi, non un vero timer di sessione LMU.
+      cur._lapTimeS = lapTimeS;
     }
   }
 
@@ -281,6 +287,7 @@ function handleFuelSummary(payload, ctx) {
     lap_number: s.lap_number,
     fuel_remaining_l: s.fuel_remaining_l,
     virtual_energy_pct: s.virtual_energy_pct,
+    lap_time_s: s._lapTimeS != null ? s._lapTimeS : null,
   }));
 
   return ok({ sample_count: samples.length, latest, fuel, energy, series, avg_lap_time_s: avgLapTimeS, live: !!liveReading });
