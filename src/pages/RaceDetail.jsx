@@ -487,7 +487,7 @@ export default function RaceDetail() {
           niente da mostrare in più: nessun cambiamento sulle gare normali. */}
       {isEndurance && crews.length > 0 && (
         <RequireTier minTier="pilot_vsd">
-          <CrewRoster crews={crews} drivers={drivers} getDriverName={getDriverName} />
+          <CrewRoster crews={crews} drivers={driversRaw} getDriverName={getDriverName} />
         </RequireTier>
       )}
 
@@ -496,7 +496,7 @@ export default function RaceDetail() {
         <RequireTier minTier="pilot_vsd">
           <StintTimeline
             stints={stints}
-            drivers={drivers}
+            drivers={driversRaw}
             currentDriverId={currentDriverId}
             getDriverName={getDriverName}
             formatDuration={formatDuration}
@@ -524,7 +524,7 @@ export default function RaceDetail() {
                   {classification.map((r, i) => (
                     <tr key={r.report_id || `${r.driver_id}-${i}`}>
                       <td className="rd-pos">{r._pos}</td>
-                      <td>{getDriverName(r.driver_id, drivers)}</td>
+                      <td>{getDriverName(r.driver_id, driversRaw)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -544,7 +544,7 @@ export default function RaceDetail() {
             {classification.length > 0 ? (
               <div className="rd-reports-list">
                 {classification.map(r => (
-                  <ReportCard key={r.report_id || r.driver_id} report={r} drivers={drivers} />
+                  <ReportCard key={r.report_id || r.driver_id} report={r} drivers={driversRaw} />
                 ))}
               </div>
             ) : (
