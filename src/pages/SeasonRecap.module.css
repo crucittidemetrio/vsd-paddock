@@ -35,6 +35,23 @@
   max-width: 560px;
 }
 
+.shareToggle {
+  margin-top: 14px;
+  background: rgba(0, 212, 255, 0.08);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  border-radius: 8px;
+  padding: 8px 16px;
+  color: #00d4ff;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+}
+
+.shareToggle:hover {
+  background: rgba(0, 212, 255, 0.14);
+}
+
 .loading,
 .errorBox,
 .empty {

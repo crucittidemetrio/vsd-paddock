@@ -1,6 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { useSeasonRecap } from '../hooks/useSeasonRecap';
 import { useTracks } from '../hooks/useLookups';
+import { useAuth } from '../hooks/useAuth';
+import SeasonWrappedCard from '../components/recap/SeasonWrappedCard';
 import { SIMS } from '../utils/constants';
 import styles from './SeasonRecap.module.css';
 
@@ -20,6 +22,8 @@ function simLabel(sim) {
 export default function SeasonRecap() {
   const recapQuery = useSeasonRecap();
   const tracksQuery = useTracks();
+  const { driver, discordAvatarUrl } = useAuth();
+  const [showCard, setShowCard] = useState(false);
   const recap = recapQuery.data;
 
   const tracksById = useMemo(() => {
@@ -30,6 +34,25 @@ export default function SeasonRecap() {
 
   const hasData = recap && recap.races > 0;
 
+  const wrappedProps = useMemo(() => {
+    if (!hasData) return null;
+    return {
+      driverName: driver?.display_name || driver?.driver_id || 'Pilota VSD',
+      avatarUrl: discordAvatarUrl,
+      races: recap.races,
+      podiums: recap.podiums,
+      bestFinishLabel: recap.bestFinish
+        ? `P${recap.bestFinish.position} · ${trackLabel(recap.bestFinish.track_id, tracksById) || 'pista sconosciuta'}`
+        : null,
+      bestLapDisplay: recap.bestLap?.display || null,
+      bestLapTrackLabel: recap.bestLap ? trackLabel(recap.bestLap.track_id, tracksById) : null,
+      mostRacedTrackLabel: recap.mostRacedTrack
+        ? trackLabel(recap.mostRacedTrack.track_id, tracksById) || recap.mostRacedTrack.track_id
+        : null,
+      topSimLabel: recap.bySim?.[0] ? simLabel(recap.bySim[0].sim) : null,
+    };
+  }, [hasData, driver, discordAvatarUrl, recap, tracksById]);
+
   return (
     <div className={styles.container}>
       <header className={styles.header}>
@@ -38,6 +61,11 @@ export default function SeasonRecap() {
         <p className={styles.sub}>
           Riepilogo personale della stagione, calcolato dai tuoi risultati gara.
         </p>
+        {hasData && (
+          <button type="button" className={styles.shareToggle} onClick={() => setShowCard(v => !v)}>
+            {showCard ? '← Torna ai dati' : 'Vista condivisibile ↗'}
+          </button>
+        )}
       </header>
 
       {recapQuery.isLoading && <div className={styles.loading}>Caricamento…</div>}
@@ -51,7 +79,11 @@ export default function SeasonRecap() {
         </div>
       )}
 
-      {hasData && (
+      {hasData && showCard && wrappedProps && (
+        <SeasonWrappedCard {...wrappedProps} />
+      )}
+
+      {hasData && !showCard && (
         <>
           <div className={styles.heroGrid}>
             <div className={styles.heroCard}>
