@@ -220,6 +220,7 @@ function handleLapsAdd(payload, ctx) {
 
       notifyNewTeamRecord_({
         driver_name: driverName,
+        driver_id: payload.driver_id,
         sim: payload.sim,
         track_name: trackName,
         lap_time_display: newLap.lap_time_display,
@@ -346,6 +347,7 @@ function handleLapsUpdate(payload, ctx) {
 
       notifyNewTeamRecord_({
         driver_name: driverName,
+        driver_id: driverId,
         sim: sim,
         track_name: trackName,
         lap_time_display: payloadToApply.lap_time_display,

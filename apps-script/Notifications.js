@@ -103,31 +103,37 @@ function notifyRaceImported_(race, stats) {
 /**
  * Notifica: podio VSD in una sessione race (NON heat, NON qualifying).
  * Chiamata UNA volta per podio.
+ *
+ * @param {string|null} driverId - se noto e con consenso social attivo
+ *   (hasSocialConsent_, Consent.js), aggiunge la foto del pilota come
+ *   thumbnail dell'embed. Opzionale: senza, la notifica resta solo
+ *   testuale come prima.
  */
-function notifyVsdPodium_(driverName, position, race, sessionType) {
+function notifyVsdPodium_(driverName, position, race, sessionType, driverId) {
   if (!driverName || !position || !race) return;
   if (sessionType !== 'race') return; // skip heat e qualifying
   if (position > 3) return;
-  
+
   const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
   const posLabels = { 1: 'P1 — VITTORIA', 2: 'P2', 3: 'P3' };
-  
-  const payload = {
-    embeds: [{
-      author: { name: 'VSD Paddock' },
-      title: medals[position] + ' Podio VSD!',
-      description: '**' + driverName + '** ' + posLabels[position] + '\n' +
-                   (race.race_name || race.race_id),
-      color: position === 1 ? VSD_COLORS.green : VSD_COLORS.cyan,
-      fields: [
-        { name: 'Sim',  value: race.sim || '?', inline: true },
-      ],
-      timestamp: new Date().toISOString(),
-      url: PADDOCK_URL + '/race/' + race.race_id,
-    }],
+
+  const embed = {
+    author: { name: 'VSD Paddock' },
+    title: medals[position] + ' Podio VSD!',
+    description: '**' + driverName + '** ' + posLabels[position] + '\n' +
+                 (race.race_name || race.race_id),
+    color: position === 1 ? VSD_COLORS.green : VSD_COLORS.cyan,
+    fields: [
+      { name: 'Sim',  value: race.sim || '?', inline: true },
+    ],
+    timestamp: new Date().toISOString(),
+    url: PADDOCK_URL + '/race/' + race.race_id,
   };
-  
-  postToDiscord_(payload);
+  if (driverId && hasSocialConsent_(driverId)) {
+    embed.thumbnail = { url: PADDOCK_URL + '/drivers/' + driverId + '.jpg' };
+  }
+
+  postToDiscord_({ embeds: [embed] });
 }
 
 /**
@@ -212,28 +218,31 @@ function notifyPointsAdjustment_(championship, adjustment) {
  * in BestLaps.js solo quando il giro appena inserito batte il record
  * precedente (o è il primo giro mai registrato su quella pista/sim).
  *
- * @param {Object} lap - { driver_name, sim, track_name, lap_time_display }
+ * @param {Object} lap - { driver_name, driver_id?, sim, track_name, lap_time_display }
+ *   driver_id opzionale: se presente e con consenso social attivo,
+ *   aggiunge la foto del pilota come thumbnail dell'embed.
  * @param {string|null} previousDisplay - tempo del record precedente,
  *   o null se è il primo giro mai registrato su quella pista/sim
  */
 function notifyNewTeamRecord_(lap, previousDisplay) {
   if (!lap) return;
 
-  const payload = {
-    embeds: [{
-      author: { name: 'VSD Paddock' },
-      title: '🏆 Nuovo record di squadra!',
-      description: '**' + lap.driver_name + '** — ' + lap.track_name + ' (' + lap.sim + ')\n' +
-                   '⏱️ **' + lap.lap_time_display + '**' +
-                   (previousDisplay ? ' _(precedente: ' + previousDisplay + ')_' : ' _(primo tempo registrato su questa pista)_'),
-      color: VSD_COLORS.purple,
-      timestamp: new Date().toISOString(),
-      footer: { text: 'Muro dei Record' },
-      url: PADDOCK_URL + '/records',
-    }],
+  const embed = {
+    author: { name: 'VSD Paddock' },
+    title: '🏆 Nuovo record di squadra!',
+    description: '**' + lap.driver_name + '** — ' + lap.track_name + ' (' + lap.sim + ')\n' +
+                 '⏱️ **' + lap.lap_time_display + '**' +
+                 (previousDisplay ? ' _(precedente: ' + previousDisplay + ')_' : ' _(primo tempo registrato su questa pista)_'),
+    color: VSD_COLORS.purple,
+    timestamp: new Date().toISOString(),
+    footer: { text: 'Muro dei Record' },
+    url: PADDOCK_URL + '/records',
   };
+  if (lap.driver_id && hasSocialConsent_(lap.driver_id)) {
+    embed.thumbnail = { url: PADDOCK_URL + '/drivers/' + lap.driver_id + '.jpg' };
+  }
 
-  postToDiscord_(payload);
+  postToDiscord_({ embeds: [embed] });
 }
 
 /**

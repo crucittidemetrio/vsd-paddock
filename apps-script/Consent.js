@@ -176,6 +176,26 @@ function handleConsentAccept(payload, ctx) {
   return ok({ record });
 }
 
+/**
+ * hasSocialConsent_ — true se il pilota ha dato consenso social per la
+ * versione corrente del documento. Helper interno per chi deve
+ * decidere se allegare una foto reale a un contenuto pubblico (es.
+ * thumbnail nelle notifiche Discord di record/podio, Notifications.js)
+ * senza dover passare da un'action HTTP.
+ */
+function hasSocialConsent_(driverId) {
+  if (!driverId) return false;
+  try {
+    const consents = sheetToObjects(SHEETS.CONSENTS)
+      .filter(c => c.consent_version === CONSENT_VERSION);
+    const mine = consents.find(c => c.driver_id === driverId);
+    return !!(mine && mine.social_consent);
+  } catch (e) {
+    Logger.log('⚠️  hasSocialConsent_ error: ' + e.message);
+    return false;
+  }
+}
+
 function computeIsMinor_(birthDate) {
   const now = new Date();
   let age = now.getFullYear() - birthDate.getFullYear();

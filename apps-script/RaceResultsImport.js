@@ -639,7 +639,7 @@ function checkAndNotifyPodiums_(race, jsonData) {
       if (r.dnf || r.dns) return;
       const matchedId = matchDriverName_(r.id, matchMap);
       if (matchedId) {
-        notifyVsdPodium_(r.id, r.position, race, 'race');
+        notifyVsdPodium_(r.id, r.position, race, 'race', matchedId);
       }
     });
   });
@@ -668,15 +668,15 @@ function checkAndNotifyIracingPodiums_(raw, race) {
     const position = r.finish_position + 1; // → 1, 2, 3
     const custId = String(r.cust_id || '');
 
-    let matched = false;
+    let matchedId = null;
     if (custId && iracingIdMap[custId]) {
-      matched = true;
-    } else if (r.display_name && matchDriverName_(r.display_name, nameMap)) {
-      matched = true;
+      matchedId = iracingIdMap[custId];
+    } else if (r.display_name) {
+      matchedId = matchDriverName_(r.display_name, nameMap);
     }
 
-    if (matched) {
-      notifyVsdPodium_(r.display_name, position, race, 'race');
+    if (matchedId) {
+      notifyVsdPodium_(r.display_name, position, race, 'race', matchedId);
     }
   });
 }
