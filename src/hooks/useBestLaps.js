@@ -392,6 +392,114 @@ export function useMyDominantClasses(driverId, options = {}) {
 }
 
 /**
+ * useMyLapProgression — curva di miglioramento per la combo (sim, track, car)
+ * più frequentata dal pilota, pensata per un grafico "sessione dopo sessione".
+ *
+ * Perché per GIORNO e non per singolo giro: una sola endurance genera decine
+ * di giri nello stesso pomeriggio — usarli tutti come punti farebbe sembrare
+ * "apprendimento" quello che è solo rumore di un singolo stint (gomme che
+ * scaldano, carburante che cala, ecc). Un punto per giorno (il miglior giro
+ * di quella sessione) racconta invece la vera storia: sono più veloce oggi
+ * rispetto alla scorsa volta che ho girato qui?
+ *
+ * Ogni combo espone:
+ * - points: [{ date, dayBestMs, cumBestMs }] ordinati cronologicamente,
+ *   dove cumBestMs è il minimo storico raggiunto fino a quel giorno incluso
+ *   (la "scalinata" che scende quando migliora).
+ * - teamRecordMs: record di squadra sulla stessa (sim, track, race_class),
+ *   se l'auto ha una classe assegnata — usato come traguardo di riferimento.
+ * - sessionCount / lapCount: per il context ("N giri in M sessioni").
+ *
+ * Combo con meno di 3 sessioni distinte sono escluse: sotto quella soglia
+ * non c'è una curva da mostrare, solo 1-2 punti isolati.
+ *
+ * @param {string} driverId
+ */
+export function useMyLapProgression(driverId) {
+  const lapsQuery = useBestLaps({ driver_id: driverId });
+  const carsQuery = useCarsInternal();
+  const teamLeaderboard = useTeamLeaderboard();
+
+  const data = useMemo(() => {
+    if (!driverId || !lapsQuery.data || !carsQuery.data) return null;
+
+    const carRaceClass = {};
+    carsQuery.data.forEach(c => {
+      carRaceClass[c.car_id] = (c.race_class && String(c.race_class).trim()) || null;
+    });
+
+    const withDates = lapsQuery.data
+      .map(l => ({ ...l, _ts: lapTimestamp(l) }))
+      .filter(l => l._ts > 0);
+
+    const byCombo = {};
+    withDates.forEach(l => {
+      const key = `${l.sim}__${l.track_id}__${l.car_id}`;
+      if (!byCombo[key]) byCombo[key] = [];
+      byCombo[key].push(l);
+    });
+
+    const teamRecordByKey = {};
+    (teamLeaderboard.data || []).forEach(r => {
+      teamRecordByKey[`${r.sim}__${r.track_id}__${r.race_class}`] = Number(r.lap_time_ms);
+    });
+
+    const combos = Object.entries(byCombo)
+      .map(([key, laps]) => {
+        const sim = laps[0].sim;
+        const trackId = laps[0].track_id;
+        const carId = laps[0].car_id;
+        const raceClass = carRaceClass[carId] || null;
+
+        // Miglior giro per giorno (una sessione = un giorno)
+        const byDay = {};
+        laps.forEach(l => {
+          const dateKey = new Date(l._ts).toISOString().slice(0, 10);
+          const ms = Number(l.lap_time_ms);
+          if (!byDay[dateKey] || byDay[dateKey] > ms) byDay[dateKey] = ms;
+        });
+
+        const days = Object.keys(byDay).sort();
+        let running = Infinity;
+        const points = days.map(date => {
+          const ms = byDay[date];
+          if (ms < running) running = ms;
+          return { date, dayBestMs: ms, cumBestMs: running };
+        });
+
+        const teamRecordMs = raceClass
+          ? teamRecordByKey[`${sim}__${trackId}__${raceClass}`] ?? null
+          : null;
+
+        return {
+          key,
+          sim,
+          trackId,
+          carId,
+          raceClass,
+          teamRecordMs,
+          sessionCount: days.length,
+          lapCount: laps.length,
+          firstMs: points[0]?.dayBestMs ?? null,
+          bestMs: points.length ? points[points.length - 1].cumBestMs : null,
+          points,
+        };
+      })
+      .filter(c => c.sessionCount >= 3)
+      .sort((a, b) => b.sessionCount - a.sessionCount);
+
+    return { combos };
+  }, [driverId, lapsQuery.data, carsQuery.data, teamLeaderboard.data]);
+
+  return {
+    data,
+    isLoading: lapsQuery.isLoading || carsQuery.isLoading || teamLeaderboard.isLoading,
+    isError: lapsQuery.isError || carsQuery.isError || teamLeaderboard.isError,
+    error: lapsQuery.error || carsQuery.error || teamLeaderboard.error,
+  };
+}
+
+/**
  * useManualBestLaps — lap DAVVERO inseriti a mano dallo staff (no merge
  * coi race laps, no dedup). Uso: pagina admin di gestione CRUD.
  *

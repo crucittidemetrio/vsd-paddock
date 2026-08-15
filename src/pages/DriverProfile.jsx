@@ -14,6 +14,7 @@ import SimBadge from '../components/shared/SimBadge';
 import StatusDot from '../components/shared/StatusDot';
 import LapTime from '../components/shared/LapTime';
 import MyDominantClassesWidget from '../components/dashboard/MyDominantClassesWidget';
+import LapProgressionChart from '../components/profile/LapProgressionChart';
 import CompanionTokenPanel from '../components/profile/CompanionTokenPanel';
 import { ROLES } from '../utils/constants';
 import { formatTrack, formatCar, formatDate } from '../utils/format';
@@ -376,6 +377,9 @@ export default function DriverProfile() {
           </div>
         </div>
       )}
+
+      {/* CURVA DI MIGLIORAMENTO */}
+      <LapProgressionChart driverId={driverId} tracks={tracks} cars={cars} />
 
       {/* CLASSI DOMINANTI */}
       <MyDominantClassesWidget driverId={driverId} />

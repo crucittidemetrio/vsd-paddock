@@ -1,0 +1,154 @@
+/* ========== CURVA DI MIGLIORAMENTO ========== */
+
+.lpc-combo-picker {
+  display: flex;
+  gap: var(--sp-2);
+  overflow-x: auto;
+  padding-bottom: 2px;
+}
+
+.lpc-combo-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 6px 12px;
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-pill);
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  transition: all var(--t-fast);
+  white-space: nowrap;
+}
+
+.lpc-combo-chip:hover {
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+.lpc-combo-chip.is-active {
+  border-color: var(--vsd-cyan);
+  background: rgba(0, 212, 255, 0.08);
+  color: var(--vsd-cyan);
+}
+
+.lpc-card {
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.lpc-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+
+.lpc-track-info {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.lpc-track-name {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+}
+
+.lpc-car-name {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--color-text-dim);
+  letter-spacing: 0.03em;
+}
+
+.lpc-callouts {
+  display: flex;
+  gap: var(--sp-5);
+}
+
+.lpc-callout {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.lpc-callout-value {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  color: var(--color-text);
+  line-height: 1;
+}
+
+.lpc-callout-gain .lpc-callout-value {
+  color: var(--color-success);
+}
+
+.lpc-callout-record .lpc-callout-value {
+  color: var(--vsd-orange);
+}
+
+.lpc-callout-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.lpc-legend {
+  display: flex;
+  gap: var(--sp-5);
+  flex-wrap: wrap;
+  padding-top: var(--sp-1);
+  border-top: 1px solid var(--color-border);
+}
+
+.lpc-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: var(--color-text-dim);
+}
+
+.lpc-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.lpc-legend-dot-best { background: var(--vsd-cyan); box-shadow: 0 0 6px rgba(0, 212, 255, 0.6); }
+.lpc-legend-dot-session { background: rgba(232, 237, 245, 0.5); }
+.lpc-legend-dot-record { background: var(--vsd-orange); }
+
+@media (max-width: 640px) {
+  .lpc-card-head {
+    flex-direction: column;
+  }
+  .lpc-callouts {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .lpc-callout {
+    align-items: flex-start;
+  }
+}
