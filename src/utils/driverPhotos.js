@@ -5,6 +5,7 @@
 export const DRIVERS_WITH_PHOTO = new Set([
   'VSD005', 'VSD007', 'VSD008', 'VSD009', 'VSD011',
   'VSD013', 'VSD018', 'VSD020', 'VSD021', 'VSD022',
+  'VSD026',
 ]);
 
 /**
