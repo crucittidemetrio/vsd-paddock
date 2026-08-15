@@ -29,16 +29,13 @@ export default function SeasonWrappedCard({
 }) {
   return (
     <div className={styles.card}>
-      <div className={styles.photoArea}>
+      <div className={styles.header}>
         {avatarUrl ? (
-          <img src={avatarUrl} alt={driverName} className={styles.photo} />
+          <img src={avatarUrl} alt={driverName} className={styles.avatarPhoto} />
         ) : (
-          <div className={styles.photoFallback}>
-            <Avatar name={driverName} size={96} />
-          </div>
+          <Avatar name={driverName} size={64} />
         )}
-        <div className={styles.photoFade} />
-        <div className={styles.nameplate}>
+        <div>
           <div className={styles.driverName}>{driverName}</div>
           {topSimLabel && <div className={styles.simTag}>{topSimLabel}</div>}
         </div>

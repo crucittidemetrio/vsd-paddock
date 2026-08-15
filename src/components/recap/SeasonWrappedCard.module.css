@@ -8,45 +8,27 @@
   font-family: 'JetBrains Mono', monospace;
 }
 
-.photoArea {
-  position: relative;
-  height: 240px;
+.header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 22px 20px 18px;
   background: linear-gradient(160deg, #12203f, #0a1226);
 }
 
-.photo {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+.avatarPhoto {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
   object-fit: cover;
-}
-
-.photoFallback {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.photoFade {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to bottom, transparent 40%, #060d1f 96%);
-}
-
-.nameplate {
-  position: absolute;
-  left: 20px;
-  bottom: 14px;
-  z-index: 1;
+  border: 2px solid rgba(0, 212, 255, 0.35);
+  flex-shrink: 0;
 }
 
 .driverName {
   font-family: 'Rajdhani', sans-serif;
   font-weight: 700;
-  font-size: 24px;
+  font-size: 22px;
   color: #fff;
   letter-spacing: 0.5px;
 }
