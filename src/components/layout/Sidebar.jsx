@@ -105,10 +105,13 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
         <div className="nav-section-label">Operations</div>
         {PUBLIC_ITEMS.map(item => renderNavItem(item, onMobileClose))}
 
+        {isVsdPilot && PILOT_ITEMS.map(item => renderNavItem(item, onMobileClose))}
+
+        {/* Eventi VSD dopo le voci pilota (non dopo Operations), così il
+            blocco "azzurro" (Operations + voci pilota) resta contiguo
+            invece di essere interrotto dal blocco arancione in mezzo. */}
         <div className="nav-section-label nav-section-label-event">Eventi VSD</div>
         {EVENTS_ITEMS.map(item => renderNavItem(item, onMobileClose, 'is-event'))}
-
-        {isVsdPilot && PILOT_ITEMS.map(item => renderNavItem(item, onMobileClose))}
 
         {isVsdPilot && (
           <>
