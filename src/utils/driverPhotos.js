@@ -17,3 +17,16 @@ export function driverPhotoUrl(driverId) {
   if (!driverId || !DRIVERS_WITH_PHOTO.has(driverId)) return null;
   return `/drivers/${driverId}.jpg`;
 }
+
+/**
+ * Versione "per riga" pensata per liste/tabelle: invece di chiamare
+ * l'hook useConsentedDriverPhoto una volta per ogni Avatar in un
+ * .map() (violerebbe le regole degli hook e moltiplicherebbe le
+ * sottoscrizioni), la pagina chiama UNA VOLTA useConsentSocialFlags()
+ * e passa la mappa flags qui dentro per ogni riga — stesso risultato,
+ * una sola query condivisa per pagina.
+ */
+export function resolvePhotoUrl(driverId, socialFlags) {
+  if (!socialFlags?.[driverId]) return null;
+  return driverPhotoUrl(driverId);
+}
