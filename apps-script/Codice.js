@@ -237,6 +237,7 @@ const ACTIONS = {
   'consent.status': handleConsentStatus,
   'consent.accept': handleConsentAccept,
   'consent.adminList': handleConsentAdminList,
+  'consent.socialFlags': handleConsentSocialFlags,
 
   'standings.byChampionship': handleStandingsByChampionship,
   'standings.byDriver':       handleStandingsByDriver,

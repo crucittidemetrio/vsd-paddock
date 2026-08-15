@@ -165,6 +165,7 @@ export const api = {
     status: () => call('consent.status', {}),
     accept: (payload) => call('consent.accept', payload),
     adminList: () => call('consent.adminList', {}),
+    socialFlags: () => call('consent.socialFlags', {}),
   },
 
   championships: {

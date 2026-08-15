@@ -359,6 +359,8 @@ export async function callApi(action, payload = {}) {
         return await postToBackend('consent.accept', payload, token);
       case 'consent.adminList':
         return await postToBackend('consent.adminList', payload, token);
+      case 'consent.socialFlags':
+        return await postToBackend('consent.socialFlags', payload, token);
       default:
         return fail(`Action non instradata: ${action}`);
     }

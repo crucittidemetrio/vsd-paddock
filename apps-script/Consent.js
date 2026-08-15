@@ -207,3 +207,24 @@ function handleConsentAdminList(payload, ctx) {
 
   return ok({ required_version: CONSENT_VERSION, drivers: list });
 }
+
+/**
+ * consent.socialFlags — SOLO il booleano social_consent per driver_id,
+ * per qualsiasi utente autenticato (non solo admin) — a differenza di
+ * consent.adminList qui non escono nomi/date/dati minorenni, solo "sì
+ * o no si può mostrare una foto/video di questa persona". Usato da
+ * qualsiasi pagina che potrebbe mostrare una foto reale di un pilota
+ * (es. SeasonWrappedCard, in futuro Roster/DriverProfile) per decidere
+ * se usare la foto vera o ricadere sull'avatar a iniziali.
+ */
+function handleConsentSocialFlags(payload, ctx) {
+  if (!ctx || !ctx.driver_id) return fail('Auth richiesto');
+
+  const consents = sheetToObjects(SHEETS.CONSENTS)
+    .filter(c => c.consent_version === CONSENT_VERSION);
+
+  const flags = {};
+  consents.forEach(c => { flags[c.driver_id] = !!c.social_consent; });
+
+  return ok({ required_version: CONSENT_VERSION, flags });
+}

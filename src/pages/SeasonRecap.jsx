@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useSeasonRecap } from '../hooks/useSeasonRecap';
 import { useTracks } from '../hooks/useLookups';
 import { useAuth } from '../hooks/useAuth';
+import { useConsentedDriverPhoto } from '../hooks/useConsent';
 import SeasonWrappedCard from '../components/recap/SeasonWrappedCard';
 import { SIMS } from '../utils/constants';
 import styles from './SeasonRecap.module.css';
@@ -23,6 +24,7 @@ export default function SeasonRecap() {
   const recapQuery = useSeasonRecap();
   const tracksQuery = useTracks();
   const { driver, discordAvatarUrl } = useAuth();
+  const consentedPhotoUrl = useConsentedDriverPhoto(driver?.driver_id);
   const [showCard, setShowCard] = useState(false);
   const recap = recapQuery.data;
 
@@ -38,7 +40,10 @@ export default function SeasonRecap() {
     if (!hasData) return null;
     return {
       driverName: driver?.display_name || driver?.driver_id || 'Pilota VSD',
-      avatarUrl: discordAvatarUrl,
+      // Foto vera solo se il pilota ha dato consenso social (vedi
+      // useConsentedDriverPhoto) — altrimenti avatar Discord, poi
+      // iniziali (gestito dentro SeasonWrappedCard).
+      avatarUrl: consentedPhotoUrl || discordAvatarUrl,
       races: recap.races,
       podiums: recap.podiums,
       bestFinishLabel: recap.bestFinish
@@ -51,7 +56,7 @@ export default function SeasonRecap() {
         : null,
       topSimLabel: recap.bySim?.[0] ? simLabel(recap.bySim[0].sim) : null,
     };
-  }, [hasData, driver, discordAvatarUrl, recap, tracksById]);
+  }, [hasData, driver, discordAvatarUrl, consentedPhotoUrl, recap, tracksById]);
 
   return (
     <div className={styles.container}>
