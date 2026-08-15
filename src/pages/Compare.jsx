@@ -7,6 +7,7 @@ import { useTracks, useCars } from '../hooks/useLookups';
 import { useChampionshipsByDriver } from '../hooks/useChampionshipsByDriver';
 import { useConsentedDriverPhoto } from '../hooks/useConsent';
 import Avatar from '../components/shared/Avatar';
+import RivalryChart from '../components/compare/RivalryChart';
 import { formatTrack, formatCar } from '../utils/format';
 import './Compare.css';
 import './Page.css';
@@ -413,6 +414,16 @@ export default function Compare() {
               <p className="cmp-empty">Nessuna gara in comune nella stessa classe.</p>
             </div>
           )}
+
+          {/* ── Rimonta (curva di miglioramento a due) ── */}
+          <RivalryChart
+            aId={aId}
+            bId={bId}
+            nameA={nameA}
+            nameB={nameB}
+            tracks={tracks}
+            cars={cars}
+          />
 
           {/* ── Best Laps ── */}
           {lapCmp.length > 0 && (

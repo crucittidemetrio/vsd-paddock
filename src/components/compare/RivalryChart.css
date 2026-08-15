@@ -1,0 +1,101 @@
+/* ========== RIVALRY CHART ========== */
+
+.rlv-card {
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+
+.rlv-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+
+.rlv-track-info {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.rlv-track-name {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+}
+
+.rlv-car-name {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--color-text-dim);
+  letter-spacing: 0.03em;
+}
+
+.rlv-callout {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.rlv-callout-value {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  color: var(--vsd-cyan);
+  line-height: 1;
+}
+
+.rlv-callout-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.rlv-legend {
+  display: flex;
+  gap: var(--sp-5);
+  flex-wrap: wrap;
+  padding-top: var(--sp-1);
+  border-top: 1px solid var(--color-border);
+}
+
+.rlv-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  color: var(--color-text-dim);
+}
+
+.rlv-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.rlv-legend-dot-a { background: var(--vsd-cyan); box-shadow: 0 0 6px rgba(0, 212, 255, 0.6); }
+.rlv-legend-dot-b { background: var(--vsd-blue); box-shadow: 0 0 6px rgba(59, 139, 255, 0.6); }
+.rlv-legend-dot-record { background: var(--vsd-orange); }
+
+@media (max-width: 640px) {
+  .rlv-card-head {
+    flex-direction: column;
+  }
+  .rlv-callout {
+    align-items: flex-start;
+  }
+}

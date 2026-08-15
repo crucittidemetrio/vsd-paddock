@@ -63,10 +63,10 @@ export default function LapProgressionChart({ driverId, tracks, cars }) {
   const gapToRecordMs = teamRecordSec != null ? selected.bestMs - selected.teamRecordMs : null;
 
   return (
-    <section className="profile-section">
-      <div className="section-head">
-        <h3 className="section-title">Curva di Miglioramento</h3>
-        <span className="section-meta">
+    <section className="lpc-section">
+      <div className="lpc-section-head">
+        <h3 className="lpc-section-title">Curva di Miglioramento</h3>
+        <span className="lpc-section-meta">
           {selected.lapCount} giri · {selected.sessionCount} sessioni
         </span>
       </div>

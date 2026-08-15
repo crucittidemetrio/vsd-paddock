@@ -9,6 +9,7 @@ import SimBadge from '../components/shared/SimBadge';
 import LapTime from '../components/shared/LapTime';
 import { useConsentSocialFlags } from '../hooks/useConsent';
 import { resolvePhotoUrl } from '../utils/driverPhotos';
+import LapProgressionChart from '../components/profile/LapProgressionChart';
 import { formatTrack, formatCar } from '../utils/format';
 import styles from './AdminTeamDashboard.module.css';
 
@@ -461,6 +462,8 @@ export default function AdminTeamDashboard() {
                 </div>
               </div>
             </div>
+
+            <LapProgressionChart driverId={selectedDriver.driver_id} tracks={tracks} cars={cars} />
 
             {driverTrendRows.length === 0 ? (
               <div className={styles.empty}>
