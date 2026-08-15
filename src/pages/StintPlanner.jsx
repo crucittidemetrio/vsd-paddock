@@ -6,6 +6,8 @@ import { useRaceCrews } from '../hooks/useRaceCrews';
 import { useRace } from '../hooks/useRaces';
 import { useDrivers } from '../hooks/useRoster';
 import Avatar from '../components/shared/Avatar';
+import { useConsentSocialFlags } from '../hooks/useConsent';
+import { resolvePhotoUrl } from '../utils/driverPhotos';
 import styles from './StintPlanner.module.css';
 
 /**
@@ -25,6 +27,8 @@ export default function StintPlanner() {
   const { data: drivers = [] } = useDrivers();
   const { data: stintsResponse } = useStints(raceId);
   const { data: crews = [] } = useRaceCrews(raceId);
+  const { data: socialFlagsData } = useConsentSocialFlags();
+  const socialFlags = socialFlagsData?.flags || {};
 
   const existingStints = useMemo(() => stintsResponse?.stints || [], [stintsResponse]);
 
@@ -251,6 +255,7 @@ export default function StintPlanner() {
                             name={driverById[s.driver_id].display_name}
                             driverId={s.driver_id}
                             size={22}
+                            photoUrl={resolvePhotoUrl(s.driver_id, socialFlags)}
                           />
                         )}
                         <select

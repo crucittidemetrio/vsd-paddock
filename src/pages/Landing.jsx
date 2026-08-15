@@ -6,6 +6,8 @@ import SimBadge from '../components/shared/SimBadge';
 import CountdownLive from '../components/shared/CountdownLive';
 import LapTime from '../components/shared/LapTime';
 import Avatar from '../components/shared/Avatar';
+import { useConsentSocialFlags, useConsentedDriverPhoto } from '../hooks/useConsent';
+import { resolvePhotoUrl } from '../utils/driverPhotos';
 import MyDominantClassesWidget from '../components/dashboard/MyDominantClassesWidget';
 import {
   formatTrack, formatRaceDateTime, formatDuration, formatDate,
@@ -24,6 +26,8 @@ export default function Landing() {
   // quando manca driver_id (enabled: Boolean(driverId) in useLandingData),
   // quindi zero fetch per visitatori anonimi/guest — nessun costo reale.
   const { data: ld, isLoading: ldLoading } = useLandingData(driver?.driver_id);
+  const { data: socialFlagsData } = useConsentSocialFlags();
+  const socialFlags = socialFlagsData?.flags || {};
 
   // Dati derivati dall'aggregato
   const upcoming      = ld?.upcoming_races || [];
@@ -228,7 +232,7 @@ const feed = useMemo(() => {
                     const d = driverMap[id];
                     return (
                       <div key={id} className="entry-avatar" title={d?.display_name || id}>
-                        <Avatar name={d?.display_name || id} driverId={id} size={32} />
+                        <Avatar name={d?.display_name || id} driverId={id} size={32} photoUrl={resolvePhotoUrl(id, socialFlags)} />
                       </div>
                     );
                   })}
@@ -475,6 +479,12 @@ function LastResultCard({ result, tracks }) {
 }
 
 function FeedItem({ item, driverMap, tracks, racesById }) {
+  // Tutti e tre i rami (lap/report/raceResult) leggono driver_id dallo
+  // stesso punto (item.data.driver_id) — un solo hook prima dei rami,
+  // invece di uno per ciascuno, rispetta comunque le regole degli hook
+  // (nessuna chiamata condizionale).
+  const photoUrl = useConsentedDriverPhoto(item.data?.driver_id);
+
   if (item.type === 'lap') {
     const lap = item.data;
     const d = driverMap[lap.driver_id];
@@ -485,7 +495,7 @@ function FeedItem({ item, driverMap, tracks, racesById }) {
           <div className="feed-line">
             {d && (
               <Link to={`/roster/${d.driver_id}`} className="feed-driver">
-                <Avatar name={d.display_name} driverId={d.driver_id} size={20} />
+                <Avatar name={d.display_name} driverId={d.driver_id} size={20} photoUrl={photoUrl} />
                 <span>{d.display_name}</span>
               </Link>
             )}
@@ -520,7 +530,7 @@ function FeedItem({ item, driverMap, tracks, racesById }) {
           <div className="feed-line">
             {d && (
               <Link to={`/roster/${d.driver_id}`} className="feed-driver">
-                <Avatar name={d.display_name} driverId={d.driver_id} size={20} />
+                <Avatar name={d.display_name} driverId={d.driver_id} size={20} photoUrl={photoUrl} />
                 <span>{d.display_name}</span>
               </Link>
             )}
@@ -562,7 +572,7 @@ function FeedItem({ item, driverMap, tracks, racesById }) {
           <div className="feed-line">
             {d ? (
               <Link to={`/roster/${d.driver_id}`} className="feed-driver">
-                <Avatar name={d.display_name} driverId={d.driver_id} size={20} />
+                <Avatar name={d.display_name} driverId={d.driver_id} size={20} photoUrl={photoUrl} />
                 <span>{d.display_name}</span>
               </Link>
             ) : (

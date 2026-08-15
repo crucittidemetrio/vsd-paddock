@@ -7,6 +7,8 @@ import { useTracks } from '../hooks/useLookups';
 import Logo from '../components/shared/Logo';
 import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
+import { useConsentSocialFlags } from '../hooks/useConsent';
+import { resolvePhotoUrl } from '../utils/driverPhotos';
 import { formatTrack, formatDate } from '../utils/format';
 import { SOCIAL_LINKS } from '../utils/constants';
 import styles from './LandingPublic.module.css';
@@ -44,6 +46,8 @@ export default function LandingPublic() {
   const { data: races, isLoading: racesLoading } = useRaces();
   const { data: raceResultsData } = useRecentTeamRaceResults(200);
   const { data: tracks = [] } = useTracks();
+  const { data: socialFlagsData } = useConsentSocialFlags();
+  const socialFlags = socialFlagsData?.flags || {};
   const raceResults = raceResultsData?.results || [];
 
   const activeRoster = useMemo(
@@ -148,7 +152,7 @@ export default function LandingPublic() {
         <div className={styles.rosterGrid}>
           {activeRoster.map(d => (
             <div key={d.driver_id} className={styles.rosterCard}>
-  <Avatar name={d.display_name} driverId={d.driver_id} size={56} />
+  <Avatar name={d.display_name} driverId={d.driver_id} size={56} photoUrl={resolvePhotoUrl(d.driver_id, socialFlags)} />
   {d.race_number != null && d.race_number !== '' && (
     <div className={styles.rosterNumber}>#{d.race_number}</div>
   )}

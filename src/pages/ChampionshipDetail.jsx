@@ -5,6 +5,7 @@ import { useDrivers } from '../hooks/useRoster';
 import { useAuth } from '../hooks/useAuth';
 import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
+import { useConsentedDriverPhoto } from '../hooks/useConsent';
 import { formatDate } from '../utils/format';
 import { api } from '../api/client';
 import { usePageMeta } from '../hooks/usePageMeta';
@@ -251,6 +252,7 @@ export default function ChampionshipDetail() {
  */
 function DriverDisplay({ driver, driverInfo, size = 28, emphasis = false }) {
   const isVsd = driver.is_vsd;
+  const photoUrl = useConsentedDriverPhoto(driverInfo?.driver_id);
 
   if (isVsd && driverInfo) {
     return (
@@ -259,6 +261,7 @@ function DriverDisplay({ driver, driverInfo, size = 28, emphasis = false }) {
           name={driverInfo.display_name}
           driverId={driverInfo.driver_id}
           size={size}
+          photoUrl={photoUrl}
         />
         <span className={emphasis ? styles.driverNameEmphasis : styles.driverName}>
           {driverInfo.display_name}

@@ -5,6 +5,7 @@ import { useDrivers } from '../hooks/useRoster';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { SOCIAL_LINKS } from '../utils/constants';
 import Avatar from '../components/shared/Avatar';
+import { useConsentedDriverPhoto } from '../hooks/useConsent';
 import styles from './UE144.module.css';
 
 const UE144_CHAMPIONSHIP_ID = 'chmp-lmu-ultimate-endurance-144-2026';
@@ -484,10 +485,11 @@ function StandingsSection() {
 }
 
 function DriverCell({ driver, driverInfo }) {
+  const photoUrl = useConsentedDriverPhoto(driverInfo?.driver_id);
   if (driver.is_vsd && driverInfo) {
     return (
       <Link to={`/roster/${driverInfo.driver_id}`} className={styles.stDriverLink}>
-        <Avatar name={driverInfo.display_name} driverId={driverInfo.driver_id} size={24} />
+        <Avatar name={driverInfo.display_name} driverId={driverInfo.driver_id} size={24} photoUrl={photoUrl} />
         <span className={styles.stDriverName}>{driverInfo.display_name}</span>
         <span className={styles.stVsdBadge}>VSD</span>
       </Link>

@@ -8,6 +8,8 @@ import { useMyRecentRaceResults } from '../hooks/useRaceResults';
 import SimBadge from '../components/shared/SimBadge';
 import CategoryPill from '../components/shared/CategoryPill';
 import Avatar from '../components/shared/Avatar';
+import { useConsentSocialFlags } from '../hooks/useConsent';
+import { resolvePhotoUrl } from '../utils/driverPhotos';
 import {
   formatTrack,
   formatCountdown,
@@ -130,6 +132,8 @@ function RaceCard({ race, driverMap, tracks, isPast, myResult }) {
   const entries = race.entries || [];
   const visibleEntries = entries.slice(0, 5);
   const remaining = entries.length - visibleEntries.length;
+  const { data: socialFlagsData } = useConsentSocialFlags();
+  const socialFlags = socialFlagsData?.flags || {};
 
   return (
     <Link to={`/race/${race.race_id}`} className="race-card">
@@ -193,7 +197,7 @@ function RaceCard({ race, driverMap, tracks, isPast, myResult }) {
               const d = driverMap[id];
               return (
                 <div key={id} className="entry-avatar" title={d?.display_name || id}>
-                  <Avatar name={d?.display_name || id} driverId={id} size={32} />
+                  <Avatar name={d?.display_name || id} driverId={id} size={32} photoUrl={resolvePhotoUrl(id, socialFlags)} />
                 </div>
               );
             })}

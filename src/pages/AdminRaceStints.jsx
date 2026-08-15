@@ -15,6 +15,7 @@ import { useRaces } from '../hooks/useRaces';
 import { useDrivers } from '../hooks/useRoster';
 import { useNow } from '../hooks/useNow';
 import Avatar from '../components/shared/Avatar';
+import { useConsentedDriverPhoto } from '../hooks/useConsent';
 import SwapPilotModal from '../components/race/SwapPilotModal';
 import FuelPanel from '../components/fuel/FuelPanel';
 import styles from './AdminRaceStints.module.css';
@@ -604,6 +605,7 @@ function StintForm({ mode, initialValues, drivers, onSubmit, onCancel, onError }
 
 function StintRow({ stint, driver, onEdit, onError, onSwap }) {
   const removeMutation = useRemoveStint();
+  const photoUrl = useConsentedDriverPhoto(driver?.driver_id);
   const canSwap = stint.status === 'planned' || stint.status === 'active';
 
   function handleRemove() {
@@ -625,7 +627,7 @@ function StintRow({ stint, driver, onEdit, onError, onSwap }) {
       <td>
         {driver ? (
           <div className={styles.driverCell}>
-            <Avatar name={driver.display_name} driverId={driver.driver_id} size={24} />
+            <Avatar name={driver.display_name} driverId={driver.driver_id} size={24} photoUrl={photoUrl} />
             <span>{driver.display_name}</span>
           </div>
         ) : stint.driver_id}

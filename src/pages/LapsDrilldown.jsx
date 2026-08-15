@@ -10,6 +10,8 @@ import { useAuth } from '../hooks/useAuth';
 import SimBadge from '../components/shared/SimBadge';
 import LapTime from '../components/shared/LapTime';
 import Avatar from '../components/shared/Avatar';
+import { useConsentSocialFlags } from '../hooks/useConsent';
+import { resolvePhotoUrl } from '../utils/driverPhotos';
 import { formatTrack, formatCar, formatDate, formatGapPercent } from '../utils/format';
 import './LapsDrilldown.css';
 import './Page.css';
@@ -34,6 +36,8 @@ export default function LapsDrilldown() {
   const { data: drivers } = useDrivers();
   const { data: tracks } = useTracks();
   const { data: cars } = useCars();
+  const { data: socialFlagsData } = useConsentSocialFlags();
+  const socialFlags = socialFlagsData?.flags || {};
 
   // Normalize params per case-insensitive match
   const simParam = (sim || '').toUpperCase();
@@ -246,7 +250,7 @@ export default function LapsDrilldown() {
                 <td>
                   {driver ? (
                     <Link to={`/roster/${driver.driver_id}`} className="driver-link">
-                      <Avatar name={driver.display_name} driverId={driver.driver_id} size={28} />
+                      <Avatar name={driver.display_name} driverId={driver.driver_id} size={28} photoUrl={resolvePhotoUrl(driver.driver_id, socialFlags)} />
                       <span className="driver-link-name">{driver.display_name}</span>
                       {isMe && <span className="me-badge">TU</span>}
                     </Link>

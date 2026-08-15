@@ -7,6 +7,8 @@ import { useTracks, useCars } from '../hooks/useLookups';
 import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
 import LapTime from '../components/shared/LapTime';
+import { useConsentSocialFlags } from '../hooks/useConsent';
+import { resolvePhotoUrl } from '../utils/driverPhotos';
 import { formatTrack, formatCar } from '../utils/format';
 import styles from './AdminTeamDashboard.module.css';
 
@@ -48,6 +50,8 @@ export default function AdminTeamDashboard() {
   const { data: raceResultsData, isLoading: rrLoading } = useRecentTeamRaceResults(500);
   const { data: tracks = [] } = useTracks();
   const { data: cars = [] } = useCars();
+  const { data: socialFlagsData } = useConsentSocialFlags();
+  const socialFlags = socialFlagsData?.flags || {};
   const raceResults = raceResultsData?.results || [];
 
   const activeDrivers = useMemo(
@@ -352,7 +356,7 @@ export default function AdminTeamDashboard() {
                 className={styles.heatmapRow}
               >
                 <div className={styles.heatmapDriver}>
-                  <Avatar name={row.driver.display_name} driverId={row.driver.driver_id} size={24} />
+                  <Avatar name={row.driver.display_name} driverId={row.driver.driver_id} size={24} photoUrl={resolvePhotoUrl(row.driver.driver_id, socialFlags)} />
                   <span className={styles.heatmapName}>{row.driver.display_name}</span>
                 </div>
                 <div className={styles.heatmapCells}>
@@ -393,7 +397,7 @@ export default function AdminTeamDashboard() {
             {inactiveAlerts.map(a => (
               <li key={a.driver.driver_id} className={styles.alertItem}>
                 <Link to={`/roster/${a.driver.driver_id}`} className={styles.alertLink}>
-                  <Avatar name={a.driver.display_name} driverId={a.driver.driver_id} size={28} />
+                  <Avatar name={a.driver.display_name} driverId={a.driver.driver_id} size={28} photoUrl={resolvePhotoUrl(a.driver.driver_id, socialFlags)} />
                   <span className={styles.alertName}>{a.driver.display_name}</span>
                 </Link>
                 <span className={styles.alertDays}>
@@ -436,6 +440,7 @@ export default function AdminTeamDashboard() {
                 name={selectedDriver.display_name}
                 driverId={selectedDriver.driver_id}
                 size={48}
+                photoUrl={resolvePhotoUrl(selectedDriver.driver_id, socialFlags)}
               />
               <div className={styles.driverHeaderInfo}>
                 <Link to={`/roster/${selectedDriver.driver_id}`} className={styles.driverHeaderName}>
@@ -661,7 +666,7 @@ export default function AdminTeamDashboard() {
                     </td>
                     <td>
                       <Link to={`/roster/${row.driver.driver_id}`} className={styles.driverLink}>
-                        <Avatar name={row.driver.display_name} driverId={row.driver.driver_id} size={24} />
+                        <Avatar name={row.driver.display_name} driverId={row.driver.driver_id} size={24} photoUrl={resolvePhotoUrl(row.driver.driver_id, socialFlags)} />
                         <span>{row.driver.display_name}</span>
                       </Link>
                     </td>

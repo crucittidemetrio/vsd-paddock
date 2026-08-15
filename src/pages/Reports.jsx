@@ -6,6 +6,8 @@ import { useAuth } from '../hooks/useAuth';
 import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
 import LapTime from '../components/shared/LapTime';
+import { useConsentSocialFlags, useConsentedDriverPhoto } from '../hooks/useConsent';
+import { resolvePhotoUrl } from '../utils/driverPhotos';
 import { formatTrack, formatDate } from '../utils/format';
 import './Reports.css';
 import './Page.css';
@@ -161,6 +163,8 @@ export default function Reports() {
 // RACE GROUP — tutti i report di una gara, raggruppati
 // =====================================================
 function RaceGroup({ race, rows, driverMap, isStaff }) {
+  const { data: socialFlagsData } = useConsentSocialFlags();
+  const socialFlags = socialFlagsData?.flags || {};
   if (!race) return null;
   const podiums = rows.filter(r => r.finish_position <= 3).length;
 
@@ -202,7 +206,7 @@ function RaceGroup({ race, rows, driverMap, isStaff }) {
                   <td>
                     {d ? (
                       <Link to={`/roster/${d.driver_id}`} className="driver-link">
-                        <Avatar name={d.display_name} driverId={d.driver_id} size={28} />
+                        <Avatar name={d.display_name} driverId={d.driver_id} size={28} photoUrl={resolvePhotoUrl(d.driver_id, socialFlags)} />
                         <span className="driver-link-name">{d.display_name}</span>
                       </Link>
                     ) : r.driver_id}
@@ -246,6 +250,7 @@ function RaceGroup({ race, rows, driverMap, isStaff }) {
 // FLAT REPORT CARD — singolo report (vista cronologica)
 // =====================================================
 function ReportCard({ report, race, driver, isStaff }) {
+  const photoUrl = useConsentedDriverPhoto(driver?.driver_id);
   if (!race || !driver) return null;
   const delta = report.grid_position - report.finish_position;
   const isPodium = report.finish_position <= 3;
@@ -254,7 +259,7 @@ function ReportCard({ report, race, driver, isStaff }) {
     <div className="report-card">
       <div className="rc-head">
         <Link to={`/roster/${driver.driver_id}`} className="driver-link">
-          <Avatar name={driver.display_name} driverId={driver.driver_id} size={40} ring={isPodium} />
+          <Avatar name={driver.display_name} driverId={driver.driver_id} size={40} ring={isPodium} photoUrl={photoUrl} />
           <div className="rc-driver-block">
             <div className="rc-driver-name">{driver.display_name}</div>
             <div className="rc-race-context">

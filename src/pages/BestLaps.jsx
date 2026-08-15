@@ -13,12 +13,14 @@ import {
 } from '../hooks/useLapSubmissions';
 import { useDrivers } from '../hooks/useRoster';
 import { useAuth } from '../hooks/useAuth';
+import { useConsentSocialFlags } from '../hooks/useConsent';
 import SimBadge from '../components/shared/SimBadge';
 import LapTime from '../components/shared/LapTime';
 import Avatar from '../components/shared/Avatar';
 import Sparkline from '../components/shared/Sparkline';
 import { SIM_LIST } from '../utils/constants';
 import { formatTrack, formatCar, formatGapPercent } from '../utils/format';
+import { resolvePhotoUrl } from '../utils/driverPhotos';
 import './BestLaps.css';
 import './Page.css';
 
@@ -203,6 +205,8 @@ export default function BestLaps() {
 function LeaderboardView({ filters, driverMap, tracks, cars, isStaff }) {
   const navigate = useNavigate();
   const { data, isLoading, isError, error } = useTeamLeaderboard(filters);
+  const { data: socialFlagsData } = useConsentSocialFlags();
+  const socialFlags = socialFlagsData?.flags || {};
 
   function goToDrilldown(rec) {
     const sim = String(rec.sim).toLowerCase();
@@ -258,7 +262,7 @@ function LeaderboardView({ filters, driverMap, tracks, cars, isStaff }) {
               <td>
                 {driver ? (
                   <Link to={`/roster/${driver.driver_id}`} className="driver-link">
-                    <Avatar name={driver.display_name} driverId={driver.driver_id} size={28} />
+                    <Avatar name={driver.display_name} driverId={driver.driver_id} size={28} photoUrl={resolvePhotoUrl(driver.driver_id, socialFlags)} />
                     <span className="driver-link-name">{driver.display_name}</span>
                   </Link>
                 ) : rec.driver_id}
