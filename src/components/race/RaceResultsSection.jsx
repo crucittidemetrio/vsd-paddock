@@ -1,5 +1,8 @@
 import { useState, useMemo } from 'react';
 import { useRaceResults } from '../../hooks/useRaceResults';
+import { useConsentSocialFlags } from '../../hooks/useConsent';
+import { resolvePhotoUrl } from '../../utils/driverPhotos';
+import Avatar from '../shared/Avatar';
 import { STORAGE } from '../../utils/constants';
 import './RaceResultsSection.css';
 
@@ -38,6 +41,8 @@ function StatusBadge({ result }) {
 
 function ResultsTable({ results, sessionType, currentDriverId, drivers }) {
   const isRace = sessionType === 'race';
+  const { data: socialFlagsData } = useConsentSocialFlags();
+  const socialFlags = socialFlagsData?.flags || {};
 
   return (
     <div className="rrs-table-wrap">
@@ -70,6 +75,14 @@ function ResultsTable({ results, sessionType, currentDriverId, drivers }) {
                 <td className="rrs-col-pos">{r.dns ? '—' : r.finish_position}</td>
                 <td className="rrs-col-num">{r.car_num ?? '—'}</td>
                 <td className="rrs-col-driver">
+                  {isVsd && (
+                    <Avatar
+                      name={getDriverName(r, drivers)}
+                      driverId={r.driver_id}
+                      size={24}
+                      photoUrl={resolvePhotoUrl(r.driver_id, socialFlags)}
+                    />
+                  )}
                   <span>{getDriverName(r, drivers)}</span>
                   {isVsd && (() => {
                     const isEx = drivers && drivers[r.driver_id]?.is_ex_vsd;
