@@ -7,7 +7,7 @@ import { useTracks } from '../hooks/useLookups';
 import Logo from '../components/shared/Logo';
 import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
-import TrackKerbBackdrop from '../components/shared/TrackKerbBackdrop';
+import TrackPhotoBackdrop from '../components/shared/TrackPhotoBackdrop';
 import { useConsentSocialFlags } from '../hooks/useConsent';
 import { resolvePhotoUrl } from '../utils/driverPhotos';
 import { formatTrack, formatDate } from '../utils/format';
@@ -83,7 +83,7 @@ export default function LandingPublic() {
     <div className={styles.page}>
       {/* ════ HERO ════ */}
       <section className={styles.hero}>
-        <TrackKerbBackdrop />
+        <TrackPhotoBackdrop />
         <div className={styles.heroContent}>
           <div className={styles.heroLogo}>
             <Logo size={180} withWordmark glow />

@@ -1,0 +1,26 @@
+.track-photo-backdrop {
+  position: absolute;
+  bottom: 0;
+  width: min(560px, 62%);
+  height: auto;
+  max-height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 0;
+  user-select: none;
+}
+
+.track-photo-backdrop-br {
+  right: 0;
+}
+
+.track-photo-backdrop-bl {
+  left: 0;
+}
+
+@media (max-width: 640px) {
+  .track-photo-backdrop {
+    width: min(420px, 85%);
+    opacity: 0.85;
+  }
+}
