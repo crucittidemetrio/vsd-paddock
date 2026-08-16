@@ -7,6 +7,8 @@ import { useDrivers } from '../hooks/useRoster';
 import SimBadge from '../components/shared/SimBadge';
 import LapTime from '../components/shared/LapTime';
 import Avatar from '../components/shared/Avatar';
+import { useConsentSocialFlags } from '../hooks/useConsent';
+import { resolvePhotoUrl } from '../utils/driverPhotos';
 import { SIM_LIST } from '../utils/constants';
 import { formatTrack } from '../utils/format';
 import './BestLaps.css';
@@ -164,6 +166,8 @@ function RaceResultsView({ filters, driverMap, tracks }) {
     sort: 'date_desc',
   });
   const { data: races } = useRaces();
+  const { data: socialFlagsData } = useConsentSocialFlags();
+  const socialFlags = socialFlagsData?.flags || {};
 
   const raceMap = useMemo(() => {
     const m = {};
@@ -231,7 +235,7 @@ function RaceResultsView({ filters, driverMap, tracks }) {
               <td>
                 {drv ? (
                   <Link to={`/roster/${drv.driver_id}`} className="driver-link">
-                    <Avatar name={drv.display_name} driverId={drv.driver_id} size={28} />
+                    <Avatar name={drv.display_name} driverId={drv.driver_id} size={28} photoUrl={resolvePhotoUrl(drv.driver_id, socialFlags)} />
                     <span className="driver-link-name">{drv.display_name}</span>
                   </Link>
                 ) : (rec.driver_name_external || rec.driver_id)}
