@@ -556,6 +556,7 @@ function handleRaceResultsImport(payload, ctx) {
       try {
         notifyRaceImported_(race, stats);
         checkAndNotifyIracingPodiums_(jsonData, race);
+        checkAndNotifyMilestones_(collectVsdDriverIdsIracing_(jsonData));
         seedRaceReportsForRace(race.race_id);
       } catch (e) {
         Logger.log('⚠️  Notification error (non-blocking): ' + e.message);
@@ -592,6 +593,7 @@ function handleRaceResultsImport(payload, ctx) {
       // Podi LMU notificati SOLO se sessione race (non qualifying)
       if (sessionType === 'race') {
         checkAndNotifyPodiums_(race, jsonData);
+        checkAndNotifyMilestones_(collectVsdDriverIdsLmu_(jsonData));
         seedRaceReportsForRace(race.race_id);
       }
     } catch (e) {
@@ -679,6 +681,52 @@ function checkAndNotifyIracingPodiums_(raw, race) {
       notifyVsdPodium_(r.display_name, position, race, 'race', matchedId);
     }
   });
+}
+
+/**
+ * LMU format: raccoglie i driver_id VSD di TUTTI i risultati (non solo
+ * podio) di una gara appena importata, per il controllo milestone
+ * (checkAndNotifyMilestones_ in Notifications.js).
+ */
+function collectVsdDriverIdsLmu_(jsonData) {
+  if (!Array.isArray(jsonData)) return [];
+  const matchMap = buildDriverNameMap_();
+  const ids = [];
+  jsonData.forEach(classGroup => {
+    (classGroup.result || []).forEach(r => {
+      const matchedId = matchDriverName_(r.id, matchMap);
+      if (matchedId) ids.push(matchedId);
+    });
+  });
+  return ids;
+}
+
+/**
+ * iRacing format: raccoglie i driver_id VSD di TUTTI i risultati della
+ * sessione FEATURE (non solo podio), per il controllo milestone.
+ */
+function collectVsdDriverIdsIracing_(raw) {
+  if (!raw || !raw.data || !Array.isArray(raw.data.session_results)) return [];
+  const featureSession = raw.data.session_results.find(s =>
+    (s.simsession_name || '').toUpperCase() === 'FEATURE'
+  );
+  if (!featureSession || !Array.isArray(featureSession.results)) return [];
+
+  const iracingIdMap = buildIracingIdMap_();
+  const nameMap = buildDriverNameMap_();
+  const ids = [];
+
+  featureSession.results.forEach(r => {
+    const custId = String(r.cust_id || '');
+    let matchedId = null;
+    if (custId && iracingIdMap[custId]) {
+      matchedId = iracingIdMap[custId];
+    } else if (r.display_name) {
+      matchedId = matchDriverName_(r.display_name, nameMap);
+    }
+    if (matchedId) ids.push(matchedId);
+  });
+  return ids;
 }
 
 // ═══════════════════════════════════════════════════════════

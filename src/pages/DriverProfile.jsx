@@ -214,6 +214,24 @@ export default function DriverProfile() {
     racesCount >= 10 ? { label: 'Attivo', threshold: 10 } :
     null;
 
+  // Milestone podi/vittorie totali (a vita, non streak) — stesse soglie
+  // usate dalle notifiche Discord (Notifications.js, MILESTONE_THRESHOLDS)
+  // per i traguardi "gare disputate"; qui l'equivalente per podi e vittorie.
+  const podiumTier =
+    podiums >= 50 ? { label: '50 Podi', threshold: 50 } :
+    podiums >= 25 ? { label: '25 Podi', threshold: 25 } :
+    podiums >= 10 ? { label: '10 Podi', threshold: 10 } :
+    podiums >= 5  ? { label: '5 Podi', threshold: 5 } :
+    podiums >= 1  ? { label: 'Primo Podio', threshold: 1 } :
+    null;
+
+  const winTier =
+    wins >= 25 ? { label: '25 Vittorie', threshold: 25 } :
+    wins >= 10 ? { label: '10 Vittorie', threshold: 10 } :
+    wins >= 5  ? { label: '5 Vittorie', threshold: 5 } :
+    wins >= 1  ? { label: 'Prima Vittoria', threshold: 1 } :
+    null;
+
   const achievements = [];
   if (titlesWon > 0) {
     achievements.push({
@@ -227,6 +245,12 @@ export default function DriverProfile() {
   }
   if (cleanStreak) {
     achievements.push({ icon: '🧊', label: 'Pilota Pulito', tone: 'cyan' });
+  }
+  if (winTier) {
+    achievements.push({ icon: '🥇', label: winTier.label, tone: 'gold' });
+  }
+  if (podiumTier) {
+    achievements.push({ icon: '🏆', label: podiumTier.label, tone: 'cyan' });
   }
   if (veteranTier) {
     achievements.push({ icon: '🏁', label: `${veteranTier.label} (${racesCount})`, tone: 'muted' });

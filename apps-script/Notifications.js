@@ -245,6 +245,132 @@ function notifyNewTeamRecord_(lap, previousDisplay) {
   postToDiscord_({ embeds: [embed] });
 }
 
+// ═══════════════════════════════════════════════════════════
+// MILESTONE / ACHIEVEMENT NOTIFICATIONS
+// Soglie di gare disputate (session_type 'race', non DNS) per pilota VSD.
+// Chiamata dal pipeline di import risultati (RaceResultsImport.js) dopo
+// ogni gara importata, con la lista dei driver_id VSD coinvolti. Il
+// controllo è puramente "il conteggio attuale coincide con una soglia?" —
+// nessuna deduplica esplicita necessaria: un secondo import della stessa
+// gara non crea nuove righe in RaceResults, quindi il conteggio non
+// ricambia e la notifica non riparte (stesso principio "non bloccante"
+// delle altre notifiche in questo file).
+// ═══════════════════════════════════════════════════════════
+
+// Soglie allineate a DriverProfile.jsx (veteranTier/podiumTier/winTier) —
+// stessa progressione mostrata come badge "Traguardi" sul profilo pilota.
+const MILESTONE_THRESHOLDS = [1, 10, 25, 50, 100, 150, 200, 250, 300];
+const PODIUM_MILESTONE_THRESHOLDS = [1, 5, 10, 25, 50];
+const WIN_MILESTONE_THRESHOLDS = [1, 5, 10, 25];
+
+const MILESTONE_LABELS = {
+  1:   'Debutto in gara! 🎉',
+  10:  '10 gare disputate',
+  25:  '25 gare disputate',
+  50:  '50 gare disputate',
+  100: '100 gare disputate — un secolo! 💯',
+  150: '150 gare disputate',
+  200: '200 gare disputate',
+  250: '250 gare disputate',
+  300: '300 gare disputate',
+};
+
+const PODIUM_MILESTONE_LABELS = {
+  1: 'Primo podio! 🎉',
+  5: '5 podi',
+  10: '10 podi',
+  25: '25 podi',
+  50: '50 podi',
+};
+
+const WIN_MILESTONE_LABELS = {
+  1: 'Prima vittoria! 🎉',
+  5: '5 vittorie',
+  10: '10 vittorie',
+  25: '25 vittorie',
+};
+
+/**
+ * Controlla, per ogni driver_id passato, se il conteggio totale di gare
+ * disputate / podi / vittorie (RaceResults, session_type 'race', non DNS)
+ * coincide con una soglia. Se sì, invia una notifica Discord. Fault-
+ * tolerant: try/catch interno, non blocca mai il chiamante.
+ *
+ * @param {Array<string>} driverIds - driver_id VSD coinvolti nell'import
+ *   appena completato (anche duplicati, anche DNS/DNF: i conteggi reali
+ *   vengono ricalcolati dalla sheet, questi id sono solo "chi controllare").
+ */
+function checkAndNotifyMilestones_(driverIds) {
+  try {
+    if (!driverIds || driverIds.length === 0) return;
+    const uniqueIds = Array.from(new Set(driverIds.filter(Boolean).map(String)));
+    if (uniqueIds.length === 0) return;
+
+    const allResults = sheetToObjects(SHEETS.RACE_RESULTS);
+    const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
+    const driverMap = {};
+    drivers.forEach(d => { driverMap[d.driver_id] = d; });
+
+    uniqueIds.forEach(driverId => {
+      const driverRaceResults = allResults.filter(r =>
+        String(r.driver_id || '').trim() === driverId &&
+        String(r.session_type || 'race').toLowerCase() === 'race' &&
+        String(r.dns).toUpperCase() !== 'TRUE'
+      );
+      const racesCount = driverRaceResults.length;
+      const podiumsCount = driverRaceResults.filter(r =>
+        String(r.dnf).toUpperCase() !== 'TRUE' &&
+        Number(r.finish_position) > 0 && Number(r.finish_position) <= 3
+      ).length;
+      const winsCount = driverRaceResults.filter(r =>
+        String(r.dnf).toUpperCase() !== 'TRUE' && Number(r.finish_position) === 1
+      ).length;
+
+      const driver = driverMap[driverId];
+
+      if (MILESTONE_THRESHOLDS.indexOf(racesCount) !== -1) {
+        notifyMilestoneReached_(driver, driverId, MILESTONE_LABELS[racesCount] || (racesCount + ' gare disputate'));
+      }
+      if (PODIUM_MILESTONE_THRESHOLDS.indexOf(podiumsCount) !== -1) {
+        notifyMilestoneReached_(driver, driverId, PODIUM_MILESTONE_LABELS[podiumsCount]);
+      }
+      if (WIN_MILESTONE_THRESHOLDS.indexOf(winsCount) !== -1) {
+        notifyMilestoneReached_(driver, driverId, WIN_MILESTONE_LABELS[winsCount]);
+      }
+    });
+  } catch (e) {
+    Logger.log('⚠️  checkAndNotifyMilestones_ error (non-blocking): ' + e.message);
+  }
+}
+
+/**
+ * Notifica: un pilota VSD ha raggiunto un traguardo (gare/podi/vittorie).
+ *
+ * @param {Object} driver - record Drivers (display_name), può essere null
+ *   se il driver_id non è (più) in anagrafica
+ * @param {string} driverId
+ * @param {string} label - etichetta già risolta del traguardo (es. "10 gare disputate")
+ */
+function notifyMilestoneReached_(driver, driverId, label) {
+  if (!label) return;
+  const displayName = (driver && driver.display_name) || driverId;
+
+  const embed = {
+    author: { name: 'VSD Paddock' },
+    title: '🎖️ Traguardo raggiunto!',
+    description: '**' + displayName + '** — ' + label,
+    color: VSD_COLORS.orange,
+    timestamp: new Date().toISOString(),
+    footer: { text: 'Continua così!' },
+    url: PADDOCK_URL + '/roster/' + driverId,
+  };
+  if (hasSocialConsent_(driverId)) {
+    embed.thumbnail = { url: PADDOCK_URL + '/drivers/' + driverId + '.jpg' };
+  }
+
+  postToDiscord_({ embeds: [embed] });
+}
+
 /**
  * Notifica: un pilota VSD ha inviato un nuovo Best Lap con foto di prova,
  * in attesa di validazione. Va al webhook admin/staff-only (⛔staff-only),
@@ -405,4 +531,125 @@ function _snSendStintAlert_(race, stint, driverName, minsToStart, isFirst) {
 
 function runStintNotificationsCheck() {
   checkStintNotifications_();
+}
+
+// ═══════════════════════════════════════════════════════════
+// DIGEST SETTIMANALE — riepilogo Discord ogni 7 giorni
+// Da installare come trigger orario (Apps Script editor → icona orologio
+// "Trigger" a sinistra → Aggiungi trigger → funzione: runWeeklyDigest →
+// origine evento: basato sul tempo → timer settimanale, consigliato
+// lunedì mattina). Nessun trigger viene creato automaticamente da questo
+// codice — va aggiunto manualmente una volta sola.
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * Costruisce e posta il riepilogo degli ultimi 7 giorni: gare disputate,
+ * podi VSD, miglior giro della settimana. Se non c'è stato nessun
+ * risultato nell'ultima settimana, non invia nulla (evita digest vuoti
+ * nelle settimane senza gare). Fault-tolerant: try/catch, non lancia mai.
+ */
+function postWeeklyDigest_() {
+  try {
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - 7 * 86400000);
+
+    const allResults = sheetToObjects(SHEETS.RACE_RESULTS);
+    const races = getCachedSheetData_(SHEETS.RACES, 900);
+    const racesById = {};
+    races.forEach(r => { racesById[r.race_id] = r; });
+    const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
+    const driverMap = {};
+    drivers.forEach(d => { driverMap[d.driver_id] = d; });
+
+    const weekResults = allResults.filter(r => {
+      if (String(r.is_vsd_driver).toUpperCase() !== 'TRUE') return false;
+      if (String(r.session_type || 'race').toLowerCase() !== 'race') return false;
+      if (String(r.dns).toUpperCase() === 'TRUE') return false;
+      const d = new Date(r.set_date);
+      return !isNaN(d.getTime()) && d >= weekAgo && d <= now;
+    });
+
+    if (weekResults.length === 0) {
+      Logger.log('📅 Digest settimanale: nessun risultato negli ultimi 7 giorni, invio saltato');
+      return;
+    }
+
+    const raceIds = Array.from(new Set(weekResults.map(r => r.race_id)));
+
+    const podiums = weekResults
+      .filter(r => String(r.dnf).toUpperCase() !== 'TRUE' && Number(r.finish_position) > 0 && Number(r.finish_position) <= 3)
+      .sort((a, b) => Number(a.finish_position) - Number(b.finish_position));
+
+    let best = null;
+    weekResults.forEach(r => {
+      const ms = Number(r.best_lap_ms);
+      if (ms > 0 && (!best || ms < Number(best.best_lap_ms))) best = r;
+    });
+
+    const fields = [
+      { name: 'Gare disputate', value: String(raceIds.length), inline: true },
+      { name: 'Risultati VSD', value: String(weekResults.length), inline: true },
+    ];
+
+    if (podiums.length > 0) {
+      const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
+      const podiumLines = podiums.slice(0, 8).map(r => {
+        const driver = driverMap[r.driver_id];
+        const name = driver ? driver.display_name : r.driver_id;
+        const race = racesById[r.race_id];
+        return medals[Number(r.finish_position)] + ' **' + name + '** — ' +
+          (race ? (race.race_name || race.race_id) : r.race_id);
+      }).join('\n');
+      fields.push({ name: 'Podi della settimana', value: podiumLines, inline: false });
+    }
+
+    if (best) {
+      const driver = driverMap[best.driver_id];
+      const name = driver ? driver.display_name : best.driver_id;
+      const race = racesById[best.race_id];
+      fields.push({
+        name: 'Miglior giro della settimana',
+        value: '⏱️ **' + name + '** — ' + msToLapDisplay_(Number(best.best_lap_ms)) + ' (' +
+          (race ? (race.race_name || race.race_id) : best.race_id) + ')',
+        inline: false,
+      });
+    }
+
+    postToDiscord_({
+      embeds: [{
+        author: { name: 'VSD Paddock' },
+        title: '📅 Riepilogo settimanale',
+        description: 'Cosa è successo negli ultimi 7 giorni sul Paddock',
+        color: VSD_COLORS.blue,
+        fields: fields,
+        timestamp: new Date().toISOString(),
+        footer: { text: 'Prossimo digest tra 7 giorni' },
+        url: PADDOCK_URL,
+      }],
+    });
+
+    Logger.log('✅ Digest settimanale inviato (' + weekResults.length + ' risultati, ' + podiums.length + ' podi)');
+  } catch (e) {
+    Logger.log('⚠️  postWeeklyDigest_ error: ' + e.message);
+  }
+}
+
+/**
+ * Entry point per il trigger orario — vedi commento di sezione sopra per
+ * come installarlo. Nome scelto per essere selezionabile facilmente dal
+ * dropdown dei trigger.
+ */
+function runWeeklyDigest() {
+  postWeeklyDigest_();
+}
+
+/**
+ * Helper test — esegue il digest sui dati REALI (a differenza degli altri
+ * test_notification_*, qui non ha senso un embed finto: il digest riflette
+ * la sheet vera). Se non ci sono risultati nell'ultima settimana, non
+ * invia nulla — controlla il log di esecuzione.
+ * Dropdown function → test_weekly_digest → ▶ Esegui
+ */
+function test_weekly_digest() {
+  postWeeklyDigest_();
 }
