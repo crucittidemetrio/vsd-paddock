@@ -8,9 +8,10 @@ import Logo from '../components/shared/Logo';
 import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
 import TrackPhotoBackdrop from '../components/shared/TrackPhotoBackdrop';
+import NextRaceHero from '../components/landing/NextRaceHero';
 import { useConsentSocialFlags } from '../hooks/useConsent';
 import { resolvePhotoUrl } from '../utils/driverPhotos';
-import { formatTrack, formatDate } from '../utils/format';
+import { formatDate } from '../utils/format';
 import { SOCIAL_LINKS } from '../utils/constants';
 import styles from './LandingPublic.module.css';
 
@@ -23,10 +24,11 @@ function getNextRace(races) {
   const now = new Date();
   const upcoming = races
     .filter(r => {
-      const d = new Date(r.race_date);
+      if (r.status === 'cancelled') return false;
+      const d = new Date(r.date);
       return !isNaN(d.getTime()) && d > now;
     })
-    .sort((a, b) => new Date(a.race_date) - new Date(b.race_date));
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
   return upcoming[0] || null;
 }
 
@@ -131,21 +133,7 @@ export default function LandingPublic() {
       </section>
 
       {/* ════ PROSSIMA GARA ════ */}
-      {nextRace && (
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Prossima gara</h2>
-          <div className={styles.nextRaceCard}>
-            <div className={styles.nextRaceMeta}>
-              <SimBadge sim={nextRace.sim} />
-              <span className={styles.nextRaceDate}>{formatDate(nextRace.race_date)}</span>
-            </div>
-            <h3 className={styles.nextRaceName}>{nextRace.race_name}</h3>
-            <div className={styles.nextRaceTrack}>
-              {formatTrack(nextRace.track_id, tracks)}
-            </div>
-          </div>
-        </section>
-      )}
+      <NextRaceHero race={nextRace} tracks={tracks} />
 
       {/* ════ ROSTER ════ */}
       <section className={styles.section}>

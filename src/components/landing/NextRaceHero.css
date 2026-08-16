@@ -1,0 +1,127 @@
+.nrh {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--r-lg, 14px);
+  margin-bottom: 32px;
+  min-height: 340px;
+  display: flex;
+  align-items: center;
+  border: 1px solid var(--color-border, rgba(255, 255, 255, 0.08));
+  background: var(--vsd-bg-elevated, #0d1730);
+}
+
+.nrh-bg {
+  position: absolute;
+  inset: 0;
+  background-image: url('/backgrounds/next-race-band.webp');
+  background-size: cover;
+  background-position: center 55%;
+  opacity: 0.9;
+}
+
+.nrh-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, var(--vsd-bg, #060d1f) 0%, rgba(6, 13, 31, 0.75) 38%, rgba(6, 13, 31, 0.15) 75%),
+    linear-gradient(180deg, rgba(6, 13, 31, 0.25) 0%, transparent 30%, transparent 70%, rgba(6, 13, 31, 0.5) 100%);
+}
+
+.nrh-content {
+  position: relative;
+  z-index: 1;
+  padding: 40px 40px;
+  width: 100%;
+}
+
+.nrh-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--vsd-orange, #f5a623);
+  margin-bottom: 14px;
+}
+
+.nrh-meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.nrh-round {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  padding: 3px 8px;
+}
+
+.nrh-champ {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.nrh-title {
+  font-family: var(--font-display);
+  font-size: clamp(28px, 4vw, 44px);
+  letter-spacing: 1px;
+  color: white;
+  margin: 0 0 6px 0;
+  max-width: 640px;
+}
+
+.nrh-track {
+  font-size: 16px;
+  color: var(--vsd-cyan, #00d4ff);
+  margin-bottom: 28px;
+}
+
+.nrh-countdown {
+  margin-bottom: 24px;
+}
+
+.nrh-footer {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.nrh-datetime {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.nrh-cta {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--vsd-cyan, #00d4ff);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.nrh-cta:hover {
+  color: white;
+}
+
+@media (max-width: 640px) {
+  .nrh {
+    min-height: 0;
+  }
+  .nrh-content {
+    padding: 28px 20px;
+  }
+  .nrh-overlay {
+    background:
+      linear-gradient(180deg, rgba(6, 13, 31, 0.5) 0%, rgba(6, 13, 31, 0.88) 55%, var(--vsd-bg, #060d1f) 100%);
+  }
+}
