@@ -1,0 +1,19 @@
+.track-kerb-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  opacity: 0.16;
+  z-index: 0;
+}
+
+.track-kerb-backdrop-br {
+  right: 0;
+  bottom: 0;
+}
+
+.track-kerb-backdrop-bl {
+  left: 0;
+  bottom: 0;
+}

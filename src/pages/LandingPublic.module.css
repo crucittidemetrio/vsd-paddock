@@ -13,9 +13,16 @@
 /* ═══════════════════════════════════════ HERO ═══════ */
 
 .hero {
+  position: relative;
+  overflow: hidden;
   text-align: center;
   padding: 56px 16px 48px;
   margin-bottom: 32px;
+}
+
+.heroContent {
+  position: relative;
+  z-index: 1;
 }
 
 .heroLogo {

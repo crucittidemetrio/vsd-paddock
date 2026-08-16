@@ -7,6 +7,7 @@ import { useTracks } from '../hooks/useLookups';
 import Logo from '../components/shared/Logo';
 import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
+import TrackKerbBackdrop from '../components/shared/TrackKerbBackdrop';
 import { useConsentSocialFlags } from '../hooks/useConsent';
 import { resolvePhotoUrl } from '../utils/driverPhotos';
 import { formatTrack, formatDate } from '../utils/format';
@@ -82,47 +83,50 @@ export default function LandingPublic() {
     <div className={styles.page}>
       {/* ════ HERO ════ */}
       <section className={styles.hero}>
-        <div className={styles.heroLogo}>
-          <Logo size={180} withWordmark glow />
-        </div>
-        <h1 className={styles.heroTitle}>Virtual Sim Driver</h1>
-        <p className={styles.heroTagline}>Italian Sim Racing Team</p>
-        <div className={styles.heroSims}>
-          <SimBadge sim="LMU" />
-          <SimBadge sim="IRC" />
-          <SimBadge sim="ACE" />
-        </div>
-        <div className={styles.heroActions}>
-          <a
-            href={DISCORD_INVITE}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`${styles.btn} ${styles.btnPrimary}`}
-          >
-            Discord
-          </a>
-          <a
-            href={INSTAGRAM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.btn}
-          >
-            Instagram
-          </a>
-          <a
-            href={FACEBOOK_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.btn}
-          >
-            Facebook
-          </a>
-          <Link to="/joinus" className={`${styles.btn} ${styles.btnAccent}`}>
-            Unisciti al team
-          </Link>
-          <Link to="/login" className={`${styles.btn} ${styles.btnGhost}`}>
-            Accedi
-          </Link>
+        <TrackKerbBackdrop />
+        <div className={styles.heroContent}>
+          <div className={styles.heroLogo}>
+            <Logo size={180} withWordmark glow />
+          </div>
+          <h1 className={styles.heroTitle}>Virtual Sim Driver</h1>
+          <p className={styles.heroTagline}>Italian Sim Racing Team</p>
+          <div className={styles.heroSims}>
+            <SimBadge sim="LMU" />
+            <SimBadge sim="IRC" />
+            <SimBadge sim="ACE" />
+          </div>
+          <div className={styles.heroActions}>
+            <a
+              href={DISCORD_INVITE}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${styles.btn} ${styles.btnPrimary}`}
+            >
+              Discord
+            </a>
+            <a
+              href={INSTAGRAM_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.btn}
+            >
+              Instagram
+            </a>
+            <a
+              href={FACEBOOK_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={styles.btn}
+            >
+              Facebook
+            </a>
+            <Link to="/joinus" className={`${styles.btn} ${styles.btnAccent}`}>
+              Unisciti al team
+            </Link>
+            <Link to="/login" className={`${styles.btn} ${styles.btnGhost}`}>
+              Accedi
+            </Link>
+          </div>
         </div>
       </section>
 

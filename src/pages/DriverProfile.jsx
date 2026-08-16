@@ -15,6 +15,7 @@ import StatusDot from '../components/shared/StatusDot';
 import LapTime from '../components/shared/LapTime';
 import MyDominantClassesWidget from '../components/dashboard/MyDominantClassesWidget';
 import LapProgressionChart from '../components/profile/LapProgressionChart';
+import TrackKerbBackdrop from '../components/shared/TrackKerbBackdrop';
 import CompanionTokenPanel from '../components/profile/CompanionTokenPanel';
 import { ROLES } from '../utils/constants';
 import { formatTrack, formatCar, formatDate } from '../utils/format';
@@ -240,6 +241,7 @@ export default function DriverProfile() {
       {/* HERO */}
       <div className="profile-hero">
         <div className="hero-bg-glow" />
+        <TrackKerbBackdrop />
         <div className="hero-content">
           <Avatar
             name={driver.display_name}
