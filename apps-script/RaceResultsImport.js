@@ -728,6 +728,47 @@ function admin_deleteRaceResults() {
   return { deleted: rowsToDelete.length, race_id: TARGET_RACE_ID };
 }
 
+/**
+ * Diagnostica READ-ONLY: elenca i race_id presenti in RaceResults (e in
+ * Reports) che NON hanno una riga corrispondente in Races. Sono la causa
+ * di "Gara non trovata" quando si clicca su una gara dallo Storico di un
+ * pilota o dalla pagina Risultati — il link punta a un race_id per cui
+ * non esiste nessuna gara ufficiale, quindi RaceDetail non trova nulla
+ * da mostrare.
+ *
+ * Non modifica nulla. Esegui da editor e leggi il log: per ogni race_id
+ * orfano stampa quante righe lo referenziano, così puoi decidere se
+ * creare la riga Races mancante (con l'id giusto) o ripulire le righe
+ * orfane con admin_deleteRaceResults().
+ */
+function admin_findOrphanedRaceIds() {
+  const races = sheetToObjects(SHEETS.RACES);
+  const validIds = new Set(races.map(r => String(r.race_id).trim()));
+
+  const results = sheetToObjects(SHEETS.RACE_RESULTS);
+  const orphanCounts = {};
+  results.forEach(r => {
+    const id = String(r.race_id || '').trim();
+    if (!id || validIds.has(id)) return;
+    orphanCounts[id] = (orphanCounts[id] || 0) + 1;
+  });
+
+  const orphanIds = Object.keys(orphanCounts);
+  if (orphanIds.length === 0) {
+    Logger.log('✅ Nessun race_id orfano in RaceResults — tutti i risultati puntano a gare esistenti.');
+    return { orphans: [] };
+  }
+
+  Logger.log('⚠️  ' + orphanIds.length + ' race_id orfani trovati in RaceResults:');
+  orphanIds
+    .sort((a, b) => orphanCounts[b] - orphanCounts[a])
+    .forEach(id => {
+      Logger.log('   "' + id + '" — ' + orphanCounts[id] + ' righe');
+    });
+
+  return { orphans: orphanIds.map(id => ({ race_id: id, rows: orphanCounts[id] })) };
+}
+
 function admin_listRaceIds() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('RaceResults');
   const data = sheet.getDataRange().getValues();

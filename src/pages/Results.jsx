@@ -225,7 +225,7 @@ function RaceResultsView({ filters, driverMap, tracks }) {
           return (
             <tr key={`${rec.race_id}-${rec.driver_id}-${rec.session_type}`}>
               <td>
-                <Link to={`/races/${rec.race_id}`} className="driver-link">
+                <Link to={`/race/${rec.race_id}`} className="driver-link">
                   <span className="driver-link-name">{raceName}</span>
                 </Link>
               </td>
