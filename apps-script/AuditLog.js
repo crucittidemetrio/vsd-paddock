@@ -29,6 +29,63 @@ const AUDIT_LOG_HEADERS = [
 ];
 
 /**
+ * READ-ONLY — confronta gli header della tab AuditLog esistente con quelli
+ * attesi da logAudit_ (AUDIT_LOG_HEADERS). Esegui questa PRIMA di fidarti
+ * di una tab preesistente: logAudit_ scrive con appendRow (per posizione,
+ * non per nome colonna) — se gli header non combaciano i dati finiscono
+ * nelle colonne sbagliate senza errori visibili.
+ * Dropdown function → debug_auditLogHeaders → ▶ Esegui.
+ */
+function debug_auditLogHeaders() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEETS.AUDIT_LOG);
+  if (!sheet) {
+    Logger.log('⏭️  Tab "' + SHEETS.AUDIT_LOG + '" non esiste — esegui setupAuditLogTab() per crearla.');
+    return;
+  }
+  const lastCol = sheet.getLastColumn();
+  const lastRow = sheet.getLastRow();
+  const currentHeaders = lastCol > 0 ? sheet.getRange(1, 1, 1, lastCol).getValues()[0] : [];
+
+  Logger.log('=== Tab "' + SHEETS.AUDIT_LOG + '" ===');
+  Logger.log('Righe totali (inclusa header): ' + lastRow);
+  Logger.log('Header attuali:  [' + currentHeaders.join(', ') + ']');
+  Logger.log('Header attesi:   [' + AUDIT_LOG_HEADERS.join(', ') + ']');
+
+  const match = currentHeaders.length === AUDIT_LOG_HEADERS.length
+    && AUDIT_LOG_HEADERS.every((h, i) => currentHeaders[i] === h);
+
+  if (match) {
+    Logger.log('✅ Combaciano esattamente. logAudit_ può scrivere in sicurezza.');
+  } else if (currentHeaders.length === 0 || (currentHeaders.length === 1 && currentHeaders[0] === '')) {
+    Logger.log('⚠️  Tab vuota (nessun header) — esegui fix_auditLogHeaders() per scriverli.');
+  } else {
+    Logger.log('❌ NON combaciano — NON eseguire logAudit_ finché non risolvi manualmente ' +
+      '(rischio di scrivere dati nelle colonne sbagliate). Righe dati presenti: ' + Math.max(0, lastRow - 1));
+  }
+}
+
+/**
+ * Scrive gli header attesi (AUDIT_LOG_HEADERS) sulla riga 1 di una tab
+ * AuditLog che esiste ma è vuota/senza header. NON tocca righe di dati
+ * eventualmente già presenti. Esegui SOLO dopo aver controllato con
+ * debug_auditLogHeaders() che la riga 1 sia davvero vuota o vada
+ * corretta consapevolmente.
+ */
+function fix_auditLogHeaders() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SHEETS.AUDIT_LOG);
+  if (!sheet) {
+    Logger.log('⏭️  Tab "' + SHEETS.AUDIT_LOG + '" non esiste — esegui setupAuditLogTab() per crearla.');
+    return;
+  }
+  sheet.getRange(1, 1, 1, AUDIT_LOG_HEADERS.length).setValues([AUDIT_LOG_HEADERS]);
+  sheet.setFrozenRows(1);
+  sheet.getRange(1, 1, 1, AUDIT_LOG_HEADERS.length).setFontWeight('bold');
+  Logger.log('✅ Header scritti su riga 1: [' + AUDIT_LOG_HEADERS.join(', ') + ']');
+}
+
+/**
  * Crea la tab AuditLog con gli header corretti, se non esiste già.
  * Idempotente — sicura da rieseguire.
  */
