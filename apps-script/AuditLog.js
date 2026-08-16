@@ -12,6 +12,13 @@
 // stesso principio delle notifiche Discord in Notifications.js — un
 // errore nel logging non deve mai far fallire l'azione vera).
 //
+// Schema: la tab esisteva già (creata prima di questo sviluppo) con uno
+// schema più snello di quello inizialmente previsto qui — 6 colonne,
+// niente actor_name/summary/details_json separati. logAudit_ si adatta
+// allo schema esistente invece di sovrascriverlo: actor_name e summary
+// vengono uniti in un'unica colonna "details" leggibile, con l'eventuale
+// payload strutturato appeso come JSON.
+//
 // Setup: setupAuditLogTab() — editor Apps Script → dropdown funzioni →
 // ▶ Esegui (una volta sola, idempotente: se la tab esiste già con gli
 // header giusti non fa nulla).
@@ -20,12 +27,10 @@
 const AUDIT_LOG_HEADERS = [
   'log_id',
   'timestamp',
-  'actor_driver_id',
-  'actor_name',
+  'driver_id',
   'action',
-  'target',
-  'summary',
-  'details_json',
+  'target_id',
+  'details',
 ];
 
 /**
@@ -115,7 +120,8 @@ function setupAuditLogTab() {
  * @param {string} action - identificativo azione, es. 'championships.saveAdjustments'
  * @param {string} target - entità principale coinvolta, es. un championship_id o race_id
  * @param {string} summary - riga leggibile per uno staff che scorre il log
- * @param {Object} [details] - dati extra utili per debug approfondito (verrà JSON.stringify-ato)
+ * @param {Object} [details] - dati extra utili per debug approfondito (verrà JSON.stringify-ato
+ *   e appeso al testo di "details" — lo schema della tab non ha una colonna dedicata)
  */
 function logAudit_(ctx, action, target, summary, details) {
   try {
@@ -125,7 +131,7 @@ function logAudit_(ctx, action, target, summary, details) {
       return;
     }
     const logId = 'audit_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
-    let actorId = (ctx && ctx.driver_id) || '';
+    const actorId = (ctx && ctx.driver_id) || '';
     let actorName = (ctx && ctx.driver && ctx.driver.display_name) || actorId;
     if (!actorName) {
       try {
@@ -134,15 +140,19 @@ function logAudit_(ctx, action, target, summary, details) {
         actorName = 'editor Apps Script';
       }
     }
+    // Colonna "details" unica: nome attore + riepilogo leggibile, con
+    // l'eventuale payload strutturato appeso come JSON per debug.
+    let detailsText = actorName + ': ' + (summary || '');
+    if (details) {
+      detailsText += ' | ' + JSON.stringify(details);
+    }
     sheet.appendRow([
       logId,
       new Date().toISOString(),
       actorId,
-      actorName,
       action,
       target || '',
-      summary || '',
-      details ? JSON.stringify(details) : '',
+      detailsText,
     ]);
   } catch (e) {
     Logger.log('⚠️  logAudit_ error (non-blocking): ' + e.message);
