@@ -773,6 +773,14 @@ function admin_deleteRaceResults() {
   Logger.log('✅ Cancellate ' + rowsToDelete.length + ' righe per race_id="' + TARGET_RACE_ID + '"');
   Logger.log('   Tab Races NON toccato (la gara resta valida)');
 
+  logAudit_(
+    null,
+    'raceResults.delete',
+    TARGET_RACE_ID,
+    'Cancellate ' + rowsToDelete.length + ' righe RaceResults per race_id="' + TARGET_RACE_ID + '" (script manuale editor)',
+    { deleted: rowsToDelete.length }
+  );
+
   return { deleted: rowsToDelete.length, race_id: TARGET_RACE_ID };
 }
 

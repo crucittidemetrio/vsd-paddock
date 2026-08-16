@@ -708,6 +708,14 @@ function handleChampionshipsImportStandings(payload, ctx) {
     Logger.log('⚠️ notifyChampionshipCrowned_ error: ' + e.message);
   }
 
+  logAudit_(
+    ctx,
+    'championships.importStandings',
+    payload.championship_id,
+    'Import classifica: ' + totalDrivers + ' piloti (' + matchedVsd + ' VSD, ' + (totalDrivers - matchedVsd) + ' esterni)',
+    { classes_count: parsed.classes.length, drivers_count: totalDrivers }
+  );
+
   return ok({
     championship_id: payload.championship_id,
     classes_count: parsed.classes.length,
@@ -836,6 +844,17 @@ function handleChampionshipsSaveAdjustments(payload, ctx) {
   } catch (e) {
     Logger.log('⚠️ notifyPointsAdjustment_ error: ' + e.message);
   }
+
+  newOnes.forEach(a => {
+    logAudit_(
+      ctx,
+      'championships.saveAdjustments',
+      payload.championship_id,
+      'Aggiustamento ' + (a.delta > 0 ? '+' : '') + a.delta + ' pt per ' + a.driver_key + ' (' + a.car_class + ')' +
+        (a.reason ? ' — ' + a.reason : ''),
+      a
+    );
+  });
 
   return ok({ championship_id: payload.championship_id, saved: adjustments.length });
 }

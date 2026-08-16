@@ -369,6 +369,10 @@ function handleRacesUpdate(payload, ctx) {
 
   if (updatedFields.length > 0) {
     invalidateSheetCache_(SHEETS.RACES);
+    const summary = updatedFields.includes('status')
+      ? 'Stato gara cambiato in "' + payload.status + '" (' + updatedFields.join(', ') + ')'
+      : 'Campi aggiornati: ' + updatedFields.join(', ');
+    logAudit_(ctx, 'races.update', race_id, summary, payload);
   }
 
   return ok({ race_id: race_id, updated: updatedFields });
@@ -417,6 +421,8 @@ function handleRacesRemove(payload, ctx) {
 
   racesSheet.deleteRow(rowIndex + 1); // base-1
   invalidateSheetCache_(SHEETS.RACES);
+
+  logAudit_(ctx, 'races.remove', race_id, 'Gara "' + race_id + '" cancellata', null);
 
   return ok({ race_id: race_id, deleted: true });
 }

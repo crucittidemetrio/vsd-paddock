@@ -673,6 +673,14 @@ function handleLapSubmissionsApprove(payload, ctx) {
   sheet.getRange(rowToUpdate, headerIdx.reviewed_at + 1).setValue(now);
   invalidateSheetCache_(SHEETS.BEST_LAP_SUBMISSIONS);
 
+  logAudit_(
+    ctx,
+    'lapSubmissions.approve',
+    submissionId,
+    'Approvato best lap di ' + row[headerIdx.driver_id] + ' — ' + row[headerIdx.lap_time_display] + ' (' + row[headerIdx.track_id] + ')',
+    { submission_id: submissionId, lap_id: addResult.data.lap_id }
+  );
+
   return ok({
     submission_id: submissionId,
     lap_id: addResult.data.lap_id,
@@ -716,6 +724,15 @@ function handleLapSubmissionsReject(payload, ctx) {
   sheet.getRange(rowToUpdate, headerIdx.reviewed_at + 1).setValue(now);
   sheet.getRange(rowToUpdate, headerIdx.review_note + 1).setValue(payload.review_note || '');
   invalidateSheetCache_(SHEETS.BEST_LAP_SUBMISSIONS);
+
+  logAudit_(
+    ctx,
+    'lapSubmissions.reject',
+    submissionId,
+    'Rifiutato best lap di ' + row[headerIdx.driver_id] + ' — ' + row[headerIdx.lap_time_display] + ' (' + row[headerIdx.track_id] + ')' +
+      (payload.review_note ? ': ' + payload.review_note : ''),
+    { submission_id: submissionId, review_note: payload.review_note || '' }
+  );
 
   return ok({ submission_id: submissionId, evidence_url: row[headerIdx.evidence_url] });
 }
