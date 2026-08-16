@@ -769,6 +769,38 @@ function admin_findOrphanedRaceIds() {
   return { orphans: orphanIds.map(id => ({ race_id: id, rows: orphanCounts[id] })) };
 }
 
+/**
+ * Diagnostica READ-ONLY: elenca TUTTE le gare del campionato passato come
+ * argomento (default: GR86 Zero Cost 2026, quello coinvolto nei race_id
+ * orfani trovati da admin_findOrphanedRaceIds), ordinate per round.
+ *
+ * Serve a capire SE le gare mancanti esistono già in Races con un id
+ * pulito (allora i risultati orfani vanno solo ricollegati) oppure se
+ * il round non è mai stato creato (allora va creata la riga Races).
+ */
+function admin_listChampionshipRaces(championshipId) {
+  championshipId = championshipId || 'chmp-irc-toyota-gr86-zero-cost-2026';
+
+  const races = sheetToObjects(SHEETS.RACES)
+    .filter(r => r.championship_id === championshipId)
+    .sort((a, b) => (Number(a.round) || 999) - (Number(b.round) || 999));
+
+  if (races.length === 0) {
+    Logger.log('⚠️  Nessuna gara trovata per championship_id="' + championshipId + '"');
+    return { races: [] };
+  }
+
+  Logger.log('📋 ' + races.length + ' gare per "' + championshipId + '":');
+  races.forEach(r => {
+    Logger.log(
+      '   R' + (r.round || '?') + ' — race_id="' + r.race_id + '" — "' + r.race_name +
+      '" — track_id=' + r.track_id + ' — status=' + r.status + ' — date=' + r.date
+    );
+  });
+
+  return { races };
+}
+
 function admin_listRaceIds() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('RaceResults');
   const data = sheet.getDataRange().getValues();
