@@ -1,44 +1,57 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { STORAGE, TIERS, TIER_ORDER } from '../utils/constants';
 import { AuthContext } from './authContextObject';
 
+/**
+ * Legge la sessione salvata in localStorage. Pura, nessun side-effect.
+ * Chiamata dagli initializer "lazy" di useState qui sotto (useState(() =>
+ * ...)), non da un useEffect: React la esegue una volta sola, al primo
+ * render di ogni istanza, senza il giro extra "render vuoto poi pieno"
+ * (react-hooks/set-state-in-effect) e senza il flash di stato anonimo
+ * prima del ripristino. NOTA: viene invocata una volta per ciascun campo
+ * (driver/token/tier/...) — ridondante ma innocuo, sono letture
+ * localStorage sincrone ed economiche, e comunque solo al mount.
+ */
+function restoreAuthFromStorage_() {
+  try {
+    const savedToken = localStorage.getItem(STORAGE.TOKEN);
+    if (!savedToken) return null;
+    const savedDriver = localStorage.getItem(STORAGE.DRIVER);
+    const savedTier = localStorage.getItem(STORAGE.TIER);
+    const savedSims = localStorage.getItem(STORAGE.SIMS);
+    // Wave 10.2.Y
+    const savedDiscordAvatar = localStorage.getItem(STORAGE.DISCORD_AVATAR_URL);
+    const savedDiscordUsername = localStorage.getItem(STORAGE.DISCORD_USERNAME);
+
+    return {
+      token: savedToken,
+      // driver può essere null per tier=guest
+      driver: savedDriver ? JSON.parse(savedDriver) : null,
+      // Fallback tier=guest se manca (token legacy salvato pre-Wave 10)
+      tier: savedTier || TIERS.GUEST,
+      sims: savedSims ? JSON.parse(savedSims) : [],
+      discordAvatarUrl: savedDiscordAvatar || null,
+      discordUsername: savedDiscordUsername || null,
+    };
+  } catch (e) {
+    console.warn('Auth restore failed', e);
+    return null;
+  }
+}
+
 export function AuthProvider({ children }) {
-  const [driver, setDriver] = useState(null);
-  const [token, setToken] = useState(null);
-  const [tier, setTier] = useState(TIERS.ANONYMOUS);
-  const [sims, setSims] = useState([]);
+  const [driver, setDriver] = useState(() => restoreAuthFromStorage_()?.driver ?? null);
+  const [token, setToken] = useState(() => restoreAuthFromStorage_()?.token ?? null);
+  const [tier, setTier] = useState(() => restoreAuthFromStorage_()?.tier ?? TIERS.ANONYMOUS);
+  const [sims, setSims] = useState(() => restoreAuthFromStorage_()?.sims ?? []);
   // Wave 10.2.Y: Discord profile info (avatar URL + username) per UI display
-  const [discordAvatarUrl, setDiscordAvatarUrl] = useState(null);
-  const [discordUsername, setDiscordUsername] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  // Restore sessione da localStorage al boot
-  useEffect(() => {
-    try {
-      const savedToken = localStorage.getItem(STORAGE.TOKEN);
-      const savedDriver = localStorage.getItem(STORAGE.DRIVER);
-      const savedTier = localStorage.getItem(STORAGE.TIER);
-      const savedSims = localStorage.getItem(STORAGE.SIMS);
-      // Wave 10.2.Y
-      const savedDiscordAvatar = localStorage.getItem(STORAGE.DISCORD_AVATAR_URL);
-      const savedDiscordUsername = localStorage.getItem(STORAGE.DISCORD_USERNAME);
-
-      if (savedToken) {
-        setToken(savedToken);
-        // driver può essere null per tier=guest
-        setDriver(savedDriver ? JSON.parse(savedDriver) : null);
-        // Fallback tier=guest se manca (token legacy salvato pre-Wave 10)
-        setTier(savedTier || TIERS.GUEST);
-        setSims(savedSims ? JSON.parse(savedSims) : []);
-        setDiscordAvatarUrl(savedDiscordAvatar || null);
-        setDiscordUsername(savedDiscordUsername || null);
-      }
-    } catch (e) {
-      console.warn('Auth restore failed', e);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
+  const [discordAvatarUrl, setDiscordAvatarUrl] = useState(() => restoreAuthFromStorage_()?.discordAvatarUrl ?? null);
+  const [discordUsername, setDiscordUsername] = useState(() => restoreAuthFromStorage_()?.discordUsername ?? null);
+  // Il ripristino da localStorage è ora sincrono (vedi restoredRef sopra):
+  // non c'è più un giro di caricamento post-mount, quindi loading è sempre
+  // false. Costante (non useState) perché non cambia mai più — nessun
+  // setter da tenere in giro.
+  const loading = false;
 
   // Wave 10.X: funzione login() legacy (access_code) rimossa. L'unico
   // metodo di autenticazione è ora Discord OAuth via setDiscordSession.

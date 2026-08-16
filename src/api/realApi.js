@@ -295,6 +295,8 @@ export async function callApi(action, payload = {}) {
         return await championshipsListAdapter(payload, token); // ← NEW
       case 'championships.importStandings':
         return await championshipsImportStandingsAdapter(payload, token);
+      case 'championships.saveAdjustments':
+        return await championshipsSaveAdjustmentsAdapter(payload, token);
       case 'standings.byChampionship':                                       // ← NEW Wave 9.9
         return await standingsByChampionshipAdapter(payload, token);         // ← NEW Wave 9.9
       case 'standings.byDriver':
@@ -941,6 +943,21 @@ async function showcaseSummaryAdapter(payload) {
  */
 async function championshipsImportStandingsAdapter(payload, token) {
   const res = await postToBackend('championships.importStandings', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: championships.saveAdjustments({ championship_id, adjustments }) → { championship_id, saved }
+ * Backend:  championships.saveAdjustments → { championship_id, saved }
+ * (case mancante nel dispatcher fino ad ora — client.js/ChampionshipDetail.jsx
+ * la chiamavano già, ma cadeva sempre nel default "Action non instradata":
+ * il pulsante "Salva" degli aggiustamenti punti in ChampionshipDetail non
+ * ha mai funzionato. Il backend, handleChampionshipsSaveAdjustments in
+ * Standings.js, era già completo e corretto.)
+ */
+async function championshipsSaveAdjustmentsAdapter(payload, token) {
+  const res = await postToBackend('championships.saveAdjustments', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
 }

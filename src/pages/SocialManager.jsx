@@ -393,6 +393,10 @@ function PostCreator({ posts, postsQuery, suggestion, onConsumeSuggestion }) {
     if (!suggestion) return;
 
     if (suggestion.type === 'media') {
+      // Reagisce a un segnale esterno (suggestion, da un altro tab/
+      // componente) e si autoconsuma subito dopo: non è stato derivato da
+      // props del render corrente, è un evento "arrivato dall'esterno".
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setForm(prev => ({ ...prev, media_url: suggestion.media_url || '' }));
       onConsumeSuggestion();
       return;

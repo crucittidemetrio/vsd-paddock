@@ -35,24 +35,26 @@ export default function AuthCallback() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { setDiscordSession, isAuthenticated } = useAuth();
-  const [error, setError] = useState(null);
-  const [processing, setProcessing] = useState(true);
+
+  // Letti in modo sincrono al render (non in un useEffect): il caso
+  // "parametri mancanti" viene deciso subito nel valore iniziale di
+  // error/processing, evitando un setState sincrono dentro l'effect
+  // (react-hooks/set-state-in-effect) per un ramo che non ha comunque
+  // nulla di asincrono da aspettare.
+  const code = searchParams.get('code');
+  const state = searchParams.get('state');
+  const missingParams = !code || !state;
+
+  const [error, setError] = useState(missingParams ? 'Parametri OAuth mancanti nell\'URL.' : null);
+  const [processing, setProcessing] = useState(!missingParams);
 
   // Guard contro double-execution (React StrictMode esegue useEffect 2 volte in dev)
   const calledRef = useRef(false);
 
   useEffect(() => {
+    if (missingParams) return; // già gestito sopra, nessuna chiamata da fare
     if (calledRef.current) return;
     calledRef.current = true;
-
-    const code = searchParams.get('code');
-    const state = searchParams.get('state');
-
-    if (!code || !state) {
-      setError('Parametri OAuth mancanti nell\'URL.');
-      setProcessing(false);
-      return;
-    }
 
     api.auth.discordCallback(code, state)
       .then(data => {
@@ -66,7 +68,7 @@ export default function AuthCallback() {
         setError(userMessage);
         setProcessing(false);
       });
-  }, [searchParams, setDiscordSession, navigate]);
+  }, [missingParams, code, state, setDiscordSession, navigate]);
 
   // Edge case: già loggato (es. browser back button) → redirect
   useEffect(() => {

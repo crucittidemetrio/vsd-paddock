@@ -150,7 +150,11 @@ function fail(error) { return { ok: false, error }; }
 
 const ACTIONS = {
   // Auth
-  'auth.login': handleAuthLogin,
+  // 'auth.login' rimosso dalla mappa pubblica (Wave 10.X, deprecato — Discord
+  // OAuth è l'unico flusso reale). La funzione handleAuthLogin() resta
+  // definita più sotto: è ancora usata internamente da decine di funzioni
+  // test_* in tutto il progetto per simulare un ctx autenticato — non va
+  // toccata, solo l'endpoint pubblico è stato disattivato.
   'auth.verify': handleAuthVerify,
   'auth.discordStart': handleDiscordAuthStart_,   // ← NUOVA RIGA (Wave 10)
   'auth.discordCallback': handleDiscordCallback,

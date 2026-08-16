@@ -134,6 +134,11 @@ export default function AdminEnduranceForm() {
   useEffect(() => {
     if (!isEdit || !existing.data) return;
     const a = existing.data;
+    // Sync intenzionale: popola il form editabile quando arrivano i dati
+    // dell'audizione da React Query (async, non un valore derivato da
+    // props). L'alternativa pulita (remount via key sulla route) tocca
+    // App.jsx e altre pagine admin con lo stesso pattern — non in scope qui.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm({
       target_race: a.target_race || '',
       target_race_date: datetimeLocalFromIso(a.target_race_date),
