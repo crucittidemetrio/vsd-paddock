@@ -801,6 +801,65 @@ function admin_listChampionshipRaces(championshipId) {
   return { races };
 }
 
+/**
+ * FIX mirato per i 3 round orfani (R3/R5/R6 del GR86 Zero Cost 2026).
+ *
+ * Causa: in Races, Race 1 e Race 2 dello stesso round hanno un race_id
+ * DIVERSO (con suffisso "-Race 1"/"-Race 2"), mentre i risultati già
+ * importati in RaceResults referenziano la versione SENZA suffisso — lo
+ * stesso schema che R1 e R2 usano correttamente (un solo race_id
+ * condiviso dalle due gare del round, ecco perché quei due non compaiono
+ * come orfani). Qui allineo R3/R5/R6 allo stesso schema, invece di
+ * toccare le 111 righe già importate in RaceResults — meno rischio,
+ * meno righe modificate, stesso comportamento di R1/R2 che già funziona.
+ *
+ * Idempotente: se il race_id non finisce con "-Race N" lo salta.
+ * Scritto SOLO per championship_id = GR86 Zero Cost 2026 di proposito,
+ * per non toccare altri campionati per errore.
+ */
+function admin_fixOrphanedGr86RaceIds() {
+  const championshipId = 'chmp-irc-toyota-gr86-zero-cost-2026';
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('Races');
+  if (!sheet) throw new Error('Tab Races non trovato');
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const raceIdIdx = headers.indexOf('race_id');
+  const champIdIdx = headers.indexOf('championship_id');
+  const raceNameIdx = headers.indexOf('race_name');
+
+  if (raceIdIdx < 0) throw new Error('Colonna race_id mancante in Races');
+  if (champIdIdx < 0) throw new Error('Colonna championship_id mancante in Races');
+
+  const suffixPattern = /-Race \d+$/;
+  let fixed = 0;
+
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][champIdIdx] !== championshipId) continue;
+    const currentId = String(data[i][raceIdIdx] || '');
+    if (!suffixPattern.test(currentId)) continue;
+
+    const newId = currentId.replace(suffixPattern, '');
+    sheet.getRange(i + 1, raceIdIdx + 1).setValue(newId);
+    fixed++;
+    Logger.log(
+      '✏️  Riga ' + (i + 1) + ' ("' + (raceNameIdx >= 0 ? data[i][raceNameIdx] : '') +
+      '"): "' + currentId + '" → "' + newId + '"'
+    );
+  }
+
+  if (fixed === 0) {
+    Logger.log('⏭️  Nessuna riga da correggere (già a posto, o championship_id non trovato).');
+  } else {
+    Logger.log('✅ Corrette ' + fixed + ' righe in Races.');
+    invalidateSheetCache_(SHEETS.RACES);
+    Logger.log('   Cache Races invalidata — riesegui admin_findOrphanedRaceIds per conferma.');
+  }
+
+  return { fixed };
+}
+
 function admin_listRaceIds() {
   const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('RaceResults');
   const data = sheet.getDataRange().getValues();
