@@ -48,16 +48,16 @@ export default function TrackKerbBackdrop({ corner = 'br', color = 'var(--vsd-re
           d="M -40 165 C 140 165, 240 70, 400 45 S 660 -10, 860 -20"
           fill="none"
           stroke={color}
-          strokeWidth="30"
+          strokeWidth="52"
           strokeLinecap="round"
         />
         <path
           d="M -40 165 C 140 165, 240 70, 400 45 S 660 -10, 860 -20"
           fill="none"
           stroke="#e8edf5"
-          strokeWidth="30"
+          strokeWidth="52"
           strokeLinecap="round"
-          strokeDasharray="22 22"
+          strokeDasharray="28 28"
         />
       </g>
       <rect x="0" y="0" width="800" height="140" fill="url(#kerbFade)" />
