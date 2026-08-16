@@ -12,8 +12,10 @@ import { useRaceResults } from '../hooks/useRaceResults';
 import { useTracks, useCars } from '../hooks/useLookups';
 import { useDrivers } from '../hooks/useRoster';
 import { formatTrackInfo, formatCarInfo } from '../utils/format';
+import { trackAccentColor } from '../utils/trackAccent';
 import { usePageMeta } from '../hooks/usePageMeta';
 import RaceResultsSection from '../components/race/RaceResultsSection';
+import TrackKerbBackdrop from '../components/shared/TrackKerbBackdrop';
 import './Page.css';
 import './RaceDetail.css';
 import RequireTier from '../components/auth/RequireTier';
@@ -377,7 +379,8 @@ export default function RaceDetail() {
 
   return (
     <div className="page">
-      <div className="page-header">
+      <div className="page-header rd-page-header-scenic">
+        <TrackKerbBackdrop color={trackAccentColor(race.track_id)} />
         <Link to="/race" className="page-eyebrow">← RACE HUB</Link>
         <div className="rd-title-row">
           <h1 className="page-title">{race.race_name || 'Gara'}</h1>

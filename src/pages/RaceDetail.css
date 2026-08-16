@@ -1,3 +1,17 @@
+/* Backdrop scenico per pista (TrackKerbBackdrop, colore via
+   trackAccentColor) — scoped a questa pagina, non tocca .page-header
+   globale usato da tutte le altre pagine. */
+.rd-page-header-scenic {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--r-md, 10px);
+}
+
+.rd-page-header-scenic > *:not(.track-kerb-backdrop) {
+  position: relative;
+  z-index: 1;
+}
+
 .rd-title-row {
   display: flex;
   align-items: center;

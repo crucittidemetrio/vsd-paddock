@@ -13,8 +13,11 @@ import './TrackKerbBackdrop.css';
  * decorativo — aria-hidden, pointer-events: none, non porta contenuto.
  *
  * @param {'br'|'bl'} [corner='br'] - angolo in cui ancorare il motivo
+ * @param {string} [color='var(--vsd-red)'] - colore del cordolo. Usato da
+ *   RaceDetail.jsx con trackAccentColor() per dare a ogni pista una
+ *   variante di colore riconoscibile senza bisogno di foto per pista.
  */
-export default function TrackKerbBackdrop({ corner = 'br' }) {
+export default function TrackKerbBackdrop({ corner = 'br', color = 'var(--vsd-red)' }) {
   const flip = corner === 'bl';
   return (
     <svg
@@ -35,7 +38,7 @@ export default function TrackKerbBackdrop({ corner = 'br' }) {
         <path
           d="M -20 280 C 90 280, 140 190, 210 160 S 320 70, 420 10"
           fill="none"
-          stroke="var(--vsd-red)"
+          stroke={color}
           strokeWidth="22"
           strokeLinecap="round"
         />
