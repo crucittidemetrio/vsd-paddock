@@ -1,0 +1,59 @@
+/* AddToCalendarButton.css */
+
+.atc-wrap {
+  position: relative;
+  display: inline-block;
+}
+
+.atc-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  color: #00d4ff;
+  background: rgba(0, 212, 255, 0.06);
+  cursor: pointer;
+}
+
+.atc-btn:hover {
+  border-color: #00d4ff;
+  background: rgba(0, 212, 255, 0.12);
+}
+
+.atc-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 20;
+  min-width: 200px;
+  background: #0e1729;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.atc-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 14px;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: #fff;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.atc-menu-item:hover {
+  background: rgba(0, 212, 255, 0.1);
+}
+
+.atc-menu-item + .atc-menu-item {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}

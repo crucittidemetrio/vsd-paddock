@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import StintTimeline from '../components/race/StintTimeline';
 import CrewRoster from '../components/race/CrewRoster';
 import RaceRSVP from '../components/race/RaceRSVP';
+import AddToCalendarButton from '../components/race/AddToCalendarButton';
 import { useStints } from '../hooks/useEnduranceStints';
 import { useRaceCrews } from '../hooks/useRaceCrews';
 import { useAuth } from '../hooks/useAuth';
@@ -393,6 +394,9 @@ export default function RaceDetail() {
             {race.championship}
             {race.round ? ` — Round ${race.round}` : ''}
           </p>
+        )}
+        {statusKey === 'scheduled' && (
+          <AddToCalendarButton race={race} trackName={trackInfo?.name} />
         )}
       </div>
 
