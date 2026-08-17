@@ -28,6 +28,13 @@ const EVENTS_ITEMS = [
   { to: '/clash-of-classes', label: 'Clash of Classes', icon: '⚔' },
 ];
 
+// Pagine rivolte all'esterno (candidati, sponsor) — visibili a tutti,
+// prima erano raggiungibili solo via link diretto condiviso a mano.
+const TEAM_ITEMS = [
+  { to: '/joinus', label: 'Unisciti a noi', icon: '⊕' },
+  { to: '/media-kit', label: 'Media Kit', icon: '▤' },
+];
+
 // Voci pilota attive — visibili solo a pilot_vsd, staff, admin
 const PILOT_ITEMS = [
   { to: '/reports', label: LABELS.nav_reports, icon: '◣' },
@@ -164,6 +171,9 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
             invece di essere interrotto dal blocco arancione in mezzo. */}
         <div className="nav-section-label nav-section-label-event">Eventi VSD</div>
         {EVENTS_ITEMS.map(item => renderNavItem(item, onMobileClose, 'is-event'))}
+
+        <div className="nav-section-label">Team</div>
+        {TEAM_ITEMS.map(item => renderNavItem(item, onMobileClose))}
 
         {isVsdPilot && (
           <>
