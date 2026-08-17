@@ -158,3 +158,63 @@ function logAudit_(ctx, action, target, summary, details) {
     Logger.log('⚠️  logAudit_ error (non-blocking): ' + e.message);
   }
 }
+
+/**
+ * Endpoint 'auditLog.list' — solo staff/admin. Restituisce le righe del
+ * registro di controllo, più recenti prima, con filtri opzionali e
+ * paginazione semplice.
+ *
+ * @param {Object} payload
+ *   @param {string} [payload.action]    - match esatto sulla colonna action
+ *   @param {string} [payload.driver_id] - match esatto sulla colonna driver_id
+ *   @param {string} [payload.q]         - ricerca libera (case-insensitive) su target_id + details
+ *   @param {number} [payload.limit]     - default 100, max 500
+ *   @param {number} [payload.offset]    - default 0
+ */
+function handleAuditLogList(payload, ctx) {
+  if (!ctx) return fail('Auth richiesto');
+  if (!ctx.isStaff) return fail('Forbidden: solo staff/admin');
+
+  payload = payload || {};
+  const limit = Math.min(Math.max(Number(payload.limit) || 100, 1), 500);
+  const offset = Math.max(Number(payload.offset) || 0, 0);
+
+  let rows = sheetToObjects(SHEETS.AUDIT_LOG);
+
+  if (payload.action) {
+    rows = rows.filter(r => String(r.action) === String(payload.action));
+  }
+  if (payload.driver_id) {
+    rows = rows.filter(r => String(r.driver_id) === String(payload.driver_id));
+  }
+  if (payload.q) {
+    const q = String(payload.q).toLowerCase();
+    rows = rows.filter(r =>
+      String(r.target_id || '').toLowerCase().includes(q) ||
+      String(r.details || '').toLowerCase().includes(q)
+    );
+  }
+
+  // Più recenti prima (timestamp ISO → ordinamento stringa funziona,
+  // ma usiamo Date per sicurezza contro eventuali formati non normalizzati).
+  rows.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+  const total = rows.length;
+  const page = rows.slice(offset, offset + limit);
+
+  // Arricchisci con il nome pilota, se driver_id è valorizzato e riconosciuto.
+  const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
+  const driverMap = {};
+  drivers.forEach(d => { driverMap[d.driver_id] = d.display_name; });
+  const enriched = page.map(r => ({
+    log_id: r.log_id,
+    timestamp: r.timestamp,
+    driver_id: r.driver_id || '',
+    driver_name: (r.driver_id && driverMap[r.driver_id]) || null,
+    action: r.action,
+    target_id: r.target_id || '',
+    details: r.details || '',
+  }));
+
+  return ok({ rows: enriched, total, limit, offset });
+}

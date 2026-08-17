@@ -297,6 +297,8 @@ export async function callApi(action, payload = {}) {
         return await championshipsImportStandingsAdapter(payload, token);
       case 'championships.saveAdjustments':
         return await championshipsSaveAdjustmentsAdapter(payload, token);
+      case 'auditLog.list':
+        return await auditLogListAdapter(payload, token);
       case 'standings.byChampionship':                                       // ← NEW Wave 9.9
         return await standingsByChampionshipAdapter(payload, token);         // ← NEW Wave 9.9
       case 'standings.byDriver':
@@ -958,6 +960,16 @@ async function championshipsImportStandingsAdapter(payload, token) {
  */
 async function championshipsSaveAdjustmentsAdapter(payload, token) {
   const res = await postToBackend('championships.saveAdjustments', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: auditLog.list({ action?, driver_id?, q?, limit?, offset? })
+ * → { rows: [...], total, limit, offset }
+ */
+async function auditLogListAdapter(payload, token) {
+  const res = await postToBackend('auditLog.list', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
 }

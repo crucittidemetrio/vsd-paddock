@@ -176,6 +176,10 @@ export const api = {
       call('championships.saveAdjustments', { championship_id, adjustments }),
   },
 
+  auditLog: {
+    list: (params = {}) => call('auditLog.list', params),
+  },
+
   standings: {
     byChampionship: (championship_id) =>
       call('standings.byChampionship', { championship_id }),

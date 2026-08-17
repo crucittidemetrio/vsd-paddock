@@ -258,6 +258,9 @@ const ACTIONS = {
   'championships.saveAdjustments':   handleChampionshipsSaveAdjustments,
   // ...
 
+  // Audit Log (solo staff/admin)
+  'auditLog.list': handleAuditLogList,
+
 // Reports
   'reports.list': handleReportsList,
   'reports.recent': handleReportsRecent,

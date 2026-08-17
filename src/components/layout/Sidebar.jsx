@@ -63,6 +63,7 @@ const ADMIN_ITEMS = [
 const ADMIN_ONLY_ITEMS = [
   { to: '/admin/social-manager', label: 'Social Manager', icon: '◎' },
   { to: '/admin/consents', label: 'Consenso dati', icon: '✎' },
+  { to: '/admin/audit-log', label: 'Registro di controllo', icon: '☰' },
 ];
 
 function renderNavItem(item, onMobileClose, extraClass = '', badgeCount = 0) {

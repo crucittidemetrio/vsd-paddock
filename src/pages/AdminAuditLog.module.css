@@ -1,0 +1,242 @@
+.container {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+}
+
+.header {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: #00d4ff;
+  text-transform: uppercase;
+}
+
+.title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 36px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  margin: 8px 0 12px;
+  color: #fff;
+}
+
+.sub {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.5);
+  max-width: 640px;
+}
+
+.filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.searchInput {
+  flex: 1;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  padding: 9px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: #fff;
+}
+
+.searchInput::placeholder {
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.select {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.85);
+  max-width: 260px;
+}
+
+.loading,
+.errorBox {
+  padding: 32px 24px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 14px;
+}
+
+.errorBox {
+  color: #ef3340;
+  border-color: rgba(239, 51, 64, 0.2);
+}
+
+.table {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tableHead {
+  display: grid;
+  grid-template-columns: 140px 140px 200px 130px 1fr;
+  gap: 12px;
+  padding: 8px 14px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.35);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 140px 140px 200px 130px 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.empty {
+  padding: 24px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 13px;
+}
+
+.cellDate {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+}
+
+.cellActor {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.muted {
+  color: rgba(255, 255, 255, 0.35);
+  font-style: italic;
+  font-weight: 400;
+}
+
+.cellTarget {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cellDetails {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.7);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 6px;
+  white-space: nowrap;
+  width: fit-content;
+}
+
+.toneChampionship {
+  color: #f5a623;
+  background: rgba(245, 166, 35, 0.1);
+  border: 1px solid rgba(245, 166, 35, 0.3);
+}
+
+.toneRace {
+  color: #00d4ff;
+  background: rgba(0, 212, 255, 0.1);
+  border: 1px solid rgba(0, 212, 255, 0.3);
+}
+
+.toneLap {
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.toneDefault {
+  color: rgba(255, 255, 255, 0.65);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 18px;
+}
+
+.pageInfo {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.pageBtns {
+  display: flex;
+  gap: 8px;
+}
+
+.pageBtn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.8);
+  cursor: pointer;
+}
+
+.pageBtn:hover:not(:disabled) {
+  border-color: rgba(0, 212, 255, 0.4);
+  color: #00d4ff;
+}
+
+.pageBtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+@media (max-width: 720px) {
+  .tableHead {
+    display: none;
+  }
+  .row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
