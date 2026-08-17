@@ -17,6 +17,7 @@ import MyDominantClassesWidget from '../components/dashboard/MyDominantClassesWi
 import LapProgressionChart from '../components/profile/LapProgressionChart';
 import TrackPhotoBackdrop from '../components/shared/TrackPhotoBackdrop';
 import CompanionTokenPanel from '../components/profile/CompanionTokenPanel';
+import PushNotificationsPanel from '../components/profile/PushNotificationsPanel';
 import { ROLES } from '../utils/constants';
 import { formatTrack, formatCar, formatDate } from '../utils/format';
 import './DriverProfile.css';
@@ -341,6 +342,7 @@ export default function DriverProfile() {
         </div>
       </div>
 
+      {isOwnProfile && <PushNotificationsPanel />}
       {isOwnProfile && <CompanionTokenPanel />}
 
       {/* STATS */}

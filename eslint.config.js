@@ -60,4 +60,13 @@ export default defineConfig([
       globals: { ...globals.browser, ...globals.node },
     },
   },
+  {
+    // Il service worker gira nel suo scope globale dedicato (self,
+    // clients, caches, registration...), non nello scope window del
+    // resto del frontend — servono i globali "serviceworker".
+    files: ['public/sw.js'],
+    languageOptions: {
+      globals: globals.serviceworker,
+    },
+  },
 ])

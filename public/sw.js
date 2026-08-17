@@ -1,9 +1,9 @@
-// VSD Paddock — Service Worker (v1)
+// VSD Paddock — Service Worker (v2)
 // ═══════════════════════════════════════════════════════════
-// Scopo v1: rendere il sito installabile (requisito PWA: un SW
-// registrato con un fetch handler, anche minimale). Le notifiche push
-// NON sono ancora implementate — richiedono un'infrastruttura a parte
-// (VAPID keys, storage delle subscription, un trigger lato backend).
+// Rende il sito installabile (requisito PWA: un SW registrato con un
+// fetch handler) e gestisce la ricezione/click delle Web Push (vedi
+// in fondo al file) — l'invio vero e proprio parte da
+// apps-script/Push.js tramite il relay Vercel api/push-send.js.
 //
 // Strategia di cache pensata per non servire mai contenuto vecchio
 // dopo un deploy:
@@ -19,7 +19,7 @@
 const CACHE_VERSION = 'vsd-paddock-v1';
 const OFFLINE_URL = '/';
 
-self.addEventListener('install', (event) => {
+self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
@@ -57,7 +57,7 @@ self.addEventListener('fetch', (event) => {
           const cache = await caches.open(CACHE_VERSION);
           cache.put(OFFLINE_URL, fresh.clone());
           return fresh;
-        } catch (e) {
+        } catch {
           const cache = await caches.open(CACHE_VERSION);
           const cached = await cache.match(OFFLINE_URL);
           return cached || Response.error();
@@ -79,7 +79,7 @@ self.addEventListener('fetch', (event) => {
           const fresh = await fetch(request);
           if (fresh.ok) cache.put(request, fresh.clone());
           return fresh;
-        } catch (e) {
+        } catch {
           return Response.error();
         }
       })()
@@ -87,4 +87,46 @@ self.addEventListener('fetch', (event) => {
   }
   // Tutto il resto (immagini, manifest, ecc.) → passa dritto alla rete,
   // nessuna intercettazione.
+});
+
+// ─── Web Push ───
+// Il payload arriva già cifrato/decifrato dal browser (il relay Vercel
+// in api/push-send.js si occupa della cifratura lato server) — qui
+// arriva come JSON in chiaro: { title, body, url }.
+self.addEventListener('push', (event) => {
+  let data = { title: 'VSD Paddock', body: 'Nuova notifica' };
+  try {
+    if (event.data) data = { ...data, ...event.data.json() };
+  } catch {
+    // payload non-JSON — usa i default sopra invece di far fallire tutto
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: '/icons/icon-192.png',
+      badge: '/icons/icon-192.png',
+      data: { url: data.url || '/' },
+    })
+  );
+});
+
+// Click sulla notifica → porta alla pagina indicata, riusando una tab
+// già aperta del sito se esiste invece di aprirne una nuova ogni volta.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || '/';
+
+  event.waitUntil(
+    (async () => {
+      const allClients = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const existing = allClients.find((c) => new URL(c.url).origin === self.location.origin);
+      if (existing) {
+        await existing.focus();
+        if ('navigate' in existing) await existing.navigate(targetUrl);
+        return;
+      }
+      await clients.openWindow(targetUrl);
+    })()
+  );
 });

@@ -187,6 +187,11 @@ export const api = {
     remove: (candidate_id) => call('candidates.remove', { candidate_id }),
   },
 
+  push: {
+    subscribe: (subscription) => call('push.subscribe', subscription),
+    unsubscribe: (endpoint) => call('push.unsubscribe', { endpoint }),
+  },
+
   standings: {
     byChampionship: (championship_id) =>
       call('standings.byChampionship', { championship_id }),

@@ -307,6 +307,10 @@ export async function callApi(action, payload = {}) {
         return await candidatesUpdateAdapter(payload, token);
       case 'candidates.remove':
         return await candidatesRemoveAdapter(payload, token);
+      case 'push.subscribe':
+        return await pushSubscribeAdapter(payload, token);
+      case 'push.unsubscribe':
+        return await pushUnsubscribeAdapter(payload, token);
       case 'standings.byChampionship':                                       // ← NEW Wave 9.9
         return await standingsByChampionshipAdapter(payload, token);         // ← NEW Wave 9.9
       case 'standings.byDriver':
@@ -1027,6 +1031,24 @@ async function candidatesUpdateAdapter(payload, token) {
  */
 async function candidatesRemoveAdapter(payload, token) {
   const res = await postToBackend('candidates.remove', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: push.subscribe({ endpoint, keys:{p256dh,auth}, user_agent? }) → { subscribed }
+ */
+async function pushSubscribeAdapter(payload, token) {
+  const res = await postToBackend('push.subscribe', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: push.unsubscribe({ endpoint }) → { unsubscribed }
+ */
+async function pushUnsubscribeAdapter(payload, token) {
+  const res = await postToBackend('push.unsubscribe', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
 }

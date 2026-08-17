@@ -1,0 +1,97 @@
+/* PushNotificationsPanel.css — attiva/disattiva notifiche push per il device corrente */
+
+.pnp-section {
+  margin-top: 1.5rem;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid rgba(0, 212, 255, 0.15);
+  border-radius: 10px;
+  background: rgba(6, 13, 31, 0.6);
+}
+
+.pnp-header {
+  margin-bottom: 0.5rem;
+}
+
+.pnp-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #00d4ff;
+  margin: 0;
+}
+
+.pnp-desc {
+  font-size: 0.85rem;
+  color: #9aa8c7;
+  line-height: 1.5;
+  margin: 0 0 1rem 0;
+  max-width: 640px;
+}
+
+.pnp-loading {
+  font-size: 0.85rem;
+  color: #6b7a99;
+}
+
+.pnp-denied {
+  font-size: 0.82rem;
+  color: #f5a623;
+  background: rgba(245, 166, 35, 0.08);
+  border: 1px solid rgba(245, 166, 35, 0.25);
+  border-radius: 6px;
+  padding: 0.6rem 0.8rem;
+  line-height: 1.5;
+}
+
+.pnp-btn {
+  padding: 10px 18px;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.pnp-btn-on {
+  background: rgba(0, 212, 255, 0.12);
+  border: 1px solid rgba(0, 212, 255, 0.35);
+  color: #00d4ff;
+}
+
+.pnp-btn-on:hover {
+  background: rgba(0, 212, 255, 0.2);
+}
+
+.pnp-btn-off {
+  background: transparent;
+  border: 1px solid rgba(154, 168, 199, 0.3);
+  color: #9aa8c7;
+  padding: 8px 14px;
+  font-size: 0.82rem;
+}
+
+.pnp-btn-off:hover {
+  border-color: #f54f4f;
+  color: #f54f4f;
+}
+
+.pnp-active-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.pnp-active-badge {
+  font-size: 0.85rem;
+  color: #22c55e;
+  font-weight: 600;
+}
+
+.pnp-error {
+  margin-top: 0.75rem;
+  color: #f54f4f;
+  font-size: 0.85rem;
+}

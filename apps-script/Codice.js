@@ -34,6 +34,7 @@ const SHEETS = {
   CLASH_INCIDENT_REPORTS: 'ClashIncidentReports',
   CONSENTS: 'Consents',
   CANDIDATES: 'Candidates',
+  PUSH_SUBSCRIPTIONS: 'PushSubscriptions',
 };
 
 // ID dello spreadsheet principale (VSD_HUB_DB). Usato solo dagli script che
@@ -267,6 +268,10 @@ const ACTIONS = {
   'candidates.add': handleCandidatesAdd,
   'candidates.update': handleCandidatesUpdate,
   'candidates.remove': handleCandidatesRemove,
+
+  // Push notifications
+  'push.subscribe': handlePushSubscribe,
+  'push.unsubscribe': handlePushUnsubscribe,
 
 // Reports
   'reports.list': handleReportsList,
