@@ -36,6 +36,8 @@ const SHEETS = {
   CANDIDATES: 'Candidates',
   PUSH_SUBSCRIPTIONS: 'PushSubscriptions',
   RACE_RSVPS: 'RaceRSVPs',
+  SPONSORS: 'Sponsors',
+  INCIDENT_RESOLUTIONS: 'IncidentResolutions',
 };
 
 // ID dello spreadsheet principale (VSD_HUB_DB). Usato solo dagli script che
@@ -277,6 +279,19 @@ const ACTIONS = {
   // Conferma presenza gara (RSVP)
   'rsvp.list': handleRsvpList,
   'rsvp.set': handleRsvpSet,
+
+  // CRM sponsor
+  'sponsors.list': handleSponsorsList,
+  'sponsors.add': handleSponsorsAdd,
+  'sponsors.update': handleSponsorsUpdate,
+  'sponsors.remove': handleSponsorsRemove,
+
+  // Registro incidenti / steward
+  'incidents.list': handleIncidentsList,
+  'incidents.resolve': handleIncidentsResolve,
+
+  // Indice skill unificato
+  'skillIndex.list': handleSkillIndexList,
 
 // Reports
   'reports.list': handleReportsList,

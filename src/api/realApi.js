@@ -315,6 +315,20 @@ export async function callApi(action, payload = {}) {
         return await rsvpListAdapter(payload, token);
       case 'rsvp.set':
         return await rsvpSetAdapter(payload, token);
+      case 'sponsors.list':
+        return await sponsorsListAdapter(payload, token);
+      case 'sponsors.add':
+        return await sponsorsAddAdapter(payload, token);
+      case 'sponsors.update':
+        return await sponsorsUpdateAdapter(payload, token);
+      case 'sponsors.remove':
+        return await sponsorsRemoveAdapter(payload, token);
+      case 'incidents.list':
+        return await incidentsListAdapter(payload, token);
+      case 'incidents.resolve':
+        return await incidentsResolveAdapter(payload, token);
+      case 'skillIndex.list':
+        return await skillIndexListAdapter(payload, token);
       case 'standings.byChampionship':                                       // ← NEW Wave 9.9
         return await standingsByChampionshipAdapter(payload, token);         // ← NEW Wave 9.9
       case 'standings.byDriver':
@@ -1053,6 +1067,71 @@ async function pushSubscribeAdapter(payload, token) {
  */
 async function pushUnsubscribeAdapter(payload, token) {
   const res = await postToBackend('push.unsubscribe', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: sponsors.list({ status? }) → { sponsors: [...], count }
+ */
+async function sponsorsListAdapter(payload, token) {
+  const res = await postToBackend('sponsors.list', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: sponsors.add({ company_name, contact_name?, contact_email?,
+ * contact_phone?, value_estimate?, next_follow_up?, notes? }) → sponsor creato
+ */
+async function sponsorsAddAdapter(payload, token) {
+  const res = await postToBackend('sponsors.add', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: sponsors.update({ sponsor_id, ...campi }) → sponsor aggiornato
+ */
+async function sponsorsUpdateAdapter(payload, token) {
+  const res = await postToBackend('sponsors.update', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: sponsors.remove({ sponsor_id }) → { deleted, sponsor_id }
+ */
+async function sponsorsRemoveAdapter(payload, token) {
+  const res = await postToBackend('sponsors.remove', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: incidents.list({ status? }) → { incidents: [...], count }
+ */
+async function incidentsListAdapter(payload, token) {
+  const res = await postToBackend('incidents.list', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: incidents.resolve({ complaint_key, status, penalty_type?,
+ * penalty_detail?, staff_notes? }) → risoluzione aggiornata
+ */
+async function incidentsResolveAdapter(payload, token) {
+  const res = await postToBackend('incidents.resolve', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: skillIndex.list({ sim? }) → { drivers: [...] }
+ */
+async function skillIndexListAdapter(payload, token) {
+  const res = await postToBackend('skillIndex.list', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
 }

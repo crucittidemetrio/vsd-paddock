@@ -66,6 +66,8 @@ const ADMIN_ITEMS = [
   { to: '/admin/endurance', label: 'Endurance Admin', icon: '◐' },
   { to: '/admin/clash-results', label: 'Clash of Classes', icon: '⚔' },
   { to: '/admin/candidates', label: 'Candidature', icon: '◫' },
+  { to: '/admin/sponsors', label: 'Sponsor', icon: '◆' },
+  { to: '/admin/incidents', label: 'Registro incidenti', icon: '⚠' },
 ];
 
 // Voci riservate ad admin/Team Principal — sottoinsieme più ristretto

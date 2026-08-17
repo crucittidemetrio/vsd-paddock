@@ -197,6 +197,22 @@ export const api = {
     set: (payload) => call('rsvp.set', payload),
   },
 
+  sponsors: {
+    list: (params = {}) => call('sponsors.list', params),
+    add: (payload) => call('sponsors.add', payload),
+    update: (payload) => call('sponsors.update', payload),
+    remove: (sponsor_id) => call('sponsors.remove', { sponsor_id }),
+  },
+
+  incidents: {
+    list: (params = {}) => call('incidents.list', params),
+    resolve: (payload) => call('incidents.resolve', payload),
+  },
+
+  skillIndex: {
+    list: (params = {}) => call('skillIndex.list', params),
+  },
+
   standings: {
     byChampionship: (championship_id) =>
       call('standings.byChampionship', { championship_id }),
