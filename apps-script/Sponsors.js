@@ -150,6 +150,10 @@ function handleSponsorsUpdate(payload, ctx) {
   if (payload.status !== undefined && payload.status !== prevStatus) {
     logAudit_(ctx, 'sponsors.update', sponsorId,
       'Sponsor ' + rowObj.company_name + ': stato ' + prevStatus + ' → ' + rowObj.status, null);
+
+    if (rowObj.status === 'active') {
+      notifySponsorActivated_(rowObj);
+    }
   }
 
   return ok(rowObj);

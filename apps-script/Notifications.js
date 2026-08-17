@@ -137,6 +137,60 @@ function notifyVsdPodium_(driverName, position, race, sessionType, driverId) {
 }
 
 /**
+ * Notifica: lo staff ha formalizzato lo stato/penalità di un incidente
+ * (Registro incidenti). Canale staff-only — non pubblico: sono decisioni
+ * di stewarding, non vanno annunciate automaticamente ai piloti.
+ *
+ * @param {Object} incident - riga arricchita da handleIncidentsResolve
+ *   (reporter_sim, against, track, status, penalty_type?, penalty_detail?)
+ */
+function notifyIncidentResolved_(incident) {
+  if (!incident) return;
+
+  const statusLabels = { open: 'Aperto', reviewing: 'In revisione', closed: 'Chiuso' };
+  const embed = {
+    author: { name: 'VSD Paddock — Steward' },
+    title: '🚩 Incidente aggiornato: ' + (statusLabels[incident.status] || incident.status),
+    description: (incident.reporter_sim || '?') + ' → ' + (incident.against || '?') +
+                 (incident.track ? '\n' + incident.track : ''),
+    color: incident.status === 'closed' ? VSD_COLORS.green : VSD_COLORS.orange,
+    fields: [],
+    timestamp: new Date().toISOString(),
+    footer: { text: 'Registro incidenti · Admin' },
+  };
+  if (incident.penalty_type) {
+    embed.fields.push({
+      name: 'Penalità',
+      value: incident.penalty_type + (incident.penalty_detail ? ' — ' + incident.penalty_detail : ''),
+      inline: true,
+    });
+  }
+
+  postToDiscordAdmin_({ embeds: [embed] });
+}
+
+/**
+ * Notifica: uno sponsor è passato allo stato 'active' (CRM sponsor).
+ * Canale staff-only — informazioni di business, mai pubbliche.
+ *
+ * @param {Object} sponsor - { company_name, value_estimate? }
+ */
+function notifySponsorActivated_(sponsor) {
+  if (!sponsor || !sponsor.company_name) return;
+
+  const embed = {
+    author: { name: 'VSD Paddock — Partnership' },
+    title: '🤝 Nuovo sponsor attivo!',
+    description: '**' + sponsor.company_name + '**' + (sponsor.value_estimate ? '\n' + sponsor.value_estimate : ''),
+    color: VSD_COLORS.green,
+    timestamp: new Date().toISOString(),
+    footer: { text: 'CRM Sponsor · Admin' },
+  };
+
+  postToDiscordAdmin_({ embeds: [embed] });
+}
+
+/**
  * Notifica: campionato concluso, incorona il/i campione/i (uno per classe).
  * Deduplicata via Script Properties — non ripete l'annuncio se il vincitore
  * non cambia tra un re-import e l'altro dello stesso standings_json.

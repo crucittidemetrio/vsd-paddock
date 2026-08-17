@@ -215,16 +215,28 @@ function handleIncidentsResolve(payload, ctx) {
     resolved_at: now,
   };
 
+  // Per l'embed Discord servono i dati della segnalazione originale
+  // (chi contro chi, su quale pista) — recuperati in sola lettura dal
+  // Modulo reclamo, mai scritti.
+  let complaintContext = null;
+  try {
+    complaintContext = readReclamiRows_().find(c => c.complaint_key === complaintKey) || null;
+  } catch (e) {
+    Logger.log('⚠️  Impossibile recuperare il contesto per la notifica (non-blocking): ' + e.message);
+  }
+
   for (let i = 1; i < data.length; i++) {
     if (data[i][keyIdx] === complaintKey) {
       const newRow = headers.map(h => (row[h] !== undefined ? row[h] : ''));
       sheet.getRange(i + 1, 1, 1, newRow.length).setValues([newRow]);
       logAudit_(ctx, 'incidents.resolve', complaintKey, 'Incidente aggiornato: stato → ' + status, null);
+      notifyIncidentResolved_({ ...complaintContext, ...row });
       return ok(row);
     }
   }
 
   sheet.appendRow(INCIDENT_RESOLUTION_HEADERS.map(h => row[h]));
   logAudit_(ctx, 'incidents.resolve', complaintKey, 'Incidente formalizzato: stato → ' + status, null);
+  notifyIncidentResolved_({ ...complaintContext, ...row });
   return ok(row);
 }
