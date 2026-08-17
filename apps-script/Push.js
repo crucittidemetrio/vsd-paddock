@@ -232,3 +232,15 @@ function checkAndNotifyUpcomingRacePush_() {
     Logger.log('⚠️  checkAndNotifyUpcomingRacePush_ error (non-blocking): ' + e.message);
   }
 }
+
+/**
+ * Wrapper pubblico (senza underscore) — necessario perché il menu
+ * Trigger di Apps Script nasconde di proposito le funzioni con
+ * underscore finale, trattate come "private". Stesso pattern già usato
+ * per runWeeklyDigest() in Notifications.js.
+ * Da collegare al trigger time-driven "ogni 15 minuti" (vedi
+ * apps-script/Push.js in testa al file per le istruzioni di setup).
+ */
+function runUpcomingRacePushCheck() {
+  checkAndNotifyUpcomingRacePush_();
+}
