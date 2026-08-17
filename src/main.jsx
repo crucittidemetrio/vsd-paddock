@@ -22,3 +22,15 @@ createRoot(document.getElementById('root')).render(
     </QueryClientProvider>
   </StrictMode>,
 );
+
+// Service worker solo in produzione: in dev interferirebbe con l'HMR di
+// Vite (che riscrive gli asset ad ogni salvataggio). Registrato dopo il
+// load per non competere con le risorse critiche del primo render.
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {
+      // Installazione PWA non critica per il funzionamento del sito —
+      // un errore qui non deve mai apparire come un problema utente.
+    });
+  });
+}
