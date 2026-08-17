@@ -270,6 +270,7 @@ const ACTIONS = {
 
   // Showcase (pubblico, no auth)
   'showcase.summary': handleShowcaseSummary,
+  'showcase.mediaKit': handleShowcaseMediaKit,
 
   // Endurance Auditions (Phase 1A)
   'endurance.auditions.list': handleEnduranceAuditionsList,

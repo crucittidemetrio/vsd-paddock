@@ -7,3 +7,11 @@ export function useShowcase() {
     queryFn: () => api.showcase.summary(),
   });
 }
+
+export function useMediaKit() {
+  return useQuery({
+    queryKey: ['showcase', 'mediaKit'],
+    queryFn: () => api.showcase.mediaKit(),
+    staleTime: 5 * 60_000,
+  });
+}

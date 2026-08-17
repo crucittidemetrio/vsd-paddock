@@ -172,11 +172,128 @@ function handleShowcaseSummary(payload, ctx) {
   });
 }
 
+/**
+ * showcase.mediaKit — Endpoint pubblico per la pagina Sponsor/Media Kit.
+ * Nessuna autenticazione richiesta. Pensato per essere mostrato a
+ * sponsor/potenziali sponsor: numeri aggregati, non dati personali dei
+ * piloti (le foto restano gated dal consenso social lato frontend,
+ * stesso pattern del resto del sito — questo endpoint espone solo
+ * driver_id/display_name/podi, mai email o altri dati sensibili).
+ */
+function handleShowcaseMediaKit(payload, ctx) {
+  const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
+  const races = getCachedSheetData_(SHEETS.RACES, 900);
+  const reports = sheetToObjects(SHEETS.RACE_REPORTS);
+  const raceResults = sheetToObjects(SHEETS.RACE_RESULTS);
+  const socialMetrics = sheetToObjects(SHEETS.SOCIAL_METRICS);
+
+  const activeDrivers = drivers.filter(d => !d.removed_at && String(d.status).toLowerCase() === 'active');
+  const completedRaces = races.filter(r => String(r.status).toLowerCase() === 'completed');
+
+  // --- Podi + vittorie: stessa union RaceReports + RaceResults di showcase.summary ---
+  const podiumsFromReports = reports.filter(r => {
+    const pos = Number(r.finish_position);
+    return !isNaN(pos) && pos > 0 && pos <= 3;
+  });
+  const podiumsFromResults = raceResults.filter(rr => {
+    if (String(rr.session_type).toLowerCase() !== 'race') return false;
+    if (String(rr.is_vsd_driver).toUpperCase() !== 'TRUE') return false;
+    if (String(rr.dnf).toUpperCase() === 'TRUE') return false;
+    if (String(rr.dns).toUpperCase() === 'TRUE') return false;
+    const pos = Number(rr.finish_position);
+    return !isNaN(pos) && pos > 0 && pos <= 3;
+  });
+  const seenPodiums = new Set();
+  const podiums = [];
+  [...podiumsFromReports, ...podiumsFromResults].forEach(p => {
+    const key = `${p.race_id}__${p.driver_id}`;
+    if (!seenPodiums.has(key)) {
+      seenPodiums.add(key);
+      podiums.push(p);
+    }
+  });
+  const wins = podiums.filter(p => Number(p.finish_position) === 1);
+
+  // --- Sim usati (per mostrare la copertura multi-piattaforma) ---
+  const raceCountBySim = {};
+  completedRaces.forEach(r => {
+    const sim = r.sim || 'N/D';
+    raceCountBySim[sim] = (raceCountBySim[sim] || 0) + 1;
+  });
+  const sims = Object.entries(raceCountBySim)
+    .map(([sim, races_count]) => ({ sim, races_count }))
+    .sort((a, b) => b.races_count - a.races_count);
+
+  // --- "Attivi dal" — anno della gara più vecchia in calendario, dato
+  // reale invece di una data inventata a mano nel frontend ---
+  let foundedYear = null;
+  races.forEach(r => {
+    const d = parseRaceDate(r.date);
+    if (d) {
+      const y = d.getFullYear();
+      if (!foundedYear || y < foundedYear) foundedYear = y;
+    }
+  });
+
+  // --- Social: ultima rilevazione per piattaforma (SocialMetrics è
+  // popolato a mano dallo staff via social.metrics.add) ---
+  const latestByPlatform = {};
+  socialMetrics.forEach(m => {
+    const platform = m.platform;
+    if (!platform) return;
+    const existing = latestByPlatform[platform];
+    if (!existing || String(m.recorded_date) > String(existing.recorded_date)) {
+      latestByPlatform[platform] = m;
+    }
+  });
+  const social = Object.values(latestByPlatform).map(m => ({
+    platform: m.platform,
+    followers: Number(m.followers) || 0,
+    recorded_date: m.recorded_date,
+  }));
+
+  // --- Top piloti per podi (solo driver_id/display_name/podi/vittorie —
+  // niente di sensibile, le foto restano gated lato frontend) ---
+  const podiumByDriver = {};
+  const winByDriver = {};
+  podiums.forEach(r => { podiumByDriver[r.driver_id] = (podiumByDriver[r.driver_id] || 0) + 1; });
+  wins.forEach(r => { winByDriver[r.driver_id] = (winByDriver[r.driver_id] || 0) + 1; });
+
+  const topDrivers = activeDrivers
+    .map(d => ({
+      driver_id: d.driver_id,
+      display_name: d.display_name,
+      podiums: podiumByDriver[d.driver_id] || 0,
+      wins: winByDriver[d.driver_id] || 0,
+    }))
+    .filter(d => d.podiums > 0)
+    .sort((a, b) => b.podiums - a.podiums || b.wins - a.wins)
+    .slice(0, 6);
+
+  return ok({
+    stats: {
+      drivers_count: activeDrivers.length,
+      races_count: completedRaces.length,
+      podiums_count: podiums.length,
+      wins_count: wins.length,
+      founded_year: foundedYear,
+    },
+    sims,
+    social,
+    topDrivers,
+  });
+}
+
 // ═══════════════════════════════════════════════════════════
 // TEST
 // ═══════════════════════════════════════════════════════════
 
 function testShowcaseSummary() {
   const result = handleShowcaseSummary({}, null);
+  Logger.log(JSON.stringify(result, null, 2));
+}
+
+function testShowcaseMediaKit() {
+  const result = handleShowcaseMediaKit({}, null);
   Logger.log(JSON.stringify(result, null, 2));
 }

@@ -20,6 +20,7 @@ import ChampionshipsList from './pages/ChampionshipsList';
 
 // ── Lazy: pagine deep, secondarie, admin ──────────────────────
 const JoinUs              = lazy(() => import('./pages/JoinUs'));
+const MediaKit            = lazy(() => import('./pages/MediaKit'));
 const DriverProfile       = lazy(() => import('./pages/DriverProfile'));
 const RaceDetail          = lazy(() => import('./pages/RaceDetail'));
 const Reports             = lazy(() => import('./pages/Reports'));
@@ -97,6 +98,7 @@ export default function App() {
               {/* ── Pubbliche: accessibili a tutti i tier ── */}
               <Route path="/" element={<Landing />} />
               <Route path="/joinus" element={<JoinUs />} />
+              <Route path="/media-kit" element={<MediaKit />} />
               <Route path="/roster" element={<Roster />} />
               <Route path="/roster/:driverId" element={<DriverProfile />} />
               <Route path="/race" element={<Race />} />

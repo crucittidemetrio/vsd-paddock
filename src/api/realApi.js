@@ -311,6 +311,8 @@ export async function callApi(action, payload = {}) {
         return await reportsRecentAdapter(payload, token);
       case 'showcase.summary':
         return await showcaseSummaryAdapter(payload);
+      case 'showcase.mediaKit':
+        return await showcaseMediaKitAdapter(payload);
       case 'races.updatePoster':
         return await racesUpdatePosterAdapter(payload, token);
       case 'races.updateGallery':
@@ -935,6 +937,16 @@ function readTokenFromStorage() {
  */
 async function showcaseSummaryAdapter(payload) {
   const res = await postToBackend('showcase.summary', payload || {}, null);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: showcase.mediaKit() → { stats, sims, social, topDrivers }
+ * Pubblico, no auth — pagina Sponsor/Media Kit.
+ */
+async function showcaseMediaKitAdapter(payload) {
+  const res = await postToBackend('showcase.mediaKit', payload || {}, null);
   if (!res.ok) return res;
   return ok(res.data);
 }

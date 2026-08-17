@@ -200,6 +200,7 @@ export const api = {
 
  showcase: {
     summary: () => call('showcase.summary'),
+    mediaKit: () => call('showcase.mediaKit'),
   },
 
 endurance: {
