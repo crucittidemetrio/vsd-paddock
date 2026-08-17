@@ -97,3 +97,82 @@ function handleRsvpSet(payload, ctx) {
   sheet.appendRow(RSVP_HEADERS.map(h => row[h]));
   return ok(row);
 }
+
+// ═══════════════════════════════════════════════════════════
+// REMINDER RSVP — piloti attivi che non hanno ancora risposto
+// ═══════════════════════════════════════════════════════════
+// Trigger time-driven da configurare a mano (editor Apps Script →
+// icona orologio → Aggiungi trigger → runRsvpReminderCheck → time-driven
+// → "day timer", una volta al giorno, fascia oraria a scelta — es.
+// 18:00-19:00, quando è più probabile che i piloti vedano la notifica).
+//
+// Finestra: gare scheduled tra 1 e 3 giorni da adesso. Notifica SOLO i
+// piloti attivi senza ancora una riga in RaceRSVPs per quella gara —
+// mai un broadcast a tutti (a differenza del reminder "gara tra
+// un'ora"), per non disturbare chi ha già risposto.
+//
+// Dedup: PropertiesService, non CacheService — la finestra di più
+// giorni supera il tetto di 6h di CacheService (vedi Push.js). Le
+// chiavi restano in Script Properties anche dopo che la gara è
+// passata (nessuna pulizia automatica): rumore di fondo trascurabile,
+// non un problema pratico alla scala di un team VSD, ma da tenere a
+// mente se in futuro Script Properties dovesse avvicinarsi al limite
+// di quota di Apps Script.
+function checkAndNotifyRsvpReminders_() {
+  try {
+    const now = new Date();
+    const windowStart = new Date(now.getTime() + 1 * 24 * 60 * 60000);
+    const windowEnd = new Date(now.getTime() + 3 * 24 * 60 * 60000);
+
+    const races = getCachedSheetData_(SHEETS.RACES, 21600);
+    const upcoming = races.filter(r => {
+      if (String(r.status).toLowerCase() !== 'scheduled') return false;
+      const d = parseRaceDate(r.date);
+      return d && d >= windowStart && d <= windowEnd;
+    });
+    if (upcoming.length === 0) return;
+
+    const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
+    const activeDrivers = drivers.filter(d => d.status === 'active' && !d.removed_at);
+    if (activeDrivers.length === 0) return;
+
+    const allRsvps = sheetToObjects(SHEETS.RACE_RSVPS);
+    const props = PropertiesService.getScriptProperties();
+
+    upcoming.forEach(race => {
+      const respondedIds = new Set(
+        allRsvps.filter(r => r.race_id === race.race_id).map(r => r.driver_id)
+      );
+
+      const missing = activeDrivers.filter(d => !respondedIds.has(d.driver_id));
+      if (missing.length === 0) return;
+
+      const toNotify = missing.filter(d => {
+        const key = 'rsvp_reminder_' + race.race_id + '_' + d.driver_id;
+        return !props.getProperty(key);
+      });
+      if (toNotify.length === 0) return;
+
+      sendPushNotification_(toNotify.map(d => d.driver_id), {
+        title: '🏁 Conferma presenza: ' + (race.race_name || race.race_id),
+        body: 'Non hai ancora risposto — facci sapere se ci sarai.',
+        url: PADDOCK_URL + '/race/' + race.race_id,
+      });
+
+      toNotify.forEach(d => {
+        props.setProperty('rsvp_reminder_' + race.race_id + '_' + d.driver_id, '1');
+      });
+    });
+  } catch (e) {
+    Logger.log('⚠️  checkAndNotifyRsvpReminders_ error (non-blocking): ' + e.message);
+  }
+}
+
+/**
+ * Wrapper pubblico (senza underscore) — il menu Trigger di Apps Script
+ * nasconde le funzioni con underscore finale. Stesso pattern già usato
+ * per runUpcomingRacePushCheck() in Push.js.
+ */
+function runRsvpReminderCheck() {
+  checkAndNotifyRsvpReminders_();
+}
