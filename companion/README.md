@@ -1,4 +1,15 @@
-# VSD Paddock — Fuel/Energy Bridge (Le Mans Ultimate)
+# VSD Paddock — Companion apps
+
+Questa cartella contiene due script indipendenti:
+
+- **`fuel_bridge.py`** — telemetria live carburante/energia durante la
+  gara (guida sotto, per ogni pilota).
+- **`results_bridge.py`** — import automatico dei risultati post-gara
+  (guida in fondo al file, solo staff/admin).
+
+---
+
+# Fuel/Energy Bridge (Le Mans Ultimate)
 
 Companion app che legge carburante ed energia virtuale residui direttamente
 dal gioco e li manda al backend VSD Paddock ad ogni cambio giro, per il
@@ -154,3 +165,75 @@ companion/
 `SharedMemoryInterface`. Non modificarlo: la lettura funziona solo se il
 layout in memoria combacia byte per byte con quello del gioco — un campo
 tolto o riordinato disallinea silenziosamente tutti quelli successivi.
+
+---
+
+# Results Bridge (import automatico risultati, staff/admin)
+
+VSD non gestisce server propri: le gare girano sui server ufficiali di
+Le Mans Ultimate (o di leghe esterne). Non esiste quindi un'API da cui
+"tirare giù" i risultati in automatico — questo script si limita a
+togliere il passaggio manuale di copia-incolla nella pagina **Admin ·
+Importa risultati gara**, una volta che il file JSON dei risultati è
+già arrivato sul tuo disco (scaricato da LMU per le sessioni che
+organizzate voi, o ricevuto dagli organizzatori per le altre).
+
+**Nota su Assetto Corsa EVO:** ACE non offre al momento nessun modo di
+scaricare un export risultati, quindi non è supportato da questo
+script né dal backend. Si aggiungerà quando esisterà un formato
+affidabile da cui partire (vedi anche la ricerca sulle API ACE/LMU).
+
+## Setup (staff/admin)
+
+Serve un token generato dal **tuo** profilo (bottone "Genera token
+companion") con account staff/admin — `raceResults.import` è
+un'azione riservata, un token da pilota semplice viene rifiutato dal
+backend.
+
+```
+cd companion
+python results_bridge.py
+```
+
+Al primo avvio chiede il token e la cartella da sorvegliare (di
+default quella dello script; puoi indicare la tua cartella Download
+per zero attrito — salvi il JSON scaricato da LMU e lo script se ne
+accorge da solo). Le volte successive parte diretto.
+
+Per importare un singolo file senza aprire il watch-loop:
+
+```
+python results_bridge.py "C:\percorso\al\file.json"
+```
+
+## Come funziona
+
+1. Ogni ~5s controlla i file `.json` nella cartella sorvegliata,
+   ignorando quelli già processati (stato salvato in
+   `results_bridge_state.json`, accanto allo script).
+2. Se un file combacia col formato risultati LMU (array di
+   `{carClass, result: [...]}` — stesso identico contratto della pagina
+   di import manuale) o col formato `event_result` di iRacing, chiede a
+   terminale a quale gara del calendario VSD Paddock abbinarlo (lista
+   presa da `races.list`).
+3. Lo importa con `raceResults.import` — stessa action, stesse notifiche
+   Discord, stesso matching piloti del pulsante "Importa risultati":
+   per il backend non c'è differenza tra questo script e l'admin che
+   incolla a mano.
+
+File JSON che non assomigliano a un export risultati (altra roba nella
+stessa cartella Download) vengono ignorati silenziosamente, non
+generano errori.
+
+## Struttura
+
+```
+companion/
+  results_bridge.py             ← script principale (watch-loop + import)
+  results_config.example.json   ← template, copiare in results_config.json
+  results_bridge_state.json     ← generato da solo, traccia i file già importati
+```
+
+Nessuna dipendenza esterna (solo standard library) — non serve
+compilare un exe, uno script staff può girare direttamente `python
+results_bridge.py`.

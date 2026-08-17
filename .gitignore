@@ -29,6 +29,8 @@ dist-ssr
 __pycache__/
 *.pyc
 companion/config.json
+companion/results_config.json
+companion/results_bridge_state.json
 companion/dist/
 companion/build/
 companion/*.spec
