@@ -177,3 +177,58 @@ function test_sendPushNotification() {
     body: 'Se vedi questa notifica, il relay push funziona.',
   });
 }
+
+// ═══════════════════════════════════════════════════════════
+// REMINDER "GARA TRA UN'ORA"
+// ═══════════════════════════════════════════════════════════
+// Trigger time-driven da configurare a mano (editor Apps Script →
+// icona orologio → Aggiungi trigger → checkAndNotifyUpcomingRacePush →
+// time-driven → ogni 15 minuti). Broadcast a TUTTI i piloti iscritti
+// alle push (nessun sistema di conferma presenza per gara, quindi non
+// c'è un elenco più mirato a cui limitarsi — vedi nota nel roadmap).
+//
+// Finestra 45–75 minuti dall'ora corrente: con un trigger ogni 15 min
+// una gara che parte tra 60 min viene sempre intercettata almeno una
+// volta dentro la finestra, anche con lo jitter tipico dei trigger
+// Apps Script (mai garantiti al minuto esatto).
+function checkAndNotifyUpcomingRacePush_() {
+  try {
+    const now = new Date();
+    const windowStart = new Date(now.getTime() + 45 * 60000);
+    const windowEnd = new Date(now.getTime() + 75 * 60000);
+
+    const races = getCachedSheetData_(SHEETS.RACES, 300);
+    const upcoming = races.filter(r => {
+      if (String(r.status).toLowerCase() !== 'scheduled') return false;
+      const d = parseRaceDate(r.date);
+      return d && d >= windowStart && d <= windowEnd;
+    });
+    if (upcoming.length === 0) return;
+
+    const tracks = getCachedSheetData_(SHEETS.TRACKS, 21600);
+    const trackById = {};
+    tracks.forEach(t => { trackById[String(t.track_id).toLowerCase()] = t; });
+
+    const cache = CacheService.getScriptCache();
+
+    upcoming.forEach(race => {
+      const cacheKey = 'push_race_reminder_' + race.race_id;
+      if (cache.get(cacheKey)) return; // già notificata in questo giro di finestra
+
+      const track = trackById[String(race.track_id).toLowerCase()];
+      const trackName = track ? track.track_name : race.track_id;
+
+      sendPushNotification_(null, {
+        title: '🏁 Tra circa un\'ora: ' + (race.race_name || race.race_id),
+        body: [race.sim, trackName].filter(Boolean).join(' · '),
+        url: PADDOCK_URL + '/race/' + race.race_id,
+      });
+
+      // 2h di TTL: ben oltre la finestra dei 30 min in cui questa gara
+      // può ripresentarsi nei prossimi run del trigger.
+      cache.put(cacheKey, '1', 7200);
+    });
+  } catch (e) {
+    Logger.log('⚠️  checkAndNotifyUpcomingRacePush_ error (non-blocking): ' + e.message);
+  }
+}
