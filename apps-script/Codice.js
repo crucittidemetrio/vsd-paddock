@@ -33,6 +33,7 @@ const SHEETS = {
   CLASH_RESULTS: 'ClashResults',
   CLASH_INCIDENT_REPORTS: 'ClashIncidentReports',
   CONSENTS: 'Consents',
+  CANDIDATES: 'Candidates',
 };
 
 // ID dello spreadsheet principale (VSD_HUB_DB). Usato solo dagli script che
@@ -260,6 +261,12 @@ const ACTIONS = {
 
   // Audit Log (solo staff/admin)
   'auditLog.list': handleAuditLogList,
+
+  // Candidates (pipeline candidature, solo staff)
+  'candidates.list': handleCandidatesList,
+  'candidates.add': handleCandidatesAdd,
+  'candidates.update': handleCandidatesUpdate,
+  'candidates.remove': handleCandidatesRemove,
 
 // Reports
   'reports.list': handleReportsList,

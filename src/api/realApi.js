@@ -299,6 +299,14 @@ export async function callApi(action, payload = {}) {
         return await championshipsSaveAdjustmentsAdapter(payload, token);
       case 'auditLog.list':
         return await auditLogListAdapter(payload, token);
+      case 'candidates.list':
+        return await candidatesListAdapter(payload, token);
+      case 'candidates.add':
+        return await candidatesAddAdapter(payload, token);
+      case 'candidates.update':
+        return await candidatesUpdateAdapter(payload, token);
+      case 'candidates.remove':
+        return await candidatesRemoveAdapter(payload, token);
       case 'standings.byChampionship':                                       // ← NEW Wave 9.9
         return await standingsByChampionshipAdapter(payload, token);         // ← NEW Wave 9.9
       case 'standings.byDriver':
@@ -982,6 +990,43 @@ async function championshipsSaveAdjustmentsAdapter(payload, token) {
  */
 async function auditLogListAdapter(payload, token) {
   const res = await postToBackend('auditLog.list', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: candidates.list({ status? }) → { candidates: [...], count }
+ */
+async function candidatesListAdapter(payload, token) {
+  const res = await postToBackend('candidates.list', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: candidates.add({ display_name, discord_username?, contact?,
+ * sim_preference?, source?, notes? }) → candidato creato
+ */
+async function candidatesAddAdapter(payload, token) {
+  const res = await postToBackend('candidates.add', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: candidates.update({ candidate_id, ...campi }) → candidato aggiornato
+ */
+async function candidatesUpdateAdapter(payload, token) {
+  const res = await postToBackend('candidates.update', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: candidates.remove({ candidate_id }) → { deleted, candidate_id }
+ */
+async function candidatesRemoveAdapter(payload, token) {
+  const res = await postToBackend('candidates.remove', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
 }

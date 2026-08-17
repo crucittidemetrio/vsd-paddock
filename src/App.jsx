@@ -50,6 +50,7 @@ const Terms       = lazy(() => import('./pages/Terms'));
 const ConsentForm = lazy(() => import('./pages/ConsentForm'));
 const AdminConsents = lazy(() => import('./pages/AdminConsents'));
 const AdminAuditLog = lazy(() => import('./pages/AdminAuditLog'));
+const AdminCandidates = lazy(() => import('./pages/AdminCandidates'));
 const SocialManager = lazy(() => import('./pages/SocialManager'));
 const ClashOfClasses = lazy(() => import('./pages/ClashOfClasses'));
 const AdminClashResults = lazy(() => import('./pages/AdminClashResults'));
@@ -235,6 +236,10 @@ export default function App() {
               <Route
                 path="/admin/audit-log"
                 element={<AdminRoute><AdminAuditLog /></AdminRoute>}
+              />
+              <Route
+                path="/admin/candidates"
+                element={<AdminRoute><AdminCandidates /></AdminRoute>}
               />
             </Route>
             

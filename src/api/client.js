@@ -180,6 +180,13 @@ export const api = {
     list: (params = {}) => call('auditLog.list', params),
   },
 
+  candidates: {
+    list: (params = {}) => call('candidates.list', params),
+    add: (payload) => call('candidates.add', payload),
+    update: (payload) => call('candidates.update', payload),
+    remove: (candidate_id) => call('candidates.remove', { candidate_id }),
+  },
+
   standings: {
     byChampionship: (championship_id) =>
       call('standings.byChampionship', { championship_id }),

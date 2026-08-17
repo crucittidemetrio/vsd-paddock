@@ -65,6 +65,7 @@ const ADMIN_ITEMS = [
   { to: '/admin/posters', label: 'Race Posters', icon: '▭' },
   { to: '/admin/endurance', label: 'Endurance Admin', icon: '◐' },
   { to: '/admin/clash-results', label: 'Clash of Classes', icon: '⚔' },
+  { to: '/admin/candidates', label: 'Candidature', icon: '◫' },
 ];
 
 // Voci riservate ad admin/Team Principal — sottoinsieme più ristretto
