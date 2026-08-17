@@ -107,22 +107,25 @@ export default function Landing() {
 // Activity feed: laps + reports + raceResults, dedup report/result sulla stessa gara+pilota
 // Filter difensivo: scarta record malformati (campi critici mancanti o ts invalido)
 //
-// Gli ex piloti VSD restano nello storico (laps/reports/raceResults non
-// vengono mai cancellati quando qualcuno lascia la squadra) ma non fanno
-// più parte del team attivo: non devono comparire in "Attività Team",
-// che è per costruzione una vetrina di chi corre OGGI per VSD. drivers
-// arriva già con includeRemoved:true (vedi LandingData.js), quindi
-// is_ex_vsd/removed_at sono già disponibili qui senza chiamate extra.
+// Chi non fa più parte del team attivo (rimosso via removed_at, o
+// semplicemente marcato status="inactive" nel roster) resta nello
+// storico — laps/reports/raceResults non vengono mai cancellati — ma
+// non deve comparire in "Attività Team", che è per costruzione una
+// vetrina di chi corre OGGI per VSD, non un archivio. drivers arriva
+// già con includeRemoved:true (vedi LandingData.js), quindi lo status
+// e removed_at sono già disponibili qui senza chiamate extra.
 const feed = useMemo(() => {
-  const exVsdIds = new Set(
-    (drivers || []).filter(d => d.is_ex_vsd || d.removed_at).map(d => d.driver_id)
+  const notActiveIds = new Set(
+    (drivers || [])
+      .filter(d => d.is_ex_vsd || d.removed_at || d.status !== 'active')
+      .map(d => d.driver_id)
   );
   const items = [];
 
   (allLaps || []).forEach(l => {
     // Skip laps senza dati critici (import incompleti, race results travestiti, ecc.)
     if (!l.driver_id || !l.lap_time_ms || !l.sim || !l.track_id) return;
-    if (exVsdIds.has(l.driver_id)) return;
+    if (notActiveIds.has(l.driver_id)) return;
     const ts = new Date(l.created_at || l.set_date).getTime();
     if (Number.isNaN(ts)) return;
     items.push({ type: 'lap', ts, data: l });
@@ -134,7 +137,7 @@ const feed = useMemo(() => {
   );
   (allReports || []).forEach(r => {
     if (!r.driver_id || !r.race_id) return;
-    if (exVsdIds.has(r.driver_id)) return;
+    if (notActiveIds.has(r.driver_id)) return;
     const key = `${r.race_id}__${r.driver_id}`;
     if (resultsKeySet.has(key)) return;
     const ts = new Date(r.created_at).getTime();
@@ -144,7 +147,7 @@ const feed = useMemo(() => {
 
   (allRaceResults || []).forEach(rr => {
     if (!rr.driver_id || !rr.race_id) return;
-    if (exVsdIds.has(rr.driver_id)) return;
+    if (notActiveIds.has(rr.driver_id)) return;
     const ts = new Date(rr.set_date || rr.created_at).getTime();
     if (Number.isNaN(ts)) return;
     items.push({ type: 'raceResult', ts, data: rr });
