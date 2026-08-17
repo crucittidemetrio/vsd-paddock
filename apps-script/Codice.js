@@ -38,6 +38,7 @@ const SHEETS = {
   RACE_RSVPS: 'RaceRSVPs',
   SPONSORS: 'Sponsors',
   INCIDENT_RESOLUTIONS: 'IncidentResolutions',
+  SKILL_INDEX_HISTORY: 'SkillIndexHistory',
 };
 
 // ID dello spreadsheet principale (VSD_HUB_DB). Usato solo dagli script che
@@ -292,6 +293,7 @@ const ACTIONS = {
 
   // Indice skill unificato
   'skillIndex.list': handleSkillIndexList,
+  'skillIndex.history': handleSkillIndexHistory,
 
 // Reports
   'reports.list': handleReportsList,

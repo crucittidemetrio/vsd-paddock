@@ -329,6 +329,8 @@ export async function callApi(action, payload = {}) {
         return await incidentsResolveAdapter(payload, token);
       case 'skillIndex.list':
         return await skillIndexListAdapter(payload, token);
+      case 'skillIndex.history':
+        return await skillIndexHistoryAdapter(payload, token);
       case 'standings.byChampionship':                                       // ← NEW Wave 9.9
         return await standingsByChampionshipAdapter(payload, token);         // ← NEW Wave 9.9
       case 'standings.byDriver':
@@ -1132,6 +1134,15 @@ async function incidentsResolveAdapter(payload, token) {
  */
 async function skillIndexListAdapter(payload, token) {
   const res = await postToBackend('skillIndex.list', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: skillIndex.history({ driver_id }) → { snapshots: [...] }
+ */
+async function skillIndexHistoryAdapter(payload, token) {
+  const res = await postToBackend('skillIndex.history', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
 }

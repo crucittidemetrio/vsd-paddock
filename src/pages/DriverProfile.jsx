@@ -16,6 +16,7 @@ import StatusDot from '../components/shared/StatusDot';
 import LapTime from '../components/shared/LapTime';
 import MyDominantClassesWidget from '../components/dashboard/MyDominantClassesWidget';
 import LapProgressionChart from '../components/profile/LapProgressionChart';
+import SkillIndexHistoryChart from '../components/profile/SkillIndexHistoryChart';
 import TrackPhotoBackdrop from '../components/shared/TrackPhotoBackdrop';
 import CompanionTokenPanel from '../components/profile/CompanionTokenPanel';
 import PushNotificationsPanel from '../components/profile/PushNotificationsPanel';
@@ -419,6 +420,9 @@ export default function DriverProfile() {
 
       {/* CURVA DI MIGLIORAMENTO */}
       <LapProgressionChart driverId={driverId} tracks={tracks} cars={cars} />
+
+      {/* ANDAMENTO INDICE SKILL */}
+      <SkillIndexHistoryChart driverId={driverId} />
 
       {/* CLASSI DOMINANTI */}
       <MyDominantClassesWidget driverId={driverId} />

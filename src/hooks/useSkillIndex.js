@@ -27,3 +27,17 @@ export function useDriverSkillIndex(driverId) {
   const entry = drivers.find(d => d.driver_id === driverId) || null;
   return { ...query, data: entry };
 }
+
+/**
+ * useSkillIndexHistory — serie storica per un pilota (snapshot
+ * settimanali via runSkillIndexSnapshot), per il grafico di andamento.
+ */
+export function useSkillIndexHistory(driverId) {
+  return useQuery({
+    queryKey: ['skillIndex', 'history', driverId],
+    queryFn: () => api.skillIndex.history(driverId),
+    select: (data) => data?.snapshots || [],
+    enabled: !!driverId,
+    staleTime: 5 * 60 * 1000,
+  });
+}

@@ -1,0 +1,40 @@
+/* ========== ANDAMENTO INDICE SKILL ========== */
+/* Wrapper autosufficiente (non dipende da DriverProfile.css), stesso
+   pattern di LapProgressionChart.css. */
+
+.sihc-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.sihc-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding-bottom: var(--sp-2);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.sihc-section-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+}
+
+.sihc-delta {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.05em;
+  font-weight: var(--fw-semibold);
+}
+
+.sihc-delta-up { color: var(--color-success); }
+.sihc-delta-down { color: var(--vsd-orange); }
+
+.sihc-card {
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+}

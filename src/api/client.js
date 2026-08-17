@@ -211,6 +211,7 @@ export const api = {
 
   skillIndex: {
     list: (params = {}) => call('skillIndex.list', params),
+    history: (driver_id) => call('skillIndex.history', { driver_id }),
   },
 
   standings: {
