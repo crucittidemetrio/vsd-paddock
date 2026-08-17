@@ -58,6 +58,17 @@
   box-shadow: var(--glow-cyan);
 }
 
+.select {
+  color-scheme: dark;
+}
+
+/* Il menu a tendina di <select> è disegnato dal sistema operativo: senza
+   sfondo esplicito sulle <option> eredita il bianco di default. */
+.select option {
+  background-color: #0e1729;
+  color: #fff;
+}
+
 .textarea {
   font-family: var(--font-mono);
   font-size: var(--fs-xs);

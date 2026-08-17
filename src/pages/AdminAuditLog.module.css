@@ -64,6 +64,16 @@
   background: rgba(255, 255, 255, 0.03);
   color: rgba(255, 255, 255, 0.85);
   max-width: 260px;
+  color-scheme: dark;
+}
+
+/* Il menu a tendina di <select> è disegnato dal sistema operativo, non da
+   questo CSS: senza uno sfondo esplicito sulle <option> eredita il bianco
+   di default e il testo chiaro diventa illeggibile. */
+.select option {
+  background-color: #0e1729;
+  color: #fff;
+  padding: 8px;
 }
 
 .loading,

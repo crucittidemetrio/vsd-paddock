@@ -1,7 +1,9 @@
+import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { LABELS } from '../../utils/constants';
 import { useAuth } from '../../hooks/useAuth';
 import { usePendingLapSubmissions } from '../../hooks/useLapSubmissions';
+import { useAdminNavOrder } from '../../hooks/useAdminNavOrder';
 import Logo from '../shared/Logo';
 import totalPaintLogo from '../../assets/total-paint-logo.webp';
 import './Sidebar.css';
@@ -86,8 +88,44 @@ function renderNavItem(item, onMobileClose, extraClass = '', badgeCount = 0) {
   );
 }
 
+// Riga Admin in modalità riordino: stessa voce di renderNavItem ma con
+// frecce su/giù a fianco invece che dentro il link (un <button> non può
+// stare dentro un <a>). Il click sulle frecce non deve navigare.
+function renderReorderableAdminItem(item, { move, isFirst, isLast, badgeCount = 0 }) {
+  return (
+    <div key={item.to} className="nav-item-row">
+      <span className="nav-item is-admin nav-item-static">
+        <span className="nav-icon">{item.icon}</span>
+        <span className="nav-label">{item.label}</span>
+        {badgeCount > 0 && <span className="nav-count">{badgeCount}</span>}
+      </span>
+      <span className="nav-reorder-btns">
+        <button
+          type="button"
+          className="nav-reorder-btn"
+          disabled={isFirst}
+          onClick={() => move(item.to, 'up')}
+          aria-label={`Sposta "${item.label}" su`}
+        >
+          ▲
+        </button>
+        <button
+          type="button"
+          className="nav-reorder-btn"
+          disabled={isLast}
+          onClick={() => move(item.to, 'down')}
+          aria-label={`Sposta "${item.label}" giù`}
+        >
+          ▼
+        </button>
+      </span>
+    </div>
+  );
+}
+
 export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {} }) {
   const { isVsdPilot, isStaff, isAdmin } = useAuth();
+  const [adminEditMode, setAdminEditMode] = useState(false);
 
   // Solo admin: la coda di validazione best lap è riservata a loro (vedi
   // AdminBestLaps.jsx). Polling ogni 30s già previsto dall'hook — stessa
@@ -95,6 +133,19 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
   // aperta insieme alla sidebar.
   const pendingLapsQuery = usePendingLapSubmissions(isAdmin);
   const pendingLapsCount = pendingLapsQuery.data?.length || 0;
+
+  // Ordine Admin personalizzabile ("almeno per la sezione Admin" — richiesta
+  // esplicita): combina le voci visibili in base al ruolo corrente in
+  // un'unica lista ordinabile, salvata in localStorage (preferenza di
+  // questo browser, non dato di squadra).
+  const effectiveAdminItems = [
+    ...ADMIN_ITEMS.map(item => ({
+      ...item,
+      badgeCount: item.to === '/admin/best-laps' ? pendingLapsCount : 0,
+    })),
+    ...(isAdmin ? ADMIN_ONLY_ITEMS.map(item => ({ ...item, badgeCount: 0 })) : []),
+  ];
+  const { items: orderedAdminItems, move, reset, hasCustomOrder } = useAdminNavOrder(effectiveAdminItems);
 
   return (
     <aside className={`sidebar${isMobileOpen ? ' is-mobile-open' : ''}`}>
@@ -130,12 +181,31 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
 
         {isStaff && (
           <>
-            <div className="nav-section-label">Admin</div>
-            {ADMIN_ITEMS.map(item => renderNavItem(
-              item, onMobileClose, 'is-admin',
-              item.to === '/admin/best-laps' ? pendingLapsCount : 0
-            ))}
-            {isAdmin && ADMIN_ONLY_ITEMS.map(item => renderNavItem(item, onMobileClose, 'is-admin'))}
+            <div className="nav-section-label nav-section-label-admin">
+              <span>Admin</span>
+              <button
+                type="button"
+                className={`nav-reorder-toggle${adminEditMode ? ' is-active' : ''}`}
+                onClick={() => setAdminEditMode(v => !v)}
+                title={adminEditMode ? 'Fine riordino' : 'Riordina le voci Admin'}
+              >
+                {adminEditMode ? 'Fatto' : 'Riordina'}
+              </button>
+            </div>
+            {adminEditMode && hasCustomOrder && (
+              <button type="button" className="nav-reorder-reset" onClick={reset}>
+                Ripristina ordine predefinito
+              </button>
+            )}
+            {orderedAdminItems.map((item, idx) => adminEditMode
+              ? renderReorderableAdminItem(item, {
+                move,
+                isFirst: idx === 0,
+                isLast: idx === orderedAdminItems.length - 1,
+                badgeCount: item.badgeCount,
+              })
+              : renderNavItem(item, onMobileClose, 'is-admin', item.badgeCount)
+            )}
           </>
         )}
       </nav>

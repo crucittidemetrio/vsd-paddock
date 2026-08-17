@@ -75,6 +75,12 @@
   padding: var(--sp-2) var(--sp-3);
   width: 100%;
   cursor: pointer;
+  color-scheme: dark;
+}
+
+.cmp-select option {
+  background-color: #0e1729;
+  color: #fff;
 }
 .cmp-select:focus {
   outline: none;

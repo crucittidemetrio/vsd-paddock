@@ -35,12 +35,20 @@
   min-width: 200px;
   cursor: pointer;
   outline: none;
+  color-scheme: dark;
   transition: border-color var(--t-fast);
 }
 
 .filter-select:focus,
 .filter-select:hover {
   border-color: var(--vsd-cyan);
+}
+
+/* Il menu a tendina di <select> è disegnato dal sistema operativo: senza
+   sfondo esplicito sulle <option> eredita il bianco di default. */
+.filter-select option {
+  background-color: #0e1729;
+  color: #fff;
 }
 
 .toggle {

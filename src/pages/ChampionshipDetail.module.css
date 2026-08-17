@@ -458,6 +458,8 @@
   flex: 1;
 }
 .adjInput:focus { outline: none; border-color: var(--vsd-orange); }
+select.adjInput { color-scheme: dark; }
+select.adjInput option { background-color: #0e1729; color: #fff; }
 .adjSubmit {
   background: var(--vsd-orange);
   color: var(--vsd-bg);

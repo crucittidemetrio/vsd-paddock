@@ -17,6 +17,18 @@
   }
 }
 
+html {
+  /* Fix alla radice del "solito problema" dropdown bianco/illeggibile:
+     senza questo, ogni <select> nativo (con o senza CSS custom) affida il
+     rendering del menu a tendina al tema CHIARO di default del browser,
+     anche se tutto il resto del sito è scuro — testo chiaro su sfondo
+     chiaro. Con color-scheme: dark il browser disegna nativamente ogni
+     controllo di form (select, opzioni, scrollbar, checkbox) in dark
+     mode, per tutta l'app, presente e futura, senza dover intervenire
+     select per select. */
+  color-scheme: dark;
+}
+
 html, body, #root {
   margin: 0;
   padding: 0;

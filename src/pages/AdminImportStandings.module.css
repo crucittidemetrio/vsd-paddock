@@ -65,8 +65,16 @@
   color: var(--vsd-text);
   font-size: 0.95rem;
   font-family: inherit;
+  color-scheme: dark;
 }
 .select:focus { outline: 2px solid var(--vsd-cyan); outline-offset: 1px; }
+
+/* Il menu a tendina di <select> è disegnato dal sistema operativo: senza
+   sfondo esplicito sulle <option> eredita il bianco di default. */
+.select option {
+  background-color: #0e1729;
+  color: #fff;
+}
 
 .meta {
   display: flex;
