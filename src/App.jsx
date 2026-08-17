@@ -50,6 +50,7 @@ const Terms       = lazy(() => import('./pages/Terms'));
 const ConsentForm = lazy(() => import('./pages/ConsentForm'));
 const AdminConsents = lazy(() => import('./pages/AdminConsents'));
 const AdminAuditLog = lazy(() => import('./pages/AdminAuditLog'));
+const AdminHome = lazy(() => import('./pages/AdminHome'));
 const AdminCandidates = lazy(() => import('./pages/AdminCandidates'));
 const AdminSponsors = lazy(() => import('./pages/AdminSponsors'));
 const AdminIncidents = lazy(() => import('./pages/AdminIncidents'));
@@ -238,6 +239,10 @@ export default function App() {
               <Route
                 path="/admin/audit-log"
                 element={<AdminRoute><AdminAuditLog /></AdminRoute>}
+              />
+              <Route
+                path="/admin"
+                element={<AdminRoute><AdminHome /></AdminRoute>}
               />
               <Route
                 path="/admin/candidates"

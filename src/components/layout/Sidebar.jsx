@@ -56,6 +56,7 @@ const TOOLS_ITEMS = [
 const FUTURE_ITEMS = [];
 
 const ADMIN_ITEMS = [
+  { to: '/admin', label: 'Admin Home', icon: '⌂' },
   { to: '/admin/best-laps', label: 'Best Laps', icon: '◷' },
   { to: '/admin/races', label: 'Gestione Gare', icon: '⚑' },
   { to: '/admin/team-dashboard', label: 'Team Dashboard', icon: '▥' },
