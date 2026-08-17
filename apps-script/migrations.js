@@ -1,5 +1,5 @@
 function migrate_wave98_championshipsAndEventType() {
-  const ss = SpreadsheetApp.openById('1ADUq7CRy0_PtPqbPYS42iCNgpdxZrNlSMY3HX6T8XQA');
+  const ss = SpreadsheetApp.openById(VSD_HUB_SPREADSHEET_ID);
   const log = [];
 
   // ── 1. Tab Championships ─────────────────────────────────────────
@@ -147,7 +147,7 @@ function migrate_addIncidentsColumn() {
  * Idempotente: se già presente, esce senza modifiche.
  */
 function migrate_addPointsAdjustmentsColumn() {
-  const ss = SpreadsheetApp.openById('1ADUq7CRy0_PtPqbPYS42iCNgpdxZrNlSMY3HX6T8XQA');
+  const ss = SpreadsheetApp.openById(VSD_HUB_SPREADSHEET_ID);
   const sheet = ss.getSheetByName('Championships');
   if (!sheet) { Logger.log('❌ Tab Championships non trovato'); return; }
 
@@ -171,7 +171,7 @@ function migrate_addPointsAdjustmentsColumn() {
  * Idempotente.
  */
 function migrate_addRaceNumberColumn() {
-  const ss = SpreadsheetApp.openById('1ADUq7CRy0_PtPqbPYS42iCNgpdxZrNlSMY3HX6T8XQA');
+  const ss = SpreadsheetApp.openById(VSD_HUB_SPREADSHEET_ID);
   const sheet = ss.getSheetByName('Races');
   if (!sheet) { Logger.log('❌ Tab Races non trovato'); return; }
 
@@ -196,7 +196,7 @@ function migrate_addRaceNumberColumn() {
  * Idempotente.
  */
 function migrate_addGalleryUrlsColumn() {
-  const ss = SpreadsheetApp.openById('1ADUq7CRy0_PtPqbPYS42iCNgpdxZrNlSMY3HX6T8XQA');
+  const ss = SpreadsheetApp.openById(VSD_HUB_SPREADSHEET_ID);
   const sheet = ss.getSheetByName('Races');
   if (!sheet) { Logger.log('❌ Tab Races non trovato'); return; }
 

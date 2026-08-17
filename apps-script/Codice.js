@@ -35,6 +35,14 @@ const SHEETS = {
   CONSENTS: 'Consents',
 };
 
+// ID dello spreadsheet principale (VSD_HUB_DB). Usato solo dagli script che
+// devono aprirlo esplicitamente con SpreadsheetApp.openById() (es. funzioni
+// endurance/debug lanciate da un altro progetto Apps Script, o da un
+// contesto senza uno spreadsheet "attivo"). Nel resto del backend si usa
+// quasi sempre SpreadsheetApp.getActiveSpreadsheet() — questa costante
+// esiste per evitare che lo stesso ID resti duplicato in giro come literal.
+const VSD_HUB_SPREADSHEET_ID = '1ADUq7CRy0_PtPqbPYS42iCNgpdxZrNlSMY3HX6T8XQA';
+
 // Token TTL: 7 giorni
 const TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 

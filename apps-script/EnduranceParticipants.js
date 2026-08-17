@@ -11,7 +11,7 @@
  *   'endurance.participants.remove': handleEnduranceParticipantsRemove
  */
 
-const EP_SHEET_ID = '1ADUq7CRy0_PtPqbPYS42iCNgpdxZrNlSMY3HX6T8XQA';
+const EP_SHEET_ID = VSD_HUB_SPREADSHEET_ID;
 const EP_TAB = 'EnduranceParticipants';
 const EP_FIELDS = [
   'participation_id', 'audition_id', 'driver_id', 'status',

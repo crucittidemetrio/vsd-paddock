@@ -18,7 +18,7 @@
 //             setupEnduranceTabs → ▶ Esegui (una volta sola).
 // ═══════════════════════════════════════════════════════════
 
-const ENDURANCE_SS_ID = '1ADUq7CRy0_PtPqbPYS42iCNgpdxZrNlSMY3HX6T8XQA';
+const ENDURANCE_SS_ID = VSD_HUB_SPREADSHEET_ID;
 
 const ENDURANCE_AUDITIONS_HEADERS = [
   'audition_id',

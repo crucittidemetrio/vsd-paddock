@@ -12,7 +12,7 @@
  *   participation_id | audition_id | driver_id | status | added_at | added_by | notes
  */
 
-const _EP_SHEET_ID = '1ADUq7CRy0_PtPqbPYS42iCNgpdxZrNlSMY3HX6T8XQA'; // VSD_HUB_DB
+const _EP_SHEET_ID = VSD_HUB_SPREADSHEET_ID;
 const _EP_TAB_NAME = 'EnduranceParticipants';
 const _EP_HEADERS = [
   'participation_id',

@@ -4,7 +4,7 @@
  * Output in "Registro di esecuzione" sotto.
  */
 function debug_listCategories() {
-  const ss = SpreadsheetApp.openById('1ADUq7CRy0_PtPqbPYS42iCNgpdxZrNlSMY3HX6T8XQA');
+  const ss = SpreadsheetApp.openById(VSD_HUB_SPREADSHEET_ID);
   const sheet = ss.getSheetByName('Cars');
   if (!sheet) throw new Error('Sheet "Cars" non trovato');
 
@@ -53,7 +53,7 @@ function debug_listCategories() {
  * Idempotente: non sovrascrive race_class già popolate.
  */
 function populate_lmu_raceclass() {
-  const ss = SpreadsheetApp.openById('1ADUq7CRy0_PtPqbPYS42iCNgpdxZrNlSMY3HX6T8XQA');
+  const ss = SpreadsheetApp.openById(VSD_HUB_SPREADSHEET_ID);
   const sheet = ss.getSheetByName('Cars');
   if (!sheet) throw new Error('Sheet "Cars" non trovato');
 
@@ -108,7 +108,7 @@ function populate_lmu_raceclass() {
  * Sporco = contiene spazi, OPPURE caratteri fuori da [a-z0-9-].
  */
 function debug_listDirtyTrackIds() {
-  const ss = SpreadsheetApp.openById('1ADUq7CRy0_PtPqbPYS42iCNgpdxZrNlSMY3HX6T8XQA');
+  const ss = SpreadsheetApp.openById(VSD_HUB_SPREADSHEET_ID);
   const sheets = ['Tracks', 'BestLaps', 'Races'];
 
   const isDirty = (id) => {
@@ -178,7 +178,7 @@ function debug_listDirtyTrackIds() {
  * Idempotente: se eseguito due volte, la seconda non fa nulla.
  */
 function rename_track_ids() {
-  const ss = SpreadsheetApp.openById('1ADUq7CRy0_PtPqbPYS42iCNgpdxZrNlSMY3HX6T8XQA');
+  const ss = SpreadsheetApp.openById(VSD_HUB_SPREADSHEET_ID);
 
   const MAPPING = {
     // Tracks (26)
@@ -271,7 +271,7 @@ function rename_track_ids() {
  * Quelli verranno mostrati come slug raw nell'UI.
  */
 function debug_orphanTrackIds() {
-  const ss = SpreadsheetApp.openById('1ADUq7CRy0_PtPqbPYS42iCNgpdxZrNlSMY3HX6T8XQA');
+  const ss = SpreadsheetApp.openById(VSD_HUB_SPREADSHEET_ID);
 
   // 1. Carica i track_id definiti in Tracks
   const tracksSheet = ss.getSheetByName('Tracks');
@@ -332,7 +332,7 @@ function debug_orphanTrackIds() {
  * Le altre colonne (se Tracks ne ha oltre sim/track_id/track_name) restano vuote.
  */
 function populate_missing_tracks() {
-  const ss = SpreadsheetApp.openById('1ADUq7CRy0_PtPqbPYS42iCNgpdxZrNlSMY3HX6T8XQA');
+  const ss = SpreadsheetApp.openById(VSD_HUB_SPREADSHEET_ID);
   const sheet = ss.getSheetByName('Tracks');
 
   const NEW_TRACKS = [
@@ -402,7 +402,7 @@ function populate_missing_tracks() {
 }
 
 function debug_inspectLeMansTracks() {
-  const ss = SpreadsheetApp.openById('1ADUq7CRy0_PtPqbPYS42iCNgpdxZrNlSMY3HX6T8XQA');
+  const ss = SpreadsheetApp.openById(VSD_HUB_SPREADSHEET_ID);
   const sheet = ss.getSheetByName('Tracks');
   const values = sheet.getDataRange().getValues();
   const headers = values[0].map(h => String(h).trim());
@@ -425,7 +425,7 @@ function debug_inspectLeMansTracks() {
  *    Se vedi valori inattesi (es. 44 invece di 22), c'è doppio import.
  */
 function debug_inspect_race_results() {
-  const ss = SpreadsheetApp.openById('1ADUq7CRy0_PtPqbPYS42iCNgpdxZrNlSMY3HX6T8XQA');
+  const ss = SpreadsheetApp.openById(VSD_HUB_SPREADSHEET_ID);
   const sheet = ss.getSheetByName('RaceResults');
   const values = sheet.getDataRange().getValues();
   const headers = values[0].map(h => String(h).trim());
@@ -464,7 +464,7 @@ function dedup_race_results_apply() {
 }
 
 function _dedup_race_results_internal(dryRun) {
-  const ss = SpreadsheetApp.openById('1ADUq7CRy0_PtPqbPYS42iCNgpdxZrNlSMY3HX6T8XQA');
+  const ss = SpreadsheetApp.openById(VSD_HUB_SPREADSHEET_ID);
   const sheet = ss.getSheetByName('RaceResults');
   if (!sheet) { Logger.log('⚠️ RaceResults non trovato'); return; }
 
