@@ -81,34 +81,67 @@ function buildIracingIdMap_() {
 /**
  * Matching multi-livello tra nome esterno e Drivers.display_name.
  *  1. Match esatto lowercase (display_name o real_name)
- *  2. Nome esterno GIÀ abbreviato ("Marco C.") → variante "nome i."
- *  3. Nome esterno di una sola parola → match diretto
+ *  2a. Nome esterno GIÀ abbreviato ("Marco C.") → variante "nome i."
+ *  2b. Nome esterno completo ma "sporcato" da suffissi della fonte
+ *      (numeri di sessione tipo "Crucitti2", troncamenti tipo "case"
+ *      per "Casesi") → confronto per PREFISSO sul cognome vero
+ *      (real_name), mai per sola iniziale in comune.
+ *  3. Nome esterno di una sola parola → match diretto.
  *
- * Bug corretto qui (gara "Eos Evo 4 Fun", ACE, mix VSD + esterni):
- * la vecchia regola 2 troncava QUALSIASI nome esterno di 2 parole al
- * suo "nome iniziale." — quindi un esterno come "Marco Canino" veniva
- * accorciato in "marco c." e, se in rosa esisteva un pilota VSD con
- * display_name "Marco C." (es. Marco Calvi), gli veniva erroneamente
- * attribuito il risultato. Ora la regola 2 scatta SOLO se il nome
- * esterno è già in forma abbreviata di suo (es. l'export lo fornisce
- * già come "Marco C."): un nome esterno completo va matchato solo per
- * uguaglianza esatta (regola 1), mai troncato.
+ * Storia del bug (2 round):
+ *  - Round 1: la regola 2 troncava QUALSIASI nome esterno di 2 parole
+ *    alla sola iniziale del cognome ("Marco Canino" → "marco c."),
+ *    quindi un pilota VSD con iniziale coincidente ma persona diversa
+ *    (Marco Calvi) si prendeva il risultato di un altro (Marco
+ *    Canino, non VSD). Fix: niente più troncamento a iniziale per
+ *    nomi esterni completi.
+ *  - Round 2: quel fix era troppo stretto — rifiutava anche i casi
+ *    legittimi in cui la fonte esterna aggiunge un suffisso numerico
+ *    allo stesso identico nome VSD quando compare più volte nello
+ *    stesso export ("Demetrio Crucitti2", "Mario Pileggi2", "davide
+ *    case" per "Davide Casesi"), rompendo ~80 match corretti. Fix
+ *    definitivo: regola 2b confronta il cognome esterno (ripulito dai
+ *    caratteri finali non alfabetici) come PREFISSO del cognome vero
+ *    in real_name — sicuro sia per i suffissi/troncamenti legittimi
+ *    (stesso cognome, solo più corto) sia per il bug originale
+ *    (cognomi diversi con la stessa iniziale vengono correttamente
+ *    scartati, perché "calvi" non inizia per "canino" né viceversa).
  */
 function matchDriverName_(externalName, matchMap) {
   if (!externalName) return null;
   const name = String(externalName).toLowerCase().trim();
 
-  // 1. Match esatto — unico livello sicuro per un nome completo esterno.
+  // 1. Match esatto — livello più sicuro.
   if (matchMap[name]) return matchMap[name];
 
   const parts = name.split(/\s+/);
 
-  // 2. Il nome esterno è GIÀ nella forma "nome i." (iniziale puntata o
-  //    no) — qui è sicuro cercare la stessa variante in rosa, perché
-  //    non stiamo troncando nulla, il dato in ingresso è già così.
+  // 2a. Il nome esterno è GIÀ nella forma "nome i." (iniziale puntata
+  //     o no) — sicuro cercare la stessa variante in rosa, il dato in
+  //     ingresso è già così, non stiamo troncando nulla noi.
   if (parts.length === 2 && /^[a-z]\.?$/.test(parts[1])) {
     const variant = `${parts[0]} ${parts[1].charAt(0)}.`;
     if (matchMap[variant]) return matchMap[variant];
+  }
+
+  // 2b. Nome esterno di 2 parole con cognome per esteso (o troncato/
+  //     suffissato dalla fonte): confronto per prefisso contro il
+  //     cognome VERO (chiavi a 2 parole da real_name, mai le iniziali
+  //     puntate da display_name — altrimenti si ricade nel bug).
+  if (parts.length === 2) {
+    const firstName = parts[0];
+    const cleanSurname = parts[1].replace(/[^a-z]+$/g, '');
+    if (cleanSurname.length >= 3) {
+      for (const key in matchMap) {
+        const keyParts = key.split(' ');
+        if (keyParts.length !== 2) continue;
+        if (keyParts[0] !== firstName) continue;
+        const candidateSurname = keyParts[1].replace(/\.$/, '');
+        if (candidateSurname.length > 1 && candidateSurname.indexOf(cleanSurname) === 0) {
+          return matchMap[key];
+        }
+      }
+    }
   }
 
   // 3. Nome esterno composto da una sola parola.
