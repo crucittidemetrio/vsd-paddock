@@ -127,6 +127,60 @@
   padding: 8px 16px;
 }
 
+.skillRow {
+  display: grid;
+  grid-template-columns: 32px 200px 1fr auto;
+  gap: 14px;
+  align-items: center;
+  padding: 8px 0;
+  text-decoration: none;
+  color: inherit;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.skillRow:last-child {
+  border-bottom: none;
+}
+
+.skillRow:hover {
+  background: rgba(0, 212, 255, 0.04);
+}
+
+.skillRank {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+}
+
+.skillDriver {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.skillName {
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.skillMeta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.skillScore {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--vsd-cyan, #00d4ff);
+  text-align: right;
+}
+
 .heatmapRow {
   display: grid;
   grid-template-columns: 200px 1fr 60px;

@@ -8,6 +8,7 @@ import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
 import LapTime from '../components/shared/LapTime';
 import { useConsentSocialFlags } from '../hooks/useConsent';
+import { useSkillIndex } from '../hooks/useSkillIndex';
 import { resolvePhotoUrl } from '../utils/driverPhotos';
 import LapProgressionChart from '../components/profile/LapProgressionChart';
 import { formatTrack, formatCar } from '../utils/format';
@@ -52,6 +53,8 @@ export default function AdminTeamDashboard() {
   const { data: tracks = [] } = useTracks();
   const { data: cars = [] } = useCars();
   const { data: socialFlagsData } = useConsentSocialFlags();
+  const { data: skillIndexData } = useSkillIndex();
+  const skillDrivers = skillIndexData?.drivers || [];
   const socialFlags = socialFlagsData?.flags || {};
   const raceResults = raceResultsData?.results || [];
 
@@ -384,6 +387,38 @@ export default function AdminTeamDashboard() {
           </div>
         )}
       </section>
+
+      {/* ════ Indice skill unificato ════ */}
+      {skillDrivers.length > 0 && (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>
+            Indice skill
+            <span className={styles.sectionSubtitle}>
+              posizione media + podi + incidenti, ultime gare cross-sim — min. 3 gare valide
+            </span>
+          </h2>
+          <div>
+            {skillDrivers.map((d, i) => (
+              <Link
+                key={d.driver_id}
+                to={`/roster/${d.driver_id}`}
+                className={styles.skillRow}
+              >
+                <div className={styles.skillRank}>{i + 1}</div>
+                <div className={styles.skillDriver}>
+                  <Avatar name={d.display_name} driverId={d.driver_id} size={24} photoUrl={resolvePhotoUrl(d.driver_id, socialFlags)} />
+                  <span className={styles.skillName}>{d.display_name}</span>
+                </div>
+                <div className={styles.skillMeta}>
+                  {d.races_counted} gare · {d.podium_rate}% podi
+                  {d.avg_incidents != null && ` · ${d.avg_incidents} inc./gara`}
+                </div>
+                <div className={styles.skillScore}>{d.score}</div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* ════ Alert piloti inattivi ════ */}
       {inactiveAlerts.length > 0 && (

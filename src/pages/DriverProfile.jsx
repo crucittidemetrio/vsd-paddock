@@ -8,6 +8,7 @@ import { useRaces, useReports } from '../hooks/useRaces';
 import { useMyRecentRaceResults } from '../hooks/useRaceResults';
 import { useTracks, useCars } from '../hooks/useLookups';
 import { useChampionshipsByDriver } from '../hooks/useChampionshipsByDriver';
+import { useDriverSkillIndex } from '../hooks/useSkillIndex';
 import { usePageMeta } from '../hooks/usePageMeta';
 import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
@@ -38,6 +39,7 @@ export default function DriverProfile() {
   const { data: cars = [] } = useCars();
   const { data: raceResultsData } = useMyRecentRaceResults(driverId, 200);
   const { data: champData } = useChampionshipsByDriver(driverId);
+  const { data: skillIndex } = useDriverSkillIndex(driverId);
   const raceResults = raceResultsData?.results || [];
   const { data: allRaces } = useRaces();
 
@@ -362,6 +364,15 @@ export default function DriverProfile() {
           accent="orange"
         />
         <StatCard label="Membro dal" value={driver.join_date?.split('-')[0] || '—'} sub="anno entrata" />
+        {skillIndex && (
+          <StatCard
+            label="Indice skill"
+            value={skillIndex.score}
+            sub={`${skillIndex.races_counted} gare · ${skillIndex.podium_rate}% podi`}
+            accent="cyan"
+            title="55% posizione media normalizzata + 25% tasso podi + 20% (1 - penalità incidenti), ultime gare cross-sim"
+          />
+        )}
       </div>
 
       {/* TRAGUARDI */}
@@ -638,9 +649,9 @@ function ChampionshipsSection({ participations }) {
   );
 }
 
-function StatCard({ label, value, sub, accent = 'cyan' }) {
+function StatCard({ label, value, sub, accent = 'cyan', title }) {
   return (
-    <div className={`stat-card stat-accent-${accent}`}>
+    <div className={`stat-card stat-accent-${accent}`} title={title}>
       <div className="stat-label">{label}</div>
       <div className="stat-value">{value}</div>
       {sub && <div className="stat-sub">{sub}</div>}
