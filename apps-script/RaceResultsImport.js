@@ -80,24 +80,39 @@ function buildIracingIdMap_() {
 
 /**
  * Matching multi-livello tra nome esterno e Drivers.display_name.
- *  1. Match esatto lowercase
- *  2. "FirstName LastName" → "firstname l."
- *  3. Single-name driver
+ *  1. Match esatto lowercase (display_name o real_name)
+ *  2. Nome esterno GIÀ abbreviato ("Marco C.") → variante "nome i."
+ *  3. Nome esterno di una sola parola → match diretto
+ *
+ * Bug corretto qui (gara "Eos Evo 4 Fun", ACE, mix VSD + esterni):
+ * la vecchia regola 2 troncava QUALSIASI nome esterno di 2 parole al
+ * suo "nome iniziale." — quindi un esterno come "Marco Canino" veniva
+ * accorciato in "marco c." e, se in rosa esisteva un pilota VSD con
+ * display_name "Marco C." (es. Marco Calvi), gli veniva erroneamente
+ * attribuito il risultato. Ora la regola 2 scatta SOLO se il nome
+ * esterno è già in forma abbreviata di suo (es. l'export lo fornisce
+ * già come "Marco C."): un nome esterno completo va matchato solo per
+ * uguaglianza esatta (regola 1), mai troncato.
  */
 function matchDriverName_(externalName, matchMap) {
   if (!externalName) return null;
   const name = String(externalName).toLowerCase().trim();
 
+  // 1. Match esatto — unico livello sicuro per un nome completo esterno.
   if (matchMap[name]) return matchMap[name];
 
   const parts = name.split(/\s+/);
 
-  if (parts.length >= 2) {
-    const variant = `${parts[0]} ${parts[parts.length - 1].charAt(0)}.`;
+  // 2. Il nome esterno è GIÀ nella forma "nome i." (iniziale puntata o
+  //    no) — qui è sicuro cercare la stessa variante in rosa, perché
+  //    non stiamo troncando nulla, il dato in ingresso è già così.
+  if (parts.length === 2 && /^[a-z]\.?$/.test(parts[1])) {
+    const variant = `${parts[0]} ${parts[1].charAt(0)}.`;
     if (matchMap[variant]) return matchMap[variant];
   }
 
-  if (parts.length >= 1 && matchMap[parts[0]]) {
+  // 3. Nome esterno composto da una sola parola.
+  if (parts.length === 1 && matchMap[parts[0]]) {
     return matchMap[parts[0]];
   }
 
