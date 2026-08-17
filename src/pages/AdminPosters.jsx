@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useRaces } from '../hooks/useRaces';
 import { useUpdateRacePoster } from '../hooks/useUpdateRacePoster';
+import { normalizeImageUrl } from '../utils/driveUrl';
 import styles from './AdminPosters.module.css';
 
 export default function AdminPosters() {
@@ -23,7 +24,7 @@ export default function AdminPosters() {
     try {
       await updateMutation.mutateAsync({
         race_id: raceId,
-        poster_url: editing[raceId],
+        poster_url: normalizeImageUrl(editing[raceId]),
       });
       setSavedFor(raceId);
       setTimeout(() => setSavedFor(null), 2500);

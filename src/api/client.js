@@ -192,6 +192,11 @@ export const api = {
     unsubscribe: (endpoint) => call('push.unsubscribe', { endpoint }),
   },
 
+  rsvp: {
+    list: (race_id) => call('rsvp.list', { race_id }),
+    set: (payload) => call('rsvp.set', payload),
+  },
+
   standings: {
     byChampionship: (championship_id) =>
       call('standings.byChampionship', { championship_id }),

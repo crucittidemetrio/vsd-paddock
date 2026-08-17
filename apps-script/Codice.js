@@ -35,6 +35,7 @@ const SHEETS = {
   CONSENTS: 'Consents',
   CANDIDATES: 'Candidates',
   PUSH_SUBSCRIPTIONS: 'PushSubscriptions',
+  RACE_RSVPS: 'RaceRSVPs',
 };
 
 // ID dello spreadsheet principale (VSD_HUB_DB). Usato solo dagli script che
@@ -272,6 +273,10 @@ const ACTIONS = {
   // Push notifications
   'push.subscribe': handlePushSubscribe,
   'push.unsubscribe': handlePushUnsubscribe,
+
+  // Conferma presenza gara (RSVP)
+  'rsvp.list': handleRsvpList,
+  'rsvp.set': handleRsvpSet,
 
 // Reports
   'reports.list': handleReportsList,

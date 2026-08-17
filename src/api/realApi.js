@@ -311,6 +311,10 @@ export async function callApi(action, payload = {}) {
         return await pushSubscribeAdapter(payload, token);
       case 'push.unsubscribe':
         return await pushUnsubscribeAdapter(payload, token);
+      case 'rsvp.list':
+        return await rsvpListAdapter(payload, token);
+      case 'rsvp.set':
+        return await rsvpSetAdapter(payload, token);
       case 'standings.byChampionship':                                       // ← NEW Wave 9.9
         return await standingsByChampionshipAdapter(payload, token);         // ← NEW Wave 9.9
       case 'standings.byDriver':
@@ -1049,6 +1053,24 @@ async function pushSubscribeAdapter(payload, token) {
  */
 async function pushUnsubscribeAdapter(payload, token) {
   const res = await postToBackend('push.unsubscribe', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: rsvp.list({ race_id }) → { rsvps: [...], count }
+ */
+async function rsvpListAdapter(payload, token) {
+  const res = await postToBackend('rsvp.list', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: rsvp.set({ race_id, status, note? }) → riga RSVP aggiornata/creata
+ */
+async function rsvpSetAdapter(payload, token) {
+  const res = await postToBackend('rsvp.set', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
 }

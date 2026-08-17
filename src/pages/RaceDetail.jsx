@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import StintTimeline from '../components/race/StintTimeline';
 import CrewRoster from '../components/race/CrewRoster';
+import RaceRSVP from '../components/race/RaceRSVP';
 import { useStints } from '../hooks/useEnduranceStints';
 import { useRaceCrews } from '../hooks/useRaceCrews';
 import { useAuth } from '../hooks/useAuth';
@@ -14,6 +15,7 @@ import { useDrivers } from '../hooks/useRoster';
 import { formatTrackInfo, formatCarInfo } from '../utils/format';
 import { trackAccentColor } from '../utils/trackAccent';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { normalizeImageUrl } from '../utils/driveUrl';
 import RaceResultsSection from '../components/race/RaceResultsSection';
 import TrackKerbBackdrop from '../components/shared/TrackKerbBackdrop';
 import './Page.css';
@@ -228,7 +230,7 @@ function GallerySection({ race, isStaff, onUpdated }) {
     setSaving(true);
     setError(null);
     try {
-      const newUrls = text.split('\n').map(u => u.trim()).filter(Boolean);
+      const newUrls = text.split('\n').map(u => normalizeImageUrl(u)).filter(Boolean);
       await api.races.updateGallery({ race_id: race.race_id, gallery_urls: newUrls });
       setEditing(false);
       onUpdated?.();
@@ -481,6 +483,18 @@ export default function RaceDetail() {
           </div>
         )}
       </section>
+
+      {/* Conferma presenza — solo gare ancora da correre, ai piloti loggati */}
+      {statusKey === 'scheduled' && (
+        <RequireTier minTier="pilot_vsd" fallback={<LoginPrompt feature="la conferma di presenza" compact />}>
+          <RaceRSVP
+            raceId={raceId}
+            currentDriverId={currentDriverId}
+            drivers={driversRaw}
+            getDriverName={getDriverName}
+          />
+        </RequireTier>
+      )}
 
       {/* Risultati Ufficiali — appare solo se ci sono righe in RaceResults */}
       <RaceResultsSection raceId={raceId} drivers={drivers} />

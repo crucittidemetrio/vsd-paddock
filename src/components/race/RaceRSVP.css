@@ -1,0 +1,173 @@
+/* RaceRSVP.css — conferma presenza gara */
+
+.rsvp-section {
+  margin-top: 2rem;
+  border: 1px solid rgba(0, 212, 255, 0.12);
+  border-radius: 8px;
+  background: rgba(6, 13, 31, 0.6);
+  padding: 1rem 1.1rem 1.2rem;
+}
+
+.rsvp-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.rsvp-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #00d4ff;
+  margin: 0;
+}
+
+.rsvp-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8rem;
+  color: #6b7a99;
+}
+
+.rsvp-self {
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.rsvp-self-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.rsvp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  padding: 0.5rem 0.9rem;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.03);
+  color: #9aa8c7;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rsvp-btn:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #e8eaf6;
+}
+
+.rsvp-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.rsvp-btn.rsvp-confirmed.rsvp-btn-active {
+  background: rgba(46, 204, 113, 0.15);
+  border-color: #2ecc71;
+  color: #2ecc71;
+}
+
+.rsvp-btn.rsvp-tentative.rsvp-btn-active {
+  background: rgba(241, 196, 15, 0.15);
+  border-color: #f1c40f;
+  color: #f1c40f;
+}
+
+.rsvp-btn.rsvp-declined.rsvp-btn-active {
+  background: rgba(231, 76, 60, 0.15);
+  border-color: #e74c3c;
+  color: #e74c3c;
+}
+
+.rsvp-note-toggle {
+  background: none;
+  border: none;
+  color: #6b7a99;
+  font-size: 0.8rem;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0.4rem 0.3rem;
+}
+
+.rsvp-note-toggle:hover {
+  color: #9aa8c7;
+}
+
+.rsvp-note-input {
+  width: 100%;
+  margin-top: 0.6rem;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  color: #e8eaf6;
+  font-size: 0.85rem;
+  padding: 0.5rem 0.6rem;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.rsvp-error {
+  margin-top: 0.5rem;
+  color: #e74c3c;
+  font-size: 0.8rem;
+}
+
+.rsvp-groups {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+
+.rsvp-group-label {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  margin-bottom: 0.4rem;
+}
+
+.rsvp-group.rsvp-confirmed .rsvp-group-label { color: #2ecc71; }
+.rsvp-group.rsvp-tentative .rsvp-group-label { color: #f1c40f; }
+.rsvp-group.rsvp-declined .rsvp-group-label { color: #e74c3c; }
+
+.rsvp-group-count {
+  color: #6b7a99;
+  font-weight: 400;
+}
+
+.rsvp-group-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.rsvp-group-item {
+  font-size: 0.85rem;
+  color: #e8eaf6;
+}
+
+.rsvp-item-note {
+  color: #6b7a99;
+  font-size: 0.8rem;
+}
+
+.rsvp-empty {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.85rem;
+}
