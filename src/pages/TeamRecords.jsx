@@ -2,6 +2,8 @@ import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useTeamRecords } from '../hooks/useTeamRecords';
 import { useTracks, useCars } from '../hooks/useLookups';
+import { useAuth } from '../hooks/useAuth';
+import { useShowExDrivers } from '../hooks/useShowExDrivers';
 import { formatCarInfo } from '../utils/format';
 import { SIM_LIST } from '../utils/constants';
 import styles from './TeamRecords.module.css';
@@ -15,8 +17,10 @@ function trackLabel(trackId, tracksById) {
 }
 
 export default function TeamRecords() {
+  const { isAdmin } = useAuth();
   const [activeSim, setActiveSim] = useState(SIM_LIST[0]?.id || 'LMU');
-  const recordsQuery = useTeamRecords(activeSim);
+  const [showExVsd, toggleShowExVsd] = useShowExDrivers();
+  const recordsQuery = useTeamRecords(activeSim, isAdmin && showExVsd);
   const tracksQuery = useTracks();
   const carsQuery = useCars();
 
@@ -43,6 +47,17 @@ export default function TeamRecords() {
           categoria, non filtrato. Per classifiche divise per categoria/vettura vai su{' '}
           <Link to="/laps">Best Laps</Link>.
         </p>
+        {isAdmin && (
+          <button
+            type="button"
+            className={`${styles.tab} ${showExVsd ? styles.tabActive : ''}`}
+            style={{ marginTop: 12 }}
+            onClick={toggleShowExVsd}
+            title="Di default i record degli ex piloti VSD sono nascosti — solo tu puoi rivelarli"
+          >
+            {showExVsd ? '👁 Ex piloti visibili' : '🚫 Ex piloti nascosti'}
+          </button>
+        )}
       </header>
 
       <div className={styles.tabs}>
@@ -78,6 +93,7 @@ export default function TeamRecords() {
                   <div className={styles.cardTrack}>{trackLabel(r.track_id, tracksById)}</div>
                   <div className={styles.cardHolder}>
                     {r.display_name}
+                    {r.is_ex_vsd && <span className={styles.verifiedBadge}>EX</span>}
                     {r.verified && <span className={styles.verifiedBadge}>Garage61</span>}
                     {carInfo.race_class && (
                       <span className={styles.classBadge}>{carInfo.race_class}</span>

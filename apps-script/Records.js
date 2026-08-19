@@ -33,25 +33,39 @@
 /**
  * records.team — record di pista per sim, dal roster attivo.
  *
- * @param {Object} payload - { sim? } — se assente, tutti i sim
+ * @param {Object} payload - { sim?, include_ex_vsd? } — sim: se assente,
+ *   tutti i sim. include_ex_vsd: bypassa il filtro "solo tesserati
+ *   attivi" e include anche gli ex piloti come detentori — onorato SOLO
+ *   se ctx.isAdmin (mai in base al payload da solo, per non permettere a
+ *   un pilota qualunque di forzarlo). Pensato per un toggle visibile solo
+ *   all'admin lato UI: i confronti restano tra compagni attuali di
+ *   default, l'admin può rivelare lo storico completo on-demand.
  * @param {Object} ctx - richiede ctx.driver_id
  */
 function handleTeamRecords(payload, ctx) {
   if (!ctx || !ctx.driver_id) return fail('Auth richiesto');
 
   const simFilter = payload && payload.sim;
+  const includeExVsd = Boolean(ctx.isAdmin && payload &&
+    (payload.include_ex_vsd === true || payload.include_ex_vsd === 'true'));
 
   const allLaps = getCachedSheetData_(SHEETS.BEST_LAPS, 600);
   const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
   const driverMap = {};
   drivers.forEach(d => { driverMap[d.driver_id] = d; });
 
-  function isCurrentTesserato_(driverId) {
+  function isExVsd_(driverId) {
     const d = driverMap[driverId];
     if (!d) return false;
-    if (driverId === 'VSD001') return false;
-    if (d.removed_at) return false;
-    return d.status === 'active';
+    return Boolean(d.removed_at) || d.status !== 'active';
+  }
+
+  function isEligible_(driverId) {
+    const d = driverMap[driverId];
+    if (!d) return false;
+    if (driverId === 'VSD001') return false; // account di sistema, mai un "detentore"
+    if (includeExVsd) return true;
+    return !isExVsd_(driverId);
   }
 
   const laps = allLaps.filter(l => {
@@ -59,7 +73,7 @@ function handleTeamRecords(payload, ctx) {
     if (simFilter && l.sim !== simFilter) return false;
     const ms = Number(l.lap_time_ms);
     if (!ms || ms <= 0) return false;
-    return isCurrentTesserato_(l.driver_id);
+    return isEligible_(l.driver_id);
   });
 
   const recordsByKey = {};
@@ -82,6 +96,7 @@ function handleTeamRecords(payload, ctx) {
       car_id: l.car_id || '',
       set_date: l.set_date || '',
       verified: Boolean(l.garage61_lap_id),
+      is_ex_vsd: isExVsd_(l.driver_id),
     }))
     .sort((a, b) => a.sim.localeCompare(b.sim) || a.track_id.localeCompare(b.track_id));
 

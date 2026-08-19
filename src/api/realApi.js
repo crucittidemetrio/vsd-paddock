@@ -676,8 +676,9 @@ async function recapMineAdapter(payload, token) {
 }
 
 /**
- * Frontend: records.team(sim?) → { records: [...], count }
- * Backend:  records.team({ sim? }) → stesso shape
+ * Frontend: records.team(sim?, includeExVsd?) → { records: [...], count }
+ * Backend:  records.team({ sim?, include_ex_vsd? }) → stesso shape
+ * (include_ex_vsd onorato dal backend solo se ctx.isAdmin, vedi Records.js)
  */
 async function recordsTeamAdapter(payload, token) {
   const res = await postToBackend('records.team', payload || {}, token);

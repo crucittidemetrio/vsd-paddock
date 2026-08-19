@@ -128,7 +128,7 @@ export const api = {
   },
 
   records: {
-    team: (sim) => call('records.team', { sim }),
+    team: (sim, includeExVsd) => call('records.team', { sim, include_ex_vsd: includeExVsd }),
   },
 
   training: {

@@ -2,6 +2,8 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import { api } from '../api/client';
 import { useCars as useCarsInternal } from './useLookups';
+import { useDrivers } from './useRoster';
+import { activeDriverIdSet } from '../utils/driverStatus';
 
 export { useTracks, useCars } from './useLookups';
 
@@ -136,25 +138,37 @@ export function useLeaderboard(sim, trackId, carId) {
  *
  * Giri di auto SENZA race_class assegnato vengono ESCLUSI.
  *
- * @param {Object} [filters] - { sim?, track_id?, race_class?, season? }
+ * @param {Object} [filters] - { sim?, track_id?, race_class?, season?, includeExVsd? }
  *                              season: 'all' (default) | 'season2026'
+ *                              includeExVsd: se true, include anche i giri di
+ *                              ex piloti VSD (di default esclusi — i piloti
+ *                              attuali si confrontano tra compagni, non con
+ *                              chi ha lasciato il team; toggle admin-only lato UI)
  */
 export function useTeamLeaderboard(filters = {}) {
   const lapsQuery = useBestLaps();
   const carsQuery = useCarsInternal();
+  const driversQuery = useDrivers({ includeRemoved: true });
 
   const data = useMemo(() => {
-    if (!lapsQuery.data || !carsQuery.data) return null;
+    if (!lapsQuery.data || !carsQuery.data || !driversQuery.data) return null;
 
     const carRaceClass = {};
     carsQuery.data.forEach(c => {
       carRaceClass[c.car_id] = (c.race_class && String(c.race_class).trim()) || null;
     });
 
+    const activeIds = activeDriverIdSet(driversQuery.data);
+
     // Annotate + filtro race_class
     let annotated = lapsQuery.data
       .map(l => ({ ...l, race_class: carRaceClass[l.car_id] || null }))
       .filter(l => l.race_class);
+
+    // Esclude ex piloti VSD di default — vedi doc sopra.
+    if (!filters.includeExVsd) {
+      annotated = annotated.filter(l => activeIds.has(l.driver_id));
+    }
 
     // Filtro stagione (PRIMA del raggruppamento, altrimenti il "record" sarebbe quello all-time poi escluso)
     if (filters.season === 'season2026') {
@@ -209,17 +223,19 @@ export function useTeamLeaderboard(filters = {}) {
   }, [
     lapsQuery.data,
     carsQuery.data,
+    driversQuery.data,
     filters.sim,
     filters.track_id,
     filters.race_class,
     filters.season,
+    filters.includeExVsd,
   ]);
 
   return {
     data,
-    isLoading: lapsQuery.isLoading || carsQuery.isLoading,
-    isError: lapsQuery.isError || carsQuery.isError,
-    error: lapsQuery.error || carsQuery.error,
+    isLoading: lapsQuery.isLoading || carsQuery.isLoading || driversQuery.isLoading,
+    isError: lapsQuery.isError || carsQuery.isError || driversQuery.isError,
+    error: lapsQuery.error || carsQuery.error || driversQuery.error,
   };
 }
 
@@ -231,7 +247,7 @@ export function useTeamLeaderboard(filters = {}) {
  */
 export function useMyBestLaps(driverId, filters = {}) {
   const myLapsQuery = useBestLaps({ driver_id: driverId });
-  const teamLeaderboard = useTeamLeaderboard({ season: filters.season });
+  const teamLeaderboard = useTeamLeaderboard({ season: filters.season, includeExVsd: filters.includeExVsd });
   const carsQuery = useCarsInternal();
 
   const data = useMemo(() => {

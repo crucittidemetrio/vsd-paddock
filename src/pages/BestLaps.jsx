@@ -14,6 +14,7 @@ import {
 import { useDrivers } from '../hooks/useRoster';
 import { useAuth } from '../hooks/useAuth';
 import { useConsentSocialFlags } from '../hooks/useConsent';
+import { useShowExDrivers } from '../hooks/useShowExDrivers';
 import SimBadge from '../components/shared/SimBadge';
 import LapTime from '../components/shared/LapTime';
 import Avatar from '../components/shared/Avatar';
@@ -35,21 +36,26 @@ const SEASON_OPTIONS = [
 ];
 
 export default function BestLaps() {
-  const { driver, isVsdPilot, isStaff } = useAuth();
+  const { driver, isVsdPilot, isStaff, isAdmin } = useAuth();
   const [viewMode, setViewMode] = useState('leaderboard');
   const [seasonFilter, setSeasonFilter] = useState('season2026');
   const [simFilter, setSimFilter] = useState('all');
   const [trackFilter, setTrackFilter] = useState('all');
   const [raceClassFilter, setRaceClassFilter] = useState('all');
+  const [showExVsd, toggleShowExVsd] = useShowExDrivers();
 
   const filters = {
     sim: simFilter,
     track_id: trackFilter,
     race_class: raceClassFilter,
     season: seasonFilter,
+    includeExVsd: isAdmin && showExVsd,
   };
 
-  const { data: drivers } = useDrivers();
+  // includeRemoved:true — serve il roster completo (anche ex-VSD) per
+  // poter mostrare nome/avatar quando l'admin rivela i loro tempi col
+  // toggle sopra, invece di un driver_id grezzo senza nome.
+  const { data: drivers } = useDrivers({ includeRemoved: true });
   const { data: tracks } = useTracks();
   const { data: cars } = useCars();
 
@@ -131,6 +137,17 @@ export default function BestLaps() {
             </button>
           ))}
         </div>
+
+        {isAdmin && (
+          <button
+            type="button"
+            className={`season-btn ${showExVsd ? 'is-active' : ''}`}
+            onClick={toggleShowExVsd}
+            title="Di default i tempi degli ex piloti VSD sono nascosti dai confronti — solo tu puoi rivelarli"
+          >
+            {showExVsd ? '👁 Ex piloti visibili' : '🚫 Ex piloti nascosti'}
+          </button>
+        )}
       </div>
 
       <div className="laps-filters">
@@ -264,6 +281,7 @@ function LeaderboardView({ filters, driverMap, tracks, cars, isStaff }) {
                   <Link to={`/roster/${driver.driver_id}`} className="driver-link">
                     <Avatar name={driver.display_name} driverId={driver.driver_id} size={28} photoUrl={resolvePhotoUrl(driver.driver_id, socialFlags)} />
                     <span className="driver-link-name">{driver.display_name}</span>
+                    {driver.is_ex_vsd && <span className="lap-badge-unclassified">EX</span>}
                   </Link>
                 ) : rec.driver_id}
               </td>

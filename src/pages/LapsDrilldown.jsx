@@ -7,6 +7,8 @@ import {
 import { useBestLaps, useTracks, useCars } from '../hooks/useBestLaps';
 import { useDrivers } from '../hooks/useRoster';
 import { useAuth } from '../hooks/useAuth';
+import { useShowExDrivers } from '../hooks/useShowExDrivers';
+import { activeDriverIdSet } from '../utils/driverStatus';
 import SimBadge from '../components/shared/SimBadge';
 import LapTime from '../components/shared/LapTime';
 import Avatar from '../components/shared/Avatar';
@@ -30,14 +32,20 @@ const CHART_COLORS = [
 
 export default function LapsDrilldown() {
   const { sim, track, category } = useParams();
-  const { driver: currentUser } = useAuth();
+  const { driver: currentUser, isAdmin } = useAuth();
+  const [showExVsd, toggleShowExVsd] = useShowExDrivers();
 
   const { data: allLaps, isLoading: lapsLoading } = useBestLaps();
-  const { data: drivers } = useDrivers();
+  // includeRemoved:true — serve per il badge "EX" quando l'admin rivela
+  // i tempi degli ex piloti, altrimenti driverMap non li conterrebbe.
+  const { data: drivers } = useDrivers({ includeRemoved: true });
   const { data: tracks } = useTracks();
   const { data: cars } = useCars();
   const { data: socialFlagsData } = useConsentSocialFlags();
   const socialFlags = socialFlagsData?.flags || {};
+
+  const activeIds = useMemo(() => activeDriverIdSet(drivers), [drivers]);
+  const includeExVsd = isAdmin && showExVsd;
 
   // Normalize params per case-insensitive match
   const simParam = (sim || '').toUpperCase();
@@ -66,9 +74,12 @@ export default function LapsDrilldown() {
         if (String(l.sim || '').toUpperCase() !== simParam) return false;
         if (String(l.track_id || '').toLowerCase() !== trackParam) return false;
         if (l.race_class.toLowerCase() !== categoryParam) return false;
+        // Ex piloti VSD esclusi di default — stesso criterio di
+        // useTeamLeaderboard, toggle admin-only per rivelarli.
+        if (!includeExVsd && !activeIds.has(l.driver_id)) return false;
         return true;
       });
-  }, [allLaps, cars, simParam, trackParam, categoryParam]);
+  }, [allLaps, cars, simParam, trackParam, categoryParam, includeExVsd, activeIds]);
 
   // Best per pilota
   const driverBests = useMemo(() => {
@@ -173,6 +184,16 @@ export default function LapsDrilldown() {
         <div className="drilldown-summary">
           {driverBests.length} {driverBests.length === 1 ? 'pilota' : 'piloti'} · {lapsForCombo.length} {lapsForCombo.length === 1 ? 'giro' : 'giri'} totali
         </div>
+        {isAdmin && (
+          <button
+            type="button"
+            className="reset-btn"
+            onClick={toggleShowExVsd}
+            title="Di default i tempi degli ex piloti VSD sono nascosti dai confronti — solo tu puoi rivelarli"
+          >
+            {showExVsd ? '👁 Ex piloti visibili' : '🚫 Ex piloti nascosti'}
+          </button>
+        )}
       </div>
 
       {chartData.length >= 2 && (
@@ -253,6 +274,7 @@ export default function LapsDrilldown() {
                       <Avatar name={driver.display_name} driverId={driver.driver_id} size={28} photoUrl={resolvePhotoUrl(driver.driver_id, socialFlags)} />
                       <span className="driver-link-name">{driver.display_name}</span>
                       {isMe && <span className="me-badge">TU</span>}
+                      {driver.is_ex_vsd && <span className="lap-badge-unclassified">EX</span>}
                     </Link>
                   ) : rec.driver_id}
                 </td>
