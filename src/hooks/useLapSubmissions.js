@@ -16,6 +16,22 @@ export function useMyLapSubmissions(enabled = true) {
 }
 
 /**
+ * useRemoveLapSubmission — cancella una riga dallo storico richieste.
+ * SOLO admin lato backend (vedi handleLapSubmissionsRemove): non tocca
+ * mai il lap reale già copiato in BestLaps, serve solo a ripulire lo
+ * storico (es. richieste di test). Invalida lo storico personale.
+ */
+export function useRemoveLapSubmission() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (submission_id) => api.lapSubmissions.remove(submission_id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['lapSubmissions', 'mine'] });
+    },
+  });
+}
+
+/**
  * usePendingLapSubmissions — coda di revisione. Solo admin: se la
  * chiamata arriva da un non-admin il backend risponde fail, quindi va
  * usata solo dietro un gate `isAdmin` nella pagina.

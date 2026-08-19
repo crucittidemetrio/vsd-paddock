@@ -492,6 +492,25 @@
   border-bottom: none;
 }
 
+.submit-lap-history-remove {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  opacity: 0.5;
+  font-size: 13px;
+  padding: 2px 4px;
+}
+
+.submit-lap-history-remove:hover {
+  opacity: 1;
+}
+
+.submit-lap-history-remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.25;
+}
+
 .submit-lap-status-pending {
   font-family: var(--font-mono);
   font-size: 10px;

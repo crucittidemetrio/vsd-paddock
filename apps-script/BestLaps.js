@@ -754,6 +754,45 @@ function handleLapSubmissionsReject(payload, ctx) {
   return ok({ submission_id: submissionId, evidence_url: row[headerIdx.evidence_url] });
 }
 
+/**
+ * lapSubmissions.remove — Cancella una riga dallo storico richieste
+ * ("Le tue richieste" in Best Laps). Puramente un log/audit trail: una
+ * richiesta approvata ha già copiato il tempo in BestLaps via
+ * handleLapsAdd (riga separata) — cancellare qui NON tocca il lap reale,
+ * serve solo a ripulire lo storico (es. test, doppioni).
+ *
+ * Auth: SOLO admin — lo storico (incluse le richieste rifiutate) resta
+ * un riferimento utile, un pilota non deve poter far sparire le proprie
+ * richieste da solo.
+ *
+ * @param {Object} payload - { submission_id }
+ */
+function handleLapSubmissionsRemove(payload, ctx) {
+  if (!ctx || !ctx.isAdmin) return fail('Riservato agli admin');
+
+  const submissionId = payload && payload.submission_id;
+  if (!submissionId) return fail('Campo submission_id obbligatorio');
+
+  const sheet = getSheet(SHEETS.BEST_LAP_SUBMISSIONS);
+  if (!sheet) return fail('Foglio BestLapSubmissions non trovato');
+
+  const { data, headers, rowIndex } = findSubmissionRow_(sheet, submissionId);
+  if (rowIndex === -1) return fail('Richiesta non trovata: ' + submissionId);
+
+  const headerIdx = {};
+  headers.forEach((h, i) => { headerIdx[h] = i; });
+  const row = data[rowIndex];
+  const ownerDriverId = row[headerIdx.driver_id];
+
+  sheet.deleteRow(rowIndex + 1);
+  invalidateSheetCache_(SHEETS.BEST_LAP_SUBMISSIONS);
+
+  logAudit_(ctx, 'lapSubmissions.remove', submissionId,
+    'Richiesta rimossa dallo storico (' + ownerDriverId + ')', null);
+
+  return ok({ removed: submissionId });
+}
+
 // Test
 function testLapsRaceLaps() {
   const login = handleAuthLogin({ code: 'DEMETRIO-6899' });

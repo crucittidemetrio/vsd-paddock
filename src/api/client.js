@@ -99,6 +99,7 @@ export const api = {
     approve: (submission_id) => call('lapSubmissions.approve', { submission_id }),
     reject: (submission_id, review_note) =>
       call('lapSubmissions.reject', { submission_id, review_note }),
+    remove: (submission_id) => call('lapSubmissions.remove', { submission_id }),
   },
 
   races: {

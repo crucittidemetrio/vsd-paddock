@@ -10,6 +10,7 @@ import {
 import {
   useMyLapSubmissions,
   useSubmitLap,
+  useRemoveLapSubmission,
 } from '../hooks/useLapSubmissions';
 import { useDrivers } from '../hooks/useRoster';
 import { useAuth } from '../hooks/useAuth';
@@ -440,7 +441,7 @@ const INITIAL_SUBMIT_FORM = {
  * campo opzionale, è la prova che rende il tempo verificabile.
  */
 function SubmitLapSection() {
-  const { token } = useAuth();
+  const { token, isAdmin } = useAuth();
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(INITIAL_SUBMIT_FORM);
   const [file, setFile] = useState(null);
@@ -452,6 +453,7 @@ function SubmitLapSection() {
   const carsQuery = useCars(form.sim || undefined);
   const submissionsQuery = useMyLapSubmissions(open);
   const submitMutation = useSubmitLap();
+  const removeMutation = useRemoveLapSubmission();
 
   function update(field, value) {
     setForm(prev => {
@@ -644,6 +646,21 @@ function SubmitLapSection() {
                   <div key={s.submission_id} className="submit-lap-history-row">
                     <span>{s.sim} · {s.track_id} · {s.lap_time_display}</span>
                     <span className={status.className}>{status.label}</span>
+                    {isAdmin && (
+                      <button
+                        type="button"
+                        className="submit-lap-history-remove"
+                        title="Rimuovi dallo storico (solo admin)"
+                        disabled={removeMutation.isPending}
+                        onClick={() => {
+                          if (window.confirm('Rimuovere questa richiesta dallo storico?')) {
+                            removeMutation.mutate(s.submission_id);
+                          }
+                        }}
+                      >
+                        🗑
+                      </button>
+                    )}
                   </div>
                 );
               })}

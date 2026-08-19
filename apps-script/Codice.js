@@ -201,6 +201,7 @@ const ACTIONS = {
   'lapSubmissions.listPending': handleLapSubmissionsListPending,
   'lapSubmissions.approve': handleLapSubmissionsApprove,
   'lapSubmissions.reject': handleLapSubmissionsReject,
+  'lapSubmissions.remove': handleLapSubmissionsRemove,
 
   // Races
   'races.list': handleRacesList,
