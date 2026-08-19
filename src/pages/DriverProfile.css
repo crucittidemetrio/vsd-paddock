@@ -103,17 +103,26 @@
   margin-top: var(--sp-2);
 }
 
-.hero-instagram {
+.hero-social-links {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+  margin-top: var(--sp-2);
+}
+
+.hero-instagram,
+.hero-facebook {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-top: var(--sp-2);
   color: var(--vsd-cyan);
   font-size: var(--fs-sm);
   text-decoration: none;
 }
 
-.hero-instagram:hover {
+.hero-instagram:hover,
+.hero-facebook:hover {
   text-decoration: underline;
 }
 

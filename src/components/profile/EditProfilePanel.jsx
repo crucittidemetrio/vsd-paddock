@@ -12,12 +12,14 @@ export default function EditProfilePanel({ driver }) {
   const [editing, setEditing] = useState(false);
   const [bio, setBio] = useState(driver?.bio || '');
   const [instagram, setInstagram] = useState(driver?.instagram || '');
+  const [facebook, setFacebook] = useState(driver?.facebook || '');
   const { mutate: save, isPending, error } = useUpdateMyProfile();
   const [success, setSuccess] = useState(false);
 
   function handleOpen() {
     setBio(driver?.bio || '');
     setInstagram(driver?.instagram || '');
+    setFacebook(driver?.facebook || '');
     setSuccess(false);
     setEditing(true);
   }
@@ -26,7 +28,11 @@ export default function EditProfilePanel({ driver }) {
     e.preventDefault();
     setSuccess(false);
     save(
-      { bio: bio.trim(), instagram: instagram.trim().replace(/^@/, '') },
+      {
+        bio: bio.trim(),
+        instagram: instagram.trim().replace(/^@/, ''),
+        facebook: facebook.trim(),
+      },
       {
         onSuccess: () => {
           setSuccess(true);
@@ -82,6 +88,19 @@ export default function EditProfilePanel({ driver }) {
               placeholder="tuoprofilo"
             />
           </div>
+        </div>
+
+        <div className="epp-field">
+          <label className="epp-label" htmlFor="epp-fb">Facebook</label>
+          <input
+            id="epp-fb"
+            type="text"
+            className="epp-input"
+            value={facebook}
+            onChange={e => setFacebook(e.target.value)}
+            maxLength={200}
+            placeholder="Link al profilo o nome pagina"
+          />
         </div>
 
         {error && <div className="epp-error">Errore: {error.message}</div>}

@@ -320,15 +320,29 @@ export default function DriverProfile() {
               <div className="hero-realname">{driver.real_name}</div>
             )}
             {driver.bio && <p className="hero-bio">{driver.bio}</p>}
-            {driver.instagram && socialFlags[driver.driver_id] && (
-              <a
-                href={`https://instagram.com/${driver.instagram}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="hero-instagram"
-              >
-                📷 @{driver.instagram}
-              </a>
+            {socialFlags[driver.driver_id] && (driver.instagram || driver.facebook) && (
+              <div className="hero-social-links">
+                {driver.instagram && (
+                  <a
+                    href={`https://instagram.com/${driver.instagram}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hero-instagram"
+                  >
+                    📷 @{driver.instagram}
+                  </a>
+                )}
+                {driver.facebook && (
+                  <a
+                    href={/^https?:\/\//i.test(driver.facebook) ? driver.facebook : `https://facebook.com/${driver.facebook}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hero-facebook"
+                  >
+                    👤 {driver.facebook.replace(/^https?:\/\/(www\.)?facebook\.com\//i, '')}
+                  </a>
+                )}
+              </div>
             )}
 
             <div className="hero-tags">

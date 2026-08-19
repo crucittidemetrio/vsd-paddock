@@ -87,39 +87,44 @@ function handleRosterGet(payload, ctx) {
 }
 
 // ═══════════════════════════════════════════════════════════
-// SELF-EDIT — un pilota aggiorna il PROPRIO profilo (bio/instagram)
+// SELF-EDIT — un pilota aggiorna il PROPRIO profilo (bio/social)
 // ═══════════════════════════════════════════════════════════
 // Deliberatamente SENZA avatar qui: la foto profilo resta gestita
 // manualmente (vedi media/drivers/, driverPhotos.js) — decisione
 // esplicita per non aprire un canale di upload libero sul roster.
 
-const ROSTER_SELF_EDITABLE_FIELDS = ['bio', 'instagram'];
+const ROSTER_SELF_EDITABLE_FIELDS = ['bio', 'instagram', 'facebook'];
+const DRIVER_SOCIAL_COLUMNS = ['instagram', 'facebook'];
 
 /**
- * setupDriverInstagramColumn — aggiunge la colonna "instagram" alla tab
- * Drivers se non esiste già. One-time, idempotente (editor Apps Script
- * → ▶ Esegui).
+ * setupDriverSocialColumns — aggiunge le colonne "instagram"/"facebook"
+ * alla tab Drivers se non esistono già. One-time, idempotente (editor
+ * Apps Script → ▶ Esegui). Rilanciabile in sicurezza: salta le colonne
+ * già presenti.
  */
-function setupDriverInstagramColumn() {
+function setupDriverSocialColumns() {
   const sheet = getSheet(SHEETS.DRIVERS);
   if (!sheet) { Logger.log('⚠️  Tab Drivers non trovata.'); return; }
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  if (headers.indexOf('instagram') !== -1) {
-    Logger.log('✓ Colonna "instagram" già esistente, nessuna modifica.');
-    return;
-  }
-  const nextCol = sheet.getLastColumn() + 1;
-  sheet.getRange(1, nextCol).setValue('instagram').setFontWeight('bold');
-  Logger.log('✅ Colonna "instagram" aggiunta in posizione ' + nextCol + '.');
+
+  DRIVER_SOCIAL_COLUMNS.forEach(col => {
+    if (headers.indexOf(col) !== -1) {
+      Logger.log('✓ Colonna "' + col + '" già esistente, nessuna modifica.');
+      return;
+    }
+    const nextCol = sheet.getLastColumn() + 1;
+    sheet.getRange(1, nextCol).setValue(col).setFontWeight('bold');
+    Logger.log('✅ Colonna "' + col + '" aggiunta in posizione ' + nextCol + '.');
+  });
 }
 
 /**
- * roster.updateSelf — un pilota loggato aggiorna bio e/o instagram del
- * PROPRIO profilo. driver_id preso SEMPRE da ctx, mai dal payload — un
- * token compromesso non deve poter scrivere a nome di un altro pilota
- * (stesso principio già usato per fuel.logSample/handleFuelLogSample).
+ * roster.updateSelf — un pilota loggato aggiorna bio/instagram/facebook
+ * del PROPRIO profilo. driver_id preso SEMPRE da ctx, mai dal payload —
+ * un token compromesso non deve poter scrivere a nome di un altro
+ * pilota (stesso principio già usato per fuel.logSample/handleFuelLogSample).
  *
- * @param {Object} payload - { bio?, instagram? }
+ * @param {Object} payload - { bio?, instagram?, facebook? }
  * @param {Object} ctx - Auth context (richiesto, driver_id valorizzato)
  * @returns {Object} ok({ driver_id, updated: [...] }) oppure fail
  */
@@ -155,7 +160,7 @@ function handleRosterUpdateSelf(payload, ctx) {
   }
 
   if (updatedFields.length === 0) {
-    return fail('Colonne non trovate in Drivers — esegui setupDriverInstagramColumn() se stai aggiornando instagram per la prima volta');
+    return fail('Colonne non trovate in Drivers — esegui setupDriverSocialColumns() se stai aggiornando instagram/facebook per la prima volta');
   }
 
   invalidateSheetCache_(SHEETS.DRIVERS);
