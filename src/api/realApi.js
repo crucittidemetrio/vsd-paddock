@@ -238,6 +238,8 @@ export async function callApi(action, payload = {}) {
         return await lapSubmissionsApproveAdapter(payload, token);
       case 'lapSubmissions.reject':
         return await lapSubmissionsRejectAdapter(payload, token);
+      case 'lapSubmissions.remove':
+        return await lapSubmissionsRemoveAdapter(payload, token);
       case 'races.list':
         return await racesListAdapter(payload, token);
       case 'races.upcoming':
@@ -737,6 +739,17 @@ async function lapSubmissionsApproveAdapter(payload, token) {
 
 async function lapSubmissionsRejectAdapter(payload, token) {
   const res = await postToBackend('lapSubmissions.reject', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: lapSubmissions.remove({ submission_id }) → { removed }
+ * Backend:  lapSubmissions.remove — solo admin, ripulisce lo storico
+ * richieste (non tocca il lap reale già copiato in BestLaps).
+ */
+async function lapSubmissionsRemoveAdapter(payload, token) {
+  const res = await postToBackend('lapSubmissions.remove', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
 }
