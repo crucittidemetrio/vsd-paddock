@@ -171,6 +171,16 @@
   gap: var(--sp-4);
 }
 
+.skill-index-crosslink {
+  font-size: var(--fs-xs);
+  color: var(--color-text-dim);
+  margin-top: var(--sp-2);
+}
+
+.skill-index-crosslink a {
+  color: var(--vsd-cyan);
+}
+
 .stat-card {
   background: var(--vsd-bg-elevated);
   border: 1px solid var(--color-border);

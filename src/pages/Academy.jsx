@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAcademyRanking } from '../hooks/useAcademy';
 import { SIM_LIST } from '../utils/constants';
 import styles from './Academy.module.css';
@@ -27,17 +28,20 @@ export default function Academy() {
   return (
     <div className={styles.container}>
       <header className={styles.header}>
-        <div className={styles.eyebrow}>VSD PILOT RATING</div>
-        <h1 className={styles.title}>Pilot Rating</h1>
+        <div className={styles.eyebrow}>VSD PUNTI MERITO</div>
+        <h1 className={styles.title}>Punti Merito</h1>
         <p className={styles.sub}>
-          Classifica VR (Valore Rating) per simulatore, calcolata dai risultati gara.
+          Classifica CUMULATIVA di stagione per simulatore — punti merito sommati gara
+          dopo gara, come un campionato piloti interno. Non è un indicatore di "quanto
+          sei forte adesso": per la forma recente (passo + pulizia di guida) vedi
+          l'<Link to="/roster">Indice Skill</Link> sul tuo profilo.
         </p>
       </header>
 
       <div className={styles.previewNote}>
         <span className={styles.previewNoteIcon}>◈</span>
         <span>
-          Classifica di anteprima — Fase 1. Il VR qui mostrato è solo Punti Merito
+          Classifica di anteprima — Fase 1. Il totale qui mostrato è solo Punti Merito
           (piazzamento in classe, giro veloce, presenza, pole se disponibile).
           Punti Penalità, badge e scarto del risultato peggiore arrivano nelle fasi
           successive: questo numero cambierà.

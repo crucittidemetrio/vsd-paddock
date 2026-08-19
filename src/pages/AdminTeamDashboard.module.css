@@ -108,6 +108,10 @@
   font-weight: 400;
 }
 
+.sectionSubtitle a {
+  color: var(--vsd-cyan, #00d4ff);
+}
+
 .alertCount {
   background: var(--vsd-red, #ef3340);
   color: white;

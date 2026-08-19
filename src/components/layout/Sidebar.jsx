@@ -38,11 +38,11 @@ const TEAM_ITEMS = [
 // Voci pilota attive — visibili solo a pilot_vsd, staff, admin
 const PILOT_ITEMS = [
   { to: '/reports', label: LABELS.nav_reports, icon: '◣' },
-  { to: '/academy', label: 'Pilot Rating', icon: '◇' },
+  { to: '/academy', label: 'Punti Merito', icon: '◇' },
   { to: '/recap', label: 'Season Recap', icon: '✦' },
   { to: '/records', label: 'Muro dei Record', icon: '♛' },
   { to: '/training', label: LABELS.nav_training, icon: '◆' },
-  { to: '/consenso', label: 'Consenso dati', icon: '✎' },
+  { to: '/consenso', label: 'Il mio consenso', icon: '✎' },
 ];
 
 // Strumenti da usare DURANTE una sessione (gara o prova), non pagine di
@@ -65,7 +65,7 @@ const ADMIN_ITEMS = [
   { to: '/admin/garage61-sync', label: 'Sync Garage61', icon: '↻' },
   { to: '/admin/posters', label: 'Race Posters', icon: '▭' },
   { to: '/admin/endurance', label: 'Endurance Admin', icon: '◐' },
-  { to: '/admin/clash-results', label: 'Clash of Classes', icon: '⚔' },
+  { to: '/admin/clash-results', label: 'Clash of Classes — Risultati', icon: '⚔' },
   { to: '/admin/candidates', label: 'Candidature', icon: '◫' },
   { to: '/admin/sponsors', label: 'Sponsor', icon: '◆' },
   { to: '/admin/incidents', label: 'Registro incidenti', icon: '⚠' },
@@ -75,7 +75,7 @@ const ADMIN_ITEMS = [
 // dell'area Admin (isStaff include anche staff generico, questo no).
 const ADMIN_ONLY_ITEMS = [
   { to: '/admin/social-manager', label: 'Social Manager', icon: '◎' },
-  { to: '/admin/consents', label: 'Consenso dati', icon: '✎' },
+  { to: '/admin/consents', label: 'Consensi (staff)', icon: '✎' },
   { to: '/admin/audit-log', label: 'Registro di controllo', icon: '☰' },
 ];
 

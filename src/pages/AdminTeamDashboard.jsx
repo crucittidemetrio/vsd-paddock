@@ -405,7 +405,8 @@ export default function AdminTeamDashboard() {
           <h2 className={styles.sectionTitle}>
             Indice skill
             <span className={styles.sectionSubtitle}>
-              punteggio composito + passo e pulizia come segnali separati, ultime gare cross-sim — min. 3 gare valide
+              forma recente: punteggio composito + passo e pulizia come segnali separati, ultime gare cross-sim — min. 3 gare valide.
+              Classifica di stagione: <Link to="/academy">Punti Merito</Link>.
             </span>
           </h2>
           <div>

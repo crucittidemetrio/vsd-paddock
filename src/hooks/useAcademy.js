@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '../api/client';
 
 /**
- * useAcademyRanking — classifica VR (Pilot Rating) per un simulatore.
+ * useAcademyRanking — classifica VR (Punti Merito) per un simulatore.
  *
  * Fase 1: solo Punti Merito da RaceResults, nessuna penalità, nessun
  * badge, nessuno scoping stagionale. Vedi apps-script/Academy.js per

@@ -141,7 +141,7 @@ export default function App() {
               <Route
                 path="/academy"
                 element={
-                  <RequireTier minTier="pilot_vsd" fallback={<LoginPrompt feature="VSD Academy" />}>
+                  <RequireTier minTier="pilot_vsd" fallback={<LoginPrompt feature="i Punti Merito" />}>
                     <Academy />
                   </RequireTier>
                 }

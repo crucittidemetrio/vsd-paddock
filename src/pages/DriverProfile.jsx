@@ -401,7 +401,7 @@ export default function DriverProfile() {
             value={skillIndex.score}
             sub={`${skillIndex.races_counted} gare cross-sim`}
             accent="cyan"
-            title="55% posizione media normalizzata + 25% tasso podi + 20% (1 - penalità incidenti), ultime gare cross-sim"
+            title="55% posizione media normalizzata + 25% tasso podi + 20% (1 - penalità incidenti), ultime gare cross-sim. Segnale di forma RECENTE — non sostituisce i Punti Merito di stagione."
           />
         )}
         {skillIndex && (
@@ -423,6 +423,12 @@ export default function DriverProfile() {
           />
         )}
       </div>
+      {skillIndex && (
+        <p className="skill-index-crosslink">
+          L'Indice Skill misura la forma recente. Per la classifica cumulativa di
+          stagione vedi i <Link to="/academy">Punti Merito</Link>.
+        </p>
+      )}
 
       {/* TRAGUARDI */}
       {achievements.length > 0 && (
