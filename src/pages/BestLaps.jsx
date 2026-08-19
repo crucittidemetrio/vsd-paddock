@@ -640,6 +640,11 @@ function SubmitLapSection() {
           {submissions.length > 0 && (
             <div className="submit-lap-history">
               <div className="submit-lap-history-title">Le tue richieste</div>
+              {removeMutation.isError && (
+                <div className="submit-lap-error">
+                  Errore rimozione: {removeMutation.error?.message}
+                </div>
+              )}
               {submissions.map(s => {
                 const status = SUBMISSION_STATUS_LABEL[s.status] || SUBMISSION_STATUS_LABEL.pending;
                 return (
