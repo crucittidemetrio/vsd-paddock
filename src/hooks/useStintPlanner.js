@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { api } from '../api/client';
-import { validatePlanCoverage, validatePilotLimits } from '../utils/stintValidation';
+import { validatePlanCoverage, validatePilotLimits, validateFairShare } from '../utils/stintValidation';
 
 /**
  * Custom hook per orchestrare il flusso di creazione, modifica e conferma
@@ -77,9 +77,11 @@ export function useStintPlanner() {
       raceParams.total_duration_min
     );
     const pilot = validatePilotLimits(plan, limits || {});
+    const fairShare = validateFairShare(plan, limits || {});
     const merged = {
-      valid: coverage.valid && pilot.valid,
-      issues: [...coverage.issues, ...pilot.issues],
+      valid: coverage.valid && pilot.valid && fairShare.valid,
+      issues: [...coverage.issues, ...pilot.issues, ...fairShare.issues],
+      fairShareByDriver: fairShare.byDriver,
     };
     setValidation(merged);
     return merged;

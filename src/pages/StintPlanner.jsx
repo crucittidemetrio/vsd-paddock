@@ -237,6 +237,8 @@ export default function StintPlanner() {
             <ValidationBadge result={liveValidation} />
           </div>
 
+          <FairShareSummary byDriver={liveValidation?.fairShareByDriver} driverById={driverById} />
+
           <div className={styles.tableWrap}>
             <table className={styles.table}>
               <thead>
@@ -314,6 +316,40 @@ function isMineHighlight(stint, validation) {
   if (!validation || validation.valid) return '';
   const involved = (validation.issues || []).some(i => i.stint_order === stint.stint_order);
   return involved ? 'st-row-issue' : '';
+}
+
+// Riepilogo visivo del bilanciamento carico di guida per pilota (fair-share).
+// Segnale indipendente dagli issue: mostra sempre la distribuzione, anche
+// quando è bilanciata, così l'admin vede a colpo d'occhio chi guida quanto.
+function FairShareSummary({ byDriver, driverById }) {
+  if (!byDriver || byDriver.length < 2) return null;
+  const maxMinutes = Math.max(...byDriver.map((d) => d.minutes), 1);
+  return (
+    <div style={{ margin: '0.75rem 0 1rem' }}>
+      <div style={{ fontSize: '0.78rem', fontWeight: 700, color: '#9fb0c9', marginBottom: '0.4rem', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+        Bilanciamento carico di guida
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+        {byDriver.map((d) => {
+          const name = driverById[d.driver_id]?.display_name || d.driver_id;
+          const widthPct = Math.round((d.minutes / maxMinutes) * 100);
+          return (
+            <div key={d.driver_id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem' }}>
+              <div style={{ width: '110px', flexShrink: 0, color: '#c5d0e6', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {name}
+              </div>
+              <div style={{ flex: 1, background: 'rgba(255,255,255,0.06)', borderRadius: '3px', height: '10px', overflow: 'hidden' }}>
+                <div style={{ width: `${widthPct}%`, height: '100%', background: '#4dd0e1', borderRadius: '3px' }} />
+              </div>
+              <div style={{ width: '90px', flexShrink: 0, textAlign: 'right', color: '#9fb0c9' }}>
+                {d.minutes} min ({d.share_pct}%)
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 // Badge di stato validazione, con lista issue

@@ -669,12 +669,67 @@ function handleEnduranceStintsValidateCoverage(payload, ctx) {
     }
   }
 
-  // 6. Output
+  // 6. Fair-share: bilanciamento del carico di guida tra i piloti.
+  // Speculare a validateFairShare() in src/utils/stintValidation.js — SOFT:
+  // avvisa se qualcuno guida in modo molto sproporzionato rispetto alla
+  // media del gruppo, ma non è un vincolo rigido (in endurance è normale
+  // che un pilota copra più stint per scelta, es. notturni).
+  const fairShareIssues = _esValidateFairShare_(stints);
+  issues.push(...fairShareIssues);
+
+  // 7. Output
   return ok({
     valid: issues.length === 0,
     issues: issues,
     stint_count: stints.length
   });
+}
+
+/**
+ * Calcola il bilanciamento del carico di guida tra i piloti di un piano
+ * stint GIÀ PERSISTITO. Vedi commento sopra handleEnduranceStintsValidateCoverage
+ * e la versione client in src/utils/stintValidation.js (validateFairShare) —
+ * stessa soglia di default (±25% dalla media), tenere in sync se cambia.
+ *
+ * @param {Array} stints - stint con { driver_id, planned_duration_min }.
+ * @returns {Array} issue { type: 'unbalanced_share', driver_id, minutes, avg_minutes, deviation_pct, message }.
+ */
+function _esValidateFairShare_(stints) {
+  const TOLERANCE_FRACTION = 0.25;
+  const totalsByDriver = {};
+
+  stints.forEach(s => {
+    if (!s.driver_id) return;
+    const dur = Number(s.planned_duration_min) || 0;
+    totalsByDriver[s.driver_id] = (totalsByDriver[s.driver_id] || 0) + dur;
+  });
+
+  const driverIds = Object.keys(totalsByDriver);
+  if (driverIds.length < 2) return []; // un solo pilota: bilanciamento non applicabile
+
+  const totalMin = driverIds.reduce((sum, id) => sum + totalsByDriver[id], 0);
+  if (totalMin <= 0) return [];
+
+  const avgMin = totalMin / driverIds.length;
+  const issues = [];
+
+  driverIds.forEach(id => {
+    const minutes = totalsByDriver[id];
+    const deviation = (minutes - avgMin) / avgMin;
+    if (Math.abs(deviation) > TOLERANCE_FRACTION) {
+      const pct = Math.round(deviation * 100);
+      issues.push({
+        type: 'unbalanced_share',
+        driver_id: id,
+        minutes: Math.round(minutes),
+        avg_minutes: Math.round(avgMin),
+        deviation_pct: pct,
+        message: `${id} guida ${Math.round(minutes)} min (${pct > 0 ? '+' : ''}${pct}% sulla media di ${Math.round(avgMin)} min): carico sbilanciato.`
+      });
+    }
+  });
+
+  return issues;
 }
 
 // ═══════════════════════════════════════════════════════════

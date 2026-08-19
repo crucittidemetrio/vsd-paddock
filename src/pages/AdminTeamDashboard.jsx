@@ -19,6 +19,17 @@ const DAYS_INACTIVE_ALERT = 14;
 const DAYS_WINDOW = 30;
 const DAYS_RUSTY_THRESHOLD = 30;
 
+// Classe CSS per il badge incidenti/gara — stessa logica di
+// cleanlinessAccent in DriverProfile.jsx (segnale separato dal passo,
+// come la Safety Rating vs iRating in iRacing). null = dato mai
+// compilato per quel pilota, non è una colpa → neutro.
+function incidentsClass(avgIncidents) {
+  if (avgIncidents == null) return 'skillIncidentsNone';
+  if (avgIncidents <= 1) return 'skillIncidentsLow';
+  if (avgIncidents <= 2) return 'skillIncidentsMid';
+  return 'skillIncidentsHigh';
+}
+
 function daysAgo(n) {
   const d = new Date();
   d.setDate(d.getDate() - n);
@@ -394,7 +405,7 @@ export default function AdminTeamDashboard() {
           <h2 className={styles.sectionTitle}>
             Indice skill
             <span className={styles.sectionSubtitle}>
-              posizione media + podi + incidenti, ultime gare cross-sim — min. 3 gare valide
+              punteggio composito + passo e pulizia come segnali separati, ultime gare cross-sim — min. 3 gare valide
             </span>
           </h2>
           <div>
@@ -410,8 +421,13 @@ export default function AdminTeamDashboard() {
                   <span className={styles.skillName}>{d.display_name}</span>
                 </div>
                 <div className={styles.skillMeta}>
-                  {d.races_counted} gare · {d.podium_rate}% podi
-                  {d.avg_incidents != null && ` · ${d.avg_incidents} inc./gara`}
+                  {d.races_counted} gare · {d.avg_finish_pct}% passo · {d.podium_rate}% podi
+                </div>
+                <div
+                  className={`${styles.skillIncidents} ${styles[incidentsClass(d.avg_incidents)]}`}
+                  title="Incidenti medi per gara — segnale di pulizia, separato dal passo"
+                >
+                  {d.avg_incidents != null ? `${d.avg_incidents} inc.` : '—'}
                 </div>
                 <div className={styles.skillScore}>{d.score}</div>
               </Link>

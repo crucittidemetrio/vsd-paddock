@@ -187,3 +187,77 @@ export function validatePilotLimits(stints, limits) {
 
   return { valid: issues.length === 0, issues };
 }
+
+// ─────────────────────────────────────────────────────────────
+// validateFairShare: bilanciamento del carico di guida tra i piloti.
+// Funzione PURA, separata dalle altre due (responsabilità distinte).
+// Ispirata alla "Fair-Share Compliance" di SimStints — qui pensata come
+// segnale SOFT: in endurance è normale e spesso VOLUTO che un pilota più
+// esperto copra più stint (notturni, cambi meteo, ecc.), quindi il
+// controllo avvisa quando la distribuzione si discosta parecchio dalla
+// media, ma non impone la parità come regola rigida.
+// ─────────────────────────────────────────────────────────────
+
+const FAIR_SHARE_DEFAULT_TOLERANCE = 0.25; // ±25% dalla media = soglia di default
+
+/**
+ * Valida il bilanciamento del tempo di guida tra i piloti di un piano stint.
+ *
+ * @param {Array} stints - stint del piano. Ogni stint: { driver_id, planned_duration_min }.
+ * @param {Object} options - { toleranceFraction?: number } (default 0.25).
+ * @returns {{ valid: boolean, issues: Array, byDriver: Array }}
+ *   issue: { type: 'unbalanced_share', driver_id, minutes, avg_minutes, deviation_pct, message }.
+ *   byDriver: [{ driver_id, minutes, share_pct }] — sempre popolato (anche se valid),
+ *   utile per un riepilogo visivo indipendente dagli issue.
+ */
+export function validateFairShare(stints, options) {
+  if (!Array.isArray(stints) || stints.length === 0) return { valid: true, issues: [], byDriver: [] };
+
+  const toleranceFraction = options && Number(options.toleranceFraction) > 0
+    ? Number(options.toleranceFraction)
+    : FAIR_SHARE_DEFAULT_TOLERANCE;
+
+  const totalsByDriver = {};
+  stints.forEach((s) => {
+    if (!s.driver_id) return;
+    const dur = Number(s.planned_duration_min) || 0;
+    totalsByDriver[s.driver_id] = (totalsByDriver[s.driver_id] || 0) + dur;
+  });
+
+  const driverIds = Object.keys(totalsByDriver);
+  const totalMin = driverIds.reduce((sum, id) => sum + totalsByDriver[id], 0);
+
+  const byDriver = driverIds
+    .map((id) => ({
+      driver_id: id,
+      minutes: Math.round(totalsByDriver[id]),
+      share_pct: totalMin > 0 ? Math.round((totalsByDriver[id] / totalMin) * 1000) / 10 : 0,
+    }))
+    .sort((a, b) => b.minutes - a.minutes);
+
+  // Con un solo pilota in rotazione il "bilanciamento" non ha senso.
+  if (driverIds.length < 2 || totalMin <= 0) {
+    return { valid: true, issues: [], byDriver };
+  }
+
+  const avgMin = totalMin / driverIds.length;
+  const issues = [];
+
+  driverIds.forEach((id) => {
+    const minutes = totalsByDriver[id];
+    const deviation = (minutes - avgMin) / avgMin;
+    if (Math.abs(deviation) > toleranceFraction) {
+      const pct = Math.round(deviation * 100);
+      issues.push({
+        type: 'unbalanced_share',
+        driver_id: id,
+        minutes: Math.round(minutes),
+        avg_minutes: Math.round(avgMin),
+        deviation_pct: pct,
+        message: `${id} guida ${Math.round(minutes)} min (${pct > 0 ? '+' : ''}${pct}% sulla media di ${Math.round(avgMin)} min): carico sbilanciato.`,
+      });
+    }
+  });
+
+  return { valid: issues.length === 0, issues, byDriver };
+}

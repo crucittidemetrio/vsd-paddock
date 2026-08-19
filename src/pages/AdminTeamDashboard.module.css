@@ -129,7 +129,7 @@
 
 .skillRow {
   display: grid;
-  grid-template-columns: 32px 200px 1fr auto;
+  grid-template-columns: 32px 200px 1fr auto auto;
   gap: 14px;
   align-items: center;
   padding: 8px 0;
@@ -179,6 +179,39 @@
   font-weight: 700;
   color: var(--vsd-cyan, #00d4ff);
   text-align: right;
+}
+
+/* Badge incidenti/gara — segnale di pulizia separato dal passo (score),
+   stesso principio di iRating/Safety Rating in iRacing: due assi distinti,
+   non un unico numero. Colore scala con la gravità, non solo testo. */
+.skillIncidents {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+  text-align: center;
+}
+
+.skillIncidentsNone {
+  color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.skillIncidentsLow {
+  color: #4dd0e1;
+  background: rgba(77, 208, 225, 0.12);
+}
+
+.skillIncidentsMid {
+  color: #ffb74d;
+  background: rgba(255, 183, 77, 0.12);
+}
+
+.skillIncidentsHigh {
+  color: #ff6b66;
+  background: rgba(255, 107, 102, 0.12);
 }
 
 .heatmapRow {

@@ -399,9 +399,27 @@ export default function DriverProfile() {
           <StatCard
             label="Indice skill"
             value={skillIndex.score}
-            sub={`${skillIndex.races_counted} gare · ${skillIndex.podium_rate}% podi`}
+            sub={`${skillIndex.races_counted} gare cross-sim`}
             accent="cyan"
             title="55% posizione media normalizzata + 25% tasso podi + 20% (1 - penalità incidenti), ultime gare cross-sim"
+          />
+        )}
+        {skillIndex && (
+          <StatCard
+            label="Passo"
+            value={`${skillIndex.avg_finish_pct}%`}
+            sub={`${skillIndex.podium_rate}% podi`}
+            accent="blue"
+            title="Posizione media normalizzata sul campo di gara + tasso podi: quanto è veloce, a prescindere dalla pulizia di guida (come l'iRating in iRacing)."
+          />
+        )}
+        {skillIndex && (
+          <StatCard
+            label="Pulizia"
+            value={skillIndex.avg_incidents != null ? skillIndex.avg_incidents : '—'}
+            sub={skillIndex.avg_incidents != null ? 'incidenti/gara' : 'dati insufficienti'}
+            accent={cleanlinessAccent(skillIndex.avg_incidents)}
+            title="Incidenti medi per gara: quanto è pulita la guida, indipendentemente dal risultato (come la Safety Rating in iRacing). Meno è meglio."
           />
         )}
       </div>
@@ -681,6 +699,16 @@ function ChampionshipsSection({ participations }) {
       </div>
     </section>
   );
+}
+
+// Colore della StatCard "Pulizia" in base agli incidenti/gara — stessa logica
+// concettuale della Safety Rating iRacing: meno incidenti = meglio.
+// null = dato mai compilato per quel pilota, non è una colpa → neutro (cyan).
+function cleanlinessAccent(avgIncidents) {
+  if (avgIncidents == null) return 'cyan';
+  if (avgIncidents <= 1) return 'blue';
+  if (avgIncidents <= 2) return 'orange';
+  return 'red';
 }
 
 function StatCard({ label, value, sub, accent = 'cyan', title }) {
