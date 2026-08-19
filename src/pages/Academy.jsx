@@ -41,10 +41,10 @@ export default function Academy() {
       <div className={styles.previewNote}>
         <span className={styles.previewNoteIcon}>◈</span>
         <span>
-          Classifica di anteprima — Fase 1. Il totale qui mostrato è solo Punti Merito
-          (piazzamento in classe, giro veloce, presenza, pole se disponibile).
-          Punti Penalità, badge e scarto del risultato peggiore arrivano nelle fasi
-          successive: questo numero cambierà.
+          Classifica di anteprima — Fase 2. Il totale è Punti Merito (piazzamento in
+          classe, giro veloce, presenza, pole se disponibile) più Punti Penalità dagli
+          incidenti risolti dallo staff. Badge e scarto del risultato peggiore arrivano
+          nelle fasi successive: questo numero cambierà ancora.
         </span>
       </div>
 
@@ -89,11 +89,19 @@ export default function Academy() {
           </p>
 
           <p className={styles.infoText}>
+            Da questi si sottraggono i <strong>Punti Penalità</strong>: quando lo staff
+            chiude un incidente nel Registro con una penalità, i punti vengono tolti dal
+            VR del pilota penalizzato in quel simulatore (mai retroattivo sugli incidenti
+            chiusi prima dell'introduzione di questo campo, restano a 0 finché non
+            vengono riclassificati a mano).
+          </p>
+
+          <p className={styles.infoText}>
             In classifica compaiono solo i piloti tesserati attualmente attivi — chi ha
             lasciato il team esce dalla classifica anche se ha ancora risultati in
-            archivio. Non sono ancora inclusi: Punti Penalità, badge (Bronzo/Argento/
-            Oro/Platino) e scarto del risultato peggiore. Arrivano nelle fasi successive
-            del sistema — vedi il banner sopra.
+            archivio. Non sono ancora inclusi: badge (Bronzo/Argento/Oro/Platino) e
+            scarto del risultato peggiore. Arrivano nelle fasi successive del sistema —
+            vedi il banner sopra.
           </p>
         </div>
       )}
@@ -139,7 +147,17 @@ export default function Academy() {
                 )}
                 <span className={styles.driverName}>{r.display_name}</span>
               </span>
-              <span className={styles.vr}>{r.vr}</span>
+              <span className={styles.vrCell}>
+                <span className={styles.vr}>{r.vr}</span>
+                {r.pp !== 0 && (
+                  <span
+                    className={styles.vrBreakdown}
+                    title={`Punti Merito ${r.pm} + Punti Penalità ${r.pp} (${r.penalties_count} penalità)`}
+                  >
+                    PM {r.pm} · {r.pp} PP
+                  </span>
+                )}
+              </span>
               <span className={styles.races}>{r.races}</span>
             </div>
           ))}

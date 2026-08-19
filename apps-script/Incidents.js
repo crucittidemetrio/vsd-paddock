@@ -59,7 +59,7 @@ const RECLAMO_COL = {
 
 const INCIDENT_RESOLUTION_HEADERS = [
   'complaint_key', 'status', 'penalty_type', 'penalty_detail', 'staff_notes',
-  'resolved_by', 'resolved_at', 'evidence_url',
+  'resolved_by', 'resolved_at', 'evidence_url', 'sim', 'penalized_driver_id',
 ];
 const INCIDENT_STATUSES = ['open', 'reviewing', 'closed'];
 
@@ -101,6 +101,37 @@ function setupIncidentResolutionsEvidenceColumn() {
   const nextCol = sheet.getLastColumn() + 1;
   sheet.getRange(1, nextCol).setValue('evidence_url').setFontWeight('bold');
   Logger.log('✅ Colonna "evidence_url" aggiunta in posizione ' + nextCol + '.');
+}
+
+/**
+ * Migrazione one-shot: aggiunge le colonne "sim" e "penalized_driver_id"
+ * a una tab IncidentResolutions GIÀ ESISTENTE — servono a Fase 2 del VR
+ * (Punti Penalità, Academy.js): senza "sim" non si può sapere in quale
+ * classifica sottrarre i punti, senza "penalized_driver_id" si assume
+ * implicitamente against_driver_id, che non è sempre corretto (es. reclamo
+ * respinto, o penalità al segnalante). Idempotente: aggiunge solo le
+ * colonne mancanti, non tocca righe esistenti — gli incidenti già chiusi
+ * restano a 0 PP finché lo staff non li riclassifica a mano (nessun
+ * ricalcolo retroattivo automatico, per scelta).
+ *
+ * Editor Apps Script → seleziona questa funzione → ▶ Esegui (una tantum).
+ */
+function setupIncidentResolutionsPPColumns() {
+  const sheet = getSheet(SHEETS.INCIDENT_RESOLUTIONS);
+  if (!sheet) {
+    Logger.log('⚠️  Tab IncidentResolutions non trovata — esegui prima setupIncidentResolutionsTab().');
+    return;
+  }
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  ['sim', 'penalized_driver_id'].forEach(col => {
+    if (headers.indexOf(col) !== -1) {
+      Logger.log('✓ Colonna "' + col + '" già esistente, nessuna modifica.');
+      return;
+    }
+    const nextCol = sheet.getLastColumn() + 1;
+    sheet.getRange(1, nextCol).setValue(col).setFontWeight('bold');
+    Logger.log('✅ Colonna "' + col + '" aggiunta in posizione ' + nextCol + '.');
+  });
 }
 
 /**
@@ -195,6 +226,8 @@ function handleIncidentsList(payload, ctx) {
       resolved_by: res ? res.resolved_by : '',
       resolved_at: res ? res.resolved_at : '',
       evidence_url: res ? res.evidence_url : '',
+      sim: res ? res.sim : '',
+      penalized_driver_id: res ? res.penalized_driver_id : '',
       formalized: !!res,
     };
   });
@@ -231,8 +264,17 @@ function handleIncidentsList(payload, ctx) {
  * come prova per la decisione — a differenza di staff_notes, è VISIBILE
  * anche ai piloti coinvolti (non solo staff), non è una nota interna.
  *
+ * sim / penalized_driver_id: alimentano Fase 2 del VR (Punti Penalità,
+ * vedi Academy.js) — "sim" indica in quale classifica sottrarre i punti,
+ * "penalized_driver_id" indica ESPLICITAMENTE chi viene penalizzato
+ * (spesso against_driver_id, ma non è un'assunzione automatica: un
+ * reclamo può essere respinto, o la penalità può ricadere sul
+ * segnalante). Entrambi opzionali — se assenti/vuoti, l'incidente non
+ * contribuisce ai PP (comportamento di default per lo storico pre-
+ * migrazione, vedi setupIncidentResolutionsPPColumns).
+ *
  * Auth: staff.
- * @param {Object} payload - { complaint_key, status, penalty_type?, penalty_detail?, staff_notes?, evidence_url? }
+ * @param {Object} payload - { complaint_key, status, penalty_type?, penalty_detail?, staff_notes?, evidence_url?, sim?, penalized_driver_id? }
  */
 function handleIncidentsResolve(payload, ctx) {
   if (!ctx || !ctx.isStaff) return fail('Accesso riservato allo staff');
@@ -262,6 +304,8 @@ function handleIncidentsResolve(payload, ctx) {
     resolved_by: ctx.driver_id || '',
     resolved_at: now,
     evidence_url: String(payload.evidence_url || '').trim().slice(0, 500),
+    sim: String(payload.sim || '').trim(),
+    penalized_driver_id: String(payload.penalized_driver_id || '').trim(),
   };
 
   // Per l'embed Discord servono i dati della segnalazione originale

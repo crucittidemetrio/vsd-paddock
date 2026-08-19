@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useIncidents, useResolveIncident } from '../hooks/useIncidents';
+import { SIM_LIST } from '../utils/constants';
 import styles from './AdminIncidents.module.css';
 
 const STATUSES = [
@@ -84,13 +85,35 @@ function IncidentCard({ incident: inc }) {
   const [penaltyDetail, setPenaltyDetail] = useState(inc.penalty_detail || '');
   const [staffNotes, setStaffNotes] = useState(inc.staff_notes || '');
   const [evidenceUrl, setEvidenceUrl] = useState(inc.evidence_url || '');
+  const [sim, setSim] = useState(inc.sim || '');
+  // Default: se già riclassificato usa quello salvato, altrimenti assume
+  // against_driver_id (caso tipico) SOLO se è un tesserato VSD noto —
+  // resta comunque un campo esplicito e modificabile, non un'assunzione
+  // silenziosa lato backend (vedi handleIncidentsResolve).
+  const [penalizedDriverId, setPenalizedDriverId] = useState(
+    inc.penalized_driver_id || inc.against_driver_id || ''
+  );
 
   const dirty =
     status !== inc.status ||
     penaltyType !== (inc.penalty_type || '') ||
     penaltyDetail !== (inc.penalty_detail || '') ||
     staffNotes !== (inc.staff_notes || '') ||
-    evidenceUrl !== (inc.evidence_url || '');
+    evidenceUrl !== (inc.evidence_url || '') ||
+    sim !== (inc.sim || '') ||
+    penalizedDriverId !== (inc.penalized_driver_id || inc.against_driver_id || '');
+
+  // Opzioni "chi penalizzare" — solo i due piloti coinvolti in QUESTA
+  // segnalazione, e solo se risolti a un driver_id reale (matchDriverName_
+  // lato backend potrebbe non aver trovato una corrispondenza in roster).
+  const penalizedOptions = [
+    ...(inc.reporter_driver_id
+      ? [{ value: inc.reporter_driver_id, label: inc.reporter_sim + ' (segnalante)' }]
+      : []),
+    ...(inc.against_driver_id
+      ? [{ value: inc.against_driver_id, label: inc.against + ' (segnalato)' }]
+      : []),
+  ];
 
   function handleSave() {
     resolveMutation.mutate({
@@ -100,6 +123,8 @@ function IncidentCard({ incident: inc }) {
       penalty_detail: penaltyDetail,
       staff_notes: staffNotes,
       evidence_url: evidenceUrl.trim(),
+      sim,
+      penalized_driver_id: penalizedDriverId,
     });
   }
 
@@ -157,7 +182,36 @@ function IncidentCard({ incident: inc }) {
           value={penaltyDetail}
           onChange={e => setPenaltyDetail(e.target.value)}
         />
+        <select
+          className={styles.select}
+          value={sim}
+          onChange={e => setSim(e.target.value)}
+          title="Sim in cui è avvenuto — serve per sapere in quale classifica sottrarre i Punti Penalità"
+        >
+          <option value="">Sim: non specificato</option>
+          {SIM_LIST.map(s => (
+            <option key={s.id} value={s.id}>{s.name}</option>
+          ))}
+        </select>
+        <select
+          className={styles.select}
+          value={penalizedDriverId}
+          onChange={e => setPenalizedDriverId(e.target.value)}
+          title="Chi riceve la penalità — non è automatico, un reclamo può anche essere respinto"
+          disabled={penalizedOptions.length === 0}
+        >
+          <option value="">Penalizza: nessuno</option>
+          {penalizedOptions.map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
       </div>
+      {penaltyType && penaltyType !== 'nessuna' && (!sim || !penalizedDriverId) && (
+        <div className={styles.errorBox}>
+          Penalità selezionata ma sim e/o pilota penalizzato non impostati — non contribuirà ai
+          Punti Penalità finché non li compili entrambi.
+        </div>
+      )}
       <textarea
         className={styles.textarea}
         placeholder="Note staff…"

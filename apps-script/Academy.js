@@ -47,8 +47,58 @@
 // Auth: riservato ai tesserati loggati (ctx.driver_id), stesso
 // gate di reports.list — non è un endpoint pubblico.
 
+// ═══════════════════════════════════════════════════════════
+// FASE 2 — Punti Penalità (PP)
+// ═══════════════════════════════════════════════════════════
+// Letti a runtime da IncidentResolutions (Incidents.js) — NESSUNA tabella
+// DriverPenalties dedicata: stessa scelta "unica fonte di verità" già
+// usata per il PM sopra. Un incidente contribuisce ai PP solo se lo staff
+// ha compilato ESPLICITAMENTE sia "sim" che "penalized_driver_id" in fase
+// di risoluzione (vedi handleIncidentsResolve) — gli incidenti risolti
+// PRIMA dell'introduzione di questi due campi restano a 0 PP finché non
+// vengono riclassificati a mano: nessun ricalcolo retroattivo automatico,
+// per scelta esplicita (non penalizzare nessuno senza revisione).
+//
+// Mappa punti — BOZZA iniziale, calibrazione reale rimandata a Fase 4
+// come da spec (§ soglie su dati reali). Facilmente rivedibile qui.
+const PP_PENALTY_POINTS = {
+  '': 0,
+  'nessuna': 0,
+  'warning': -1,
+  'penalità lieve': -2,
+  'penalità media': -4,
+  'penalità pesante': -7,
+  'squalifica': -10,
+};
+
 /**
- * academy.ranking — classifica VR (solo PM, Fase 1) per un simulatore.
+ * Somma i PP per (sim, driver_id) da IncidentResolutions. Non scoping
+ * stagionale (stessa scelta già fatta per il PM in Fase 1) — somma su
+ * TUTTI gli incidenti risolti per quel sim.
+ * @returns {Object} driver_id → { pp, penalties_count }
+ */
+function computePenaltyPoints_(sim) {
+  const resolutions = sheetToObjects(SHEETS.INCIDENT_RESOLUTIONS);
+  const ppByDriver = {};
+  resolutions.forEach(r => {
+    const driverId = String(r.penalized_driver_id || '').trim();
+    const resSim = String(r.sim || '').trim();
+    if (!driverId || resSim !== sim) return; // non riclassificato o altro sim
+    const points = PP_PENALTY_POINTS[String(r.penalty_type || '')];
+    if (points === undefined) return; // penalty_type non mappato, ignora invece di rompere
+    if (!ppByDriver[driverId]) ppByDriver[driverId] = { pp: 0, penalties_count: 0 };
+    ppByDriver[driverId].pp += points;
+    if (points !== 0) ppByDriver[driverId].penalties_count += 1;
+  });
+  return ppByDriver;
+}
+
+/**
+ * academy.ranking — classifica VR (PM + PP, Fase 2) per un simulatore.
+ * PM = Punti Merito (posizione, giro veloce, presenza, pole — Fase 1).
+ * PP = Punti Penalità (incidenti risolti dallo staff — Fase 2, vedi sopra).
+ * Formula trasparente come Skill Index: pm e pp esposti separatamente,
+ * mai solo il totale, così chi guarda vede da cosa deriva il numero.
  *
  * @param {Object} payload - { sim: 'LMU'|'IRC'|'ACE' } — sim obbligatorio
  * @param {Object} ctx - richiede ctx.driver_id (tesserato loggato)
@@ -138,15 +188,24 @@ function handleAcademyRanking(payload, ctx) {
     return d.status === 'active';
   }
 
+  const ppByDriver = computePenaltyPoints_(sim);
+
   const ranking = Object.keys(pmByDriver)
     .filter(isCurrentTesserato_)
-    .map(driverId => ({
-      driver_id: driverId,
-      display_name: (driverMap[driverId] && driverMap[driverId].display_name) || driverId,
-      avatar_url: (driverMap[driverId] && driverMap[driverId].avatar_url) || '',
-      vr: pmByDriver[driverId].pm,
-      races: pmByDriver[driverId].races,
-    }))
+    .map(driverId => {
+      const pm = pmByDriver[driverId].pm;
+      const pp = (ppByDriver[driverId] && ppByDriver[driverId].pp) || 0;
+      return {
+        driver_id: driverId,
+        display_name: (driverMap[driverId] && driverMap[driverId].display_name) || driverId,
+        avatar_url: (driverMap[driverId] && driverMap[driverId].avatar_url) || '',
+        pm,
+        pp,
+        vr: pm + pp,
+        races: pmByDriver[driverId].races,
+        penalties_count: (ppByDriver[driverId] && ppByDriver[driverId].penalties_count) || 0,
+      };
+    })
     .sort((a, b) => b.vr - a.vr);
 
   return ok({ sim, ranking, count: ranking.length });
@@ -178,7 +237,8 @@ function testAcademyRanking() {
     }
     Logger.log('Piloti in classifica: ' + result.data.count);
     result.data.ranking.forEach((r, i) => {
-      Logger.log(`  ${i + 1}. ${r.display_name} — VR ${r.vr} (${r.races} gare)`);
+      const ppNote = r.pp !== 0 ? ` [PM ${r.pm} + PP ${r.pp}]` : '';
+      Logger.log(`  ${i + 1}. ${r.display_name} — VR ${r.vr}${ppNote} (${r.races} gare)`);
     });
   });
 }
