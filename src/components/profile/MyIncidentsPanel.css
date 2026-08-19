@@ -139,3 +139,18 @@
   color: #9aa8c7;
   font-style: italic;
 }
+
+.mip-evidence-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 8px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #00d4ff;
+  text-decoration: none;
+}
+
+.mip-evidence-link:hover {
+  text-decoration: underline;
+}

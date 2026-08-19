@@ -80,6 +80,17 @@ export default function MyIncidentsPanel({ driverId }) {
                   )}
                 </div>
               )}
+
+              {inc.evidence_url && (
+                <a
+                  href={inc.evidence_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mip-evidence-link"
+                >
+                  🎬 Prova video
+                </a>
+              )}
             </div>
           );
         })}

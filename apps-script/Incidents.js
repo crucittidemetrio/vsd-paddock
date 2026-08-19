@@ -59,7 +59,7 @@ const RECLAMO_COL = {
 
 const INCIDENT_RESOLUTION_HEADERS = [
   'complaint_key', 'status', 'penalty_type', 'penalty_detail', 'staff_notes',
-  'resolved_by', 'resolved_at',
+  'resolved_by', 'resolved_at', 'evidence_url',
 ];
 const INCIDENT_STATUSES = ['open', 'reviewing', 'closed'];
 
@@ -75,6 +75,32 @@ function setupIncidentResolutionsTab() {
   sheet.setFrozenRows(1);
   sheet.getRange(1, 1, 1, INCIDENT_RESOLUTION_HEADERS.length).setFontWeight('bold');
   Logger.log('✅ Tab "' + SHEETS.INCIDENT_RESOLUTIONS + '" creata con ' + INCIDENT_RESOLUTION_HEADERS.length + ' colonne.');
+}
+
+/**
+ * Migrazione one-shot: aggiunge la colonna "evidence_url" a una tab
+ * IncidentResolutions GIÀ ESISTENTE (creata prima che questo campo
+ * esistesse). Idempotente: se la colonna c'è già, non fa nulla.
+ * Va sempre in fondo (ultima colonna) — stesso ordine fisico atteso da
+ * INCIDENT_RESOLUTION_HEADERS, da cui NON va spostata: handleIncidentsResolve
+ * usa quell'ordine per gli append di nuove righe.
+ *
+ * Editor Apps Script → seleziona questa funzione → ▶ Esegui (una tantum).
+ */
+function setupIncidentResolutionsEvidenceColumn() {
+  const sheet = getSheet(SHEETS.INCIDENT_RESOLUTIONS);
+  if (!sheet) {
+    Logger.log('⚠️  Tab IncidentResolutions non trovata — esegui prima setupIncidentResolutionsTab().');
+    return;
+  }
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  if (headers.indexOf('evidence_url') !== -1) {
+    Logger.log('✓ Colonna "evidence_url" già esistente, nessuna modifica.');
+    return;
+  }
+  const nextCol = sheet.getLastColumn() + 1;
+  sheet.getRange(1, nextCol).setValue('evidence_url').setFontWeight('bold');
+  Logger.log('✅ Colonna "evidence_url" aggiunta in posizione ' + nextCol + '.');
 }
 
 /**
@@ -168,6 +194,7 @@ function handleIncidentsList(payload, ctx) {
       staff_notes: res ? res.staff_notes : '',
       resolved_by: res ? res.resolved_by : '',
       resolved_at: res ? res.resolved_at : '',
+      evidence_url: res ? res.evidence_url : '',
       formalized: !!res,
     };
   });
@@ -199,8 +226,13 @@ function handleIncidentsList(payload, ctx) {
  * incidents.resolve — Lo staff formalizza stato/penalità per una
  * segnalazione. Upsert per complaint_key nella tab IncidentResolutions
  * — non scrive mai sulla spreadsheet del Modulo reclamo.
+ *
+ * evidence_url: link opzionale a una clip (Twitch/YouTube/Discord) usata
+ * come prova per la decisione — a differenza di staff_notes, è VISIBILE
+ * anche ai piloti coinvolti (non solo staff), non è una nota interna.
+ *
  * Auth: staff.
- * @param {Object} payload - { complaint_key, status, penalty_type?, penalty_detail?, staff_notes? }
+ * @param {Object} payload - { complaint_key, status, penalty_type?, penalty_detail?, staff_notes?, evidence_url? }
  */
 function handleIncidentsResolve(payload, ctx) {
   if (!ctx || !ctx.isStaff) return fail('Accesso riservato allo staff');
@@ -229,6 +261,7 @@ function handleIncidentsResolve(payload, ctx) {
     staff_notes: String(payload.staff_notes || ''),
     resolved_by: ctx.driver_id || '',
     resolved_at: now,
+    evidence_url: String(payload.evidence_url || '').trim().slice(0, 500),
   };
 
   // Per l'embed Discord servono i dati della segnalazione originale

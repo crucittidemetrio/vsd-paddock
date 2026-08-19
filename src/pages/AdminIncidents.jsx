@@ -83,12 +83,14 @@ function IncidentCard({ incident: inc }) {
   const [penaltyType, setPenaltyType] = useState(inc.penalty_type || '');
   const [penaltyDetail, setPenaltyDetail] = useState(inc.penalty_detail || '');
   const [staffNotes, setStaffNotes] = useState(inc.staff_notes || '');
+  const [evidenceUrl, setEvidenceUrl] = useState(inc.evidence_url || '');
 
   const dirty =
     status !== inc.status ||
     penaltyType !== (inc.penalty_type || '') ||
     penaltyDetail !== (inc.penalty_detail || '') ||
-    staffNotes !== (inc.staff_notes || '');
+    staffNotes !== (inc.staff_notes || '') ||
+    evidenceUrl !== (inc.evidence_url || '');
 
   function handleSave() {
     resolveMutation.mutate({
@@ -97,6 +99,7 @@ function IncidentCard({ incident: inc }) {
       penalty_type: penaltyType,
       penalty_detail: penaltyDetail,
       staff_notes: staffNotes,
+      evidence_url: evidenceUrl.trim(),
     });
   }
 
@@ -161,6 +164,13 @@ function IncidentCard({ incident: inc }) {
         value={staffNotes}
         onChange={e => setStaffNotes(e.target.value)}
         rows={2}
+      />
+      <input
+        type="url"
+        className={styles.input}
+        placeholder="Link prova (clip Twitch/YouTube/Discord) — visibile ai piloti coinvolti, non è una nota interna"
+        value={evidenceUrl}
+        onChange={e => setEvidenceUrl(e.target.value)}
       />
 
       <div className={styles.footer}>
