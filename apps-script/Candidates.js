@@ -101,6 +101,8 @@ function handleCandidatesAdd(payload, ctx) {
   logAudit_(ctx, 'candidates.add', candidateId,
     'Nuovo candidato: ' + displayName + ' (fonte: ' + row.source + ')', null);
 
+  notifyNewCandidate_(row);
+
   return ok(row);
 }
 

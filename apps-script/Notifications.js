@@ -170,6 +170,59 @@ function notifyIncidentResolved_(incident) {
 }
 
 /**
+ * Notifica: nuovo candidato aggiunto alla pipeline (Candidates.js).
+ * Canale staff-only — è uno strumento di coordinamento interno tra staff,
+ * non un annuncio per i piloti. Chiamata da handleCandidatesAdd.
+ *
+ * @param {Object} candidate - riga appena creata (display_name, source, sim_preference?)
+ */
+function notifyNewCandidate_(candidate) {
+  if (!candidate || !candidate.display_name) return;
+
+  const embed = {
+    author: { name: 'VSD Paddock — Selezione' },
+    title: '📋 Nuovo candidato in pipeline',
+    description: '**' + candidate.display_name + '**' +
+                 (candidate.sim_preference ? ' · ' + candidate.sim_preference : ''),
+    color: VSD_COLORS.blue,
+    fields: [
+      { name: 'Fonte', value: candidate.source || '—', inline: true },
+    ],
+    timestamp: new Date().toISOString(),
+    footer: { text: 'Pipeline candidature · Admin' },
+    url: PADDOCK_URL + '/admin/candidates',
+  };
+
+  postToDiscordAdmin_({ embeds: [embed] });
+}
+
+/**
+ * Notifica: nuovo sponsor/lead aggiunto al CRM (Sponsors.js). Canale
+ * staff-only — informazioni di business, mai pubbliche. Distinta da
+ * notifySponsorActivated_: questa scatta alla CREAZIONE del lead (stato
+ * iniziale 'lead'), non quando la trattativa si chiude con successo.
+ *
+ * @param {Object} sponsor - riga appena creata (company_name, contact_name?, value_estimate?)
+ */
+function notifyNewSponsorLead_(sponsor) {
+  if (!sponsor || !sponsor.company_name) return;
+
+  const embed = {
+    author: { name: 'VSD Paddock — Partnership' },
+    title: '🆕 Nuovo lead sponsor',
+    description: '**' + sponsor.company_name + '**' +
+                 (sponsor.contact_name ? ' — ' + sponsor.contact_name : ''),
+    color: VSD_COLORS.blue,
+    fields: sponsor.value_estimate ? [{ name: 'Valore stimato', value: String(sponsor.value_estimate), inline: true }] : [],
+    timestamp: new Date().toISOString(),
+    footer: { text: 'CRM Sponsor · Admin' },
+    url: PADDOCK_URL + '/admin/sponsors',
+  };
+
+  postToDiscordAdmin_({ embeds: [embed] });
+}
+
+/**
  * Notifica: uno sponsor è passato allo stato 'active' (CRM sponsor).
  * Canale staff-only — informazioni di business, mai pubbliche.
  *
@@ -491,6 +544,32 @@ function test_notification() {
       color: VSD_COLORS.cyan,
       timestamp: new Date().toISOString(),
     }],
+  });
+}
+
+/**
+ * Helper test — verifica l'embed "nuovo candidato" con dati finti.
+ * Non tocca nessun foglio Google Sheets, nessun candidato reale.
+ * Dropdown function → test_notification_candidate → ▶ Esegui
+ */
+function test_notification_candidate() {
+  notifyNewCandidate_({
+    display_name: '🧪 Candidato Test',
+    sim_preference: 'LMU',
+    source: 'Google Form',
+  });
+}
+
+/**
+ * Helper test — verifica l'embed "nuovo lead sponsor" con dati finti.
+ * Non tocca nessun foglio Google Sheets, nessuno sponsor reale.
+ * Dropdown function → test_notification_sponsor_lead → ▶ Esegui
+ */
+function test_notification_sponsor_lead() {
+  notifyNewSponsorLead_({
+    company_name: '🧪 Sponsor Test SRL',
+    contact_name: 'Mario Rossi',
+    value_estimate: '500€/stagione',
   });
 }
 

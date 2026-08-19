@@ -103,6 +103,8 @@ function handleSponsorsAdd(payload, ctx) {
 
   logAudit_(ctx, 'sponsors.add', sponsorId, 'Nuovo sponsor: ' + companyName, null);
 
+  notifyNewSponsorLead_(row);
+
   return ok(row);
 }
 
