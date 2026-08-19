@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useRaces } from '../hooks/useRaces';
 import styles from './Calendar.module.css';
@@ -77,8 +77,11 @@ export default function Calendar() {
     return map;
   }, [races]);
 
+  // Ordine cronologico ascendente (più vecchia in alto, più recente in fondo):
+  // più leggibile in Lista, e permette di ancorare la vista alla gara più
+  // vicina a oggi appena si apre la pagina (vedi ListView → scroll-to-today).
   const sortedRaces = useMemo(() => {
-    return [...(races || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
+    return [...(races || [])].sort((a, b) => new Date(a.date) - new Date(b.date));
   }, [races]);
 
   const groupedByMonth = useMemo(() => {
@@ -201,13 +204,40 @@ function MonthView({ cells, racesByDate }) {
 }
 
 function ListView({ groupedByMonth }) {
-  const entries = Array.from(groupedByMonth.entries()).sort((a, b) => b[0].localeCompare(a[0]));
+  // Ascendente: mese più vecchio in alto, più recente in fondo — coerente
+  // con l'ordine cronologico di sortedRaces (vedi Calendar()).
+  const entries = Array.from(groupedByMonth.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+
+  const today = startOfDay(new Date());
+
+  // Ancora la vista alla gara più vicina a oggi (prima non-passata,
+  // essendo l'elenco ordinato in modo ascendente) appena la lista è
+  // montata, cosi l'utente non deve scorrere manualmente da tutto lo
+  // storico passato — che resta comunque raggiungibile scorrendo in su.
+  let anchorRaceId = null;
+  outer: for (const [, races] of entries) {
+    for (const r of races) {
+      if (startOfDay(new Date(r.date)) >= today) {
+        anchorRaceId = r.race_id;
+        break outer;
+      }
+    }
+  }
+
+  const anchorRef = useRef(null);
+  const hasScrolled = useRef(false);
+
+  useEffect(() => {
+    if (hasScrolled.current) return;
+    if (!anchorRaceId) return;
+    if (!anchorRef.current) return;
+    anchorRef.current.scrollIntoView({ block: 'start', behavior: 'auto' });
+    hasScrolled.current = true;
+  }, [anchorRaceId]);
 
   if (entries.length === 0) {
     return <div className={styles.empty}>Nessuna gara nel calendario.</div>;
   }
-
-  const today = startOfDay(new Date());
 
   return (
     <div className={styles.list}>
@@ -220,10 +250,12 @@ function ListView({ groupedByMonth }) {
               {races.map(r => {
                 const d = new Date(r.date);
                 const isPast = startOfDay(d) < today;
+                const isAnchor = r.race_id === anchorRaceId;
 
                 return (
                   <Link
                     key={r.race_id}
+                    ref={isAnchor ? anchorRef : null}
                     to={`/race/${r.race_id}`}
                     className={`${styles.listItem} ${isPast ? styles.listItemPast : ''}`}
                   >
