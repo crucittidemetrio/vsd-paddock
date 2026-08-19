@@ -22,10 +22,6 @@
 }
 
 .atc-menu {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 20;
   min-width: 200px;
   background: #0e1729;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -34,6 +30,16 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+}
+
+/* Renderizzato in portal su document.body (vedi AddToCalendarButton.jsx):
+   posizionamento fisso in coordinate di viewport, calcolate via JS, non
+   più relativo a .atc-wrap — necessario perché il bottone spesso vive
+   dentro contenitori con overflow:hidden (es. header "scenic" di
+   RaceDetail) che altrimenti taglierebbero il menu a tendina. */
+.atc-menu-portal {
+  position: fixed;
+  z-index: 1000;
 }
 
 .atc-menu-item {
