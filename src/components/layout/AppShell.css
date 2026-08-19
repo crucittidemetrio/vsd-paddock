@@ -33,18 +33,18 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 520px;
+  height: 560px;
   z-index: -1;
   pointer-events: none;
   background:
-    radial-gradient(ellipse 900px 420px at 18% 0%, rgba(0, 212, 255, 0.14), transparent 65%),
-    radial-gradient(ellipse 600px 320px at 85% 10%, rgba(59, 139, 255, 0.08), transparent 60%);
+    radial-gradient(ellipse 950px 460px at 18% -5%, rgba(0, 212, 255, 0.22), transparent 62%),
+    radial-gradient(ellipse 650px 360px at 88% 5%, rgba(59, 139, 255, 0.13), transparent 58%);
 }
 
 @media (max-width: 767px) {
   .app-shell-content::before {
-    height: 360px;
-    background: radial-gradient(ellipse 500px 300px at 30% 0%, rgba(0, 212, 255, 0.13), transparent 65%);
+    height: 380px;
+    background: radial-gradient(ellipse 550px 320px at 30% -5%, rgba(0, 212, 255, 0.20), transparent 62%);
   }
 }
 

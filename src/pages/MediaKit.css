@@ -77,9 +77,9 @@
   top: -200px;
   left: 50%;
   transform: translateX(-50%);
-  width: 800px;
-  height: 600px;
-  background: radial-gradient(ellipse, rgba(0, 212, 255, 0.15), transparent 70%);
+  width: 900px;
+  height: 700px;
+  background: radial-gradient(ellipse, rgba(0, 212, 255, 0.28), transparent 65%);
   pointer-events: none;
 }
 
