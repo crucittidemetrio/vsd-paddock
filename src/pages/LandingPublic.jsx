@@ -4,6 +4,7 @@ import { useDrivers } from '../hooks/useRoster';
 import { useRaces } from '../hooks/useRaces';
 import { useRecentTeamRaceResults } from '../hooks/useRaceResults';
 import { useTracks } from '../hooks/useLookups';
+import { useBestLaps } from '../hooks/useBestLaps';
 import Logo from '../components/shared/Logo';
 import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
@@ -50,6 +51,10 @@ export default function LandingPublic() {
   const { data: raceResultsData } = useRecentTeamRaceResults(200);
   const { data: tracks = [] } = useTracks();
   const { data: socialFlagsData } = useConsentSocialFlags();
+  // Solo per il banner statistiche in hero — numeri aggregati come primo
+  // colpo d'occhio "il team è vivo e attivo" per un visitatore che non
+  // si è mai loggato, ispirato alla home di togamotorsport.co.uk.
+  const { data: allLaps } = useBestLaps();
   const socialFlags = socialFlagsData?.flags || {};
   const raceResults = raceResultsData?.results || [];
 
@@ -72,6 +77,11 @@ export default function LandingPublic() {
 
   const nextRace = useMemo(() => getNextRace(races), [races]);
   const recentPodiums = useMemo(() => getRecentPodiums(raceResults, 5), [raceResults]);
+
+  const completedRaces = useMemo(
+    () => (races || []).filter(r => String(r.status || '').toLowerCase() === 'completed').length,
+    [races]
+  );
 
   if (driversLoading || racesLoading) {
     return (
@@ -128,6 +138,21 @@ export default function LandingPublic() {
             <Link to="/login" className={`${styles.btn} ${styles.btnGhost}`}>
               Accedi
             </Link>
+          </div>
+
+          <div className={styles.statBand}>
+            <div className={styles.statItem}>
+              <span className={styles.statValue}>{activeRoster.length}</span>
+              <span className={styles.statLabel}>Piloti</span>
+            </div>
+            <div className={styles.statItem}>
+              <span className={styles.statValue}>{completedRaces}</span>
+              <span className={styles.statLabel}>Gare disputate</span>
+            </div>
+            <div className={styles.statItem}>
+              <span className={styles.statValue}>{(allLaps || []).length}</span>
+              <span className={styles.statLabel}>Giri registrati</span>
+            </div>
           </div>
         </div>
       </section>
