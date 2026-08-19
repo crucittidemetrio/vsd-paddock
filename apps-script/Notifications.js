@@ -481,6 +481,104 @@ function checkAndNotifyMilestones_(driverIds) {
 }
 
 /**
+ * Notifica: "Pilota della gara" — miglior prestazione VSD nella gara
+ * appena importata (session_type 'race'). Criterio: tra i piloti VSD
+ * arrivati al traguardo (no DNF/DNS) si preferisce chi ha MENO incidenti
+ * noti (0 se disponibile), e a parità la miglior posizione normalizzata
+ * sulla dimensione reale della propria classe in QUESTA gara (stessa
+ * normalizzazione di computeFieldSizes_/SkillIndex.js, ma calcolata sulla
+ * singola gara appena importata, non su una finestra rolling di 15 gare
+ * — sono due indicatori distinti con scopi diversi, non duplicati).
+ * Premia quindi la guida pulita prima del piazzamento puro. Chiamata da
+ * handleRaceResultsImport dopo un import 'race' (LMU o iRacing — legge
+ * direttamente RaceResults già scritto, quindi format-agnostic). Fault-
+ * tolerant: try/catch, non blocca mai l'import.
+ *
+ * @param {Object} race - { race_id, race_name, sim }
+ */
+function checkAndNotifyRaceMvp_(race) {
+  try {
+    if (!race || !race.race_id) return;
+
+    const allResults = sheetToObjects(SHEETS.RACE_RESULTS);
+    const raceRows = allResults.filter(r =>
+      String(r.race_id) === String(race.race_id) &&
+      String(r.session_type || 'race').toLowerCase() === 'race'
+    );
+    if (raceRows.length === 0) return;
+
+    const fieldSizes = computeFieldSizes_(raceRows);
+
+    const vsdFinishers = raceRows.filter(r =>
+      String(r.is_vsd_driver).toUpperCase() === 'TRUE' &&
+      String(r.dnf).toUpperCase() !== 'TRUE' &&
+      String(r.dns).toUpperCase() !== 'TRUE' &&
+      Number(r.finish_position) > 0
+    );
+    if (vsdFinishers.length === 0) return;
+
+    const scored = vsdFinishers.map(r => {
+      const pos = Number(r.finish_position);
+      const fieldSize = fieldSizes[r.race_id + '__' + r.car_class] || 0;
+      const finishPct = (fieldSize >= 3)
+        ? Math.max(0, Math.min(1, 1 - (pos - 1) / (fieldSize - 1)))
+        : 0;
+      const incidents = (r.incidents !== '' && r.incidents != null && !isNaN(Number(r.incidents)))
+        ? Number(r.incidents) : null;
+      return { row: r, finishPct, incidents };
+    });
+
+    // Guida pulita prima: incidenti noti e più bassi vincono. "Incidenti
+    // sconosciuti" va in coda (non premiato né penalizzato rispetto a chi
+    // ha 0 noti, ma nemmeno preferito). A parità, miglior finishPct.
+    scored.sort((a, b) => {
+      const ai = a.incidents === null ? Infinity : a.incidents;
+      const bi = b.incidents === null ? Infinity : b.incidents;
+      if (ai !== bi) return ai - bi;
+      return b.finishPct - a.finishPct;
+    });
+
+    const mvp = scored[0];
+    if (!mvp || mvp.finishPct <= 0) return; // campo troppo piccolo per un piazzamento significativo
+
+    const driverId = mvp.row.driver_id;
+    const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
+    const driver = drivers.find(d => d.driver_id === driverId);
+    const displayName = (driver && driver.display_name) || driverId;
+
+    const cleanLine = mvp.incidents === 0 ? ' · guida pulita (0 incidenti)'
+      : (mvp.incidents != null ? ' · ' + mvp.incidents + ' incidenti' : '');
+
+    const embed = {
+      author: { name: 'VSD Paddock' },
+      title: '⭐ Pilota della gara',
+      description: '**' + displayName + '** — P' + Number(mvp.row.finish_position) +
+                   ' (' + (mvp.row.car_class || '?') + ')' + cleanLine + '\n' +
+                   (race.race_name || race.race_id),
+      color: VSD_COLORS.green,
+      timestamp: new Date().toISOString(),
+      footer: { text: 'Selezionato su piazzamento normalizzato + pulizia di guida' },
+      url: PADDOCK_URL + '/race/' + race.race_id,
+    };
+    if (hasSocialConsent_(driverId)) {
+      embed.thumbnail = { url: PADDOCK_URL + '/drivers/' + driverId + '.jpg' };
+    }
+
+    postToDiscord_({ embeds: [embed] });
+
+    // Push PERSONALE al pilota selezionato — un riconoscimento pubblico
+    // ma vale la pena che lo sappia subito anche se non ha Discord aperto.
+    sendPushNotification_([driverId], {
+      title: '⭐ Sei il Pilota della gara!',
+      body: (race.race_name || race.race_id) + ' — P' + Number(mvp.row.finish_position) + cleanLine,
+      url: PADDOCK_URL + '/race/' + race.race_id,
+    });
+  } catch (e) {
+    Logger.log('⚠️  checkAndNotifyRaceMvp_ error (non-blocking): ' + e.message);
+  }
+}
+
+/**
  * Notifica: un pilota VSD ha raggiunto un traguardo (gare/podi/vittorie).
  *
  * @param {Object} driver - record Drivers (display_name), può essere null
@@ -567,6 +665,26 @@ function test_notification_record() {
     { driver_name: '🧪 Pilota Test', sim: 'LMU', track_name: 'Circuito di Prova', lap_time_display: '1:30.000' },
     '1:31.500'
   );
+}
+
+/**
+ * Helper test — esegue checkAndNotifyRaceMvp_ su una gara REALE già
+ * importata (a differenza degli altri test_notification_*, qui non ha
+ * senso un embed finto: serve leggere RaceResults vero per calcolare il
+ * piazzamento normalizzato). Se la gara non ha risultati 'race' con
+ * piloti VSD arrivati al traguardo, non invia nulla — controlla il log.
+ * Dropdown function → test_race_mvp → ▶ Esegui (modifica TEST_RACE_ID
+ * sotto con un race_id reale prima di lanciarla).
+ */
+function test_race_mvp() {
+  const TEST_RACE_ID = 'INSERISCI_RACE_ID_REALE';
+  const races = getCachedSheetData_(SHEETS.RACES, 900);
+  const race = races.find(r => r.race_id === TEST_RACE_ID);
+  if (!race) {
+    Logger.log('⚠️  race_id non trovato: ' + TEST_RACE_ID + ' — modifica TEST_RACE_ID in test_race_mvp()');
+    return;
+  }
+  checkAndNotifyRaceMvp_(race);
 }
 
 /**
@@ -730,9 +848,14 @@ function runStintNotificationsCheck() {
 
 /**
  * Costruisce e posta il riepilogo degli ultimi 7 giorni: gare disputate,
- * podi VSD, miglior giro della settimana. Se non c'è stato nessun
- * risultato nell'ultima settimana, non invia nulla (evita digest vuoti
- * nelle settimane senza gare). Fault-tolerant: try/catch, non lancia mai.
+ * podi VSD, miglior giro della settimana, prossima gara in calendario.
+ * Se non c'è stato nessun risultato nell'ultima settimana E non c'è
+ * nessuna gara futura da annunciare, non invia nulla (evita digest vuoti
+ * nelle settimane morte). Fault-tolerant: try/catch, non lancia mai.
+ *
+ * Wave successiva: oltre al post Discord (pubblico, come prima), il
+ * digest va anche in push broadcast a tutti i piloti iscritti — è un
+ * "richiamo" pensato apposta per chi non apre Discord regolarmente.
  */
 function postWeeklyDigest_() {
   try {
@@ -746,6 +869,7 @@ function postWeeklyDigest_() {
     const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
     const driverMap = {};
     drivers.forEach(d => { driverMap[d.driver_id] = d; });
+    const activeDrivers = drivers.filter(d => d.status === 'active' && !d.removed_at);
 
     const weekResults = allResults.filter(r => {
       if (String(r.is_vsd_driver).toUpperCase() !== 'TRUE') return false;
@@ -755,8 +879,17 @@ function postWeeklyDigest_() {
       return !isNaN(d.getTime()) && d >= weekAgo && d <= now;
     });
 
-    if (weekResults.length === 0) {
-      Logger.log('📅 Digest settimanale: nessun risultato negli ultimi 7 giorni, invio saltato');
+    // Prossima gara scheduled più vicina (qualsiasi distanza futura, non
+    // solo entro la settimana) — dà un motivo di aprire l'app anche nelle
+    // settimane senza risultati recenti da mostrare.
+    const upcomingRace = races
+      .filter(r => String(r.status).toLowerCase() === 'scheduled')
+      .map(r => ({ race: r, date: parseRaceDate(r.date) }))
+      .filter(x => x.date && x.date >= now)
+      .sort((a, b) => a.date - b.date)[0];
+
+    if (weekResults.length === 0 && !upcomingRace) {
+      Logger.log('📅 Digest settimanale: nessun risultato negli ultimi 7 giorni e nessuna gara futura, invio saltato');
       return;
     }
 
@@ -772,10 +905,11 @@ function postWeeklyDigest_() {
       if (ms > 0 && (!best || ms < Number(best.best_lap_ms))) best = r;
     });
 
-    const fields = [
-      { name: 'Gare disputate', value: String(raceIds.length), inline: true },
-      { name: 'Risultati VSD', value: String(weekResults.length), inline: true },
-    ];
+    const fields = [];
+    if (weekResults.length > 0) {
+      fields.push({ name: 'Gare disputate', value: String(raceIds.length), inline: true });
+      fields.push({ name: 'Risultati VSD', value: String(weekResults.length), inline: true });
+    }
 
     if (podiums.length > 0) {
       const medals = { 1: '🥇', 2: '🥈', 3: '🥉' };
@@ -801,6 +935,23 @@ function postWeeklyDigest_() {
       });
     }
 
+    let upcomingLabel = null;
+    if (upcomingRace) {
+      const race = upcomingRace.race;
+      const allRsvps = sheetToObjects(SHEETS.RACE_RSVPS);
+      const confirmedCount = allRsvps.filter(r =>
+        r.race_id === race.race_id && String(r.status) === 'confirmed'
+      ).length;
+      const dateLabel = upcomingRace.date.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
+      upcomingLabel = (race.race_name || race.race_id) + ' — ' + dateLabel;
+      fields.push({
+        name: 'Prossima gara',
+        value: '🏁 **' + upcomingLabel + '**\n' +
+          'Confermati: ' + confirmedCount + '/' + activeDrivers.length,
+        inline: false,
+      });
+    }
+
     postToDiscord_({
       embeds: [{
         author: { name: 'VSD Paddock' },
@@ -814,7 +965,26 @@ function postWeeklyDigest_() {
       }],
     });
 
-    Logger.log('✅ Digest settimanale inviato (' + weekResults.length + ' risultati, ' + podiums.length + ' podi)');
+    // Push broadcast — stesso contenuto in forma sintetica, a tutti i
+    // piloti iscritti (sendPushNotification_(null, ...) = broadcast,
+    // stesso pattern di checkAndNotifyUpcomingRacePush_ in Push.js).
+    // Serve a riportare dentro chi non controlla Discord regolarmente.
+    const pushBodyParts = [];
+    if (weekResults.length > 0) {
+      pushBodyParts.push(raceIds.length + ' gare, ' + podiums.length + ' podi VSD');
+    }
+    if (upcomingLabel) {
+      pushBodyParts.push('Prossima: ' + upcomingLabel);
+    }
+    if (pushBodyParts.length > 0) {
+      sendPushNotification_(null, {
+        title: '📅 Riepilogo settimanale VSD Paddock',
+        body: pushBodyParts.join(' · '),
+        url: PADDOCK_URL,
+      });
+    }
+
+    Logger.log('✅ Digest settimanale inviato (' + weekResults.length + ' risultati, ' + podiums.length + ' podi, prossima gara: ' + (upcomingLabel || 'nessuna') + ')');
   } catch (e) {
     Logger.log('⚠️  postWeeklyDigest_ error: ' + e.message);
   }

@@ -605,6 +605,7 @@ function handleRaceResultsImport(payload, ctx) {
         notifyRaceImported_(race, stats);
         checkAndNotifyIracingPodiums_(jsonData, race);
         checkAndNotifyMilestones_(collectVsdDriverIdsIracing_(jsonData));
+        checkAndNotifyRaceMvp_(race);
         seedRaceReportsForRace(race.race_id);
       } catch (e) {
         Logger.log('⚠️  Notification error (non-blocking): ' + e.message);
@@ -642,6 +643,7 @@ function handleRaceResultsImport(payload, ctx) {
       if (sessionType === 'race') {
         checkAndNotifyPodiums_(race, jsonData);
         checkAndNotifyMilestones_(collectVsdDriverIdsLmu_(jsonData));
+        checkAndNotifyRaceMvp_(race);
         seedRaceReportsForRace(race.race_id);
       }
     } catch (e) {

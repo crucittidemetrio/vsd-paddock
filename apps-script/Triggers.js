@@ -77,6 +77,59 @@ function setupTriggers() {
       .create();
   });
 
+  // ─────────────────────────────────────────────────────────
+  // Le 4 funzioni seguenti (Notifications.js, SkillIndex.js,
+  // RaceRSVP.js, Push.js) erano già scritte e testate ma MAI collegate
+  // a un trigger reale — il codice esisteva ma non veniva mai eseguito
+  // in produzione, senza nessun errore visibile (stesso problema che
+  // questo file esiste apposta per evitare, vedi commento in testa).
+  // Aggiunte qui per chiudere il buco.
+  // ─────────────────────────────────────────────────────────
+
+  // Digest settimanale Discord + push — riepilogo attività ultimi 7
+  // giorni. Lunedì mattina, quando il team torna operativo dopo il
+  // weekend di gare.
+  ensureTimeTrigger('runWeeklyDigest', 'digest settimanale ogni lunedì 9:00', () => {
+    ScriptApp.newTrigger('runWeeklyDigest')
+      .timeBased()
+      .onWeekDay(ScriptApp.WeekDay.MONDAY)
+      .atHour(9)
+      .create();
+  });
+
+  // Snapshot storico Indice Skill — alimenta il grafico di andamento sul
+  // profilo pilota (skillIndex.history). Stesso giorno del digest, ora
+  // diversa per non sovrapporre le esecuzioni.
+  ensureTimeTrigger('runSkillIndexSnapshot', 'snapshot Indice Skill ogni lunedì 10:00', () => {
+    ScriptApp.newTrigger('runSkillIndexSnapshot')
+      .timeBased()
+      .onWeekDay(ScriptApp.WeekDay.MONDAY)
+      .atHour(10)
+      .create();
+  });
+
+  // Reminder RSVP mancante — push personale ai piloti attivi che non
+  // hanno ancora risposto per una gara tra 1-3 giorni. Una volta al
+  // giorno in tarda serata, fascia in cui più probabilmente il pilota
+  // controlla il telefono.
+  ensureTimeTrigger('runRsvpReminderCheck', 'reminder RSVP una volta al giorno alle 18:00', () => {
+    ScriptApp.newTrigger('runRsvpReminderCheck')
+      .timeBased()
+      .everyDays(1)
+      .atHour(18)
+      .create();
+  });
+
+  // Reminder "gara tra un'ora" — broadcast push 45-75 min prima del via.
+  // Ogni 15 minuti per intercettare sempre la finestra nonostante lo
+  // jitter dei trigger Apps Script (vedi commento in Push.js).
+  ensureTimeTrigger('runUpcomingRacePushCheck', 'reminder gara imminente ogni 15 min', () => {
+    ScriptApp.newTrigger('runUpcomingRacePushCheck')
+      .timeBased()
+      .everyMinutes(15)
+      .create();
+  });
+
   Logger.log(results.join('\n'));
   return results;
 }
