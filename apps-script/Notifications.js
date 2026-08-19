@@ -223,6 +223,36 @@ function notifyNewSponsorLead_(sponsor) {
 }
 
 /**
+ * Push PERSONALE ai piloti coinvolti in un incidente appena formalizzato
+ * dallo staff — segnalante ed accusato, se noti come tesserati VSD.
+ * Distinta da notifyIncidentResolved_ (canale staff-only, contiene anche
+ * penalty_detail per lo stewarding interno): questa va DIRETTAMENTE ai
+ * piloti, quindi il corpo del messaggio resta agli stessi campi già
+ * visibili loro in app (status, penalty_type — MAI staff_notes).
+ *
+ * @param {Object} incident - riga arricchita (reporter_driver_id?,
+ *   against_driver_id?, status, penalty_type?, track?)
+ */
+function notifyIncidentResolvedPush_(incident) {
+  if (!incident) return;
+  const statusLabels = { open: 'Aperto', reviewing: 'In revisione', closed: 'Chiuso' };
+  const targets = Array.from(new Set(
+    [incident.reporter_driver_id, incident.against_driver_id].filter(Boolean)
+  ));
+  if (targets.length === 0) return;
+
+  const body = 'Stato: ' + (statusLabels[incident.status] || incident.status) +
+    (incident.penalty_type ? ' · ' + incident.penalty_type : '') +
+    (incident.track ? ' · ' + incident.track : '');
+
+  sendPushNotification_(targets, {
+    title: '🚩 Un tuo incidente è stato aggiornato',
+    body: body,
+    url: PADDOCK_URL + '/roster',
+  });
+}
+
+/**
  * Notifica: uno sponsor è passato allo stato 'active' (CRM sponsor).
  * Canale staff-only — informazioni di business, mai pubbliche.
  *
@@ -476,6 +506,14 @@ function notifyMilestoneReached_(driver, driverId, label) {
   }
 
   postToDiscord_({ embeds: [embed] });
+
+  // Push PERSONALE al pilota interessato — un traguardo è un momento suo,
+  // merita di raggiungerlo anche se non ha Discord aperto in quel momento.
+  sendPushNotification_([driverId], {
+    title: '🎖️ Traguardo raggiunto!',
+    body: label,
+    url: PADDOCK_URL + '/roster/' + driverId,
+  });
 }
 
 /**
@@ -660,6 +698,21 @@ function _snSendStintAlert_(race, stint, driverName, minsToStart, isFirst) {
       url: PADDOCK_URL + '/race/' + race.race_id,
     }],
   });
+
+  // Push PERSONALE al pilota di questo stint, oltre all'annuncio Discord
+  // pubblico sopra — è lui/lei che deve sapere di prepararsi, non solo il
+  // canale team in generale.
+  if (stint.driver_id) {
+    const pushTitle = isFirst ? '🏁 Sei al via!' : '🔄 Il tuo stint si avvicina';
+    const pushBody = isFirst
+      ? raceName + ' — primo stint, in bocca al lupo!'
+      : raceName + ' — stint ' + order + ' tra circa ' + minsToStart + ' min.';
+    sendPushNotification_([stint.driver_id], {
+      title: pushTitle,
+      body: pushBody,
+      url: PADDOCK_URL + '/race/' + race.race_id,
+    });
+  }
 }
 
 function runStintNotificationsCheck() {

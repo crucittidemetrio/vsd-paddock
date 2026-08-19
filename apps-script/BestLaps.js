@@ -681,6 +681,14 @@ function handleLapSubmissionsApprove(payload, ctx) {
     { submission_id: submissionId, lap_id: addResult.data.lap_id }
   );
 
+  // Push PERSONALE al pilota che ha inviato il tempo — è la risposta a
+  // un'azione sua, non un annuncio di squadra: merita di saperlo subito.
+  sendPushNotification_([row[headerIdx.driver_id]], {
+    title: '✅ Best Lap approvato!',
+    body: row[headerIdx.lap_time_display] + ' — ' + row[headerIdx.track_id],
+    url: PADDOCK_URL + '/laps',
+  });
+
   return ok({
     submission_id: submissionId,
     lap_id: addResult.data.lap_id,
@@ -733,6 +741,15 @@ function handleLapSubmissionsReject(payload, ctx) {
       (payload.review_note ? ': ' + payload.review_note : ''),
     { submission_id: submissionId, review_note: payload.review_note || '' }
   );
+
+  // Push PERSONALE — stesso principio dell'approvazione: è una risposta
+  // diretta a un'azione del pilota, non un annuncio pubblico.
+  sendPushNotification_([row[headerIdx.driver_id]], {
+    title: '❌ Best Lap non approvato',
+    body: row[headerIdx.lap_time_display] + ' — ' + row[headerIdx.track_id] +
+      (payload.review_note ? ': ' + payload.review_note : ''),
+    url: PADDOCK_URL + '/laps',
+  });
 
   return ok({ submission_id: submissionId, evidence_url: row[headerIdx.evidence_url] });
 }

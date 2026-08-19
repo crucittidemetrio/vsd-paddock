@@ -280,6 +280,7 @@ function handleIncidentsResolve(payload, ctx) {
       sheet.getRange(i + 1, 1, 1, newRow.length).setValues([newRow]);
       logAudit_(ctx, 'incidents.resolve', complaintKey, 'Incidente aggiornato: stato → ' + status, null);
       notifyIncidentResolved_({ ...complaintContext, ...row });
+      notifyIncidentResolvedPush_({ ...complaintContext, ...row });
       return ok(row);
     }
   }
@@ -287,5 +288,6 @@ function handleIncidentsResolve(payload, ctx) {
   sheet.appendRow(INCIDENT_RESOLUTION_HEADERS.map(h => row[h]));
   logAudit_(ctx, 'incidents.resolve', complaintKey, 'Incidente formalizzato: stato → ' + status, null);
   notifyIncidentResolved_({ ...complaintContext, ...row });
+  notifyIncidentResolvedPush_({ ...complaintContext, ...row });
   return ok(row);
 }
