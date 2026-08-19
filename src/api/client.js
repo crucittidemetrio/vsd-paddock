@@ -68,6 +68,7 @@ export const api = {
   roster: {
     list: (filters = {}) => call('roster.list', { filters }),
     get: (driver_id) => call('roster.get', { driver_id }),
+    updateSelf: (payload) => call('roster.updateSelf', payload),
   },
 
   presence: {

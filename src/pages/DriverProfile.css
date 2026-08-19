@@ -103,6 +103,20 @@
   margin-top: var(--sp-2);
 }
 
+.hero-instagram {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: var(--sp-2);
+  color: var(--vsd-cyan);
+  font-size: var(--fs-sm);
+  text-decoration: none;
+}
+
+.hero-instagram:hover {
+  text-decoration: underline;
+}
+
 .hero-tags {
   display: flex;
   flex-wrap: wrap;

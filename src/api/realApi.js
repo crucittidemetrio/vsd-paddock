@@ -124,6 +124,15 @@ async function rosterGetAdapter(payload, token) {
 }
 
 /**
+ * Frontend: roster.updateSelf({ bio?, instagram? }) → { driver_id, updated: [...] }
+ */
+async function rosterUpdateSelfAdapter(payload, token) {
+  const res = await postToBackend('roster.updateSelf', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
  * Frontend: presence.heartbeat() → { alive: true }
  * Backend:  presence.heartbeat({}) → stesso shape
  */
@@ -195,6 +204,8 @@ export async function callApi(action, payload = {}) {
         return await rosterListAdapter(payload, token);
       case 'roster.get':
         return await rosterGetAdapter(payload, token);
+      case 'roster.updateSelf':
+        return await rosterUpdateSelfAdapter(payload, token);
       case 'presence.heartbeat':
         return await presenceHeartbeatAdapter(payload, token);
       case 'presence.online':

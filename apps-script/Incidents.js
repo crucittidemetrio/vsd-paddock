@@ -133,11 +133,18 @@ function readReclamiRows_() {
  * derivato: 'closed' se il Giudizio DG è già compilato (verdetto
  * storico, mai formalizzato in stato/penalità strutturati), altrimenti
  * 'open'.
- * Auth: staff.
+ *
+ * Auth: staff vede TUTTO il registro. Un pilota loggato (non staff) vede
+ * SOLO le segnalazioni che lo riguardano — come parte segnalante o come
+ * parte segnalata — mai quelle tra altri due piloti. Su questa vista
+ * ridotta i campi `staff_notes` (deliberazione interna) e
+ * `reporter_discord` restano nascosti, anche quando il pilota è lui
+ * stesso il segnalante.
+ *
  * @param {Object} payload - { status? }
  */
 function handleIncidentsList(payload, ctx) {
-  if (!ctx || !ctx.isStaff) return fail('Accesso riservato allo staff');
+  if (!ctx || !ctx.driver_id) return fail('Auth richiesto');
 
   let complaints;
   try {
@@ -164,6 +171,15 @@ function handleIncidentsList(payload, ctx) {
       formalized: !!res,
     };
   });
+
+  if (!ctx.isStaff) {
+    incidents = incidents
+      .filter(i => i.reporter_driver_id === ctx.driver_id || i.against_driver_id === ctx.driver_id)
+      .map(i => {
+        const { staff_notes, reporter_discord, ...visible } = i;
+        return visible;
+      });
+  }
 
   const statusFilter = payload && payload.status;
   if (statusFilter) incidents = incidents.filter(i => i.status === statusFilter);

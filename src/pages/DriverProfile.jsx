@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { useConsentedDriverPhoto } from '../hooks/useConsent';
+import { useConsentedDriverPhoto, useConsentSocialFlags } from '../hooks/useConsent';
 import { useDriver } from '../hooks/useRoster';
 import { useBestLaps } from '../hooks/useBestLaps';
 import { useRaces, useReports } from '../hooks/useRaces';
@@ -20,6 +20,8 @@ import SkillIndexHistoryChart from '../components/profile/SkillIndexHistoryChart
 import TrackPhotoBackdrop from '../components/shared/TrackPhotoBackdrop';
 import CompanionTokenPanel from '../components/profile/CompanionTokenPanel';
 import PushNotificationsPanel from '../components/profile/PushNotificationsPanel';
+import EditProfilePanel from '../components/profile/EditProfilePanel';
+import MyIncidentsPanel from '../components/profile/MyIncidentsPanel';
 import { ROLES } from '../utils/constants';
 import { formatTrack, formatCar, formatDate } from '../utils/format';
 import './DriverProfile.css';
@@ -34,6 +36,8 @@ export default function DriverProfile() {
 
   const { data: driver, isLoading, error } = useDriver(driverId);
   const photoUrl = useConsentedDriverPhoto(driverId);
+  const { data: socialFlagsData } = useConsentSocialFlags();
+  const socialFlags = socialFlagsData?.flags || {};
   const { data: laps } = useBestLaps({ driver_id: driverId });
   const { data: reports } = useReports({ driver_id: driverId });
   const { data: tracks = [] } = useTracks();
@@ -316,6 +320,16 @@ export default function DriverProfile() {
               <div className="hero-realname">{driver.real_name}</div>
             )}
             {driver.bio && <p className="hero-bio">{driver.bio}</p>}
+            {driver.instagram && socialFlags[driver.driver_id] && (
+              <a
+                href={`https://instagram.com/${driver.instagram}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="hero-instagram"
+              >
+                📷 @{driver.instagram}
+              </a>
+            )}
 
             <div className="hero-tags">
               <div className="tags-group">
@@ -345,8 +359,10 @@ export default function DriverProfile() {
         </div>
       </div>
 
+      {isOwnProfile && <EditProfilePanel driver={driver} />}
       {isOwnProfile && <PushNotificationsPanel />}
       {isOwnProfile && <CompanionTokenPanel />}
+      {isOwnProfile && <MyIncidentsPanel driverId={driverId} />}
 
       {/* STATS */}
       <div className="stats-grid">

@@ -1,0 +1,141 @@
+/* MyIncidentsPanel.css — "I miei incidenti" sul proprio profilo */
+
+.mip-section {
+  margin-top: 1.5rem;
+}
+
+.mip-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 0.35rem;
+}
+
+.mip-title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #00d4ff;
+  margin: 0;
+}
+
+.mip-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  color: #6b7a99;
+}
+
+.mip-desc {
+  font-size: 0.82rem;
+  color: #9aa8c7;
+  line-height: 1.5;
+  margin: 0 0 0.9rem 0;
+  max-width: 640px;
+}
+
+.mip-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.mip-card {
+  border: 1px solid rgba(154, 168, 199, 0.15);
+  border-left-width: 3px;
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  background: rgba(6, 13, 31, 0.5);
+}
+
+.mip-status-open { border-left-color: #f5a623; }
+.mip-status-reviewing { border-left-color: #00d4ff; }
+.mip-status-closed { border-left-color: #22c55e; }
+
+.mip-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+
+.mip-role {
+  font-size: 0.72rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.mip-role-reporter { color: #9aa8c7; }
+.mip-role-accused { color: #f5a623; }
+
+.mip-status-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.mip-status-badge-open { background: rgba(245, 166, 35, 0.15); color: #f5a623; }
+.mip-status-badge-reviewing { background: rgba(0, 212, 255, 0.15); color: #00d4ff; }
+.mip-status-badge-closed { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
+
+.mip-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 0.85rem;
+  color: #e8eaf6;
+  margin-bottom: 4px;
+}
+
+.mip-meta-secondary {
+  font-size: 0.75rem;
+  color: #6b7a99;
+}
+
+.mip-vs {
+  font-weight: 600;
+}
+
+.mip-arrow {
+  color: #6b7a99;
+  font-weight: 400;
+}
+
+.mip-tag {
+  font-size: 0.7rem;
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: rgba(154, 168, 199, 0.1);
+  color: #9aa8c7;
+}
+
+.mip-description {
+  font-size: 0.82rem;
+  color: #c5d0e6;
+  line-height: 1.5;
+  margin-top: 6px;
+}
+
+.mip-verdict {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid rgba(154, 168, 199, 0.1);
+}
+
+.mip-penalty {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #f5a623;
+}
+
+.mip-penalty-text {
+  font-size: 0.8rem;
+  color: #9aa8c7;
+  font-style: italic;
+}
