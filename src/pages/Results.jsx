@@ -4,11 +4,14 @@ import { useTracks, useCars } from '../hooks/useBestLaps';
 import { useRaceResults } from '../hooks/useRaceResults';
 import { useRaces } from '../hooks/useRaces';
 import { useDrivers } from '../hooks/useRoster';
+import { useAuth } from '../hooks/useAuth';
+import { useShowExDrivers } from '../hooks/useShowExDrivers';
 import SimBadge from '../components/shared/SimBadge';
 import LapTime from '../components/shared/LapTime';
 import Avatar from '../components/shared/Avatar';
 import { useConsentSocialFlags } from '../hooks/useConsent';
 import { resolvePhotoUrl } from '../utils/driverPhotos';
+import { isActiveDriver } from '../utils/driverStatus';
 import { SIM_LIST } from '../utils/constants';
 import { formatTrack } from '../utils/format';
 import './BestLaps.css';
@@ -20,19 +23,25 @@ const SEASON_OPTIONS = [
 ];
 
 export default function Results() {
+  const { isAdmin } = useAuth();
   const [seasonFilter, setSeasonFilter] = useState('season2026');
   const [simFilter, setSimFilter] = useState('all');
   const [trackFilter, setTrackFilter] = useState('all');
   const [raceClassFilter, setRaceClassFilter] = useState('all');
+  const [showExVsd, toggleShowExVsd] = useShowExDrivers();
 
   const filters = {
     sim: simFilter,
     track_id: trackFilter,
     race_class: raceClassFilter,
     season: seasonFilter,
+    includeExVsd: isAdmin && showExVsd,
   };
 
-  const { data: drivers } = useDrivers();
+  // includeRemoved:true — serve il roster completo (anche ex-VSD) per
+  // poter mostrare nome/avatar quando l'admin rivela i loro risultati
+  // col toggle sotto, stesso pattern di BestLaps.jsx.
+  const { data: drivers } = useDrivers({ includeRemoved: true });
   const { data: tracks } = useTracks();
   const { data: cars } = useCars();
 
@@ -102,6 +111,17 @@ export default function Results() {
             </button>
           ))}
         </div>
+
+        {isAdmin && (
+          <button
+            type="button"
+            className={`season-btn ${showExVsd ? 'is-active' : ''}`}
+            onClick={toggleShowExVsd}
+            title="Di default i risultati degli ex piloti VSD sono nascosti dai confronti — solo tu puoi rivelarli"
+          >
+            {showExVsd ? '👁 Ex piloti visibili' : '🚫 Ex piloti nascosti'}
+          </button>
+        )}
       </div>
 
       <div className="laps-filters">
@@ -182,6 +202,10 @@ function RaceResultsView({ filters, driverMap, tracks }) {
       if (filters.sim !== 'all' && r.sim !== filters.sim) return false;
       if (filters.track_id !== 'all' && r.track_id !== filters.track_id) return false;
       if (filters.race_class !== 'all' && r.car_class !== filters.race_class) return false;
+      // Ex-VSD nascosti di default (stesso criterio di BestLaps.jsx/TeamRecords):
+      // i piloti attuali si confrontano tra compagni, non con chi ha lasciato
+      // il team. Toggle admin-only per rivelarli, mai dati cancellati.
+      if (!filters.includeExVsd && !isActiveDriver(driverMap[r.driver_id])) return false;
       return true;
     });
     return filtered.sort((a, b) => {
@@ -190,7 +214,7 @@ function RaceResultsView({ filters, driverMap, tracks }) {
       if (da !== db) return db.localeCompare(da);
       return String(b.race_id || '').localeCompare(String(a.race_id || ''));
     });
-  }, [data, filters]);
+  }, [data, filters, driverMap]);
 
   if (isLoading) return <Prompt text="Caricamento…" />;
   if (isError) return <Prompt text={`Errore: ${error?.message || 'sconosciuto'}`} />;
