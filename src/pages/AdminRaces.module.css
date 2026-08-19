@@ -34,7 +34,8 @@
 .table tbody td { padding: 0.6rem; border-bottom: 1px solid #131e33; vertical-align: middle; }
 .table tbody tr:hover { background: rgba(59, 139, 255, 0.05); }
 
-.colId { font-family: 'JetBrains Mono', monospace; color: #00d4ff; font-weight: 700; white-space: nowrap; }
+.colId { font-family: 'JetBrains Mono', monospace; color: #5a6b8c; font-size: 0.75rem; white-space: nowrap; }
+.colName { color: #fff; font-weight: 700; }
 .colDate { font-family: 'JetBrains Mono', monospace; color: #c5d0e6; white-space: nowrap; }
 .colDur { font-family: 'JetBrains Mono', monospace; color: #7d8aa6; }
 

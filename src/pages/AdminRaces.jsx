@@ -112,7 +112,7 @@ export default function AdminRaces() {
           <table className={styles.table}>
             <thead>
               <tr>
-                <th>ID</th><th>Nome</th><th>Sim</th><th>Data</th>
+                <th>Nome</th><th>ID</th><th>Sim</th><th>Data</th>
                 <th>Durata</th><th>Formato</th><th>Stato</th><th>Azioni</th>
               </tr>
             </thead>
@@ -121,8 +121,8 @@ export default function AdminRaces() {
                 <tr><td colSpan={8} className={styles.empty}>Nessuna gara. Crea la prima con "+ Crea gara".</td></tr>
               ) : sortedRaces.map(r => (
                 <tr key={r.race_id}>
+                  <td className={styles.colName}>{r.race_name}</td>
                   <td className={styles.colId}>{r.race_id}</td>
-                  <td>{r.race_name}</td>
                   <td>{r.sim}</td>
                   <td className={styles.colDate}>{fmtDate(r.date)}</td>
                   <td className={styles.colDur}>{r.duration_minutes ? `${r.duration_minutes}'` : '—'}</td>
