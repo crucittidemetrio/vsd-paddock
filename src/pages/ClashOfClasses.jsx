@@ -41,10 +41,16 @@ const CLASSES = [
 ];
 
 const CALENDAR = [
-  { round: 1, circuit: 'Silverstone Circuit', nation: 'Regno Unito', note: 'Apertura stagione' },
-  { round: 2, circuit: 'Autodromo di Imola', nation: 'Italia', note: 'Round di casa' },
-  { round: 3, circuit: 'Spa-Francorchamps', nation: 'Belgio', note: 'Finale — Trofeo delle Classi' },
+  { round: 1, circuit: 'Silverstone Circuit', nation: 'Regno Unito', note: 'Apertura stagione', date: '2026-09-20' },
+  { round: 2, circuit: 'Autodromo di Imola', nation: 'Italia', note: 'Round di casa', date: '2026-10-04' },
+  { round: 3, circuit: 'Spa-Francorchamps', nation: 'Belgio', note: 'Finale — Trofeo delle Classi', date: '2026-10-18' },
 ];
+
+function formatClashDate_(iso) {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString('it-IT', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  });
+}
 
 const FORMAT = [
   { label: 'Prove Libere', value: '10\'', detail: 'Set-up libero, carburante e gomme a scelta' },
@@ -153,7 +159,7 @@ export default function ClashOfClasses() {
                 <span>{r.nation}</span>
                 <span className={styles.calendarNoteTag}>{r.note}</span>
               </div>
-              <div className={styles.calendarDate}>📅 Data da definire</div>
+              <div className={styles.calendarDate}>📅 {formatClashDate_(r.date)}</div>
             </div>
           ))}
         </div>
