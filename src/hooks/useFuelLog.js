@@ -26,3 +26,25 @@ export function useFuelSummary(raceId, carNumber, targetLaps) {
     staleTime: 10 * 1000,
   });
 }
+
+/**
+ * useMySession — risolve la sessione carburante personale del pilota
+ * loggato SENZA nessun ID digitato a mano: il backend riconosce chi sei
+ * dal token (fuel.mySession, vedi FuelLog.js) e restituisce l'ultimo
+ * race_id/car_number auto-generato dal companion in modalità sessione
+ * personale (companion/fuel_bridge.py, config.json con race_id vuoto).
+ *
+ * Usata SOLO da FuelEnergy.jsx (pagina personale) — AdminRaceStints
+ * resta su race_id di calendario + car_number esplicito, invariato.
+ *
+ * Stesso ritmo di polling di useFuelSummary: pensata per essere
+ * guardata mentre la sessione è in corso, non solo in pianificazione.
+ */
+export function useMySession() {
+  return useQuery({
+    queryKey: ['fuel', 'mySession'],
+    queryFn: () => api.fuel.mySession(),
+    refetchInterval: 15 * 1000,
+    staleTime: 10 * 1000,
+  });
+}

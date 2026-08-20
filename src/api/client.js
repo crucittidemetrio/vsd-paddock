@@ -282,6 +282,7 @@ endurance: {
       logSample: (payload) => call('fuel.logSample', payload),
       summary: (race_id, car_number, opts = {}) =>
         call('fuel.summary', { race_id, car_number, ...opts }),
+      mySession: () => call('fuel.mySession', {}),
     },
 };
 

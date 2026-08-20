@@ -26,6 +26,14 @@ const FUEL_LOG_HEADERS = [
   'virtual_energy_pct',
   'source',
   'created_at',
+  // Wave: sessioni personali auto-rilevate — track_name/vehicle_name
+  // letti dalla stessa shared memory di fuel/lap (nessun costo extra),
+  // speed_* aggregati per giro dal companion (min/max/media km/h).
+  'track_name',
+  'vehicle_name',
+  'speed_min_kmh',
+  'speed_max_kmh',
+  'speed_avg_kmh',
 ];
 
 function setupFuelLogTab() {

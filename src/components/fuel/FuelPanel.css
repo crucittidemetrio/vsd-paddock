@@ -16,6 +16,13 @@
   margin-bottom: 0.85rem;
 }
 
+.fp-track {
+  text-transform: none;
+  font-weight: 500;
+  color: #7a8aa8;
+  letter-spacing: normal;
+}
+
 .fp-title {
   font-family: 'Rajdhani', sans-serif;
   font-size: 1.1rem;

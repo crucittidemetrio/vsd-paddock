@@ -19,11 +19,15 @@ function formatLapTimeS(s) {
 /**
  * FuelPanel — consumo medio ed autonomia stimata, calcolati da
  * fuel.summary sui campioni inviati dal companion app
- * (companion/fuel_bridge.py) ad ogni giro completato.
+ * (companion/fuel_bridge.py) ad ogni giro completato. Mostra anche
+ * pista/vettura auto-rilevate (latest.track_name/vehicle_name) e
+ * velocità min/max/media di sessione (data.speed), se il companion le
+ * manda — tutti opzionali, retrocompatibile con companion più vecchi.
  *
  * Riusato sia in Admin → Gestione stint (scopato alla vettura attiva
  * di una gara ufficiale) sia nella pagina pilota /carburante-energia
- * (scopato a un id sessione libero, gara o test).
+ * (scopato a una sessione personale auto-rilevata da fuel.mySession,
+ * nessun id digitato).
  *
  * Polling ogni 15s: pensato per essere guardato DURANTE la sessione,
  * non solo in fase di pianificazione.
@@ -57,6 +61,14 @@ export default function FuelPanel({ raceId, carNumber, plannedEndTime = null }) 
   const latest = data?.latest || null;
   const fuel = data?.fuel || null;
   const energy = data?.energy || null;
+  const speed = data?.speed || null;
+
+  // Preferiamo il nome vettura auto-rilevato dal companion (stessa
+  // shared memory di fuel/lap) al numero digitato/risolto — più leggibile
+  // e disponibile anche nelle sessioni personali dove carNumber è solo
+  // un segnaposto interno ("SOLO"). Fallback al vecchio comportamento
+  // se un companion non aggiornato non lo manda ancora.
+  const headerLabel = latest?.vehicle_name ? latest.vehicle_name : `Vettura #${carNumber}`;
 
   // Giri residui calcolati da fine stint pianificata + tempo medio sul
   // giro osservato in questa sessione — solo se entrambi disponibili.
@@ -116,7 +128,10 @@ export default function FuelPanel({ raceId, carNumber, plannedEndTime = null }) 
   return (
     <section className="fp-section">
       <div className="fp-header">
-        <h2 className="fp-title">Carburante / Energia — Vettura #{carNumber}</h2>
+        <h2 className="fp-title">
+          Carburante / Energia — {headerLabel}
+          {latest?.track_name && <span className="fp-track"> · {latest.track_name}</span>}
+        </h2>
         {data?.live && <span className="fp-live-badge">● live</span>}
         {isLoading && <span className="fp-stale">aggiornamento…</span>}
       </div>
@@ -227,6 +242,23 @@ export default function FuelPanel({ raceId, carNumber, plannedEndTime = null }) 
                   </div>
                 </div>
               )}
+            </>
+          )}
+
+          {speed && (
+            <>
+              <div className="fp-stat">
+                <div className="fp-stat-label">Velocità min</div>
+                <div className="fp-stat-value">{speed.session_min_kmh.toFixed(0)} km/h</div>
+              </div>
+              <div className="fp-stat">
+                <div className="fp-stat-label">Velocità media</div>
+                <div className="fp-stat-value">{speed.session_avg_kmh.toFixed(0)} km/h</div>
+              </div>
+              <div className="fp-stat">
+                <div className="fp-stat-label">Velocità max</div>
+                <div className="fp-stat-value">{speed.session_max_kmh.toFixed(0)} km/h</div>
+              </div>
             </>
           )}
         </div>

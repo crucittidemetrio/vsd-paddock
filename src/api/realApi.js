@@ -408,6 +408,8 @@ export async function callApi(action, payload = {}) {
         return await fuelLogSampleAdapter(payload, token);
       case 'fuel.summary':
         return await fuelSummaryAdapter(payload, token);
+      case 'fuel.mySession':
+        return await fuelMySessionAdapter(payload, token);
       case 'landing.data':
         return await landingDataAdapter(payload, token);
       case 'consent.status':
@@ -1293,6 +1295,9 @@ async function fuelLogSampleAdapter(payload, token) {
 }
 async function fuelSummaryAdapter(payload, token) {
   return await postToBackend('fuel.summary', payload || {}, token);
+}
+async function fuelMySessionAdapter(payload, token) {
+  return await postToBackend('fuel.mySession', payload || {}, token);
 }
 
 /**

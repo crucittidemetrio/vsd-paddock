@@ -16,8 +16,15 @@ Setup (pilota, nessuna modifica manuale di file richiesta):
      token/race_id/car_number direttamente nel terminale e li salva da
      solo in config.json accanto allo script — non serve editare JSON
      a mano. Le volte successive parte diretto, senza richieste.
+     L'ID sessione è OPZIONALE: lasciato vuoto, lo script gira in
+     "modalità personale" — genera da solo una nuova sessione ogni
+     volta che passano 30 minuti senza campioni, e la pagina
+     /carburante-energia del sito la trova in automatico (basta essere
+     loggati, nessun ID da copiare). Comportamento invariato se invece
+     si digita un race_id (gara ufficiale o test con etichetta fissa).
   3. Lancia Le Mans Ultimate, entra in pista — i campioni partono da
-     soli ad ogni cambio giro. Ctrl+C per fermare.
+     soli ad ogni cambio giro (comprese velocità min/max/media del giro
+     e traccia/vettura rilevate in automatico). Ctrl+C per fermare.
 
   (config.example.json resta disponibile per chi preferisce compilare
   il file a mano invece di rispondere alle domande.)
@@ -71,6 +78,15 @@ RECONNECT_INTERVAL_S = 5.0
 # medio (quello resta legato al campione per-giro, vedi post_sample).
 LIVE_PING_INTERVAL_S = 15.0
 
+# Modalità sessione personale (race_id vuoto in config.json): dopo
+# questo gap di inattività si apre una nuova sessione locale con un
+# nuovo race_id auto-generato. DEVE combaciare con
+# FUEL_MY_SESSION_MAX_AGE_MS lato backend (FuelLog.js) — è la soglia
+# che fuel.mySession usa per decidere se una sessione è ancora "attiva":
+# se le due soglie divergessero, il sito potrebbe considerare chiusa
+# una sessione che il companion pensa ancora aperta (o viceversa).
+SOLO_SESSION_GAP_S = 30 * 60.0
+
 # URL pubblico del backend Apps Script — lo stesso già usato dal
 # frontend (VITE_API_URL), non è un segreto: è l'endpoint a cui il
 # browser di ogni pilota manda già richieste normalmente. Tenerlo qui
@@ -95,13 +111,20 @@ def run_setup_wizard() -> dict:
     while not token:
         token = input("   Il token è obbligatorio, riprova: ").strip()
 
-    race_id = input("2) ID sessione (es. TEST-monza-06-08, oppure il race_id di una gara ufficiale): ").strip()
-    while not race_id:
-        race_id = input("   L'ID sessione è obbligatorio, riprova: ").strip()
+    race_id = input(
+        "2) ID sessione — lascia VUOTO e premi invio per una sessione personale\n"
+        "   (il sito la trova da solo, nessun ID da digitare/copiare). Scrivi un\n"
+        "   valore solo per il race_id di una gara ufficiale o un'etichetta di\n"
+        "   test fissa da condividere con qualcun altro: "
+    ).strip()
 
-    car_number = input("3) Numero della tua vettura in questa sessione (es. 7): ").strip()
-    while not car_number:
-        car_number = input("   Il numero vettura è obbligatorio, riprova: ").strip()
+    if race_id:
+        car_number = input("3) Numero della tua vettura in questa sessione (es. 7): ").strip()
+        while not car_number:
+            car_number = input("   Il numero vettura è obbligatorio, riprova: ").strip()
+    else:
+        car_number = ""
+        print("   → Modalità sessione personale: nessun numero vettura da inserire.")
 
     cfg = {
         "api_url": DEFAULT_API_URL,
@@ -124,11 +147,16 @@ def load_config() -> dict:
         return run_setup_wizard()
     with open(CONFIG_PATH, "r", encoding="utf-8") as f:
         cfg = json.load(f)
-    required = ["api_url", "token", "race_id", "car_number"]
+    # race_id/car_number sono opzionali: vuoti/assenti = modalità
+    # sessione personale (vedi SOLO_SESSION_GAP_S e current_ids() in
+    # main()). Solo api_url/token restano obbligatori.
+    required = ["api_url", "token"]
     missing = [k for k in required if not cfg.get(k)]
     if missing:
         log.error("config.json incompleto, mancano: %s", ", ".join(missing))
         sys.exit(1)
+    cfg.setdefault("race_id", "")
+    cfg.setdefault("car_number", "")
     return cfg
 
 
@@ -220,6 +248,20 @@ def post_live_async(cfg: dict, payload: dict) -> None:
     threading.Thread(target=post_live, args=(cfg, payload), daemon=True).start()
 
 
+def _decode_name(raw) -> str:
+    """Decodifica un campo char[] della shared memory (mTrackName,
+    mVehicleName) in stringa Python pulita. La shared memory riempie il
+    buffer fisso con byte nulli di padding dopo la stringa vera — si
+    tronca al primo \\x00 prima di decodificare, altrimenti si porta
+    dietro padding invisibile che romperebbe confronti/display."""
+    if not raw:
+        return ""
+    try:
+        return raw.split(b"\x00", 1)[0].decode("utf-8", errors="replace").strip()
+    except Exception:  # noqa: BLE001 — un nome illeggibile non deve mai far crashare il loop
+        return ""
+
+
 def connect() -> SimInfo:
     """Prova ad aprire la shared memory finché non è disponibile.
     Non serve che LMU sia già avviato: se il gioco non ha ancora
@@ -239,14 +281,41 @@ def connect() -> SimInfo:
 
 def main() -> None:
     cfg = load_config()
-    log.info(
-        "VSD Paddock Fuel Bridge — gara %s, vettura #%s",
-        cfg["race_id"], cfg["car_number"],
-    )
+    solo_mode = not cfg.get("race_id")
+    if solo_mode:
+        log.info("VSD Paddock Fuel Bridge — modalità sessione personale (nessun ID richiesto)")
+    else:
+        log.info(
+            "VSD Paddock Fuel Bridge — gara %s, vettura #%s",
+            cfg["race_id"], cfg["car_number"],
+        )
 
     sim = connect()
     last_sent_lap = None
     last_live_sent_ts = 0.0
+    # Velocità (km/h) accumulate ad ogni poll durante il giro in corso,
+    # svuotate e ridotte a min/max/media quando il giro cambia — vedi
+    # sotto, subito prima di costruire il payload del campione per-giro.
+    lap_speed_samples = []
+
+    # Stato "modalità personale": race_id generato in automatico,
+    # rinnovato dopo SOLO_SESSION_GAP_S secondi di inattività — stessa
+    # soglia di FUEL_MY_SESSION_MAX_AGE_MS lato backend (fuel.mySession).
+    # In modalità normale (race_id già in config.json) questi valori
+    # non vengono mai letti.
+    solo_race_id = None
+    solo_last_active_ts = 0.0
+
+    def current_ids():
+        nonlocal solo_race_id, solo_last_active_ts
+        if not solo_mode:
+            return cfg["race_id"], cfg["car_number"]
+        now_ts = time.time()
+        if solo_race_id is None or (now_ts - solo_last_active_ts) > SOLO_SESSION_GAP_S:
+            solo_race_id = f"SOLO-{int(now_ts)}"
+            log.info("Nuova sessione personale: %s", solo_race_id)
+        solo_last_active_ts = now_ts
+        return solo_race_id, "SOLO"
 
     while True:
         try:
@@ -255,6 +324,7 @@ def main() -> None:
             if not tel_data.playerHasVehicle:
                 # Non in pista (menu, box, replay) — niente da mandare.
                 last_sent_lap = None
+                lap_speed_samples = []
                 time.sleep(POLL_INTERVAL_S)
                 continue
 
@@ -265,27 +335,59 @@ def main() -> None:
             fuel_remaining = car.mFuel
             fuel_capacity = car.mFuelCapacity
             virtual_energy_fraction = car.mVirtualEnergy  # 0.0–1.0, solo classi ibride
+            track_name = _decode_name(car.mTrackName)
+            vehicle_name = _decode_name(car.mVehicleName)
 
             # La shared memory può restituire una lettura "strappata"
             # mentre il gioco scrive in contemporanea — scarta valori
             # assurdi piuttosto che loggare spazzatura.
             sane = fuel_capacity > 0 and 0 <= fuel_remaining <= fuel_capacity * 1.05
 
+            speed_kmh = None
+            if sane:
+                vel = car.mLocalVel
+                speed_kmh = (vel.x ** 2 + vel.y ** 2 + vel.z ** 2) ** 0.5 * 3.6
+
             if sane and lap_number != last_sent_lap:
+                race_id, car_number = current_ids()
+
+                # min/max/media accumulati DURANTE il giro appena
+                # concluso (last_sent_lap) — presi PRIMA di azzerare
+                # l'accumulatore per il nuovo giro appena iniziato.
+                speed_min = speed_max = speed_avg = None
+                if lap_speed_samples:
+                    speed_min = min(lap_speed_samples)
+                    speed_max = max(lap_speed_samples)
+                    speed_avg = sum(lap_speed_samples) / len(lap_speed_samples)
+                lap_speed_samples = []
+
                 payload = {
-                    "race_id": cfg["race_id"],
-                    "car_number": cfg["car_number"],
+                    "race_id": race_id,
+                    "car_number": car_number,
                     "lap_number": lap_number,
                     "fuel_remaining_l": round(fuel_remaining, 2),
                     "fuel_capacity_l": round(fuel_capacity, 2),
+                    "track_name": track_name,
+                    "vehicle_name": vehicle_name,
                 }
                 # Energia virtuale solo se la vettura la usa davvero
                 # (classi non ibride restano a 0 — evitiamo rumore).
                 if virtual_energy_fraction and virtual_energy_fraction > 0:
                     payload["virtual_energy_pct"] = round(virtual_energy_fraction * 100, 1)
+                if speed_avg is not None:
+                    payload["speed_min_kmh"] = round(speed_min, 1)
+                    payload["speed_max_kmh"] = round(speed_max, 1)
+                    payload["speed_avg_kmh"] = round(speed_avg, 1)
 
                 post_sample_async(cfg, payload)
                 last_sent_lap = lap_number
+
+            # Sempre in coda, dopo l'eventuale invio: la lettura di
+            # QUESTO tick appartiene al giro (nuovo o in corso) che
+            # last_sent_lap rappresenta adesso, mai a quello appena
+            # spedito sopra.
+            if sane and speed_kmh is not None:
+                lap_speed_samples.append(speed_kmh)
 
             # Ping live indipendente dal cambio giro — dà l'impressione
             # di un dato quasi in tempo reale nel pannello senza
@@ -293,14 +395,19 @@ def main() -> None:
             # solo ai campioni per-giro sopra).
             now_ts = time.time()
             if sane and (now_ts - last_live_sent_ts) >= LIVE_PING_INTERVAL_S:
+                race_id, car_number = current_ids()
                 live_payload = {
-                    "race_id": cfg["race_id"],
-                    "car_number": cfg["car_number"],
+                    "race_id": race_id,
+                    "car_number": car_number,
                     "lap_number": lap_number,
                     "fuel_remaining_l": round(fuel_remaining, 2),
+                    "track_name": track_name,
+                    "vehicle_name": vehicle_name,
                 }
                 if virtual_energy_fraction and virtual_energy_fraction > 0:
                     live_payload["virtual_energy_pct"] = round(virtual_energy_fraction * 100, 1)
+                if speed_kmh is not None:
+                    live_payload["speed_kmh"] = round(speed_kmh, 1)
 
                 post_live_async(cfg, live_payload)
                 last_live_sent_ts = now_ts
@@ -309,6 +416,7 @@ def main() -> None:
             log.exception("Errore nel loop di lettura — riconnessione")
             sim = connect()
             last_sent_lap = None
+            lap_speed_samples = []
 
         time.sleep(POLL_INTERVAL_S)
 

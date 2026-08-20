@@ -342,6 +342,7 @@ const ACTIONS = {
   'fuel.logSample': handleFuelLogSample,
   'fuel.logLive': handleFuelLogLive,
   'fuel.summary': handleFuelSummary,
+  'fuel.mySession': handleFuelMySession,
 };
 
 // ═══════════════════════════════════════════════════════════

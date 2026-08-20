@@ -39,9 +39,9 @@ avviare.
 |---|---|
 | 1 | Scarica `vsd-fuel-bridge.exe` da questo link — **nessun account richiesto, funziona anche da telefono per poi trasferirlo**: https://github.com/crucittidemetrio/vsd-paddock/releases/download/companion-latest/vsd-fuel-bridge.exe |
 | 2 | Fai doppio click sul file scaricato. **Windows probabilmente mostrerà uno schermo blu "Windows ha protetto il PC"** — è normale, non è un virus (vedi spiegazione sotto): clicca **"Ulteriori informazioni"**, poi **"Esegui comunque"** |
-| 3 | Si apre una finestra nera. **Solo la prima volta**, ti chiede 3 cose: il tuo token, un nome per la sessione (es. `TEST-monza-06-08` per una prova, oppure il race_id ufficiale per una gara) e il numero della tua vettura |
+| 3 | Si apre una finestra nera. **Solo la prima volta**, ti chiede il tuo token e un ID sessione — **lascia l'ID sessione VUOTO (premi solo invio)** per una sessione personale: niente numero vettura da inserire, il sito la trova da solo. Scrivi qualcosa solo per il race_id ufficiale di una gara o un'etichetta di test fissa da condividere con altri |
 | 4 | Entra in pista su LMU. Ad ogni giro completato vedi una riga confermare l'invio |
-| 5 | Apri il pannello **Carburante/Energia** sul sito (menu laterale → Strumenti Gara), scrivendo lo STESSO nome sessione e numero vettura del passo 3 |
+| 5 | Apri il pannello **Carburante/Energia** sul sito (menu laterale → Strumenti Gara): se hai lasciato l'ID vuoto al passo 3, la sessione compare da sola appena finisci il primo giro — basta essere loggati, nessun campo da compilare. Se invece hai digitato un ID al passo 3, scrivilo insieme al numero vettura nel pannello |
 
 Lascia la finestra nera aperta per tutta la sessione. Per fermare:
 `Ctrl+C` o chiudi la finestra.

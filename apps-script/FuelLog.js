@@ -11,9 +11,51 @@
 // necessario — usato dal pannello live in AdminRaceStints.jsx.
 //
 // Registrate in Codice.js dispatcher come:
-//   'fuel.logSample': handleFuelLogSample
-//   'fuel.summary':   handleFuelSummary
+//   'fuel.logSample':  handleFuelLogSample
+//   'fuel.summary':    handleFuelSummary
+//   'fuel.mySession':  handleFuelMySession
 // ═══════════════════════════════════════════════════════════
+
+// Sessione personale considerata "attiva" solo se l'ultimo campione del
+// pilota risale a meno di 30 minuti fa — stessa idea di
+// FUEL_LIVE_MAX_AGE_MS (staleness del ping live), estesa qui alla
+// domanda "questo pilota sta ancora correndo?". Il companion, in
+// modalità solo (nessun race_id in config.json), apre una NUOVA
+// sessione locale dopo lo stesso identico gap — i due lati non sono
+// accoppiati a livello di codice, ma usano la stessa soglia per dare
+// un comportamento coerente all'utente.
+const FUEL_MY_SESSION_MAX_AGE_MS = 30 * 60 * 1000;
+
+/**
+ * Migrazione one-shot: aggiunge le colonne telemetria auto-rilevata a
+ * una tab FuelLog GIÀ ESISTENTE — track_name/vehicle_name (letti dalla
+ * shared memory LMU, stesso blocco di fuel/lap) e speed_min/max/avg_kmh
+ * (aggregati per giro dal companion da mLocalVel). Servono alla
+ * simplificazione "sessione personale senza ID manuale" (fuel.mySession)
+ * e alle nuove card velocità in FuelPanel. Idempotente: aggiunge solo
+ * le colonne mancanti, non tocca righe esistenti — i campioni già
+ * salvati restano senza questi valori (celle vuote), nessun backfill.
+ *
+ * Esecuzione: editor Apps Script → dropdown funzioni →
+ *             setupFuelLogTelemetryColumns → ▶ Esegui (una volta sola).
+ */
+function setupFuelLogTelemetryColumns() {
+  const sheet = getSheet(SHEETS.FUEL_LOG);
+  if (!sheet) {
+    Logger.log('⚠️  Tab FuelLog non trovata — esegui prima setupFuelLogTab().');
+    return;
+  }
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  ['track_name', 'vehicle_name', 'speed_min_kmh', 'speed_max_kmh', 'speed_avg_kmh'].forEach(col => {
+    if (headers.indexOf(col) !== -1) {
+      Logger.log('✓ Colonna "' + col + '" già esistente, nessuna modifica.');
+      return;
+    }
+    const nextCol = sheet.getLastColumn() + 1;
+    sheet.getRange(1, nextCol).setValue(col).setFontWeight('bold');
+    Logger.log('✅ Colonna "' + col + '" aggiunta in posizione ' + nextCol + '.');
+  });
+}
 
 /**
  * fuel.logSample — Registra un campione di consumo (un giro).
@@ -59,6 +101,19 @@ function handleFuelLogSample(payload, ctx) {
       ? Number(fuelCapacity) : '',
     virtual_energy_pct: payload.virtual_energy_pct !== undefined && payload.virtual_energy_pct !== null && payload.virtual_energy_pct !== ''
       ? Number(payload.virtual_energy_pct) : '',
+    // Wave: track_name/vehicle_name auto-rilevati dal companion (stessa
+    // shared memory di fuel/lap) — usati da fuel.mySession per mostrare
+    // "dove si corre" senza che il pilota digiti nulla. speed_* sono
+    // aggregati per giro (min/max/media km/h da mLocalVel), tutti
+    // opzionali per restare compatibili con companion non aggiornati.
+    track_name: payload.track_name ? String(payload.track_name).trim() : '',
+    vehicle_name: payload.vehicle_name ? String(payload.vehicle_name).trim() : '',
+    speed_min_kmh: payload.speed_min_kmh !== undefined && payload.speed_min_kmh !== null && payload.speed_min_kmh !== ''
+      ? Number(payload.speed_min_kmh) : '',
+    speed_max_kmh: payload.speed_max_kmh !== undefined && payload.speed_max_kmh !== null && payload.speed_max_kmh !== ''
+      ? Number(payload.speed_max_kmh) : '',
+    speed_avg_kmh: payload.speed_avg_kmh !== undefined && payload.speed_avg_kmh !== null && payload.speed_avg_kmh !== ''
+      ? Number(payload.speed_avg_kmh) : '',
     source: 'telemetry',
     created_at: new Date().toISOString(),
   };
@@ -116,6 +171,12 @@ function handleFuelLogLive(payload, ctx) {
     fuel_remaining_l: Number(payload.fuel_remaining_l),
     virtual_energy_pct: payload.virtual_energy_pct !== undefined && payload.virtual_energy_pct !== null && payload.virtual_energy_pct !== ''
       ? Number(payload.virtual_energy_pct) : null,
+    // Wave: stessi campi auto-rilevati di fuel.logSample, qui solo il
+    // valore istantaneo (non ha senso un min/max/avg su un singolo ping).
+    track_name: payload.track_name ? String(payload.track_name).trim() : null,
+    vehicle_name: payload.vehicle_name ? String(payload.vehicle_name).trim() : null,
+    speed_kmh: payload.speed_kmh !== undefined && payload.speed_kmh !== null && payload.speed_kmh !== ''
+      ? Number(payload.speed_kmh) : null,
     ts: new Date().toISOString(),
   };
 
@@ -161,9 +222,12 @@ function readFuelLive_(raceId, carNumber) {
  * }
  * @param {Object} ctx - Auth context (richiesto)
  * @returns {Object} ok({
- *   sample_count, latest,
+ *   sample_count, latest,  // latest include anche track_name/vehicle_name
+ *                          // auto-rilevati e speed_min/max/avg_kmh del
+ *                          // giro (null se companion non aggiornato)
  *   fuel: { avg_per_lap_l, laps_remaining, needed_for_target_l },
  *   energy: { avg_pct_per_lap, laps_remaining, needed_for_target_pct } | null,
+ *   speed: { session_min_kmh, session_max_kmh, session_avg_kmh } | null,
  *   series: [{ lap_number, fuel_remaining_l, virtual_energy_pct, lap_time_s }],  // per il grafico
  *   avg_lap_time_s, // tempo medio reale tra un campione e il successivo,
  *                    // secondi — usato dal frontend per convertire l'ora
@@ -197,6 +261,9 @@ function handleFuelSummary(payload, ctx) {
       lap_number: Number(s.lap_number),
       fuel_remaining_l: s.fuel_remaining_l !== '' ? Number(s.fuel_remaining_l) : null,
       virtual_energy_pct: s.virtual_energy_pct !== '' ? Number(s.virtual_energy_pct) : null,
+      speed_min_kmh: s.speed_min_kmh !== '' && s.speed_min_kmh != null ? Number(s.speed_min_kmh) : null,
+      speed_max_kmh: s.speed_max_kmh !== '' && s.speed_max_kmh != null ? Number(s.speed_max_kmh) : null,
+      speed_avg_kmh: s.speed_avg_kmh !== '' && s.speed_avg_kmh != null ? Number(s.speed_avg_kmh) : null,
     }))
     .sort((a, b) => {
       if (a.lap_number !== b.lap_number) return a.lap_number - b.lap_number;
@@ -206,7 +273,7 @@ function handleFuelSummary(payload, ctx) {
   const liveReading = readFuelLive_(raceId, carNumber);
 
   if (samples.length === 0 && !liveReading) {
-    return ok({ sample_count: 0, latest: null, fuel: null, energy: null });
+    return ok({ sample_count: 0, latest: null, fuel: null, energy: null, speed: null });
   }
 
   const lastLapSample = samples.length ? samples[samples.length - 1] : null;
@@ -220,6 +287,16 @@ function handleFuelSummary(payload, ctx) {
     lap_number: liveReading.lap_number != null ? liveReading.lap_number : (lastLapSample ? lastLapSample.lap_number : null),
     fuel_remaining_l: liveReading.fuel_remaining_l,
     virtual_energy_pct: liveReading.virtual_energy_pct != null ? liveReading.virtual_energy_pct : (lastLapSample ? lastLapSample.virtual_energy_pct : null),
+    // Wave: track_name/vehicle_name dal ping live se presenti, altrimenti
+    // dall'ultimo campione per-giro — sempre "cosa sto guidando ora", non
+    // congelati al giro precedente se il ping li ha aggiornati nel
+    // frattempo (es. cambio vettura ai box). speed_* SOLO dal giro
+    // completato: un ping istantaneo non è un min/max/avg di giro.
+    track_name: liveReading.track_name || (lastLapSample ? lastLapSample.track_name : '') || '',
+    vehicle_name: liveReading.vehicle_name || (lastLapSample ? lastLapSample.vehicle_name : '') || '',
+    speed_min_kmh: lastLapSample ? lastLapSample.speed_min_kmh : null,
+    speed_max_kmh: lastLapSample ? lastLapSample.speed_max_kmh : null,
+    speed_avg_kmh: lastLapSample ? lastLapSample.speed_avg_kmh : null,
     created_at: liveReading.ts,
   } : lastLapSample;
 
@@ -281,6 +358,19 @@ function handleFuelSummary(payload, ctx) {
       : null,
   } : null;
 
+  // Velocità aggregate sull'intera sessione (non solo l'ultimo giro):
+  // min dei min, max dei max, media pesata per numero di giri presi in
+  // considerazione — coerente col fatto che ogni campione porta già il
+  // min/max/avg calcolato dal companion sul SUO giro. Nessun windowSize
+  // qui: a differenza del consumo, la velocità non "deriva" nel tempo,
+  // ha senso vedere l'intera sessione.
+  const speedSamples = samples.filter(s => s.speed_avg_kmh != null);
+  const speed = speedSamples.length > 0 ? {
+    session_min_kmh: Math.min(...speedSamples.map(s => s.speed_min_kmh != null ? s.speed_min_kmh : s.speed_avg_kmh)),
+    session_max_kmh: Math.max(...speedSamples.map(s => s.speed_max_kmh != null ? s.speed_max_kmh : s.speed_avg_kmh)),
+    session_avg_kmh: speedSamples.reduce((sum, s) => sum + s.speed_avg_kmh, 0) / speedSamples.length,
+  } : null;
+
   // Serie per il grafico di tendenza lato frontend — solo i campi
   // essenziali, un punto per giro (già ordinati per lap_number sopra).
   const series = samples.map(s => ({
@@ -290,5 +380,54 @@ function handleFuelSummary(payload, ctx) {
     lap_time_s: s._lapTimeS != null ? s._lapTimeS : null,
   }));
 
-  return ok({ sample_count: samples.length, latest, fuel, energy, series, avg_lap_time_s: avgLapTimeS, live: !!liveReading });
+  return ok({ sample_count: samples.length, latest, fuel, energy, speed, series, avg_lap_time_s: avgLapTimeS, live: !!liveReading });
+}
+
+/**
+ * fuel.mySession — Risolve automaticamente la sessione carburante più
+ * recente del pilota loggato, SENZA che debba digitare nessun ID.
+ * Usata da FuelEnergy.jsx (pagina personale) per sostituire i due campi
+ * manuali "ID sessione"/"numero vettura" — funziona perché il token del
+ * companion porta già ctx.driver_id (vedi Devices.js), quindi non c'è
+ * bisogno di nessuna etichetta condivisa da far coincidere a mano tra
+ * companion e sito.
+ *
+ * NON copre le gare ufficiali multi-pilota (AdminRaceStints, che
+ * restano su race_id di calendario + car_number esplicito — lì serve
+ * correlare la VETTURA attraverso i cambi turno, un singolo driver_id
+ * non basta): quel flusso resta invariato.
+ *
+ * Guarda solo FuelLog (giri completati), non i ping fuel.logLive —
+ * quindi durante il primissimo giro di una sessione nuova (prima che
+ * arrivi il primo campione per-giro) risulta ancora "nessuna sessione
+ * attiva", si allinea entro il primo giro completato.
+ *
+ * @param {Object} _payload - non usato
+ * @param {Object} ctx - Auth context (richiesto, driver_id valorizzato)
+ * @returns {Object} ok({ active: false }) oppure
+ *   ok({ active: true, race_id, car_number, track_name, vehicle_name,
+ *        lap_number, created_at })
+ */
+function handleFuelMySession(_payload, ctx) {
+  if (!ctx || !ctx.driver_id) return fail('Auth richiesto');
+
+  const mine = sheetToObjects(SHEETS.FUEL_LOG)
+    .filter(s => s.driver_id === ctx.driver_id)
+    .sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+
+  if (mine.length === 0) return ok({ active: false });
+
+  const latest = mine[0];
+  const ageMs = Date.now() - new Date(latest.created_at).getTime();
+  if (isNaN(ageMs) || ageMs > FUEL_MY_SESSION_MAX_AGE_MS) return ok({ active: false });
+
+  return ok({
+    active: true,
+    race_id: latest.race_id,
+    car_number: latest.car_number,
+    track_name: latest.track_name || '',
+    vehicle_name: latest.vehicle_name || '',
+    lap_number: latest.lap_number !== '' ? Number(latest.lap_number) : null,
+    created_at: latest.created_at,
+  });
 }
