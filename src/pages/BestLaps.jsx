@@ -598,6 +598,7 @@ function SubmitLapSection() {
                   onChange={e => update('session_type', e.target.value)}>
                   <option value="practice">Practice</option>
                   <option value="qualifying">Qualifying</option>
+                  <option value="race">Race</option>
                   <option value="time_trial">Time trial</option>
                 </select>
               </div>
