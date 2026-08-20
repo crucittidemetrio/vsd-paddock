@@ -22,7 +22,7 @@ Il campionato si gestisce interamente su SimGrid — iscrizione, entry list e ri
 **🚗 Formato**
 Sim: Le Mans Ultimate · 6 round · Piloti singoli (no cambio pilota)
 
-Ogni round: 30' Practice (lobby aperta) → 15' Qualifiche (sessione privata) → **144' di gara** con Rolling Start.
+Ogni round: 10' Practice (lobby aperta) → 15' Qualifiche (sessione privata) → **144' di gara** con Rolling Start.
 
 Danni 100%, Dynamic Track attivo, Virtual Energy Tank attivo, pit stop non obbligatori. Track limits: drive-through automatico LMU, da scontare entro 3 giri.
 
@@ -79,7 +79,7 @@ The championship is fully managed on SimGrid — sign-up, entry list and officia
 **🚗 Format**
 Sim: Le Mans Ultimate · 6 rounds · Solo drivers (no driver swaps)
 
-Each round: 30' Practice (open lobby) → 15' Qualifying (private session) → **144' race** with Rolling Start.
+Each round: 10' Practice (open lobby) → 15' Qualifying (private session) → **144' race** with Rolling Start.
 
 100% damage, Dynamic Track active, Virtual Energy Tank active, pit stops optional. Track limits: automatic LMU drive-through, to be served within 3 laps.
 

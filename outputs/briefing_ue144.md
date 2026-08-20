@@ -6,7 +6,7 @@ Procedure valide per tutti i round della stagione, come da regolamento ufficiale
 ━━━━━━━━━━━━━━━━━━━━
 
 **🕐 Struttura di ogni round**
-• Practice: 30' (lobby aperta) — setup e apprendimento circuito
+• Practice: 10' (lobby aperta) — setup e apprendimento circuito
 • Qualifiche: 15' (sessione privata) — pole per classe, griglia divisa Hypercar → LMP2 → LMGT3
 • Gara: 144' — Rolling Start, pilota singolo
 
@@ -52,7 +52,7 @@ Procedures valid for every round of the season, per the official rulebook. Date,
 ━━━━━━━━━━━━━━━━━━━━
 
 **🕐 Structure of every round**
-• Practice: 30' (open lobby) — setup and track learning
+• Practice: 10' (open lobby) — setup and track learning
 • Qualifying: 15' (private session) — pole per class, grid split Hypercar → LMP2 → LMGT3
 • Race: 144' — Rolling Start, solo driver
 

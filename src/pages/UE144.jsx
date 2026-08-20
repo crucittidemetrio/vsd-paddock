@@ -196,7 +196,7 @@ export default function UE144() {
         <div className={styles.sectionEyebrow}>Formato</div>
         <h2 className={styles.sectionTitle}>Struttura della sessione</h2>
         <div className={styles.formatGrid}>
-          <FormatCard label="Practice" value="30'" detail="Open lobby — setup e analisi telemetrica" icon="⏱" />
+          <FormatCard label="Practice" value="10'" detail="Open lobby — setup e analisi telemetrica" icon="⏱" />
           <FormatCard label="Qualifiche" value="15'" detail="Sessione privata — time attack puro" icon="🔒" />
           <FormatCard label="Gara" value="144'" detail="Rolling Start · pilota singolo" icon="🏁" accent />
         </div>

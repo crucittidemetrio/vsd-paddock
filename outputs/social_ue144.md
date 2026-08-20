@@ -15,7 +15,7 @@ L'**Ultimate Endurance 144'** è il campionato endurance di VSD Racing su **Le M
 **📋 IL FORMATO**
 
 Ogni appuntamento segue una struttura precisa:
-→ 30' di Practice in lobby aperta
+→ 10' di Practice in lobby aperta
 → 15' di Qualifiche in sessione privata
 → 144' di Gara con Rolling Start
 
