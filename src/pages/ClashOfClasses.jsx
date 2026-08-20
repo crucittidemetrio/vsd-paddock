@@ -65,12 +65,6 @@ const POINTS_TABLE = [
   { pos: 13, pts: 3 }, { pos: 14, pts: 2 }, { pos: 15, pts: 1 },
 ];
 
-const SANCTIONS = [
-  { level: 'Media', example: 'Rientro pericoloso, contatto con vantaggio', penalty: '+10s' },
-  { level: 'Grave', example: 'Manovra antisportiva, incidente evitabile', penalty: 'Drive-through (+20s) o retrocessione' },
-  { level: 'Gravissima', example: 'Scontro intenzionale, condotta reiterata', penalty: 'Squalifica dalla gara' },
-];
-
 export default function ClashOfClasses() {
   usePageMeta({
     title: 'Clash of Classes — GTE vs GT3 | VSD',
@@ -249,25 +243,9 @@ export default function ClashOfClasses() {
         <div className={styles.sectionEyebrow}>Fair play</div>
         <h2 className={styles.sectionTitle}>Sistema sanzionatorio</h2>
         <p className={styles.leadText}>
-          A pannaggio della Direzione Generale VSD: segnalazioni tramite il form qui sotto entro
-          48h dalla gara.
+          Le penalità sono decise a insindacabile giudizio della Direzione Generale VSD, sulla
+          base delle segnalazioni ricevute tramite il form qui sotto entro 48h dalla gara.
         </p>
-        <div className={styles.sanctionsTableWrap}>
-          <table className={styles.sanctionsTable}>
-            <thead>
-              <tr><th>Livello</th><th>Esempi</th><th>Penalità</th></tr>
-            </thead>
-            <tbody>
-              {SANCTIONS.map(s => (
-                <tr key={s.level}>
-                  <td className={styles.sanctionLevel}>{s.level}</td>
-                  <td>{s.example}</td>
-                  <td>{s.penalty}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
       </section>
 
       {/* ════ ISCRIZIONE ════ */}

@@ -259,23 +259,6 @@
 .trophyExplain p:last-child { margin-bottom: 0; }
 .trophyTitlesNote { color: var(--vsd-cyan) !important; font-size: 13px; }
 
-/* ════ SANZIONI ════ */
-.sanctionsTableWrap { overflow-x: auto; border: 1px solid var(--color-border); border-radius: var(--r-md); }
-.sanctionsTable { width: 100%; border-collapse: collapse; font-size: 13px; }
-.sanctionsTable th {
-  text-align: left;
-  padding: 12px 16px;
-  background: var(--vsd-bg);
-  color: var(--color-text-muted);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  border-bottom: 1px solid var(--color-border);
-}
-.sanctionsTable td { padding: 12px 16px; border-bottom: 1px solid var(--color-border); color: var(--color-text-muted); }
-.sanctionsTable tr:last-child td { border-bottom: none; }
-.sanctionLevel { color: var(--color-text); font-weight: var(--fw-semibold); }
-
 /* ════ FORM (iscrizione / segnalazioni) ════ */
 .form { display: flex; flex-direction: column; gap: 16px; max-width: 480px; }
 .formGroup { display: flex; flex-direction: column; gap: 6px; }
