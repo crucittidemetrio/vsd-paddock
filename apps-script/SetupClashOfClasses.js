@@ -22,6 +22,7 @@ const CLASH_PARTICIPANTS_HEADERS = [
   'discord_handle',
   'registered_at',
   'status',
+  'vehicle',
 ];
 
 const CLASH_RESULTS_HEADERS = [
@@ -103,6 +104,33 @@ function setupClashOfClassesTabs() {
   Logger.log('═══════════════════════════════════════');
   results.forEach(r => Logger.log(r));
   Logger.log('═══════════════════════════════════════');
+}
+
+/**
+ * Migrazione one-shot: aggiunge la colonna "vehicle" a una tab
+ * ClashParticipants GIÀ ESISTENTE — vettura scelta dal pilota tra
+ * quelle omologate per la sua classe (cap. 3 regolamento, multi-car
+ * BoP). Idempotente: aggiunge solo la colonna se manca, non tocca
+ * righe esistenti — gli iscritti già registrati restano senza
+ * vettura assegnata (cella vuota) finché non viene impostata.
+ *
+ * Esecuzione: editor Apps Script → dropdown funzioni →
+ *             setupClashParticipantsVehicleColumn → ▶ Esegui (una volta sola).
+ */
+function setupClashParticipantsVehicleColumn() {
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName('ClashParticipants');
+  if (!sheet) {
+    Logger.log('⚠️  Tab ClashParticipants non trovata — esegui prima setupClashOfClassesTabs().');
+    return;
+  }
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  if (headers.indexOf('vehicle') !== -1) {
+    Logger.log('✓ Colonna "vehicle" già esistente, nessuna modifica.');
+    return;
+  }
+  const nextCol = sheet.getLastColumn() + 1;
+  sheet.getRange(1, nextCol).setValue('vehicle').setFontWeight('bold');
+  Logger.log('✅ Colonna "vehicle" aggiunta in posizione ' + nextCol + '.');
 }
 
 /**

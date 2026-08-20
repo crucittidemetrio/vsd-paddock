@@ -12,7 +12,7 @@
 // Sheet usati (vedi SetupClashOfClasses.js per la creazione):
 //   ClashParticipants:
 //     participant_id | driver_id | display_name | class |
-//     discord_handle | registered_at | status
+//     discord_handle | registered_at | status | vehicle
 //   ClashResults (un rigo per pilota per round):
 //     result_id | round | driver_id | display_name | class |
 //     finish_position_class | finish_position_overall |
@@ -40,6 +40,51 @@
 const CLASH_MAX_GRID = 22;
 const CLASH_VALID_CLASSES = ['GTE', 'GT3'];
 const CLASH_VALID_ROUNDS = [1, 2, 3];
+
+// Vetture omologate per classe (cap. 3 regolamento, multi-car BoP via
+// impostazioni server LMU) — elenco allineato al roster GTE/LMGT3
+// disponibile in Le Mans Ultimate. Il campo vehicle è opzionale in
+// iscrizione/modifica, ma se valorizzato deve appartenere alla lista
+// della classe scelta.
+const CLASH_VEHICLES_BY_CLASS = {
+  GTE: [
+    'Aston Martin Vantage GTE',
+    'Chevrolet Corvette C8.R',
+    'Ferrari 488 GTE Evo',
+    'Porsche 911 RSR-19',
+  ],
+  GT3: [
+    'Aston Martin Vantage AMR LMGT3 Evo',
+    'BMW M4 LMGT3',
+    'BMW M4 LMGT3 Evo',
+    'Chevrolet Corvette Z06 LMGT3.R',
+    'Ferrari 296 LMGT3',
+    'Ferrari 296 LMGT3 Evo',
+    'Ford Mustang LMGT3',
+    'Ford Mustang LMGT3 Evo',
+    'Lamborghini Huracán LMGT3 Evo 2',
+    'Lexus RC F LMGT3',
+    'Mercedes-AMG LMGT3',
+    'McLaren 720S LMGT3 Evo',
+    'Porsche 911 LMGT3 R (992)',
+    'Porsche 911 LMGT3 R (992) 2026',
+  ],
+};
+
+/**
+ * Valida (opzionalmente) una vettura per una classe. Ritorna la stringa
+ * validata, oppure null se non fornita. Lancia un errore leggibile
+ * (tramite fail() nel chiamante) se fornita ma non ammessa per la classe.
+ */
+function clashValidateVehicle_(vehicle, cls) {
+  const v = String(vehicle || '').trim();
+  if (!v) return { ok: true, value: '' };
+  const allowed = CLASH_VEHICLES_BY_CLASS[cls] || [];
+  if (allowed.indexOf(v) === -1) {
+    return { ok: false, error: `Vettura non ammessa per la classe ${cls}. Ammesse: ${allowed.join(', ')}` };
+  }
+  return { ok: true, value: v };
+}
 
 // Scala punti posizione (cap. 7.1 regolamento) — uguale per classifica
 // di classe e classifica assoluta. Dall'11° in poi scende di 1 fino al
@@ -84,6 +129,7 @@ function handleClashParticipantsList(payload, ctx) {
       participant_id: p.participant_id,
       display_name: p.display_name,
       class: p.class,
+      vehicle: p.vehicle || '',
     };
     if (isStaff) {
       base.driver_id = p.driver_id || '';
@@ -107,7 +153,7 @@ function handleClashParticipantsList(payload, ctx) {
  * Se non loggato, iscrizione "esterna" via solo display_name (community
  * non tesserata, ammessa da regolamento cap. 2.2).
  *
- * @param {Object} payload - { display_name, class: 'GTE'|'GT3', discord_handle? }
+ * @param {Object} payload - { display_name, class: 'GTE'|'GT3', discord_handle?, vehicle? }
  */
 function handleClashParticipantsRegister(payload, ctx) {
   payload = payload || {};
@@ -116,6 +162,10 @@ function handleClashParticipantsRegister(payload, ctx) {
   if (CLASH_VALID_CLASSES.indexOf(cls) === -1) {
     return fail('Classe non valida. Ammesse: ' + CLASH_VALID_CLASSES.join(', '));
   }
+
+  const vehicleCheck = clashValidateVehicle_(payload.vehicle, cls);
+  if (!vehicleCheck.ok) return fail(vehicleCheck.error);
+  const vehicle = vehicleCheck.value;
 
   const driverId = (ctx && ctx.driver_id) || null;
   let displayName = String(payload.display_name || '').trim();
@@ -148,13 +198,14 @@ function handleClashParticipantsRegister(payload, ctx) {
   const participantId = clashGenerateId_('coc');
   const now = new Date().toISOString();
   const sheet = getSheet(SHEETS.CLASH_PARTICIPANTS);
-  sheet.appendRow([participantId, driverId || '', displayName, cls, discordHandle, now, 'registered']);
+  sheet.appendRow([participantId, driverId || '', displayName, cls, discordHandle, now, 'registered', vehicle]);
 
   return ok({
     participant_id: participantId,
     driver_id: driverId || '',
     display_name: displayName,
     class: cls,
+    vehicle: vehicle,
     registered_at: now,
     status: 'registered',
   });
@@ -197,7 +248,7 @@ function clashFindParticipantRow_(participantId) {
  * dal payload invece che da ctx, perché è lo staff a inserire per
  * conto di un altro pilota.
  *
- * @param {Object} payload - { display_name, class: 'GTE'|'GT3', discord_handle?, driver_id? }
+ * @param {Object} payload - { display_name, class: 'GTE'|'GT3', discord_handle?, driver_id?, vehicle? }
  */
 function handleClashParticipantsAdd(payload, ctx) {
   if (!ctx) return fail('Auth richiesto');
@@ -208,6 +259,10 @@ function handleClashParticipantsAdd(payload, ctx) {
   if (CLASH_VALID_CLASSES.indexOf(cls) === -1) {
     return fail('Classe non valida. Ammesse: ' + CLASH_VALID_CLASSES.join(', '));
   }
+  const vehicleCheck = clashValidateVehicle_(payload.vehicle, cls);
+  if (!vehicleCheck.ok) return fail(vehicleCheck.error);
+  const vehicle = vehicleCheck.value;
+
   const displayName = String(payload.display_name || '').trim();
   if (!displayName) return fail('Nome pilota mancante');
 
@@ -231,13 +286,14 @@ function handleClashParticipantsAdd(payload, ctx) {
   const participantId = clashGenerateId_('coc');
   const now = new Date().toISOString();
   const sheet = getSheet(SHEETS.CLASH_PARTICIPANTS);
-  sheet.appendRow([participantId, driverId, displayName, cls, discordHandle, now, 'registered']);
+  sheet.appendRow([participantId, driverId, displayName, cls, discordHandle, now, 'registered', vehicle]);
 
   return ok({
     participant_id: participantId,
     driver_id: driverId,
     display_name: displayName,
     class: cls,
+    vehicle: vehicle,
     discord_handle: discordHandle,
     registered_at: now,
     status: 'registered',
@@ -250,7 +306,7 @@ function handleClashParticipantsAdd(payload, ctx) {
  * allineare la classe a quanto risulta su SimGrid.
  * Auth: staff richiesto.
  *
- * @param {Object} payload - { participant_id, display_name?, class?, discord_handle? }
+ * @param {Object} payload - { participant_id, display_name?, class?, discord_handle?, vehicle? }
  */
 function handleClashParticipantsUpdate(payload, ctx) {
   if (!ctx) return fail('Auth richiesto');
@@ -269,6 +325,19 @@ function handleClashParticipantsUpdate(payload, ctx) {
       return fail('Classe non valida. Ammesse: ' + CLASH_VALID_CLASSES.join(', '));
     }
     row.class = cls;
+    // Cambio classe: la vettura eventualmente già impostata potrebbe non
+    // essere più ammessa — se non viene ridichiarata nello stesso payload,
+    // la azzeriamo invece di lasciare un dato incoerente.
+    if (payload.vehicle === undefined && row.vehicle) {
+      const stillValid = (CLASH_VEHICLES_BY_CLASS[cls] || []).indexOf(row.vehicle) !== -1;
+      if (!stillValid) row.vehicle = '';
+    }
+  }
+  if (payload.vehicle !== undefined) {
+    const targetClass = row.class;
+    const vehicleCheck = clashValidateVehicle_(payload.vehicle, targetClass);
+    if (!vehicleCheck.ok) return fail(vehicleCheck.error);
+    row.vehicle = vehicleCheck.value;
   }
   if (payload.display_name !== undefined) {
     const name = String(payload.display_name || '').trim();
@@ -288,6 +357,7 @@ function handleClashParticipantsUpdate(payload, ctx) {
     participant_id: participantId,
     display_name: row.display_name,
     class: row.class,
+    vehicle: row.vehicle || '',
     discord_handle: row.discord_handle,
     driver_id: row.driver_id || '',
     status: row.status,

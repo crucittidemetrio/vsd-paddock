@@ -7,6 +7,7 @@ import {
   useClashUpdateParticipant,
   useClashRemoveParticipant,
 } from '../hooks/useClashOfClasses';
+import { VEHICLES_BY_CLASS } from '../utils/clashVehicles';
 import styles from './AdminClashResults.module.css';
 
 const ROUNDS = [
@@ -302,9 +303,9 @@ function ParticipantsTab() {
   const removeMutation = useClashRemoveParticipant();
 
   const [feedback, setFeedback] = useState(null);
-  const [form, setForm] = useState({ display_name: '', class: 'GTE', discord_handle: '', driver_id: '' });
+  const [form, setForm] = useState({ display_name: '', class: 'GTE', vehicle: '', discord_handle: '', driver_id: '' });
   const [editingId, setEditingId] = useState(null);
-  const [editDraft, setEditDraft] = useState({ display_name: '', class: 'GTE' });
+  const [editDraft, setEditDraft] = useState({ display_name: '', class: 'GTE', vehicle: '' });
 
   const participants = data?.participants || [];
   const counts = data?.counts || { GTE: 0, GT3: 0 };
@@ -322,11 +323,12 @@ function ParticipantsTab() {
       await addMutation.mutateAsync({
         display_name: form.display_name.trim(),
         class: form.class,
+        vehicle: form.vehicle,
         discord_handle: form.discord_handle.trim(),
         driver_id: form.driver_id.trim(),
       });
       setFeedback({ ok: true, message: `${form.display_name.trim()} aggiunto (classe ${form.class}).` });
-      setForm({ display_name: '', class: 'GTE', discord_handle: '', driver_id: '' });
+      setForm({ display_name: '', class: 'GTE', vehicle: '', discord_handle: '', driver_id: '' });
     } catch (err) {
       setFeedback({ ok: false, message: err.message || 'Errore durante l’aggiunta.' });
     }
@@ -334,8 +336,17 @@ function ParticipantsTab() {
 
   function startEdit(p) {
     setEditingId(p.participant_id);
-    setEditDraft({ display_name: p.display_name, class: p.class });
+    setEditDraft({ display_name: p.display_name, class: p.class, vehicle: p.vehicle || '' });
     setFeedback(null);
+  }
+
+  function handleEditClassChange(cls) {
+    setEditDraft(d => ({
+      ...d,
+      class: cls,
+      // se la vettura già scelta non è ammessa nella nuova classe, resetta
+      vehicle: VEHICLES_BY_CLASS[cls].includes(d.vehicle) ? d.vehicle : '',
+    }));
   }
 
   async function saveEdit(participantId) {
@@ -344,6 +355,7 @@ function ParticipantsTab() {
         participant_id: participantId,
         display_name: editDraft.display_name.trim(),
         class: editDraft.class,
+        vehicle: editDraft.vehicle,
       });
       setEditingId(null);
     } catch (err) {
@@ -383,10 +395,24 @@ function ParticipantsTab() {
         <select
           className={styles.select}
           value={form.class}
-          onChange={e => setForm(f => ({ ...f, class: e.target.value }))}
+          onChange={e => setForm(f => ({
+            ...f,
+            class: e.target.value,
+            vehicle: VEHICLES_BY_CLASS[e.target.value].includes(f.vehicle) ? f.vehicle : '',
+          }))}
         >
           <option value="GTE">GTE</option>
           <option value="GT3">GT3</option>
+        </select>
+        <select
+          className={styles.select}
+          value={form.vehicle}
+          onChange={e => setForm(f => ({ ...f, vehicle: e.target.value }))}
+        >
+          <option value="">Veicolo (opzionale)</option>
+          {VEHICLES_BY_CLASS[form.class].map(v => (
+            <option key={v} value={v}>{v}</option>
+          ))}
         </select>
         <input
           type="text"
@@ -421,6 +447,7 @@ function ParticipantsTab() {
               <tr>
                 <th>Pilota</th>
                 <th>Classe</th>
+                <th>Veicolo</th>
                 <th>Discord</th>
                 <th>driver_id</th>
                 <th></th>
@@ -446,10 +473,22 @@ function ParticipantsTab() {
                           <select
                             className={styles.select}
                             value={editDraft.class}
-                            onChange={e => setEditDraft(d => ({ ...d, class: e.target.value }))}
+                            onChange={e => handleEditClassChange(e.target.value)}
                           >
                             <option value="GTE">GTE</option>
                             <option value="GT3">GT3</option>
+                          </select>
+                        </td>
+                        <td>
+                          <select
+                            className={styles.select}
+                            value={editDraft.vehicle}
+                            onChange={e => setEditDraft(d => ({ ...d, vehicle: e.target.value }))}
+                          >
+                            <option value="">—</option>
+                            {VEHICLES_BY_CLASS[editDraft.class].map(v => (
+                              <option key={v} value={v}>{v}</option>
+                            ))}
                           </select>
                         </td>
                         <td colSpan={2}>{p.discord_handle || '—'}</td>
@@ -469,6 +508,7 @@ function ParticipantsTab() {
                       <>
                         <td>{p.display_name}</td>
                         <td><span className={styles.classBadge}>{p.class}</span></td>
+                        <td>{p.vehicle || '—'}</td>
                         <td>{p.discord_handle || '—'}</td>
                         <td>{p.driver_id || '—'}</td>
                         <td>

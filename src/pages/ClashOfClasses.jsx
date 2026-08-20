@@ -9,6 +9,7 @@ import {
 } from '../hooks/useClashOfClasses';
 import { useAuth } from '../hooks/useAuth';
 import { SOCIAL_LINKS } from '../utils/constants';
+import { VEHICLES_BY_CLASS } from '../utils/clashVehicles';
 import styles from './ClashOfClasses.module.css';
 
 const CLASSES = [
@@ -17,7 +18,7 @@ const CLASSES = [
     label: 'GTE',
     sublabel: 'La vecchia scuola',
     icon: '⚫',
-    car: 'Porsche 911 RSR',
+    car: 'Porsche 911 RSR-19',
     traits: [
       'Nessun ABS',
       'Elettronica ridotta all’osso',
@@ -30,7 +31,7 @@ const CLASSES = [
     label: 'GT3',
     sublabel: 'La nuova scuola',
     icon: '🔵',
-    car: 'Mercedes-AMG GT3',
+    car: 'Mercedes-AMG LMGT3',
     traits: [
       'ABS attivo',
       'Controllo di trazione moderno',
@@ -127,7 +128,9 @@ export default function ClashOfClasses() {
                   <div className={styles.classSublabel}>{cls.sublabel}</div>
                 </div>
               </div>
-              <div className={styles.classCar}>Vettura di riferimento: {cls.car}</div>
+              <div className={styles.classCar}>
+                Vettura simbolo: {cls.car} — {VEHICLES_BY_CLASS[cls.id].length} modelli omologati
+              </div>
               <ul className={styles.traitList}>
                 {cls.traits.map(t => <li key={t} className={styles.traitItem}>{t}</li>)}
               </ul>
@@ -285,8 +288,14 @@ function RegistrationSection() {
 
   const [displayName, setDisplayName] = useState('');
   const [selectedClass, setSelectedClass] = useState('GTE');
+  const [selectedVehicle, setSelectedVehicle] = useState('');
   const [discordHandle, setDiscordHandle] = useState('');
   const [feedback, setFeedback] = useState(null);
+
+  function handleClassChange(cls) {
+    setSelectedClass(cls);
+    setSelectedVehicle(''); // la vettura è specifica per classe, si resetta al cambio
+  }
 
   const counts = participantsData?.counts || { GTE: 0, GT3: 0 };
   const total = participantsData?.count ?? 0;
@@ -305,10 +314,12 @@ function RegistrationSection() {
       await registerMutation.mutateAsync({
         display_name: name.trim(),
         class: selectedClass,
+        vehicle: selectedVehicle,
         discord_handle: discordHandle.trim(),
       });
       setFeedback({ ok: true, message: `Iscrizione confermata — classe ${selectedClass}.` });
       setDisplayName('');
+      setSelectedVehicle('');
       setDiscordHandle('');
     } catch (err) {
       setFeedback({ ok: false, message: err.message || 'Errore durante l’iscrizione.' });
@@ -353,10 +364,24 @@ function RegistrationSection() {
               id="coc-class"
               className={styles.select}
               value={selectedClass}
-              onChange={e => setSelectedClass(e.target.value)}
+              onChange={e => handleClassChange(e.target.value)}
             >
               <option value="GTE">GTE — vecchia scuola</option>
               <option value="GT3">GT3 — nuova scuola</option>
+            </select>
+          </div>
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel} htmlFor="coc-vehicle">Vettura (opzionale)</label>
+            <select
+              id="coc-vehicle"
+              className={styles.select}
+              value={selectedVehicle}
+              onChange={e => setSelectedVehicle(e.target.value)}
+            >
+              <option value="">Nessuna preferenza</option>
+              {VEHICLES_BY_CLASS[selectedClass].map(v => (
+                <option key={v} value={v}>{v}</option>
+              ))}
             </select>
           </div>
           <div className={styles.formGroup}>
