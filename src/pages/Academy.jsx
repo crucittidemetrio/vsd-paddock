@@ -19,6 +19,12 @@ const PM_BASE_ROWS = [
   ['6°', 8], ['7°', 6], ['8°', 4], ['9°', 2], ['10°', 1],
 ];
 
+// Rango di carriera (Fase 3) — percentili PER SIM tra i piloti con almeno
+// 5 gare, non soglie fisse: si autocalibra da solo, vedi Academy.js
+// (assignAcademyBadges_) per il perché. Non è un segnale di forma recente
+// — quello resta l'Indice Skill sul profilo.
+const BADGE_LABELS = { platino: 'Platino', oro: 'Oro', argento: 'Argento', bronzo: 'Bronzo' };
+
 export default function Academy() {
   const [activeSim, setActiveSim] = useState(SIM_LIST[0]?.id || 'LMU');
   const [infoOpen, setInfoOpen] = useState(false);
@@ -41,10 +47,11 @@ export default function Academy() {
       <div className={styles.previewNote}>
         <span className={styles.previewNoteIcon}>◈</span>
         <span>
-          Classifica di anteprima — Fase 2. Il totale è Punti Merito (piazzamento in
+          Classifica di anteprima — Fase 3. Il totale è Punti Merito (piazzamento in
           classe, giro veloce, presenza, pole se disponibile) più Punti Penalità dagli
-          incidenti risolti dallo staff. Badge e scarto del risultato peggiore arrivano
-          nelle fasi successive: questo numero cambierà ancora.
+          incidenti risolti dallo staff. Chi ha almeno 5 gare riceve anche un rango di
+          carriera (Bronzo/Argento/Oro/Platino). Scarto del risultato peggiore arriva
+          nella fase successiva: questo numero cambierà ancora.
         </span>
       </div>
 
@@ -97,11 +104,18 @@ export default function Academy() {
           </p>
 
           <p className={styles.infoText}>
+            Chi ha almeno 5 gare in questo sim riceve anche un <strong>rango di carriera</strong>
+            {' '}(Bronzo/Argento/Oro/Platino), calcolato per percentile tra i piloti qualificati
+            di QUESTO sim — non una soglia fissa in punti, così un sim con meno gare importate
+            finora non penalizza chi ci corre. Non è un indicatore di forma recente (quello
+            resta l'Indice Skill): riflette il contributo accumulato nel tempo.
+          </p>
+
+          <p className={styles.infoText}>
             In classifica compaiono solo i piloti tesserati attualmente attivi — chi ha
             lasciato il team esce dalla classifica anche se ha ancora risultati in
-            archivio. Non sono ancora inclusi: badge (Bronzo/Argento/Oro/Platino) e
-            scarto del risultato peggiore. Arrivano nelle fasi successive del sistema —
-            vedi il banner sopra.
+            archivio. Non è ancora incluso lo scarto del risultato peggiore. Arriva nelle
+            fasi successive del sistema — vedi il banner sopra.
           </p>
         </div>
       )}
@@ -146,6 +160,14 @@ export default function Academy() {
                   <span className={styles.avatarFallback}>{initials(r.display_name)}</span>
                 )}
                 <span className={styles.driverName}>{r.display_name}</span>
+                {r.badge && (
+                  <span
+                    className={`${styles.badgeChip} ${styles['badge_' + r.badge]}`}
+                    title={`Rango ${BADGE_LABELS[r.badge]} — carriera in questo sim (percentile tra i piloti con almeno 5 gare), non un indicatore di forma recente`}
+                  >
+                    {BADGE_LABELS[r.badge]}
+                  </span>
+                )}
               </span>
               <span className={styles.vrCell}>
                 <span className={styles.vr}>{r.vr}</span>

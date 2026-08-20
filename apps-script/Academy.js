@@ -93,6 +93,48 @@ function computePenaltyPoints_(sim) {
   return ppByDriver;
 }
 
+// ═══════════════════════════════════════════════════════════
+// FASE 3 — Badge (Bronzo/Argento/Oro/Platino)
+// ═══════════════════════════════════════════════════════════
+// DEVIAZIONE DELIBERATA dalla spec originale: la spec parla di "soglie"
+// (punti VR fissi), ma i dati reali (testAcademyRanking, verificati il
+// 20/08/2026) mostrano che sim con meno gare importate finora (IRC, ACE)
+// hanno VR massimi strutturalmente molto più bassi di LMU — una soglia
+// fissa penalizzerebbe chi corre su un sim "giovane" sul Paddock, non chi
+// è meno forte. Percentili PER SIM invece si autocalibrano sempre, senza
+// bisogno di una Fase 4 di ritocco manuale.
+//
+// Solo i piloti con ALMENO ACADEMY_BADGE_MIN_RACES in quel sim entrano
+// nel calcolo — gara singola fortunata non deve poter valere Platino.
+// Chi sta sotto soglia non riceve badge (badge: null), non un'etichetta
+// "non classificato" — stesso trattamento già scelto per l'Indice Skill.
+const ACADEMY_BADGE_MIN_RACES = 5;
+const ACADEMY_BADGE_CUTOFFS = { platino: 0.10, oro: 0.35, argento: 0.65 }; // resto → bronzo
+
+/**
+ * Assegna badge PER-SIM alla ranking già ordinata per vr decrescente.
+ * Muta le righe in-place (aggiunge/aggiorna `badge`). Ranking con meno
+ * di ACADEMY_BADGE_MIN_RACES restano a badge: null (default già presente
+ * dal chiamante).
+ */
+function assignAcademyBadges_(ranking) {
+  const qualifying = ranking.filter(r => r.races >= ACADEMY_BADGE_MIN_RACES);
+  const n = qualifying.length;
+  if (n === 0) return;
+
+  const platinoEnd = Math.max(1, Math.round(n * ACADEMY_BADGE_CUTOFFS.platino));
+  const oroEnd = Math.max(platinoEnd + 1, Math.round(n * ACADEMY_BADGE_CUTOFFS.oro));
+  const argentoEnd = Math.max(oroEnd + 1, Math.round(n * ACADEMY_BADGE_CUTOFFS.argento));
+
+  qualifying.forEach((r, idx) => {
+    const rank = idx + 1; // qualifying eredita l'ordine già decrescente di ranking
+    if (rank <= platinoEnd) r.badge = 'platino';
+    else if (rank <= oroEnd) r.badge = 'oro';
+    else if (rank <= argentoEnd) r.badge = 'argento';
+    else r.badge = 'bronzo';
+  });
+}
+
 /**
  * academy.ranking — classifica VR (PM + PP, Fase 2) per un simulatore.
  * PM = Punti Merito (posizione, giro veloce, presenza, pole — Fase 1).
@@ -204,9 +246,12 @@ function handleAcademyRanking(payload, ctx) {
         vr: pm + pp,
         races: pmByDriver[driverId].races,
         penalties_count: (ppByDriver[driverId] && ppByDriver[driverId].penalties_count) || 0,
+        badge: null,
       };
     })
     .sort((a, b) => b.vr - a.vr);
+
+  assignAcademyBadges_(ranking);
 
   return ok({ sim, ranking, count: ranking.length });
 }
@@ -238,7 +283,8 @@ function testAcademyRanking() {
     Logger.log('Piloti in classifica: ' + result.data.count);
     result.data.ranking.forEach((r, i) => {
       const ppNote = r.pp !== 0 ? ` [PM ${r.pm} + PP ${r.pp}]` : '';
-      Logger.log(`  ${i + 1}. ${r.display_name} — VR ${r.vr}${ppNote} (${r.races} gare)`);
+      const badgeNote = r.badge ? ` 🏅${r.badge}` : '';
+      Logger.log(`  ${i + 1}. ${r.display_name} — VR ${r.vr}${ppNote} (${r.races} gare)${badgeNote}`);
     });
   });
 }
