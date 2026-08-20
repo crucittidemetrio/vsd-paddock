@@ -90,7 +90,7 @@ export default function ClashOfClasses() {
         <div className={styles.heroOpen}>
           <span className={styles.heroBadge}>🌍 Aperto a tutta la community</span>
           <span className={styles.heroBadge}>🏁 3 round · LMU</span>
-          <span className={styles.heroBadge}>📅 Date da definire</span>
+          <span className={styles.heroBadge}>📅 20 set – 18 ott 2026</span>
         </div>
         <div className={styles.heroActions}>
           <a href="#iscrizione" className={`${styles.btn} ${styles.btnPrimary}`}>Iscriviti</a>
