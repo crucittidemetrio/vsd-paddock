@@ -11,6 +11,10 @@ export const SIMS = {
 
 export const SIM_LIST = Object.values(SIMS);
 
+// Reazioni emoji sui Race Report — set fisso, tenere allineato a mano con
+// REPORT_REACTION_EMOJI in apps-script/Reports.js se si tocca l'elenco.
+export const REPORT_REACTION_EMOJI = ['🔥', '👏', '😂', '💀', '😬'];
+
 // Categorie auto
 export const CAR_CATEGORIES = [
   'GT3', 'GT4', 'LMP2', 'LMH', 'Hypercar', 'Prototype', 'F1', 'Formula', 'TCR', 'Other',

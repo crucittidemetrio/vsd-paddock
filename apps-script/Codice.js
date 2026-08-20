@@ -39,6 +39,7 @@ const SHEETS = {
   SPONSORS: 'Sponsors',
   INCIDENT_RESOLUTIONS: 'IncidentResolutions',
   SKILL_INDEX_HISTORY: 'SkillIndexHistory',
+  REPORT_REACTIONS: 'ReportReactions',
 };
 
 // ID dello spreadsheet principale (VSD_HUB_DB). Usato solo dagli script che
@@ -300,6 +301,10 @@ const ACTIONS = {
 // Reports
   'reports.list': handleReportsList,
   'reports.recent': handleReportsRecent,
+
+  // Reazioni emoji sui Race Report
+  'reportReactions.list': handleReportReactionsList,
+  'reportReactions.toggle': handleReportReactionsToggle,
 
   // Landing aggregato (1 fetch invece di ~9)
   'landing.data': handleLandingData,

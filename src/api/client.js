@@ -230,6 +230,11 @@ export const api = {
     recent: (limit = 5) => call('reports.recent', { limit }),
   },
 
+  reportReactions: {
+    list: () => call('reportReactions.list', {}),
+    toggle: (report_id, emoji) => call('reportReactions.toggle', { report_id, emoji }),
+  },
+
   landing: {
     data: (payload = {}) => call('landing.data', payload),
   },

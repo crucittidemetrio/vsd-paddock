@@ -354,6 +354,10 @@ export async function callApi(action, payload = {}) {
         return await reportsListAdapter(payload, token);
       case 'reports.recent':
         return await reportsRecentAdapter(payload, token);
+      case 'reportReactions.list':
+        return await reportReactionsListAdapter(payload, token);
+      case 'reportReactions.toggle':
+        return await reportReactionsToggleAdapter(payload, token);
       case 'showcase.summary':
         return await showcaseSummaryAdapter(payload);
       case 'showcase.mediaKit':
@@ -970,6 +974,27 @@ async function reportsRecentAdapter(payload, token) {
   const res = await postToBackend('reports.recent', payload, token);
   if (!res.ok) return res;
   return ok(res.data.reports);
+}
+
+/**
+ * Frontend: reportReactions.list() → array di reazioni (tutte, filtrate
+ * client-side per report_id — dataset piccolo, stesso pattern di reports.list)
+ * Backend:  reportReactions.list({}) → { reactions: [...], count }
+ */
+async function reportReactionsListAdapter(payload, token) {
+  const res = await postToBackend('reportReactions.list', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data.reactions);
+}
+
+/**
+ * Frontend: reportReactions.toggle({ report_id, emoji }) → { report_id, emoji }
+ * (emoji: null se il toggle ha rimosso la reazione precedente)
+ */
+async function reportReactionsToggleAdapter(payload, token) {
+  const res = await postToBackend('reportReactions.toggle', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
 }
 
 /**

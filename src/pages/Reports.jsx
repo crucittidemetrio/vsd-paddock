@@ -3,12 +3,14 @@ import { Link } from 'react-router-dom';
 import { useReports, useRaces } from '../hooks/useRaces';
 import { useDrivers } from '../hooks/useRoster';
 import { useAuth } from '../hooks/useAuth';
+import { useReportReactions, useToggleReportReaction } from '../hooks/useReportReactions';
 import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
 import LapTime from '../components/shared/LapTime';
 import { useConsentSocialFlags, useConsentedDriverPhoto } from '../hooks/useConsent';
 import { resolvePhotoUrl } from '../utils/driverPhotos';
 import { formatTrack, formatDate } from '../utils/format';
+import { REPORT_REACTION_EMOJI } from '../utils/constants';
 import './Reports.css';
 import './Page.css';
 
@@ -20,11 +22,21 @@ const VIEWS = [
 export default function Reports() {
   const [view, setView] = useState('by-race');
   const [driverFilter, setDriverFilter] = useState('all');
-  const { isStaff } = useAuth();
+  const { isStaff, driver: myDriver } = useAuth();
 
   const { data: reports, isLoading } = useReports();
   const { data: races } = useRaces();
   const { data: drivers } = useDrivers();
+  const { data: reactions } = useReportReactions();
+
+  const reactionsByReport = useMemo(() => {
+    const m = {};
+    (reactions || []).forEach(r => {
+      if (!m[r.report_id]) m[r.report_id] = [];
+      m[r.report_id].push(r);
+    });
+    return m;
+  }, [reactions]);
 
   const driverMap = useMemo(() => {
     const m = {};
@@ -150,6 +162,8 @@ export default function Reports() {
                 race={raceMap[r.race_id]}
                 driver={driverMap[r.driver_id]}
                 isStaff={isStaff}
+                reactions={reactionsByReport[r.report_id] || []}
+                myDriverId={myDriver?.driver_id}
               />
             ))
           }
@@ -249,7 +263,7 @@ function RaceGroup({ race, rows, driverMap, isStaff }) {
 // =====================================================
 // FLAT REPORT CARD — singolo report (vista cronologica)
 // =====================================================
-function ReportCard({ report, race, driver, isStaff }) {
+function ReportCard({ report, race, driver, isStaff, reactions = [], myDriverId }) {
   const photoUrl = useConsentedDriverPhoto(driver?.driver_id);
   if (!race || !driver) return null;
   const delta = report.grid_position - report.finish_position;
@@ -316,6 +330,50 @@ function ReportCard({ report, race, driver, isStaff }) {
           <span className="staff-tag">STAFF</span> {report.staff_notes}
         </div>
       )}
+
+      <ReactionBar reportId={report.report_id} reactions={reactions} myDriverId={myDriverId} />
+    </div>
+  );
+}
+
+// =====================================================
+// REACTION BAR — reazioni emoji sotto un Race Report
+// =====================================================
+function ReactionBar({ reportId, reactions, myDriverId }) {
+  const toggleMutation = useToggleReportReaction();
+
+  // Conteggio per emoji + se il pilota loggato ha già reagito con quella.
+  const counts = {};
+  let myEmoji = null;
+  reactions.forEach(r => {
+    counts[r.emoji] = (counts[r.emoji] || 0) + 1;
+    if (myDriverId && r.driver_id === myDriverId) myEmoji = r.emoji;
+  });
+
+  function handleClick(emoji) {
+    if (!myDriverId || toggleMutation.isPending) return;
+    toggleMutation.mutate({ report_id: reportId, emoji });
+  }
+
+  return (
+    <div className="rc-reactions">
+      {REPORT_REACTION_EMOJI.map(emoji => {
+        const count = counts[emoji] || 0;
+        const isMine = myEmoji === emoji;
+        return (
+          <button
+            key={emoji}
+            type="button"
+            className={`rc-reaction-btn${isMine ? ' is-active' : ''}`}
+            onClick={() => handleClick(emoji)}
+            disabled={!myDriverId}
+            title={myDriverId ? (isMine ? 'Rimuovi reazione' : 'Reagisci') : 'Accedi per reagire'}
+          >
+            <span>{emoji}</span>
+            {count > 0 && <span className="rc-reaction-count">{count}</span>}
+          </button>
+        );
+      })}
     </div>
   );
 }
