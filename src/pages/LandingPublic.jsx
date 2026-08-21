@@ -5,16 +5,18 @@ import { useRaces } from '../hooks/useRaces';
 import { useRecentTeamRaceResults } from '../hooks/useRaceResults';
 import { useTracks } from '../hooks/useLookups';
 import { useBestLaps } from '../hooks/useBestLaps';
+import { useTeamRecords } from '../hooks/useTeamRecords';
 import Logo from '../components/shared/Logo';
 import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
+import LapTime from '../components/shared/LapTime';
 import TrackPhotoBackdrop from '../components/shared/TrackPhotoBackdrop';
 import NextRaceHero from '../components/landing/NextRaceHero';
 import { useConsentSocialFlags } from '../hooks/useConsent';
 import SiteFooter from '../components/shared/SiteFooter';
 import { resolvePhotoUrl } from '../utils/driverPhotos';
-import { formatDate } from '../utils/format';
-import { SOCIAL_LINKS } from '../utils/constants';
+import { formatDate, formatTrack } from '../utils/format';
+import { SOCIAL_LINKS, PILOT_OF_MONTH } from '../utils/constants';
 import styles from './LandingPublic.module.css';
 
 const DISCORD_INVITE = SOCIAL_LINKS.DISCORD;
@@ -56,6 +58,11 @@ export default function LandingPublic() {
   // colpo d'occhio "il team è vivo e attivo" per un visitatore che non
   // si è mai loggato, ispirato alla home di togamotorsport.co.uk.
   const { data: allLaps } = useBestLaps();
+  // Teaser "Record di pista" — solo una manciata di righe, il Muro dei Record
+  // completo resta dietro login (RequireTier minTier="pilot_vsd" su /records):
+  // qui vogliamo dare un assaggio che fa venire voglia di entrare, non
+  // duplicare l'intera pagina interattiva.
+  const { data: teamRecordsData } = useTeamRecords();
   const socialFlags = socialFlagsData?.flags || {};
   const raceResults = raceResultsData?.results || [];
 
@@ -76,8 +83,20 @@ export default function LandingPublic() {
     return m;
   }, [races]);
 
+  const pilotOfMonth = useMemo(() => {
+    if (!PILOT_OF_MONTH?.driverId) return null;
+    return driverMap[PILOT_OF_MONTH.driverId] || null;
+  }, [driverMap]);
+
   const nextRace = useMemo(() => getNextRace(races), [races]);
   const recentPodiums = useMemo(() => getRecentPodiums(raceResults, 5), [raceResults]);
+
+  const recordsTeaser = useMemo(() => {
+    const list = teamRecordsData?.records || [];
+    return [...list]
+      .sort((a, b) => formatTrack(a.track_id, tracks).localeCompare(formatTrack(b.track_id, tracks)))
+      .slice(0, 6);
+  }, [teamRecordsData, tracks]);
 
   const completedRaces = useMemo(
     () => (races || []).filter(r => String(r.status || '').toLowerCase() === 'completed').length,
@@ -169,16 +188,36 @@ export default function LandingPublic() {
         </h2>
         <div className={styles.rosterGrid}>
           {activeRoster.map(d => (
-            <div key={d.driver_id} className={styles.rosterCard}>
-  <Avatar name={d.display_name} driverId={d.driver_id} size={56} photoUrl={resolvePhotoUrl(d.driver_id, socialFlags)} />
-  {d.race_number != null && d.race_number !== '' && (
-    <div className={styles.rosterNumber}>#{d.race_number}</div>
-  )}
-  <div className={styles.rosterName}>{d.display_name}</div>
-</div>
+            <Link key={d.driver_id} to={`/roster/${d.driver_id}`} className={styles.rosterCard}>
+              <Avatar name={d.display_name} driverId={d.driver_id} size={56} photoUrl={resolvePhotoUrl(d.driver_id, socialFlags)} />
+              {d.race_number != null && d.race_number !== '' && (
+                <div className={styles.rosterNumber}>#{d.race_number}</div>
+              )}
+              <div className={styles.rosterName}>{d.display_name}</div>
+            </Link>
           ))}
         </div>
       </section>
+
+      {/* ════ PILOTA DEL MESE (vetrina, riflette il ruolo Discord) ════ */}
+      {pilotOfMonth && (
+        <section className={styles.section}>
+          <Link to={`/roster/${pilotOfMonth.driver_id}`} className={styles.spotlightCard}>
+            <Avatar
+              name={pilotOfMonth.display_name}
+              driverId={pilotOfMonth.driver_id}
+              size={72}
+              photoUrl={resolvePhotoUrl(pilotOfMonth.driver_id, socialFlags)}
+            />
+            <div>
+              <div className={styles.spotlightBadge}>
+                🔥 Attivo del Mese{PILOT_OF_MONTH.monthLabel ? ` · ${PILOT_OF_MONTH.monthLabel}` : ''}
+              </div>
+              <div className={styles.spotlightName}>{pilotOfMonth.display_name}</div>
+            </div>
+          </Link>
+        </section>
+      )}
 
       {/* ════ RISULTATI RECENTI ════ */}
       {recentPodiums.length > 0 && (
@@ -206,6 +245,28 @@ export default function LandingPublic() {
               );
             })}
           </ul>
+        </section>
+      )}
+
+      {/* ════ RECORD DI PISTA (teaser) ════ */}
+      {recordsTeaser.length > 0 && (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Record di pista</h2>
+          <div className={styles.recordsGrid}>
+            {recordsTeaser.map(r => (
+              <div key={`${r.sim}-${r.track_id}`} className={styles.recordCard}>
+                <SimBadge sim={r.sim} />
+                <div className={styles.recordTrack}>{formatTrack(r.track_id, tracks)}</div>
+                <LapTime display={r.lap_time_display} size="lg" emphasis="best" />
+                <div className={styles.recordHolder}>{r.display_name}</div>
+              </div>
+            ))}
+          </div>
+          <div className={styles.recordsCta}>
+            <Link to="/records" className={`${styles.btn} ${styles.btnGhost}`}>
+              Vedi tutti i record →
+            </Link>
+          </div>
         </section>
       )}
 

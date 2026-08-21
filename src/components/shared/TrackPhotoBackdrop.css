@@ -8,6 +8,26 @@
   pointer-events: none;
   z-index: 0;
   user-select: none;
+  /* Ken Burns lento: alza la percezione di "produzione" senza un vero video
+     onboard (asset che il team non ha ancora). Scala/pan minimi, loop lungo
+     per non distrarre. Disattivato per chi preferisce meno movimento. */
+  animation: track-photo-kenburns 26s ease-in-out infinite alternate;
+  transform-origin: bottom right;
+}
+
+@keyframes track-photo-kenburns {
+  from {
+    transform: scale(1) translate(0, 0);
+  }
+  to {
+    transform: scale(1.06) translate(-1.5%, -1.5%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track-photo-backdrop {
+    animation: none;
+  }
 }
 
 .track-photo-backdrop-br {
@@ -16,6 +36,7 @@
 
 .track-photo-backdrop-bl {
   left: 0;
+  transform-origin: bottom left;
 }
 
 @media (max-width: 640px) {

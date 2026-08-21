@@ -49,6 +49,19 @@ export const DRIVER_STATUS = {
 // Condizioni gara
 export const CONDITIONS = ['dry', 'wet', 'mixed'];
 
+// Pilota del Mese — vetrina pubblica speculare al ruolo Discord "🔥 Attivo
+// del Mese" assegnato da Statbot (Statrole su messaggi, rolling 30gg).
+// Statbot non espone un'API consultabile dal sito, quindi qui NON c'è
+// sincronizzazione automatica: il valore va aggiornato A MANO ogni mese
+// da chi gestisce il sito, guardando chi ha il ruolo su Discord.
+// driverId deve corrispondere a un driver_id esistente nel roster.
+// Lasciare driverId a null per nascondere del tutto la sezione in home
+// (es. a inizio mese, prima che Statbot abbia ricalcolato il detentore).
+export const PILOT_OF_MONTH = {
+  driverId: null, // es. 'drv_12'
+  monthLabel: null, // es. 'Agosto 2026'
+};
+
 // Link social ufficiali VSD (unica fonte di verità — evita duplicati sparsi tra le pagine)
 export const SOCIAL_LINKS = {
   DISCORD: 'https://discord.gg/hdt8uHEfsy',
