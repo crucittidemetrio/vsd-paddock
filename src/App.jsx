@@ -57,6 +57,7 @@ const AdminIncidents = lazy(() => import('./pages/AdminIncidents'));
 const SocialManager = lazy(() => import('./pages/SocialManager'));
 const ClashOfClasses = lazy(() => import('./pages/ClashOfClasses'));
 const AdminClashResults = lazy(() => import('./pages/AdminClashResults'));
+const AciLmgt3Challenge = lazy(() => import('./pages/AciLmgt3Challenge'));
 
 import './App.css';
 
@@ -117,6 +118,7 @@ export default function App() {
               <Route path="/endurance/:auditionId" element={<EnduranceDetail />} />
               <Route path="/ue144" element={<UE144 />} />
               <Route path="/clash-of-classes" element={<ClashOfClasses />} />
+              <Route path="/aci-lmgt3-challenge" element={<AciLmgt3Challenge />} />
               <Route path="/compare" element={<Compare />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/terms" element={<Terms />} />

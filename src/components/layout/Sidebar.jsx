@@ -28,6 +28,13 @@ const EVENTS_ITEMS = [
   { to: '/clash-of-classes', label: 'Clash of Classes', icon: '⚔' },
 ];
 
+// Campionati esterni — VSD vi partecipa con propri piloti ma non li
+// organizza (serie ufficiali di una federazione/ente terzo). Sezione
+// distinta da Eventi VSD, che sono format proprietari interni.
+const EXTERNAL_ITEMS = [
+  { to: '/aci-lmgt3-challenge', label: 'ACI LMGT3 Challenge', icon: '♟' },
+];
+
 // Pagine rivolte all'esterno (candidati, sponsor) — visibili a tutti,
 // prima erano raggiungibili solo via link diretto condiviso a mano.
 const TEAM_ITEMS = [
@@ -175,6 +182,9 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
             invece di essere interrotto dal blocco arancione in mezzo. */}
         <div className="nav-section-label nav-section-label-event">Eventi VSD</div>
         {EVENTS_ITEMS.map(item => renderNavItem(item, onMobileClose, 'is-event'))}
+
+        <div className="nav-section-label nav-section-label-external">Campionati Esterni</div>
+        {EXTERNAL_ITEMS.map(item => renderNavItem(item, onMobileClose, 'is-external'))}
 
         <div className="nav-section-label">Team</div>
         {TEAM_ITEMS.map(item => renderNavItem(item, onMobileClose))}

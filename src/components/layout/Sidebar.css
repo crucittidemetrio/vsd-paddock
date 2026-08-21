@@ -104,6 +104,7 @@
    hover/attivo, e una lista lunga come la sidebar resta scansionabile
    a colpo d'occhio invece di essere tutta la stessa tinta. */
 .nav-item.is-event .nav-icon { color: var(--vsd-orange); }
+.nav-item.is-external .nav-icon { color: var(--vsd-blue); }
 .nav-item.is-tool .nav-icon { color: #22c55e; }
 .nav-item.is-admin .nav-icon { color: var(--vsd-red); }
 
@@ -135,6 +136,29 @@
 }
 .nav-item.is-event.is-active::before {
   background: var(--vsd-orange);
+}
+
+.nav-section-label-external {
+  color: var(--vsd-blue);
+  opacity: 0.85;
+}
+
+.nav-item.is-external {
+  background: rgba(59, 139, 255, 0.05);
+  border: 1px solid rgba(59, 139, 255, 0.18);
+  margin-bottom: 1px;
+}
+.nav-item.is-external:hover {
+  background: rgba(59, 139, 255, 0.1);
+  border-color: rgba(59, 139, 255, 0.35);
+  color: var(--color-text);
+}
+.nav-item.is-external.is-active {
+  background: linear-gradient(90deg, rgba(59,139,255,0.16), rgba(59,139,255,0.05));
+  color: var(--vsd-blue);
+}
+.nav-item.is-external.is-active::before {
+  background: var(--vsd-blue);
 }
 
 .nav-count {

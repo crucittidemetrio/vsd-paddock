@@ -273,3 +273,68 @@ function migrate_addCarNumberToEnduranceStints() {
   Logger.log('✅ Colonna `car_number` aggiunta a EnduranceStints (colonna #' + newColIdx + ')');
   Logger.log('⚠️  Gli stint esistenti hanno car_number vuoto — assegnalo manualmente dove serve.');
 }
+
+/**
+ * migrate_add_aciLmgt3Challenge2026
+ * Aggiunge il record Championships per l'ACI LMGT3 Challenge 2026 —
+ * campionato ESTERNO (indetto da ACI Sport, organizzato tramite il
+ * portale Apex Italia Simracing) a cui alcuni piloti VSD tentano di
+ * qualificarsi. Riusa il motore Championships/Races/RaceResults già
+ * esistente (stesso pattern di UE144, non un dominio bespoke come
+ * ClashOfClasses.js) — season='2026' così le edizioni future si
+ * aggiungono come nuove righe con season diverso, stesso id-prefix.
+ *
+ * Dati dal regolamento ufficiale ACI Sport (RDS LMGT3 Challenge 2026,
+ * pubblicato 17/07/2026): 6 gare da 75', field 35 equipaggi, classe
+ * unica LMGT3 (10 modelli ammessi), iscrizioni chiuse 15/09/2026,
+ * prequalifiche 17 e 20/09/2026 se sovrannumero.
+ *
+ * NB: nessun riferimento a Apex Italia Simracing (nome, logo, link) va
+ * pubblicato sul sito finché non arriva l'autorizzazione esplicita —
+ * vedi note VSD del 21/08/2026. Questo record backend è dati tecnici
+ * (id/date/note interne), non contenuto pubblicato: nessun problema.
+ *
+ * Idempotente: se il record esiste già (stesso id), non fa nulla.
+ */
+function migrate_add_aciLmgt3Challenge2026() {
+  const sheet = getSheet(SHEETS.CHAMPIONSHIPS);
+  if (!sheet) { Logger.log('❌ Tab Championships non trovato'); return; }
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const idCol = headers.indexOf('id');
+  const lastRow = sheet.getLastRow();
+  const id = 'chmp-lmu-aci-lmgt3-challenge-2026';
+
+  if (lastRow > 1) {
+    const ids = sheet.getRange(2, idCol + 1, lastRow - 1, 1).getValues().flat();
+    if (ids.indexOf(id) !== -1) {
+      Logger.log('⏭️  Championship "' + id + '" già presente, migration skippata');
+      return;
+    }
+  }
+
+  const row = {
+    id: id,
+    name: 'ACI LMGT3 Challenge',
+    sim: 'LMU',
+    season: '2026',
+    status: 'upcoming',
+    format: 'sprint',
+    start_date: '2026-10-01',
+    end_date: '2026-12-10',
+    notes: 'Campionato esterno indetto da ACI Sport. Piloti VSD in tentativo di qualificazione. Iscrizioni chiuse 15/09/2026, prequalifiche 17 e 20/09/2026 se sovrannumero (>35 iscritti). Regolamento ufficiale: acisport.it.',
+    banner_url: '',
+    standings_json: '',
+    points_adjustments_json: '',
+  };
+  const newRow = headers.map(h => (row[h] !== undefined ? row[h] : ''));
+  sheet.appendRow(newRow);
+  Logger.log('✅ Championship "' + id + '" (ACI LMGT3 Challenge, season 2026) aggiunto.');
+
+  try {
+    invalidateSheetCache_(SHEETS.CHAMPIONSHIPS);
+    Logger.log('✅ Cache Championships invalidata');
+  } catch (e) {
+    Logger.log('⚠️ Cache non invalidata (normale se non in contesto API): ' + e.message);
+  }
+}

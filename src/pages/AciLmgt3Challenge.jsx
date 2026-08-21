@@ -1,0 +1,399 @@
+import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { useChampionshipStandings } from '../hooks/useChampionshipStandings';
+import { useDrivers } from '../hooks/useRoster';
+import { usePageMeta } from '../hooks/usePageMeta';
+import { SOCIAL_LINKS } from '../utils/constants';
+import Avatar from '../components/shared/Avatar';
+import { useConsentedDriverPhoto } from '../hooks/useConsent';
+import styles from './AciLmgt3Challenge.module.css';
+
+// Championship row creata da apps-script/migrations.js →
+// migrate_add_aciLmgt3Challenge2026(). VSD non organizza questa serie:
+// è indetta da ACI Sport (RDS LMGT3 Challenge 2026, pubbl. 12/07/2026),
+// eseguita tramite un organizzatore esterno abilitato ACI ESport.
+const ACI_CHAMPIONSHIP_ID = 'chmp-lmu-aci-lmgt3-challenge-2026';
+
+// Regolamento ufficiale pubblicato da ACI Sport — fonte pubblica,
+// nessun riferimento al portale organizzatore esterno finché non
+// arriva l'autorizzazione a citarlo (in attesa di risposta).
+const REGOLAMENTO_URL =
+  'https://www.acisport.it/public_federazione/2026/pdf/Annuario/regolamento_aci_esport_lmgt3_challenge_2026_-_le_mans_ultimate.pdf';
+
+const REGISTRATION_DEADLINE = '15 Settembre 2026';
+
+// Art. 5 RDS — le uniche 10 vetture omologate per la classe LMGT3.
+const CARS = [
+  'Aston Martin Vantage AMR LMGT3',
+  'BMW M4 LMGT3',
+  'Corvette Z06 LMGT3.R',
+  'Ferrari 296 LMGT3',
+  'Ford Mustang LMGT3',
+  'Lamborghini Huracán LMGT3 Evo2',
+  'Lexus RCF LMGT3',
+  'McLaren 720S LMGT3 Evo',
+  'Mercedes-AMG LMGT3',
+  'Porsche 911 GT3 R LMGT3',
+];
+
+// Art. 12.2 RDS — punteggio ufficiale.
+const POINTS = [
+  { pos: 1, pts: 35 }, { pos: 2, pts: 30 }, { pos: 3, pts: 26 },
+  { pos: 4, pts: 23 }, { pos: 5, pts: 20 }, { pos: 6, pts: 18 },
+  { pos: 7, pts: 16 }, { pos: 8, pts: 14 }, { pos: 9, pts: 12 },
+  { pos: 10, pts: 10 }, { pos: 11, pts: 9 }, { pos: 12, pts: 8 },
+  { pos: 13, pts: 7 }, { pos: 14, pts: 6 }, { pos: 15, pts: 5 },
+  { pos: 16, pts: 4 }, { pos: 17, pts: 3 }, { pos: 18, pts: 2 },
+  { pos: 19, pts: 2 }, { pos: 20, pts: 2 }, { pos: 21, pts: 1 },
+  { pos: 22, pts: 1 }, { pos: 23, pts: 1 }, { pos: 24, pts: 1 },
+];
+
+// Art. 9.2 RDS — calendario ufficiale (orari 22:01 locali per la gara).
+const CALENDAR = [
+  { round: 'R1', circuit: 'Autodromo Enzo e Dino Ferrari', location: 'Imola', date: '01 Ott 2026' },
+  { round: 'R2', circuit: 'Circuit de Spa-Francorchamps', date: '15 Ott 2026' },
+  { round: 'R3', circuit: 'Fuji International Speedway', date: '29 Ott 2026' },
+  { round: 'R4', circuit: 'Autódromo José Carlos Pace', location: 'Interlagos', date: '12 Nov 2026' },
+  { round: 'R5', circuit: 'Sebring International Raceway', date: '26 Nov 2026' },
+  { round: 'R6', circuit: 'Bahrain International Circuit', date: '10 Dic 2026' },
+];
+
+export default function AciLmgt3Challenge() {
+  usePageMeta({
+    title: 'ACI LMGT3 Challenge 2026 — VSD Racing su Le Mans Ultimate | VSD',
+    description: 'VSD Racing partecipa all’ACI LMGT3 Challenge 2026, campionato ufficiale indetto da ACI Sport su Le Mans Ultimate: classe unica LMGT3, 6 gare, calendario internazionale da Imola al Bahrain.',
+  });
+
+  return (
+    <div className={styles.page}>
+
+      {/* ════ HERO ════ */}
+      <section className={styles.hero}>
+        <div className={styles.heroEyebrow}>VSD RACING IN GARA</div>
+        <h1 className={styles.heroTitle}>
+          ACI LMGT3 Challenge
+          <span className={styles.heroTitleAccent}> 2026</span>
+        </h1>
+        <p className={styles.heroSub}>
+          Le Mans Ultimate · Campionato Ufficiale ACI Sport · Classe Unica LMGT3
+        </p>
+        <div className={styles.heroOpen}>
+          <span className={styles.heroBadge}>🌍 Field 35 vetture</span>
+          <span className={styles.heroBadge}>👤 Conduttore singolo</span>
+          <span className={styles.heroBadge}>📅 6 gare · Ott–Dic 2026</span>
+        </div>
+        <div className={styles.heroActions}>
+          <a
+            href={REGOLAMENTO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`${styles.btn} ${styles.btnPrimary}`}
+          >
+            📄 Regolamento ufficiale ACI Sport
+          </a>
+          <span className={`${styles.btn} ${styles.btnDisabled}`}>
+            Iscrizioni chiuse il {REGISTRATION_DEADLINE}
+          </span>
+        </div>
+      </section>
+
+      {/* ════ IL CAMPIONATO ════ */}
+      <section className={styles.section}>
+        <div className={styles.sectionEyebrow}>Il Campionato</div>
+        <h2 className={styles.sectionTitle}>Una serie ufficiale, non un format VSD</h2>
+        <div className={styles.specGrid}>
+          <SpecRow label="Indetto da" value="ACI Sport — Federazione Sportiva ACI, tramite ACI ESport" />
+          <SpecRow label="Simulatore" value="Le Mans Ultimate (Studio 397 / Motorsport Games)" />
+          <SpecRow label="Modalità" value="Online, da casa — nessun requisito di membership VSD" />
+          <SpecRow label="Field" value="35 equipaggi — se le iscrizioni superano il numero, decidono le prequalifiche del 17 e 20 Settembre 2026" />
+          <SpecRow label="Tassa di ammissione" value="€15 a conduttore ammesso" />
+          <SpecRow label="Titoli assegnati" value="Nessuno (art. 21 RDS) — trofeo ai primi 3 conduttori a fine stagione" />
+        </div>
+      </section>
+
+      {/* ════ VETTURE AMMESSE ════ */}
+      <section className={styles.section}>
+        <div className={styles.sectionEyebrow}>Art. 5 RDS</div>
+        <h2 className={styles.sectionTitle}>Vetture ammesse — Classe LMGT3</h2>
+        <div className={styles.classGrid}>
+          <div className={styles.classCard}>
+            <div className={styles.classHeader}>
+              <span className={styles.classIcon}>🟠</span>
+              <div>
+                <div className={styles.classLabel}>LMGT3</div>
+                <div className={styles.classSublabel}>Classe unica — 10 modelli omologati</div>
+              </div>
+            </div>
+            <ul className={styles.carList}>
+              {CARS.map(car => (
+                <li key={car} className={styles.carItem}>{car}</li>
+              ))}
+            </ul>
+            <p className={styles.classNote}>
+              ⚙ Balance of Performance ufficiale fornito dagli aggiornamenti di Le Mans Ultimate
+            </p>
+          </div>
+        </div>
+      </section>
+
+      {/* ════ FORMATO ════ */}
+      <section className={styles.section}>
+        <div className={styles.sectionEyebrow}>Formato Gara</div>
+        <h2 className={styles.sectionTitle}>Struttura del weekend</h2>
+        <div className={styles.formatGrid}>
+          <FormatCard label="Prove Libere" value="10'" detail="Open lobby — la sera prima anche server FP 21:00–23:00" icon="⏱" />
+          <FormatCard label="Qualifica" value="15'" detail="Sessione privata — giri illimitati" icon="🔒" />
+          <FormatCard label="Gara" value="75'" detail="Griglia dalla qualifica · short formation lap" icon="🏁" accent />
+        </div>
+        <div className={styles.specGrid}>
+          <SpecRow label="Track limits" value="Regola FIA di default — linee bianche parte della pista, cordoli esterni" />
+          <SpecRow label="Real Road" value="Heavy — evoluzione termica attiva" />
+          <SpecRow label="Carburante/Gomme" value="Consumo e usura realistici" />
+          <SpecRow label="Danni" value="Realistici" />
+          <SpecRow label="Aiuti alla guida" value="ABS, TC, ausili di frenata/sterzo e traiettoria — tutti disattivati" />
+        </div>
+      </section>
+
+      {/* ════ CALENDARIO ════ */}
+      <section className={styles.section}>
+        <div className={styles.sectionEyebrow}>Art. 9.2 RDS</div>
+        <h2 className={styles.sectionTitle}>Calendario ufficiale</h2>
+        <div className={styles.calendarGrid}>
+          {CALENDAR.map(r => (
+            <div key={r.round} className={styles.calendarCard}>
+              <div className={styles.calendarRound}>{r.round}</div>
+              <div className={styles.calendarCircuit}>
+                {r.circuit}
+                {r.location && <span> · {r.location}</span>}
+              </div>
+              <div className={styles.calendarMeta}>
+                <span className={styles.calendarDate}>📅 {r.date}</span>
+                <span className={styles.calendarTime}>🕐 22:01 (Italia)</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ════ PUNTEGGIO ════ */}
+      <section className={styles.section}>
+        <div className={styles.sectionEyebrow}>Art. 12.2 RDS</div>
+        <h2 className={styles.sectionTitle}>Sistema di punteggio</h2>
+        <div className={styles.pointsWrap}>
+          <div className={styles.pointsRow}>
+            {POINTS.map(({ pos, pts }) => (
+              <div key={pos} className={`${styles.pointsCell} ${pos <= 3 ? styles.pointsPodium : ''}`}>
+                <div className={styles.pointsPos}>P{pos}</div>
+                <div className={styles.pointsPts}>{pts}</div>
+              </div>
+            ))}
+          </div>
+          <div className={styles.bonusRow}>
+            <span className={styles.bonusBadge}>+1 pt Giro Veloce</span>
+            <span className={styles.bonusBadge}>Punti solo a chi completa ≥50% dei giri del vincitore</span>
+          </div>
+        </div>
+      </section>
+
+      {/* ════ PATENTE A PUNTI ════ */}
+      <section className={styles.section}>
+        <div className={styles.sectionEyebrow}>Art. 19 RDS</div>
+        <h2 className={styles.sectionTitle}>Patente a punti</h2>
+        <div className={styles.specGrid}>
+          <SpecRow label="Punti iniziali" value="10 per conduttore, a inizio campionato" />
+          <SpecRow label="Penalità 5″" value="-2 punti patente" />
+          <SpecRow label="Penalità 10″/15″ / Pit lane start" value="-3 punti patente" />
+          <SpecRow label="Penalità ≥20″ / Drive Through / Stop&Go" value="-4 punti patente" />
+          <SpecRow label="Squalifica" value="-5 punti patente" />
+          <SpecRow label="Azzeramento" value="Esclusione dalla prova successiva; si rientra con 2 punti a manifestazione rimanente" />
+        </div>
+      </section>
+
+      {/* ════ PILOTI VSD ════ */}
+      <section className={styles.section}>
+        <div className={styles.sectionEyebrow}>Roster</div>
+        <h2 className={styles.sectionTitle}>Piloti VSD in gara</h2>
+        <div className={styles.emptyBox}>
+          <div className={styles.emptyIcon}>🏎️</div>
+          <div className={styles.emptyTitle}>Iscrizioni in corso</div>
+          <div className={styles.emptyText}>
+            Le iscrizioni ACI chiudono il {REGISTRATION_DEADLINE}. Se le domande superano i 35 posti,
+            si terranno le prequalifiche del 17 e 20 Settembre. Le schede dei piloti VSD ammessi
+            saranno pubblicate qui non appena confermati.
+          </div>
+        </div>
+      </section>
+
+      {/* ════ CLASSIFICA ════ */}
+      <StandingsSection />
+
+      {/* ════ CTA ════ */}
+      <section className={styles.cta}>
+        <h2 className={styles.ctaTitle}>Segui l'avventura ACI</h2>
+        <p className={styles.ctaText}>
+          Aggiornamenti, prequalifiche e risultati gara per gara: tutto quello che riguarda
+          i colori VSD all'ACI LMGT3 Challenge passa dai nostri canali.
+        </p>
+        <div className={styles.ctaActions}>
+          <a href={SOCIAL_LINKS.DISCORD} target="_blank" rel="noopener noreferrer" className={styles.btn}>
+            Discord VSD
+          </a>
+          <a href={SOCIAL_LINKS.INSTAGRAM} target="_blank" rel="noopener noreferrer" className={styles.btn}>
+            Instagram
+          </a>
+          <a href={SOCIAL_LINKS.FACEBOOK} target="_blank" rel="noopener noreferrer" className={styles.btn}>
+            Facebook
+          </a>
+        </div>
+      </section>
+
+      <p className={styles.disclaimer}>
+        L'ACI LMGT3 Challenge è un campionato indetto da ACI Sport. VSD Racing vi partecipa
+        con propri piloti ma non è l'organizzatore della serie — per il regolamento completo
+        fa fede esclusivamente il documento ufficiale pubblicato su acisport.it.
+      </p>
+
+    </div>
+  );
+}
+
+// ════ CLASSIFICA ════
+
+function StandingsSection() {
+  const { data, isLoading } = useChampionshipStandings(ACI_CHAMPIONSHIP_ID);
+  const { data: drivers } = useDrivers();
+  const [selectedClass, setSelectedClass] = useState(null);
+
+  const driverMap = useMemo(() => {
+    const m = {};
+    (drivers || []).forEach(d => { m[d.driver_id] = d; });
+    return m;
+  }, [drivers]);
+
+  const activeClass = useMemo(() => {
+    if (!data?.classes?.length) return null;
+    if (selectedClass) {
+      return data.classes.find(c => c.class_name === selectedClass) || data.classes[0];
+    }
+    return data.classes[0];
+  }, [data, selectedClass]);
+
+  const hasStandings = data?.classes?.length > 0 && data.rounds?.length > 0;
+
+  return (
+    <section className={styles.section}>
+      <div className={styles.sectionEyebrow}>Stagione 2026</div>
+      <h2 className={styles.sectionTitle}>Classifica</h2>
+
+      {isLoading && (
+        <div className={styles.standingsSkeleton}>
+          <div className={styles.skeletonBar} />
+          <div className={styles.skeletonBar} style={{ width: '80%' }} />
+          <div className={styles.skeletonBar} style={{ width: '90%' }} />
+        </div>
+      )}
+
+      {!isLoading && !hasStandings && (
+        <div className={styles.emptyBox}>
+          <div className={styles.emptyIcon}>🏁</div>
+          <div className={styles.emptyTitle}>Stagione in arrivo</div>
+          <div className={styles.emptyText}>
+            La classifica sarà disponibile dopo Round 1 — Imola, 1 Ottobre 2026.
+          </div>
+        </div>
+      )}
+
+      {!isLoading && hasStandings && activeClass && (
+        <>
+          <div className={styles.standingsTableWrap}>
+            <table className={styles.standingsTable}>
+              <thead>
+                <tr>
+                  <th className={styles.stColPos}>#</th>
+                  <th>Pilota</th>
+                  <th className={styles.stNum}>Pts</th>
+                  <th className={styles.stNum}>Gare</th>
+                  <th className={styles.stNum}>W</th>
+                  <th className={styles.stNum}>Podi</th>
+                  <th className={styles.stNum}>Best</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activeClass.standings.map(s => {
+                  const podium = s.position <= 3;
+                  return (
+                    <tr
+                      key={`${s.driver_id || s.driver_name_external}__${s.car_class}`}
+                      className={[
+                        s.is_vsd ? styles.stRowVsd : '',
+                        podium ? styles[`stPodium${s.position}`] : '',
+                      ].filter(Boolean).join(' ')}
+                    >
+                      <td className={styles.stColPos}>
+                        <span className={styles.stPosBadge}>{s.position}</span>
+                      </td>
+                      <td>
+                        <DriverCell driver={s} driverInfo={driverMap[s.driver_id]} />
+                      </td>
+                      <td className={styles.stNum}><strong>{s.total_points}</strong></td>
+                      <td className={styles.stNum}>{s.races_count}</td>
+                      <td className={styles.stNum}>{s.wins || '—'}</td>
+                      <td className={styles.stNum}>{s.podiums || '—'}</td>
+                      <td className={styles.stNum}>{s.best_finish ?? '—'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          <div className={styles.standingsFooter}>
+            <Link to={`/championships/${ACI_CHAMPIONSHIP_ID}`} className={styles.standingsDetailLink}>
+              Classifica completa →
+            </Link>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
+
+function DriverCell({ driver, driverInfo }) {
+  const photoUrl = useConsentedDriverPhoto(driverInfo?.driver_id);
+  if (driver.is_vsd && driverInfo) {
+    return (
+      <Link to={`/roster/${driverInfo.driver_id}`} className={styles.stDriverLink}>
+        <Avatar name={driverInfo.display_name} driverId={driverInfo.driver_id} size={24} photoUrl={photoUrl} />
+        <span className={styles.stDriverName}>{driverInfo.display_name}</span>
+        <span className={styles.stVsdBadge}>VSD</span>
+      </Link>
+    );
+  }
+  return (
+    <span className={styles.stDriverExternal}>
+      {driver.display_name || driver.driver_name_external || 'Unknown'}
+    </span>
+  );
+}
+
+// ════ HELPER COMPONENTS ════
+
+function FormatCard({ label, value, detail, icon, accent }) {
+  return (
+    <div className={`${styles.formatCard} ${accent ? styles.formatCardAccent : ''}`}>
+      <div className={styles.formatIcon}>{icon}</div>
+      <div className={styles.formatLabel}>{label}</div>
+      <div className={styles.formatValue}>{value}</div>
+      <div className={styles.formatDetail}>{detail}</div>
+    </div>
+  );
+}
+
+function SpecRow({ label, value }) {
+  return (
+    <div className={styles.specRow}>
+      <div className={styles.specLabel}>{label}</div>
+      <div className={styles.specValue}>{value}</div>
+    </div>
+  );
+}
