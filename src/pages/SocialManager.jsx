@@ -53,7 +53,28 @@ const EVERGREEN_PILLARS = [
   { id: 'community', label: 'Community engagement', icon: '💬', cadenceDays: 14 },
 ];
 
-const PILLAR_BY_ID = Object.fromEntries([...PILLARS, ...EVERGREEN_PILLARS].map(p => [p.id, p]));
+// Capitoli "story book" — sfida ACI LMGT3 Challenge (piloti VSD che
+// tentano di qualificarsi a un campionato reale organizzato da ACI/
+// APEX Italia). A differenza dei pilastri sopra, non hanno né una data
+// fissa (non è una gara VSD in calendario) né una cadenza (dipendono
+// da eventi reali imprevedibili: si passano le prequalifiche o no,
+// quando arriva il prossimo risultato). Per questo sono "a milestone":
+// una lista curata di capitoli possibili, creabili a mano quando
+// succede qualcosa di vero da raccontare — non tracciati per
+// scadenza/ritardo come gli evergreen, e ripetibili (es. un weekend di
+// gara per ogni round) invece che un solo slot per pilastro.
+const STORY_PILLARS = [
+  { id: 'story_prequalifiche', label: 'Prequalifiche — esito', icon: '📖',
+    hint: 'Il capitolo che tutti aspettano: chi ce l\'ha fatta?' },
+  { id: 'story_qualifiche', label: 'Qualifiche ACI', icon: '📖',
+    hint: 'Round di ingresso al campionato vero e proprio' },
+  { id: 'story_weekend', label: 'Weekend di gara ACI', icon: '📖',
+    hint: 'Un capitolo per ogni round — ripetibile' },
+  { id: 'story_bilancio', label: 'Bilancio di fine avventura', icon: '📖',
+    hint: 'Come è andata, cosa resta alla squadra' },
+];
+
+const PILLAR_BY_ID = Object.fromEntries([...PILLARS, ...EVERGREEN_PILLARS, ...STORY_PILLARS].map(p => [p.id, p]));
 const PLATFORM_ICON = Object.fromEntries(PLATFORM_OPTIONS.map(p => [p.id, p.icon]));
 
 const STATUS_FLOW = ['bozza', 'programmato', 'pubblicato'];
@@ -830,6 +851,29 @@ function evergreenLinkDestination(pillarId) {
   return '';
 }
 
+function storyTopic(pillarId) {
+  const p = STORY_PILLARS.find(s => s.id === pillarId);
+  return p ? `${p.label} — ${p.hint}` : '';
+}
+
+// Capitoli già scritti per ciascun pilastro story, più recenti prima —
+// a differenza di useEvergreenPlan non calcola "in ritardo": qui
+// interessa solo cosa è già stato scritto, non una scadenza.
+function useStoryPlan(posts) {
+  return useMemo(() => {
+    return STORY_PILLARS.map(pillar => {
+      const chapters = posts
+        .filter(p => p.pillar === pillar.id)
+        .sort((a, b) => {
+          const da = String(a.scheduled_date || a.created_at || '');
+          const db = String(b.scheduled_date || b.created_at || '');
+          return db.localeCompare(da);
+        });
+      return { ...pillar, chapters, latest: chapters[0] || null };
+    });
+  }, [posts]);
+}
+
 // Stato dei pilastri evergreen: a differenza dei pilastri gara (legati a
 // una data fissa), qui guardiamo l'ultimo post pubblicato/programmato per
 // quella categoria e calcoliamo se è "in ritardo" rispetto alla cadenza.
@@ -892,9 +936,48 @@ function EvergreenPlanView({ evergreenPlan, onCreate }) {
   );
 }
 
+function StoryPlanView({ storyPlan, onCreate }) {
+  return (
+    <div className={styles.raceCard}>
+      <div className={styles.raceCardHead}>
+        <span className={styles.raceCardName}>📖 ACI LMGT3 Challenge — Story Book</span>
+        <span className={styles.raceCardMeta}>capitoli a milestone, non a cadenza — creali quando c'è un fatto vero da raccontare</span>
+      </div>
+      <div className={styles.pillarRow}>
+        {storyPlan.map(item => (
+          <div
+            key={item.id}
+            className={`${styles.pillarChip} ${item.latest ? styles['pillarStatus_' + item.latest.status] : styles.pillarMissing}`}
+            title={item.hint}
+          >
+            <div className={styles.pillarChipTop}>
+              <span>{item.icon}</span>
+              <span className={styles.pillarChipLabel}>{item.label}</span>
+            </div>
+            <div className={styles.pillarChipDate}>
+              {item.chapters.length === 0
+                ? 'Nessun capitolo ancora'
+                : `${item.chapters.length} capitol${item.chapters.length === 1 ? 'o' : 'i'} — ultimo ${fmtDate(item.latest.scheduled_date || item.latest.created_at)}`}
+            </div>
+            {item.latest && (
+              <div className={styles.pillarChipStatus}>
+                {STATUS_ICON[item.latest.status]} {STATUS_LABEL[item.latest.status]}
+              </div>
+            )}
+            <button type="button" className={styles.btnMini} onClick={() => onCreate(item)}>
+              + Nuovo capitolo
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function EditorialPlanView({ posts, onCreateFromSuggestion }) {
   const { plan, isLoading: racesLoading, error: racesError } = useEditorialPlan(posts);
   const evergreenPlan = useEvergreenPlan(posts);
+  const storyPlan = useStoryPlan(posts);
 
   function handlePillarCreate(race, pillar) {
     onCreateFromSuggestion({
@@ -918,18 +1001,32 @@ function EditorialPlanView({ posts, onCreateFromSuggestion }) {
     });
   }
 
+  function handleStoryCreate(pillar) {
+    onCreateFromSuggestion({
+      race_id: '',
+      pillar: pillar.id,
+      scheduled_date: new Date().toISOString().slice(0, 10),
+      link_destination: '',
+      platforms: ['facebook', 'instagram'],
+      topic: storyTopic(pillar.id),
+    });
+  }
+
   return (
     <div className={styles.section}>
       <h2 className={styles.sectionTitle} style={{ margin: 0 }}>Piano editoriale</h2>
       <p className={styles.subtleHint}>
         Ogni gara nella finestra ±45 giorni genera automaticamente 5 slot di contenuto
         (anteprima, iscrizioni, live, risultati, highlight). A questi si affiancano 4
-        categorie di vita di squadra e community, indipendenti dal calendario gare —
-        così il piano non resta vuoto nei periodi senza eventi. Ogni slot mancante ha
-        un bottone rapido per creare la bozza già precompilata.
+        categorie di vita di squadra e community a cadenza fissa, indipendenti dal
+        calendario gare, e i capitoli story book della sfida ACI, creati a mano quando
+        c'è un fatto vero da raccontare invece che a scadenza — così il piano non resta
+        vuoto nei periodi senza eventi. Ogni slot mancante ha un bottone rapido per
+        creare la bozza già precompilata.
       </p>
 
       <EvergreenPlanView evergreenPlan={evergreenPlan} onCreate={handleEvergreenCreate} />
+      <StoryPlanView storyPlan={storyPlan} onCreate={handleStoryCreate} />
 
       {racesLoading && <div className={styles.loading}>Caricamento gare…</div>}
       {racesError && <div className={styles.errorBox}>Errore gare: {racesError.message}</div>}
