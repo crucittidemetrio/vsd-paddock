@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { useChampionshipStandings } from '../hooks/useChampionshipStandings';
 import { useDrivers } from '../hooks/useRoster';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { useSocialPosts } from '../hooks/useSocialManager';
+import { STORY_PILLAR_IDS, storyPillarLabel } from '../utils/storyPillars';
 import { SOCIAL_LINKS } from '../utils/constants';
 import Avatar from '../components/shared/Avatar';
 import { useConsentedDriverPhoto } from '../hooks/useConsent';
@@ -21,6 +23,16 @@ const REGOLAMENTO_URL =
   'https://www.acisport.it/public_federazione/2026/pdf/Annuario/regolamento_aci_esport_lmgt3_challenge_2026_-_le_mans_ultimate.pdf';
 
 const REGISTRATION_DEADLINE = '15 Settembre 2026';
+
+// Canale YouTube delle dirette gara — non presente nel regolamento
+// ufficiale ACI Sport (letto per intero, art. 10: solo Discord/email
+// per le comunicazioni). Demetrio ha segnalato che esiste un canale
+// dedicato, ma va prima recuperato e verificato (di chi è: ACI Sport
+// o organizzatore esterno — nel secondo caso rientra nello stesso
+// blocco di autorizzazione di Apex). Lasciato vuoto di proposito:
+// una volta confermato basta valorizzare questa costante, il bottone
+// in Hero e il badge live per round in Calendario compaiono da soli.
+const YOUTUBE_LIVE_URL = '';
 
 // Art. 5 RDS — le uniche 10 vetture omologate per la classe LMGT3.
 const CARS = [
@@ -94,6 +106,16 @@ export default function AciLmgt3Challenge() {
           <span className={`${styles.btn} ${styles.btnDisabled}`}>
             Iscrizioni chiuse il {REGISTRATION_DEADLINE}
           </span>
+          {YOUTUBE_LIVE_URL && (
+            <a
+              href={YOUTUBE_LIVE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={`${styles.btn} ${styles.btnSecondary}`}
+            >
+              🔴 Segui le dirette
+            </a>
+          )}
         </div>
       </section>
 
@@ -170,6 +192,16 @@ export default function AciLmgt3Challenge() {
                 <span className={styles.calendarDate}>📅 {r.date}</span>
                 <span className={styles.calendarTime}>🕐 22:01 (Italia)</span>
               </div>
+              {YOUTUBE_LIVE_URL && (
+                <a
+                  href={YOUTUBE_LIVE_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={styles.calendarLive}
+                >
+                  🔴 Diretta YouTube
+                </a>
+              )}
             </div>
           ))}
         </div>
@@ -224,6 +256,9 @@ export default function AciLmgt3Challenge() {
         </div>
       </section>
 
+      {/* ════ STORY BOOK ════ */}
+      <StoryBookSection />
+
       {/* ════ CLASSIFICA ════ */}
       <StandingsSection />
 
@@ -255,6 +290,76 @@ export default function AciLmgt3Challenge() {
 
     </div>
   );
+}
+
+// ════ STORY BOOK ════
+// Capitoli scritti dallo staff nel Social Manager (stessa fonte dati,
+// vedi ../utils/storyPillars.js) — qui vengono letti in sola lettura,
+// solo quelli con status "pubblicato" (bozze/programmati restano
+// visibili solo lato admin), in ordine cronologico dal più vecchio:
+// si legge come un libro, non come un feed.
+function StoryBookSection() {
+  const { data: posts, isLoading } = useSocialPosts('pubblicato');
+
+  const chapters = useMemo(() => {
+    return (posts || [])
+      .filter(p => STORY_PILLAR_IDS.includes(p.pillar))
+      .sort((a, b) => {
+        const da = String(a.published_at || a.scheduled_date || a.created_at || '');
+        const db = String(b.published_at || b.scheduled_date || b.created_at || '');
+        return da.localeCompare(db);
+      });
+  }, [posts]);
+
+  return (
+    <section className={styles.section}>
+      <div className={styles.sectionEyebrow}>Story Book</div>
+      <h2 className={styles.sectionTitle}>Il racconto dell'avventura VSD</h2>
+
+      {isLoading && (
+        <div className={styles.standingsSkeleton}>
+          <div className={styles.skeletonBar} />
+          <div className={styles.skeletonBar} style={{ width: '85%' }} />
+        </div>
+      )}
+
+      {!isLoading && chapters.length === 0 && (
+        <div className={styles.emptyBox}>
+          <div className={styles.emptyIcon}>📖</div>
+          <div className={styles.emptyTitle}>Il primo capitolo deve ancora essere scritto</div>
+          <div className={styles.emptyText}>
+            Arriva con l'esito delle prequalifiche del 17 e 20 Settembre — o prima,
+            se qualcuno dei nostri si iscrive direttamente.
+          </div>
+        </div>
+      )}
+
+      {!isLoading && chapters.length > 0 && (
+        <div className={styles.storyList}>
+          {chapters.map(ch => (
+            <article key={ch.post_id} className={styles.storyChapter}>
+              <div className={styles.storyChapterHead}>
+                <span className={styles.storyChapterTag}>
+                  📖 {storyPillarLabel(ch.pillar)}
+                </span>
+                <span className={styles.storyChapterDate}>
+                  {fmtChapterDate(ch.published_at || ch.scheduled_date || ch.created_at)}
+                </span>
+              </div>
+              <p className={styles.storyChapterText}>{ch.content}</p>
+            </article>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function fmtChapterDate(value) {
+  if (!value) return '';
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' });
 }
 
 // ════ CLASSIFICA ════

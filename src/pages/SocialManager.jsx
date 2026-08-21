@@ -19,6 +19,7 @@ import {
 } from '../hooks/useSocialManager';
 import { useRaces } from '../hooks/useRaces';
 import { useAuth } from '../hooks/useAuth';
+import { STORY_PILLARS, storyTopic } from '../utils/storyPillars';
 import styles from './SocialManager.module.css';
 
 const PLATFORM_OPTIONS = [
@@ -53,26 +54,18 @@ const EVERGREEN_PILLARS = [
   { id: 'community', label: 'Community engagement', icon: '💬', cadenceDays: 14 },
 ];
 
-// Capitoli "story book" — sfida ACI LMGT3 Challenge (piloti VSD che
-// tentano di qualificarsi a un campionato reale organizzato da ACI/
-// APEX Italia). A differenza dei pilastri sopra, non hanno né una data
-// fissa (non è una gara VSD in calendario) né una cadenza (dipendono
-// da eventi reali imprevedibili: si passano le prequalifiche o no,
-// quando arriva il prossimo risultato). Per questo sono "a milestone":
-// una lista curata di capitoli possibili, creabili a mano quando
-// succede qualcosa di vero da raccontare — non tracciati per
-// scadenza/ritardo come gli evergreen, e ripetibili (es. un weekend di
-// gara per ogni round) invece che un solo slot per pilastro.
-const STORY_PILLARS = [
-  { id: 'story_prequalifiche', label: 'Prequalifiche — esito', icon: '📖',
-    hint: 'Il capitolo che tutti aspettano: chi ce l\'ha fatta?' },
-  { id: 'story_qualifiche', label: 'Qualifiche ACI', icon: '📖',
-    hint: 'Round di ingresso al campionato vero e proprio' },
-  { id: 'story_weekend', label: 'Weekend di gara ACI', icon: '📖',
-    hint: 'Un capitolo per ogni round — ripetibile' },
-  { id: 'story_bilancio', label: 'Bilancio di fine avventura', icon: '📖',
-    hint: 'Come è andata, cosa resta alla squadra' },
-];
+// Capitoli "story book" — sfida ACI LMGT3 Challenge. Definiti in
+// ../utils/storyPillars.js (condiviso con AciLmgt3Challenge.jsx, che
+// legge gli stessi post filtrati per status "pubblicato" e li mostra
+// in ordine cronologico come un libro, per il pubblico). Non hanno né
+// una data fissa (non è una gara VSD in calendario) né una cadenza
+// (dipendono da eventi reali imprevedibili: si passano le
+// prequalifiche o no, quando arriva il prossimo risultato). Per
+// questo sono "a milestone": una lista curata di capitoli possibili,
+// creabili a mano quando succede qualcosa di vero da raccontare — non
+// tracciati per scadenza/ritardo come gli evergreen, e ripetibili
+// (es. un weekend di gara per ogni round) invece che un solo slot per
+// pilastro.
 
 const PILLAR_BY_ID = Object.fromEntries([...PILLARS, ...EVERGREEN_PILLARS, ...STORY_PILLARS].map(p => [p.id, p]));
 const PLATFORM_ICON = Object.fromEntries(PLATFORM_OPTIONS.map(p => [p.id, p.icon]));
@@ -849,11 +842,6 @@ function evergreenTopic(pillarId) {
 function evergreenLinkDestination(pillarId) {
   if (pillarId === 'spotlight') return '/roster';
   return '';
-}
-
-function storyTopic(pillarId) {
-  const p = STORY_PILLARS.find(s => s.id === pillarId);
-  return p ? `${p.label} — ${p.hint}` : '';
 }
 
 // Capitoli già scritti per ciascun pilastro story, più recenti prima —

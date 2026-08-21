@@ -423,6 +423,22 @@
   color: var(--color-text-muted);
 }
 
+.calendarLive {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  padding-top: 10px;
+  border-top: 1px solid var(--color-border);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: #ef4444;
+  text-decoration: none;
+  transition: opacity var(--t-fast);
+}
+.calendarLive:hover { opacity: 0.8; }
+
 /* ════ EMPTY STATE (classifica / partecipanti) ════ */
 .standingsSkeleton {
   display: flex;
@@ -601,6 +617,53 @@
   transition: opacity var(--t-fast);
 }
 .standingsDetailLink:hover { opacity: 1; }
+
+/* ════ STORY BOOK ════ */
+.storyList {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.storyChapter {
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-left: 3px solid var(--vsd-orange);
+  border-radius: var(--r-lg);
+  padding: 22px 24px;
+}
+
+.storyChapterHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.storyChapterTag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--vsd-orange);
+}
+
+.storyChapterDate {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--color-text-dim);
+}
+
+.storyChapterText {
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+  line-height: 1.7;
+  white-space: pre-line;
+  margin: 0;
+}
 
 /* ════ NOTA / DISCLAIMER ════ */
 .disclaimer {
