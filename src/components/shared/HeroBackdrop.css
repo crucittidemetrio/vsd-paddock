@@ -1,0 +1,28 @@
+.hero-backdrop-video {
+  position: absolute;
+  bottom: 0;
+  width: min(560px, 62%);
+  height: auto;
+  max-height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  z-index: 0;
+  user-select: none;
+  border-radius: 6px;
+  mask-image: linear-gradient(to top, black 70%, transparent 100%);
+}
+
+.hero-backdrop-video-br {
+  right: 0;
+}
+
+.hero-backdrop-video-bl {
+  left: 0;
+}
+
+@media (max-width: 640px) {
+  .hero-backdrop-video {
+    width: min(420px, 85%);
+    opacity: 0.9;
+  }
+}

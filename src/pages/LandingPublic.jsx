@@ -10,7 +10,7 @@ import Logo from '../components/shared/Logo';
 import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
 import LapTime from '../components/shared/LapTime';
-import TrackPhotoBackdrop from '../components/shared/TrackPhotoBackdrop';
+import HeroBackdrop from '../components/shared/HeroBackdrop';
 import NextRaceHero from '../components/landing/NextRaceHero';
 import { useConsentSocialFlags } from '../hooks/useConsent';
 import SiteFooter from '../components/shared/SiteFooter';
@@ -115,7 +115,7 @@ export default function LandingPublic() {
     <div className={styles.page}>
       {/* ════ HERO ════ */}
       <section className={styles.hero}>
-        <TrackPhotoBackdrop />
+        <HeroBackdrop />
         <div className={styles.heroContent}>
           <div className={styles.heroLogo}>
             <Logo size={180} withWordmark glow />
