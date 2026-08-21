@@ -11,6 +11,7 @@ import SimBadge from '../components/shared/SimBadge';
 import TrackPhotoBackdrop from '../components/shared/TrackPhotoBackdrop';
 import NextRaceHero from '../components/landing/NextRaceHero';
 import { useConsentSocialFlags } from '../hooks/useConsent';
+import SiteFooter from '../components/shared/SiteFooter';
 import { resolvePhotoUrl } from '../utils/driverPhotos';
 import { formatDate } from '../utils/format';
 import { SOCIAL_LINKS } from '../utils/constants';
@@ -245,6 +246,8 @@ export default function LandingPublic() {
           </a>
         </div>
       </section>
+
+      <SiteFooter />
     </div>
   );
 }

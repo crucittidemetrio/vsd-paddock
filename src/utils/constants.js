@@ -54,6 +54,7 @@ export const SOCIAL_LINKS = {
   DISCORD: 'https://discord.gg/hdt8uHEfsy',
   INSTAGRAM: 'https://www.instagram.com/virtualsim_driver/',
   FACEBOOK: 'https://www.facebook.com/profile.php?id=61590467705317',
+  PAYPAL: 'https://paypal.me/virtualsimdriver',
 };
 
 // Tipo sessione
