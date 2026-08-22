@@ -130,6 +130,17 @@ function setupTriggers() {
       .create();
   });
 
+  // Auguri di compleanno automatici — #bar-sport (Notifications.js,
+  // checkBirthdaysToday_ / runBirthdayCheck). Mattina presto, prima
+  // che il team si affacci su Discord in giornata.
+  ensureTimeTrigger('runBirthdayCheck', 'auguri compleanno una volta al giorno alle 9:00', () => {
+    ScriptApp.newTrigger('runBirthdayCheck')
+      .timeBased()
+      .everyDays(1)
+      .atHour(9)
+      .create();
+  });
+
   Logger.log(results.join('\n'));
   return results;
 }

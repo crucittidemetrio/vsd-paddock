@@ -1009,3 +1009,112 @@ function runWeeklyDigest() {
 function test_weekly_digest() {
   postWeeklyDigest_();
 }
+
+// ═══════════════════════════════════════════════════════════
+// AUGURI DI COMPLEANNO AUTOMATICI — #bar-sport
+// ═══════════════════════════════════════════════════════════
+//
+// Il consenso (Consents, foglio scritto da Consent.js) raccoglie
+// birth_date come testo 'YYYY-MM-DD' — vedi Consent.js riga ~167.
+// Usiamo quel dato, già raccolto per altri scopi, per augurare buon
+// compleanno ai piloti nel canale social del team (#bar-sport, non
+// annunci pubblici né staff-only: serve un webhook dedicato, vedi
+// postToDiscordBarSport_ sotto).
+//
+// Copertura parziale per costruzione: solo i piloti che hanno già dato
+// consenso finiscono in Consents con una birth_date. Non è un bug — è
+// il perimetro reale dei dati raccolti, cresce mano a mano che più
+// piloti completano il consenso.
+//
+// Privacy: confrontiamo solo giorno/mese. L'anno di nascita non viene
+// mai letto per il messaggio — resta nel foglio Consents, non passa
+// mai per Discord.
+
+/**
+ * Posta al webhook dedicato #bar-sport (canale social/casual del team,
+ * separato da annunci pubblici e staff-only) — usato per messaggi
+ * informali come gli auguri di compleanno automatici.
+ */
+function postToDiscordBarSport_(payload) {
+  return postToDiscordWebhook_(payload, 'DISCORD_WEBHOOK_BARSPORT_URL');
+}
+
+/**
+ * Controlla chi compie gli anni oggi (Europe/Rome, vedi appsscript.json)
+ * tra i piloti attivi con consenso, e posta gli auguri in #bar-sport.
+ * Tagga con <@discord_id> quando disponibile (ping reale, non solo
+ * nome) — fallback al nome in grassetto se manca il discord_id.
+ * Dedup per driver_id: un pilota con più righe di consenso (rinnovi)
+ * non genera messaggi doppi.
+ */
+function checkBirthdaysToday_() {
+  try {
+    const now = new Date();
+    const todayMonth = now.getMonth();
+    const todayDay = now.getDate();
+
+    const consents = sheetToObjects(SHEETS.CONSENTS);
+    const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
+    const driverMap = {};
+    drivers.forEach(d => { driverMap[d.driver_id] = d; });
+
+    const seen = {};
+    const birthdayDrivers = [];
+    consents.forEach(c => {
+      if (!c.birth_date || !c.driver_id || seen[c.driver_id]) return;
+      const bd = new Date(String(c.birth_date));
+      if (isNaN(bd.getTime())) return;
+      if (bd.getMonth() !== todayMonth || bd.getDate() !== todayDay) return;
+
+      const driver = driverMap[c.driver_id];
+      if (!driver || driver.status !== 'active' || driver.removed_at) return;
+
+      seen[c.driver_id] = true;
+      birthdayDrivers.push(driver);
+    });
+
+    if (birthdayDrivers.length === 0) {
+      Logger.log('🎂 Nessun compleanno oggi.');
+      return;
+    }
+
+    const mentions = birthdayDrivers.map(d =>
+      d.discord_id ? '<@' + d.discord_id + '>' : ('**' + d.display_name + '**')
+    ).join(' ');
+    const isPlural = birthdayDrivers.length > 1;
+
+    postToDiscordBarSport_({
+      content: mentions,
+      embeds: [{
+        author: { name: 'VSD Paddock' },
+        title: '🎂 Buon compleanno!',
+        description: isPlural
+          ? 'Oggi festeggiamo ' + birthdayDrivers.length + ' piloti del team! Tanti auguri da tutta VSD 🥳🏁'
+          : 'Oggi festeggia ' + birthdayDrivers[0].display_name + '! Tanti auguri da tutta VSD 🥳🏁',
+        color: VSD_COLORS.orange,
+        timestamp: new Date().toISOString(),
+      }],
+    });
+
+    Logger.log('✅ Auguri compleanno inviati per: ' + birthdayDrivers.map(d => d.display_name).join(', '));
+  } catch (e) {
+    Logger.log('⚠️  checkBirthdaysToday_ error: ' + e.message);
+  }
+}
+
+/**
+ * Entry point per il trigger giornaliero — vedi Triggers.js.
+ */
+function runBirthdayCheck() {
+  checkBirthdaysToday_();
+}
+
+/**
+ * Helper test — esegue il controllo sui dati REALI (stesso approccio di
+ * test_weekly_digest). Se nessuno compie gli anni oggi non invia nulla —
+ * controlla il log di esecuzione.
+ * Dropdown function → test_birthday_check → ▶ Esegui
+ */
+function test_birthday_check() {
+  checkBirthdaysToday_();
+}
