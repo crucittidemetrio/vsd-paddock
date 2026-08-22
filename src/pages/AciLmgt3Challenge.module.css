@@ -679,6 +679,16 @@
   margin-right: auto;
 }
 
+.disclaimerLink {
+  color: var(--vsd-cyan, #00d4ff);
+  text-decoration: underline;
+  text-decoration-color: rgba(0, 212, 255, 0.35);
+}
+
+.disclaimerLink:hover {
+  text-decoration-color: var(--vsd-cyan, #00d4ff);
+}
+
 /* ════ CTA ════ */
 .cta {
   margin-top: 64px;

@@ -24,15 +24,21 @@ const REGOLAMENTO_URL =
 
 const REGISTRATION_DEADLINE = '15 Settembre 2026';
 
-// Canale YouTube delle dirette gara — non presente nel regolamento
-// ufficiale ACI Sport (letto per intero, art. 10: solo Discord/email
-// per le comunicazioni). Demetrio ha segnalato che esiste un canale
-// dedicato, ma va prima recuperato e verificato (di chi è: ACI Sport
-// o organizzatore esterno — nel secondo caso rientra nello stesso
-// blocco di autorizzazione di Apex). Lasciato vuoto di proposito:
-// una volta confermato basta valorizzare questa costante, il bottone
-// in Hero e il badge live per round in Calendario compaiono da soli.
-const YOUTUBE_LIVE_URL = '';
+// Organizzatore esterno abilitato ACI ESport che gestisce operativamente
+// la serie (iscrizioni, server, JSON risultati). Autorizzazione a citarlo
+// e linkarlo confermata da Antonio Guarnaccia il 21/08/2026.
+const APEX_URL = 'https://www.apexitaliasimracing.net/';
+
+// Canale YouTube delle dirette gara — confermato da Antonio Guarnaccia
+// (Apex Italia Simracing, organizzatore esterno abilitato ACI ESport) il
+// 21/08/2026: dirette su ACI Sport TV, differita dopo ~2 giorni su Sky
+// canale 228. Il bottone in Hero e il badge live per round in Calendario
+// erano già pronti ad attivarsi non appena valorizzata questa costante.
+const YOUTUBE_LIVE_URL = 'https://youtube.com/@acisporttvofficial';
+
+// Idem — differita TV, utile come ulteriore segnale di credibilità della
+// serie (non è un evento amatoriale, va in onda anche su Sky).
+const SKY_CHANNEL_NOTE = 'In differita dopo ~2 giorni su Sky, canale 228 (e streaming su acisport.tv)';
 
 // Art. 5 RDS — le uniche 10 vetture omologate per la classe LMGT3.
 const CARS = [
@@ -117,6 +123,11 @@ export default function AciLmgt3Challenge() {
             </a>
           )}
         </div>
+        {YOUTUBE_LIVE_URL && (
+          <p className={styles.heroSub} style={{ marginTop: 8, fontSize: 13 }}>
+            📺 {SKY_CHANNEL_NOTE}
+          </p>
+        )}
       </section>
 
       {/* ════ IL CAMPIONATO ════ */}
@@ -125,6 +136,17 @@ export default function AciLmgt3Challenge() {
         <h2 className={styles.sectionTitle}>Una serie ufficiale, non un format VSD</h2>
         <div className={styles.specGrid}>
           <SpecRow label="Indetto da" value="ACI Sport — Federazione Sportiva ACI, tramite ACI ESport" />
+          <SpecRow
+            label="Organizzatore esecutivo"
+            value={
+              <>
+                Apex Italia Simracing — iscrizioni, server e risultati gara.{' '}
+                <a href={APEX_URL} target="_blank" rel="noopener noreferrer" className={styles.disclaimerLink}>
+                  apexitaliasimracing.net ↗
+                </a>
+              </>
+            }
+          />
           <SpecRow label="Simulatore" value="Le Mans Ultimate (Studio 397 / Motorsport Games)" />
           <SpecRow label="Modalità" value="Online, da casa — nessun requisito di membership VSD" />
           <SpecRow label="Field" value="35 equipaggi — se le iscrizioni superano il numero, decidono le prequalifiche del 17 e 20 Settembre 2026" />
@@ -283,9 +305,12 @@ export default function AciLmgt3Challenge() {
       </section>
 
       <p className={styles.disclaimer}>
-        L'ACI LMGT3 Challenge è un campionato indetto da ACI Sport. VSD Racing vi partecipa
-        con propri piloti ma non è l'organizzatore della serie — per il regolamento completo
-        fa fede esclusivamente il documento ufficiale pubblicato su acisport.it.
+        L'ACI LMGT3 Challenge è un campionato indetto da ACI Sport e gestito operativamente da{' '}
+        <a href={APEX_URL} target="_blank" rel="noopener noreferrer" className={styles.disclaimerLink}>
+          Apex Italia Simracing
+        </a>
+        . VSD Racing vi partecipa con propri piloti ma non è l'organizzatore della serie — per il
+        regolamento completo fa fede esclusivamente il documento ufficiale pubblicato su acisport.it.
       </p>
 
     </div>
@@ -367,7 +392,11 @@ function fmtChapterDate(value) {
 function StandingsSection() {
   const { data, isLoading } = useChampionshipStandings(ACI_CHAMPIONSHIP_ID);
   const { data: drivers } = useDrivers();
-  const [selectedClass, setSelectedClass] = useState(null);
+  // Classe unica LMGT3 (art. 5 RDS) — nessun selettore multi-classe da
+  // costruire qui, a differenza di altri campionati VSD. setSelectedClass
+  // non serve finché resta così: se in futuro ACI aggiunge classi, va
+  // reintrodotto insieme alla UI del selettore.
+  const [selectedClass] = useState(null);
 
   const driverMap = useMemo(() => {
     const m = {};
