@@ -49,6 +49,19 @@ const PREQUALIFICHE_ENTRIES = [
 // e linkarlo confermata da Antonio Guarnaccia il 21/08/2026.
 const APEX_URL = 'https://www.apexitaliasimracing.net/';
 
+// Loghi partner (hero) — vuoti di proposito. L'autorizzazione ricevuta
+// finora copre citare/linkare Apex a testo, non necessariamente mostrarne
+// il logo: l'uso di un marchio ha in genere regole a parte (spazi, colori,
+// non modificabile) anche quando il link è già ok. Per ACI Sport il
+// discorso è ancora più delicato: è la federazione che ha indetto il
+// campionato, non la controparte che ci ha autorizzato — usare il loro
+// logo senza un ok esplicito da loro rischia di sembrare un patrocinio
+// che non abbiamo. Valorizzare solo dopo conferma esplicita (separata da
+// quella già ottenuta per la citazione testuale); il resto della UI è
+// già pronto ad attivarsi da solo.
+const APEX_LOGO_URL = '';
+const ACI_LOGO_URL = '';
+
 // Canale YouTube delle dirette gara — confermato da Antonio Guarnaccia
 // (Apex Italia Simracing, organizzatore esterno abilitato ACI ESport) il
 // 21/08/2026: dirette su ACI Sport TV, differita dopo ~2 giorni su Sky
@@ -147,6 +160,18 @@ export default function AciLmgt3Challenge() {
           <p className={styles.heroSub} style={{ marginTop: 8, fontSize: 13 }}>
             📺 {SKY_CHANNEL_NOTE}
           </p>
+        )}
+        {(APEX_LOGO_URL || ACI_LOGO_URL) && (
+          <div className={styles.heroPartnerLogos}>
+            {ACI_LOGO_URL && (
+              <img src={ACI_LOGO_URL} alt="ACI Sport" className={styles.heroPartnerLogo} />
+            )}
+            {APEX_LOGO_URL && (
+              <a href={APEX_URL} target="_blank" rel="noopener noreferrer">
+                <img src={APEX_LOGO_URL} alt="Apex Italia Simracing" className={styles.heroPartnerLogo} />
+              </a>
+            )}
+          </div>
         )}
       </section>
 
