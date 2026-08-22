@@ -29,6 +29,11 @@
   margin-bottom: 1.25rem;
   flex-wrap: wrap;
   gap: 1rem;
+  position: sticky;
+  top: var(--topbar-height, 0px);
+  z-index: 150;
+  background: var(--vsd-bg);
+  padding: 0.75rem 0;
 }
 
 .viewToggle {
@@ -193,6 +198,118 @@
   font-weight: 600;
 }
 
+/* Week view */
+.weekGridWrap {
+  overflow-x: auto;
+  background: var(--vsd-surface);
+  border: 1px solid var(--vsd-border);
+  border-radius: 12px;
+}
+
+.weekGrid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(150px, 1fr));
+  min-width: 700px;
+}
+
+.weekCol {
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--vsd-border);
+}
+.weekCol:last-child { border-right: none; }
+.weekColWeekend { background: rgba(0, 217, 255, 0.02); }
+.weekColToday { background: rgba(0, 217, 255, 0.08); }
+.weekColToday .weekColDay { color: var(--vsd-cyan); }
+
+.weekColHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.75rem 0.5rem;
+  background: var(--vsd-bg);
+  border-bottom: 1px solid var(--vsd-border);
+}
+.weekColLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--vsd-text-muted);
+}
+.weekColDay {
+  font-size: 1.4rem;
+  font-weight: 700;
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  color: var(--vsd-text);
+}
+
+.weekColBody {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.6rem;
+  flex: 1;
+  min-height: 320px;
+}
+
+.weekEmpty {
+  color: var(--vsd-text-muted);
+  text-align: center;
+  font-size: 0.8rem;
+  padding-top: 0.5rem;
+  opacity: 0.5;
+}
+
+.weekRace {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.55rem 0.6rem;
+  border-radius: 8px;
+  background: var(--vsd-bg);
+  border: 1px solid var(--vsd-border);
+  text-decoration: none;
+  color: inherit;
+  transition: all 0.15s ease;
+}
+.weekRace:hover { border-color: var(--vsd-cyan); transform: translateY(-1px); }
+.weekRace_lmu { border-left: 3px solid #00d9ff; }
+.weekRace_irc { border-left: 3px solid #fbbf24; }
+.weekRace_ace { border-left: 3px solid #f87171; }
+.weekRace_default { border-left: 3px solid var(--vsd-text-muted); }
+
+.weekRaceTime {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--vsd-text-muted);
+}
+.weekRaceName {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--vsd-text);
+  line-height: 1.25;
+}
+.weekRaceMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+}
+.weekRaceSim {
+  font-family: 'JetBrains Mono', ui-monospace, monospace;
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--vsd-text-muted);
+}
+.weekRaceMeta .statusLive,
+.weekRaceMeta .statusCancelled {
+  font-size: 0.6rem;
+  padding: 0.1rem 0.4rem;
+}
+
 /* List view */
 .list { display: flex; flex-direction: column; gap: 1.5rem; }
 
@@ -318,4 +435,6 @@
   .raceChip { font-size: 0.6rem; padding: 0.15rem 0.3rem; }
   .chipName { display: none; }
   .currentMonth { font-size: 0.9rem; min-width: 140px; }
+  .weekGrid { grid-template-columns: repeat(7, minmax(120px, 1fr)); }
+  .weekColBody { min-height: 220px; }
 }

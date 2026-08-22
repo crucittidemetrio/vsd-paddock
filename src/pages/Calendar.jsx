@@ -40,6 +40,44 @@ function buildMonthGrid(year, month) {
   return cells;
 }
 
+function buildWeekGrid(anchorDate) {
+  const anchor = startOfDay(anchorDate);
+  const weekday = (anchor.getDay() + 6) % 7; // Lun=0
+  const monday = new Date(anchor);
+  monday.setDate(anchor.getDate() - weekday);
+
+  const todayStr = new Date().toDateString();
+  const cells = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    cells.push({
+      date: d,
+      day: d.getDate(),
+      label: DAY_LABELS[i],
+      isToday: d.toDateString() === todayStr,
+      isWeekend: d.getDay() === 0 || d.getDay() === 6,
+    });
+  }
+  return cells;
+}
+
+function formatWeekRange(cells) {
+  const start = cells[0].date;
+  const end = cells[6].date;
+  const sameMonth = start.getMonth() === end.getMonth() && start.getFullYear() === end.getFullYear();
+  const sameYear = start.getFullYear() === end.getFullYear();
+
+  if (sameMonth) {
+    return `${start.getDate()}–${end.getDate()} ${MONTH_NAMES[start.getMonth()]} ${start.getFullYear()}`;
+  }
+  const startLabel = `${start.getDate()} ${MONTH_NAMES[start.getMonth()].slice(0, 3)}`;
+  const endLabel = sameYear
+    ? `${end.getDate()} ${MONTH_NAMES[end.getMonth()].slice(0, 3)}`
+    : `${end.getDate()} ${MONTH_NAMES[end.getMonth()].slice(0, 3)} ${end.getFullYear()}`;
+  return `${startLabel} – ${endLabel} ${end.getFullYear()}`;
+}
+
 function formatTime(iso) {
   const d = new Date(iso);
   if (isNaN(d.getTime())) return '';
@@ -63,6 +101,7 @@ export default function Calendar() {
   const month = currentDate.getMonth();
 
   const monthCells = useMemo(() => buildMonthGrid(year, month), [year, month]);
+  const weekCells = useMemo(() => buildWeekGrid(currentDate), [currentDate]);
 
   const racesByDate = useMemo(() => {
     const map = new Map();
@@ -120,6 +159,12 @@ export default function Calendar() {
             Mese
           </button>
           <button
+            className={`${styles.toggleBtn} ${viewMode === 'settimana' ? styles.toggleActive : ''}`}
+            onClick={() => setViewMode('settimana')}
+          >
+            Settimana
+          </button>
+          <button
             className={`${styles.toggleBtn} ${viewMode === 'lista' ? styles.toggleActive : ''}`}
             onClick={() => setViewMode('lista')}
           >
@@ -148,11 +193,45 @@ export default function Calendar() {
             >Oggi</button>
           </div>
         )}
+
+        {viewMode === 'settimana' && (
+          <div className={styles.monthNav}>
+            <button
+              className={styles.navBtn}
+              onClick={() => setCurrentDate(d => {
+                const next = new Date(d);
+                next.setDate(next.getDate() - 7);
+                return next;
+              })}
+              aria-label="Settimana precedente"
+            >‹</button>
+            <div className={styles.currentMonth}>
+              {formatWeekRange(weekCells)}
+            </div>
+            <button
+              className={styles.navBtn}
+              onClick={() => setCurrentDate(d => {
+                const next = new Date(d);
+                next.setDate(next.getDate() + 7);
+                return next;
+              })}
+              aria-label="Settimana successiva"
+            >›</button>
+            <button
+              className={styles.todayBtn}
+              onClick={() => setCurrentDate(new Date())}
+            >Oggi</button>
+          </div>
+        )}
       </div>
 
-      {viewMode === 'mese' ? (
+      {viewMode === 'mese' && (
         <MonthView cells={monthCells} racesByDate={racesByDate} />
-      ) : (
+      )}
+      {viewMode === 'settimana' && (
+        <WeekView cells={weekCells} racesByDate={racesByDate} />
+      )}
+      {viewMode === 'lista' && (
         <ListView groupedByMonth={groupedByMonth} />
       )}
     </div>
@@ -194,6 +273,53 @@ function MonthView({ cells, racesByDate }) {
                   </Link>
                 ))}
                 {overflow > 0 && <div className={styles.raceOverflow}>+{overflow}</div>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function WeekView({ cells, racesByDate }) {
+  return (
+    <div className={styles.weekGridWrap}>
+      <div className={styles.weekGrid}>
+        {cells.map((cell, i) => {
+          const racesToday = (racesByDate.get(cell.date.toDateString()) || [])
+            .slice()
+            .sort((a, b) => new Date(a.date) - new Date(b.date));
+
+          let cls = styles.weekCol;
+          if (cell.isToday) cls += ' ' + styles.weekColToday;
+          if (cell.isWeekend) cls += ' ' + styles.weekColWeekend;
+
+          return (
+            <div key={i} className={cls}>
+              <div className={styles.weekColHeader}>
+                <span className={styles.weekColLabel}>{cell.label}</span>
+                <span className={styles.weekColDay}>{cell.day}</span>
+              </div>
+              <div className={styles.weekColBody}>
+                {racesToday.length === 0 && (
+                  <div className={styles.weekEmpty}>—</div>
+                )}
+                {racesToday.map(r => (
+                  <Link
+                    key={r.race_id}
+                    to={`/race/${r.race_id}`}
+                    className={`${styles.weekRace} ${styles[`weekRace_${SIM_KEY[r.sim] || 'default'}`]}`}
+                  >
+                    <div className={styles.weekRaceTime}>{formatTime(r.date)}</div>
+                    <div className={styles.weekRaceName}>{raceName(r)}</div>
+                    <div className={styles.weekRaceMeta}>
+                      <span className={styles.weekRaceSim}>{r.sim}</span>
+                      {r.status === 'live' && <span className={styles.statusLive}>LIVE</span>}
+                      {r.status === 'cancelled' && <span className={styles.statusCancelled}>Annullata</span>}
+                    </div>
+                  </Link>
+                ))}
               </div>
             </div>
           );
