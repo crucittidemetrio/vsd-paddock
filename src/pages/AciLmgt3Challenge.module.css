@@ -53,16 +53,22 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 24px;
-  margin-top: 20px;
-  opacity: 0.85;
+  gap: 28px;
+  margin-top: 28px;
+  opacity: 0.9;
 }
 
 .heroPartnerLogo {
-  height: 32px;
+  height: 88px;
   width: auto;
   filter: grayscale(0.15);
   transition: opacity var(--t-fast);
+}
+
+@media (max-width: 640px) {
+  .heroPartnerLogo {
+    height: 64px;
+  }
 }
 
 .heroPartnerLogo:hover {
