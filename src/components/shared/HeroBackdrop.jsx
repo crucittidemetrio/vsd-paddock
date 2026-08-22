@@ -20,13 +20,19 @@ import './HeroBackdrop.css';
  * elementi.
  *
  * Autoplay: per policy di tutti i browser un video con audio NON può
- * partire da solo — deve essere muto. Di default parte muto; se il file ha
- * una traccia audio, viene mostrato un pulsante 🔈 per attivarla su
- * richiesta (richiede un click dell'utente, non aggirabile).
+ * partire da solo — deve essere muto. Di default parte muto, con un
+ * pulsante 🔈 sempre visibile per attivare l'audio su richiesta (richiede
+ * un click dell'utente, non aggirabile). Il rilevamento automatico "il file
+ * ha davvero una traccia audio?" non è affidabile cross-browser (le API
+ * disponibili — audioTracks, webkitAudioDecodedByteCount — non sono
+ * popolate in modo consistente al momento del caricamento), quindi il
+ * pulsante si mostra sempre: su un file senza audio è solo un click che
+ * non fa nulla di percepibile, innocuo.
  *
  * Specifiche consigliate per il file:
- * - Formato: MP4 (H.264), yuv420p. Audio opzionale (AAC) se si vuole il
- *   pulsante di attivazione — altrimenti va bene anche senza.
+ * - Formato: MP4 (H.264), yuv420p. Se non ha traccia audio va bene
+ *   comunque — il pulsante non causerà errori, semplicemente non si sente
+ *   nulla quando viene premuto.
  * - Durata: 8-15s, loop che si ricongiunge bene (stesso inquadratura a
  *   inizio/fine clip, altrimenti si vede lo "scatto" ad ogni giro).
  * - Peso: sotto ~6-8MB — è la home pubblica, il primo caricamento conta.
@@ -38,7 +44,7 @@ import './HeroBackdrop.css';
 export default function HeroBackdrop({ corner = 'br' }) {
   const videoRef = useRef(null);
   const [videoFailed, setVideoFailed] = useState(false);
-  const [hasAudio, setHasAudio] = useState(false);
+  const [videoReady, setVideoReady] = useState(false);
   const [unmuted, setUnmuted] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(
     () => typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -50,19 +56,6 @@ export default function HeroBackdrop({ corner = 'br' }) {
     mq.addEventListener('change', handler);
     return () => mq.removeEventListener('change', handler);
   }, []);
-
-  function handleLoadedMetadata() {
-    const el = videoRef.current;
-    // webkitAudioDecodedByteCount/mozHasAudio: fallback per browser che non
-    // espongono audioTracks. Se nessuno è disponibile, il pulsante resta
-    // nascosto (nessun danno: significa solo che il file non ha audio).
-    const tracks = el?.audioTracks;
-    const detected =
-      (tracks && tracks.length > 0) ||
-      el?.webkitAudioDecodedByteCount > 0 ||
-      el?.mozHasAudio === true;
-    setHasAudio(!!detected);
-  }
 
   function toggleAudio() {
     const el = videoRef.current;
@@ -89,10 +82,10 @@ export default function HeroBackdrop({ corner = 'br' }) {
         preload="auto"
         aria-hidden="true"
         onError={() => setVideoFailed(true)}
-        onLoadedMetadata={handleLoadedMetadata}
+        onLoadedMetadata={() => setVideoReady(true)}
       />
       <div className="hero-backdrop-overlay" aria-hidden="true" />
-      {hasAudio && (
+      {videoReady && (
         <button
           type="button"
           className="hero-backdrop-sound"
