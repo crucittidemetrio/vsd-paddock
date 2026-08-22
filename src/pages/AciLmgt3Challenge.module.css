@@ -219,6 +219,68 @@
   opacity: 0.8;
 }
 
+/* ════ PILOTI IN PREQUALIFICA ════ */
+.prequalIntro {
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+  line-height: 1.6;
+  max-width: 640px;
+  margin: 0 0 20px;
+}
+
+.prequalGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 14px;
+}
+
+.prequalCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 12px;
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+  text-align: center;
+  text-decoration: none;
+  color: inherit;
+  transition: border-color var(--t-fast), transform var(--t-fast);
+}
+
+a.prequalCard:hover {
+  border-color: var(--vsd-cyan);
+  transform: translateY(-2px);
+}
+
+.prequalName {
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+  margin-top: 4px;
+}
+
+.prequalNumber {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-dim);
+}
+
+.prequalBadge {
+  margin-top: 4px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--vsd-orange);
+  background: rgba(245, 166, 35, 0.1);
+  border: 1px solid rgba(245, 166, 35, 0.3);
+  border-radius: 999px;
+  padding: 3px 8px;
+}
+
 /* ════ FORMATO ════ */
 .formatGrid {
   display: grid;

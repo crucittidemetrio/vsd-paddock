@@ -24,6 +24,26 @@ const REGOLAMENTO_URL =
 
 const REGISTRATION_DEADLINE = '15 Settembre 2026';
 
+const PREQUALIFICHE_DATES = '17 e 20 Settembre 2026';
+
+// Piloti VSD sull'entry list pubblica di Apex (piloti-team-lmgt3-2026.html,
+// embed Canva), verificata il 22/08/2026: tutti ancora con stato
+// "IN VERIFICA", nessuno "ACCETTATA". Il campo è capped a 35 su un'entry
+// list di 54+ nomi, quindi decidono le prequalifiche del 17-20 settembre —
+// questi piloti ci provano, non sono ancora confermati. Il numero è quello
+// assegnato da Apex per questo campionato specifico (non il race_number
+// VSD). Da aggiornare a mano dopo le prequalifiche: chi passa va spostato
+// nella sezione "Piloti VSD in gara" come confermato, chi non passa va
+// tolto da qui.
+const PREQUALIFICHE_ENTRIES = [
+  { name: 'Silvio Tuveri', carNumber: 233 },
+  { name: 'Francesco Mastrangelo', carNumber: 223 },
+  { name: 'Simone Pelloni', carNumber: 333 },
+  { name: 'Simone Raparelli', carNumber: 83 },
+  { name: 'Simone Mazzola', carNumber: 61 },
+  { name: 'Davide Casesi', carNumber: 250 },
+];
+
 // Organizzatore esterno abilitato ACI ESport che gestisce operativamente
 // la serie (iscrizioni, server, JSON risultati). Autorizzazione a citarlo
 // e linkarlo confermata da Antonio Guarnaccia il 21/08/2026.
@@ -264,19 +284,7 @@ export default function AciLmgt3Challenge() {
       </section>
 
       {/* ════ PILOTI VSD ════ */}
-      <section className={styles.section}>
-        <div className={styles.sectionEyebrow}>Roster</div>
-        <h2 className={styles.sectionTitle}>Piloti VSD in gara</h2>
-        <div className={styles.emptyBox}>
-          <div className={styles.emptyIcon}>🏎️</div>
-          <div className={styles.emptyTitle}>Iscrizioni in corso</div>
-          <div className={styles.emptyText}>
-            Le iscrizioni ACI chiudono il {REGISTRATION_DEADLINE}. Se le domande superano i 35 posti,
-            si terranno le prequalifiche del 17 e 20 Settembre. Le schede dei piloti VSD ammessi
-            saranno pubblicate qui non appena confermati.
-          </div>
-        </div>
-      </section>
+      <PrequalificheSection />
 
       {/* ════ STORY BOOK ════ */}
       <StoryBookSection />
@@ -315,6 +323,72 @@ export default function AciLmgt3Challenge() {
 
     </div>
   );
+}
+
+// ════ PILOTI IN PREQUALIFICA ════
+// Onora il tentativo, non anticipa un risultato: tutti i sei sono ancora
+// "in verifica" sull'entry list Apex, non confermati. Se un nome combacia
+// con un pilota nel roster VSD (per display_name), la card diventa un link
+// al suo profilo con avatar reale; altrimenti resta una card semplice
+// (es. pilota non più a roster, o nome scritto diversamente altrove).
+function PrequalificheSection() {
+  const { data: drivers } = useDrivers();
+
+  const driverByName = useMemo(() => {
+    const m = {};
+    (drivers || []).forEach(d => {
+      m[String(d.display_name || '').toLowerCase().trim()] = d;
+    });
+    return m;
+  }, [drivers]);
+
+  return (
+    <section className={styles.section}>
+      <div className={styles.sectionEyebrow}>{PREQUALIFICHE_DATES}</div>
+      <h2 className={styles.sectionTitle}>I nostri in prequalifica</h2>
+      <p className={styles.prequalIntro}>
+        Il campo è capped a 35 vetture: con le iscrizioni oltre quel numero, decidono le
+        prequalifiche. Questi sono i piloti VSD in corsa per un posto — stato "in verifica"
+        sull'entry list ufficiale, non ancora un posto confermato.
+      </p>
+      <div className={styles.prequalGrid}>
+        {PREQUALIFICHE_ENTRIES.map(entry => (
+          <PrequalCard
+            key={entry.name}
+            entry={entry}
+            driver={driverByName[entry.name.toLowerCase().trim()] || null}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PrequalCard({ entry, driver }) {
+  const photoUrl = useConsentedDriverPhoto(driver?.driver_id);
+
+  const inner = (
+    <>
+      <Avatar
+        name={driver?.display_name || entry.name}
+        driverId={driver?.driver_id || entry.name}
+        size={48}
+        photoUrl={photoUrl}
+      />
+      <div className={styles.prequalName}>{driver?.display_name || entry.name}</div>
+      <div className={styles.prequalNumber}>#{entry.carNumber}</div>
+      <span className={styles.prequalBadge}>In verifica</span>
+    </>
+  );
+
+  if (driver) {
+    return (
+      <Link to={`/roster/${driver.driver_id}`} className={styles.prequalCard}>
+        {inner}
+      </Link>
+    );
+  }
+  return <div className={styles.prequalCard}>{inner}</div>;
 }
 
 // ════ STORY BOOK ════
