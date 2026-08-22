@@ -49,17 +49,20 @@ const PREQUALIFICHE_ENTRIES = [
 // e linkarlo confermata da Antonio Guarnaccia il 21/08/2026.
 const APEX_URL = 'https://www.apexitaliasimracing.net/';
 
-// Loghi partner (hero) — vuoti di proposito. L'autorizzazione ricevuta
-// finora copre citare/linkare Apex a testo, non necessariamente mostrarne
-// il logo: l'uso di un marchio ha in genere regole a parte (spazi, colori,
-// non modificabile) anche quando il link è già ok. Per ACI Sport il
-// discorso è ancora più delicato: è la federazione che ha indetto il
-// campionato, non la controparte che ci ha autorizzato — usare il loro
-// logo senza un ok esplicito da loro rischia di sembrare un patrocinio
-// che non abbiamo. Valorizzare solo dopo conferma esplicita (separata da
-// quella già ottenuta per la citazione testuale); il resto della UI è
-// già pronto ad attivarsi da solo.
-const APEX_LOGO_URL = '';
+// Logo Apex — autorizzazione estesa da Antonio Guarnaccia il 22/08/2026
+// ("fai ciò che ritieni opportuno"), file fornito direttamente da lui
+// (variante bianca, sceglie meglio sul fondo blu navy del sito rispetto
+// alla variante blu, che si confonderebbe). Ottimizzato con svgo
+// (778KB → 745KB, solo whitespace/metadata — il grosso del peso è
+// il raster 1024x1024 incorporato nella maschera SVG, non riducibile
+// senza ri-esportare dalla sorgente).
+const APEX_LOGO_URL = '/partners/apex-italia-simracing-logo.svg';
+
+// Logo ACI Sport — resta vuoto. Antonio ha titolo su Apex, non su ACI
+// Sport (la federazione che ha indetto il campionato): la sua
+// autorizzazione non copre il marchio ACI. Valorizzare solo dopo un ok
+// esplicito da ACI stessa, altrimenti rischia di sembrare un
+// patrocinio che non abbiamo.
 const ACI_LOGO_URL = '';
 
 // Canale YouTube delle dirette gara — confermato da Antonio Guarnaccia
