@@ -199,6 +199,48 @@ export default function LandingPublic() {
         </div>
       </section>
 
+      {/* ════ CTA RECRUITING ════ */}
+      {/* Spostata qui subito dopo il roster (era in fondo, dopo altre 3
+          sezioni): un visitatore che scrolla dal telefono la incontrava
+          solo dopo un lungo scroll. Qui arriva mentre ha appena visto "chi
+          siamo", il momento in cui il pitch ha più senso. */}
+      <section className={styles.ctaSection}>
+        <h2 className={styles.ctaTitle}>Unisciti a VSD</h2>
+        <p className={styles.ctaText}>
+          Cerchiamo piloti motivati per la stagione 2026.
+          Endurance, sprint, multi-sim: scegli la tua categoria.
+        </p>
+        <div className={styles.ctaActions}>
+          <Link to="/joinus" className={`${styles.btn} ${styles.btnAccent}`}>
+            Compila il form
+          </Link>
+          <a
+            href={DISCORD_INVITE}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.btn}
+          >
+            Entra nel Discord
+          </a>
+          <a
+            href={INSTAGRAM_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.btn}
+          >
+            Instagram
+          </a>
+          <a
+            href={FACEBOOK_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.btn}
+          >
+            Facebook
+          </a>
+        </div>
+      </section>
+
       {/* ════ PILOTA DEL MESE (vetrina, riflette il ruolo Discord) ════ */}
       {pilotOfMonth && (
         <section className={styles.section}>
@@ -269,44 +311,6 @@ export default function LandingPublic() {
           </div>
         </section>
       )}
-
-      {/* ════ CTA RECRUITING ════ */}
-      <section className={styles.ctaSection}>
-        <h2 className={styles.ctaTitle}>Unisciti a VSD</h2>
-        <p className={styles.ctaText}>
-          Cerchiamo piloti motivati per la stagione 2026.
-          Endurance, sprint, multi-sim: scegli la tua categoria.
-        </p>
-        <div className={styles.ctaActions}>
-          <Link to="/joinus" className={`${styles.btn} ${styles.btnAccent}`}>
-            Compila il form
-          </Link>
-          <a
-            href={DISCORD_INVITE}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.btn}
-          >
-            Entra nel Discord
-          </a>
-          <a
-            href={INSTAGRAM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.btn}
-          >
-            Instagram
-          </a>
-          <a
-            href={FACEBOOK_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.btn}
-          >
-            Facebook
-          </a>
-        </div>
-      </section>
 
       <SiteFooter />
     </div>
