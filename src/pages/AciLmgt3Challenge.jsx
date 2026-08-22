@@ -328,16 +328,31 @@ export default function AciLmgt3Challenge() {
 // ════ PILOTI IN PREQUALIFICA ════
 // Onora il tentativo, non anticipa un risultato: tutti i sei sono ancora
 // "in verifica" sull'entry list Apex, non confermati. Se un nome combacia
-// con un pilota nel roster VSD (per display_name), la card diventa un link
-// al suo profilo con avatar reale; altrimenti resta una card semplice
-// (es. pilota non più a roster, o nome scritto diversamente altrove).
+// con un pilota nel roster VSD, la card diventa un link al suo profilo con
+// avatar reale; altrimenti resta una card semplice (es. pilota non più a
+// roster, o nome scritto diversamente altrove).
+//
+// Il roster pubblico VSD mostra display_name troncato per privacy (es.
+// "Silvio T.", non "Silvio Tuveri") — un match esatto sul nome completo
+// preso dall'entry list Apex non trova mai nulla. Si normalizza invece a
+// "nome|iniziale cognome" (es. "silvio|t") su entrambi i lati: stesso
+// schema che il roster già usa, nessuna ambiguità osservata sui piloti
+// attuali (nessun duplicato nome+iniziale nel roster).
+function firstNameLastInitial(fullName) {
+  const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return String(fullName || '').toLowerCase().trim();
+  const first = parts[0].toLowerCase();
+  const lastInitial = parts[parts.length - 1][0]?.toLowerCase() || '';
+  return `${first}|${lastInitial}`;
+}
+
 function PrequalificheSection() {
   const { data: drivers } = useDrivers();
 
   const driverByName = useMemo(() => {
     const m = {};
     (drivers || []).forEach(d => {
-      m[String(d.display_name || '').toLowerCase().trim()] = d;
+      m[firstNameLastInitial(d.display_name)] = d;
     });
     return m;
   }, [drivers]);
@@ -356,7 +371,7 @@ function PrequalificheSection() {
           <PrequalCard
             key={entry.name}
             entry={entry}
-            driver={driverByName[entry.name.toLowerCase().trim()] || null}
+            driver={driverByName[firstNameLastInitial(entry.name)] || null}
           />
         ))}
       </div>
