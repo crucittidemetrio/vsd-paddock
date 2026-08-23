@@ -15,6 +15,7 @@ import NextRaceHero from '../components/landing/NextRaceHero';
 import { useConsentSocialFlags } from '../hooks/useConsent';
 import SiteFooter from '../components/shared/SiteFooter';
 import { resolvePhotoUrl } from '../utils/driverPhotos';
+import { isActiveDriver } from '../utils/driverStatus';
 import { formatDate, formatTrack } from '../utils/format';
 import { SOCIAL_LINKS, PILOT_OF_MONTH } from '../utils/constants';
 import styles from './LandingPublic.module.css';
@@ -36,12 +37,17 @@ function getNextRace(races) {
   return upcoming[0] || null;
 }
 
-function getRecentPodiums(raceResults, limit = 5) {
+function getRecentPodiums(raceResults, driverMap, limit = 5) {
   return raceResults
     .filter(r => {
       if (!r.is_vsd_driver) return false;
       if (r.dns || r.dnf) return false;
       if (r.finish_position == null || r.finish_position > 3) return false;
+      // Vetrina pubblica di reclutamento: un podio di un ex-pilota non deve
+      // comparire qui, anche se è storicamente accurato che l'ha corso in
+      // maglia VSD (vedi utils/driverStatus.js — stesso criterio già usato
+      // da Best Laps, Muro dei Record e Results).
+      if (!isActiveDriver(driverMap[r.driver_id])) return false;
       return String(r.session_type || 'race').toLowerCase() === 'race';
     })
     .sort((a, b) => new Date(b.set_date) - new Date(a.set_date))
@@ -89,7 +95,10 @@ export default function LandingPublic() {
   }, [driverMap]);
 
   const nextRace = useMemo(() => getNextRace(races), [races]);
-  const recentPodiums = useMemo(() => getRecentPodiums(raceResults, 5), [raceResults]);
+  const recentPodiums = useMemo(
+    () => getRecentPodiums(raceResults, driverMap, 5),
+    [raceResults, driverMap]
+  );
 
   const recordsTeaser = useMemo(() => {
     const list = teamRecordsData?.records || [];
