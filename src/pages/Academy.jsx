@@ -23,7 +23,17 @@ const PM_BASE_ROWS = [
 // 5 gare, non soglie fisse: si autocalibra da solo, vedi Academy.js
 // (assignAcademyBadges_) per il perché. Non è un segnale di forma recente
 // — quello resta l'Indice Skill sul profilo.
-const BADGE_LABELS = { platino: 'Platino', oro: 'Oro', argento: 'Argento', bronzo: 'Bronzo' };
+//
+// Etichette percentile invece di nomi-fascia (Bronzo/Argento/Oro/Platino):
+// il nuovo sistema di rating a 6 aree (documento VSD_Sistema_Rating_Piloti,
+// 08/2026) introduce le fasce Platinum/Gold/Silver/Bronze come categoria
+// UFFICIALE — privata, formula diversa, usata per comporre gli equipaggi.
+// Tenere gli stessi nomi qui (pubblici, formula diversa) avrebbe fatto
+// vedere a un pilota due "gradi" diversi con lo stesso nome — la stessa
+// confusione che il team sta cercando di evitare. I valori badge interni
+// (platino/oro/argento/bronzo) restano invariati, cambia solo l'etichetta
+// mostrata.
+const BADGE_LABELS = { platino: 'Top 10%', oro: 'Top 35%', argento: 'Top 65%', bronzo: 'Restante' };
 
 export default function Academy() {
   const [activeSim, setActiveSim] = useState(SIM_LIST[0]?.id || 'LMU');
@@ -49,9 +59,12 @@ export default function Academy() {
         <span>
           Classifica di anteprima — Fase 3. Il totale è Punti Merito (piazzamento in
           classe, giro veloce, presenza, pole se disponibile) più Punti Penalità dagli
-          incidenti risolti dallo staff. Chi ha almeno 5 gare riceve anche un rango di
-          carriera (Bronzo/Argento/Oro/Platino). Scarto del risultato peggiore arriva
-          nella fase successiva: questo numero cambierà ancora.
+          incidenti risolti dallo staff. Chi ha almeno 5 gare riceve anche una fascia
+          percentile di carriera (Top 10% / Top 35% / Top 65% / Restante) — non va
+          confusa con le categorie Platinum/Gold/Silver/Bronze del sistema di rating
+          riservato, che è un'altra cosa: formula diversa, visibile solo a te e allo
+          staff. Scarto del risultato peggiore arriva nella fase successiva: questo
+          numero cambierà ancora.
         </span>
       </div>
 
@@ -163,7 +176,7 @@ export default function Academy() {
                 {r.badge && (
                   <span
                     className={`${styles.badgeChip} ${styles['badge_' + r.badge]}`}
-                    title={`Rango ${BADGE_LABELS[r.badge]} — carriera in questo sim (percentile tra i piloti con almeno 5 gare), non un indicatore di forma recente`}
+                    title={`${BADGE_LABELS[r.badge]} per percentile di carriera in questo sim (tra i piloti con almeno 5 gare) — non un indicatore di forma recente, e diverso dalle categorie del sistema di rating riservato`}
                   >
                     {BADGE_LABELS[r.badge]}
                   </span>
