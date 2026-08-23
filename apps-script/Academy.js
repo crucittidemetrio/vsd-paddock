@@ -111,6 +111,12 @@ function computePenaltyPoints_(sim) {
 const ACADEMY_BADGE_MIN_RACES = 5;
 const ACADEMY_BADGE_CUTOFFS = { platino: 0.10, oro: 0.35, argento: 0.65 }; // resto → bronzo
 
+// Soglia minima gare per comparire nella classifica "passo puro" (gap %
+// medio dal giro veloce di gruppo) — stessa logica di SKILL_INDEX_MIN_RACES:
+// una singola gara con un giro fortunato non deve poter valere il primo
+// posto in una classifica di costanza sul ritmo.
+const ACADEMY_PACE_MIN_RACES = 3;
+
 /**
  * Assegna badge PER-SIM alla ranking già ordinata per vr decrescente.
  * Muta le righe in-place (aggiunge/aggiorna `badge`). Ranking con meno
@@ -142,9 +148,13 @@ function assignAcademyBadges_(ranking) {
  * Formula trasparente come Skill Index: pm e pp esposti separatamente,
  * mai solo il totale, così chi guarda vede da cosa deriva il numero.
  *
+ * Espone anche `paceRanking`: classifica separata "passo puro" (gap %
+ * medio dal giro veloce di gruppo + miglior giro in assoluto), scollegata
+ * da PM/PP/badge — pura trasparenza sul ritmo, non sostituisce il VR.
+ *
  * @param {Object} payload - { sim: 'LMU'|'IRC'|'ACE' } — sim obbligatorio
  * @param {Object} ctx - richiede ctx.driver_id (tesserato loggato)
- * @returns {Object} { ok, data: { sim, ranking: [...], count } }
+ * @returns {Object} { ok, data: { sim, ranking: [...], count, paceRanking: [...], paceRankingMinRaces } }
  */
 function handleAcademyRanking(payload, ctx) {
   if (!ctx || !ctx.driver_id) return fail('Auth richiesto');
@@ -168,6 +178,9 @@ function handleAcademyRanking(payload, ctx) {
 
   // driver_id → { pm, races }
   const pmByDriver = {};
+  // driver_id → { gapSum, races } — per la classifica "passo puro" sotto,
+  // accumulato nello stesso giro dei gruppi per non rileggere RaceResults.
+  const paceByDriver = {};
 
   Object.keys(groups).forEach(key => {
     const group = groups[key];
@@ -209,6 +222,29 @@ function handleAcademyRanking(payload, ctx) {
       if (!pmByDriver[r.driver_id]) pmByDriver[r.driver_id] = { pm: 0, races: 0 };
       pmByDriver[r.driver_id].pm += pm;
       pmByDriver[r.driver_id].races += 1;
+
+      // Passo puro: gap % dal giro più veloce del gruppo (race_id +
+      // car_class), indipendente da piazzamento/incidenti/bonus. Solo se
+      // il pilota ha un best_lap_ms valido in QUESTA gara — non tutte le
+      // gare hanno telemetria per tutti (es. ritiro prima del giro veloce).
+      // Traccia anche il giro più veloce IN ASSOLUTO del pilota su tutte
+      // le sue gare in questo sim (non solo la media del gap%), su
+      // richiesta esplicita: la media premia la costanza ma nasconde il
+      // picco di prestazione — utile mostrare entrambi.
+      if (fastestMs != null && r.best_lap_ms != null && Number(r.best_lap_ms) > 0) {
+        const lapMs = Number(r.best_lap_ms);
+        const gapPct = (lapMs - fastestMs) / fastestMs * 100;
+        if (!paceByDriver[r.driver_id]) {
+          paceByDriver[r.driver_id] = { gapSum: 0, races: 0, bestLapMs: null, bestLapTrackId: null };
+        }
+        const pace = paceByDriver[r.driver_id];
+        pace.gapSum += gapPct;
+        pace.races += 1;
+        if (pace.bestLapMs == null || lapMs < pace.bestLapMs) {
+          pace.bestLapMs = lapMs;
+          pace.bestLapTrackId = r.track_id || null;
+        }
+      }
     });
   });
 
@@ -232,6 +268,27 @@ function handleAcademyRanking(payload, ctx) {
 
   const ppByDriver = computePenaltyPoints_(sim);
 
+  // Classifica "passo puro": gap % medio dal giro veloce di gruppo,
+  // indipendente da PM/PP/badge — trasparenza pura sul ritmo. Soglia
+  // minima gare coerente con l'Indice Skill (evita che una gara isolata
+  // con un giro fortunato scavalchi chi corre con costanza.
+  const paceRanking = Object.keys(paceByDriver)
+    .filter(isCurrentTesserato_)
+    .filter(driverId => paceByDriver[driverId].races >= ACADEMY_PACE_MIN_RACES)
+    .map(driverId => {
+      const p = paceByDriver[driverId];
+      return {
+        driver_id: driverId,
+        display_name: (driverMap[driverId] && driverMap[driverId].display_name) || driverId,
+        avatar_url: (driverMap[driverId] && driverMap[driverId].avatar_url) || '',
+        avg_gap_pct: Math.round((p.gapSum / p.races) * 100) / 100,
+        best_lap_ms: p.bestLapMs,
+        best_lap_track_id: p.bestLapTrackId,
+        races: p.races,
+      };
+    })
+    .sort((a, b) => a.avg_gap_pct - b.avg_gap_pct);
+
   const ranking = Object.keys(pmByDriver)
     .filter(isCurrentTesserato_)
     .map(driverId => {
@@ -253,7 +310,13 @@ function handleAcademyRanking(payload, ctx) {
 
   assignAcademyBadges_(ranking);
 
-  return ok({ sim, ranking, count: ranking.length });
+  return ok({
+    sim,
+    ranking,
+    count: ranking.length,
+    paceRanking,
+    paceRankingMinRaces: ACADEMY_PACE_MIN_RACES,
+  });
 }
 
 /**
@@ -285,6 +348,11 @@ function testAcademyRanking() {
       const ppNote = r.pp !== 0 ? ` [PM ${r.pm} + PP ${r.pp}]` : '';
       const badgeNote = r.badge ? ` 🏅${r.badge}` : '';
       Logger.log(`  ${i + 1}. ${r.display_name} — VR ${r.vr}${ppNote} (${r.races} gare)${badgeNote}`);
+    });
+
+    Logger.log('--- Passo puro (min ' + result.data.paceRankingMinRaces + ' gare) ---');
+    result.data.paceRanking.forEach((r, i) => {
+      Logger.log(`  ${i + 1}. ${r.display_name} — gap medio ${r.avg_gap_pct}% — miglior giro ${r.best_lap_ms}ms su ${r.best_lap_track_id} (${r.races} gare)`);
     });
   });
 }

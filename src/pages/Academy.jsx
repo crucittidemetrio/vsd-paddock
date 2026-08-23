@@ -1,7 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAcademyRanking } from '../hooks/useAcademy';
+import { useTracks } from '../hooks/useLookups';
 import { SIM_LIST } from '../utils/constants';
+import { formatTrack } from '../utils/format';
+import LapTime from '../components/shared/LapTime';
 import styles from './Academy.module.css';
 
 function initials(name) {
@@ -39,7 +42,10 @@ export default function Academy() {
   const [activeSim, setActiveSim] = useState(SIM_LIST[0]?.id || 'LMU');
   const [infoOpen, setInfoOpen] = useState(false);
   const rankingQuery = useAcademyRanking(activeSim);
+  const tracksQuery = useTracks(activeSim);
   const ranking = rankingQuery.data?.ranking || [];
+  const paceRanking = rankingQuery.data?.paceRanking || [];
+  const paceMinRaces = rankingQuery.data?.paceRankingMinRaces ?? 3;
 
   return (
     <div className={styles.container}>
@@ -117,11 +123,13 @@ export default function Academy() {
           </p>
 
           <p className={styles.infoText}>
-            Chi ha almeno 5 gare in questo sim riceve anche un <strong>rango di carriera</strong>
-            {' '}(Bronzo/Argento/Oro/Platino), calcolato per percentile tra i piloti qualificati
-            di QUESTO sim — non una soglia fissa in punti, così un sim con meno gare importate
-            finora non penalizza chi ci corre. Non è un indicatore di forma recente (quello
-            resta l'Indice Skill): riflette il contributo accumulato nel tempo.
+            Chi ha almeno 5 gare in questo sim riceve anche una <strong>fascia percentile
+            di carriera</strong> ({BADGE_LABELS.platino} / {BADGE_LABELS.oro} / {BADGE_LABELS.argento} / {BADGE_LABELS.bronzo}),
+            calcolata tra i piloti qualificati di QUESTO sim — non una soglia fissa in
+            punti, così un sim con meno gare importate finora non penalizza chi ci corre.
+            Non è un indicatore di forma recente (quello resta l'Indice Skill): riflette
+            il contributo accumulato nel tempo. Non va confusa con le categorie
+            Platinum/Gold/Silver/Bronze del sistema di rating riservato (vedi banner sopra).
           </p>
 
           <p className={styles.infoText}>
@@ -129,6 +137,19 @@ export default function Academy() {
             lasciato il team esce dalla classifica anche se ha ancora risultati in
             archivio. Non è ancora incluso lo scarto del risultato peggiore. Arriva nelle
             fasi successive del sistema — vedi il banner sopra.
+          </p>
+
+          <p className={styles.infoText}>
+            La <strong>Classifica Passo Puro</strong> più sotto è un'altra cosa: non
+            somma punti, misura solo il ritmo. Per ogni gara si calcola lo scarto
+            percentuale del giro veloce del pilota rispetto al giro veloce assoluto di
+            quella gara (stessa classe), poi si fa la media su tutte le sue gare in
+            questo sim — più il numero è vicino a 0%, più il pilota è stato vicino al
+            ritmo di punta della gara. Serve almeno {' '}
+            <strong>{paceMinRaces} gare</strong> per comparire, per evitare che un
+            giro fortunato isolato valga il primo posto. Viene mostrato anche il
+            <strong> miglior giro in assoluto</strong> del pilota su questo sim, pista
+            inclusa — il picco di prestazione, non solo la media.
           </p>
         </div>
       )}
@@ -197,6 +218,55 @@ export default function Academy() {
             </div>
           ))}
         </div>
+      )}
+
+      {paceRanking.length > 0 && (
+        <>
+          <div className={styles.paceHeader}>
+            <div className={styles.eyebrow}>PASSO PURO</div>
+            <h2 className={styles.paceTitle}>Classifica Passo Puro</h2>
+            <p className={styles.sub}>
+              Gap % medio dal giro veloce di gara (min. {paceMinRaces} gare) — non somma
+              punti, misura solo il ritmo. In evidenza anche il miglior giro in assoluto
+              di ciascun pilota su questo sim.
+            </p>
+          </div>
+
+          <div className={styles.table}>
+            <div className={styles.paceTableHeaderRow}>
+              <span>#</span>
+              <span>Pilota</span>
+              <span>Gap medio</span>
+              <span>Miglior giro</span>
+              <span>Gare</span>
+            </div>
+            {paceRanking.map((r, idx) => (
+              <div key={r.driver_id} className={styles.paceTableRow}>
+                <span className={idx < 3 ? styles.rankTop3 : styles.rank}>{idx + 1}</span>
+                <span className={styles.driverCell}>
+                  {r.avatar_url ? (
+                    <img className={styles.avatar} src={r.avatar_url} alt="" />
+                  ) : (
+                    <span className={styles.avatarFallback}>{initials(r.display_name)}</span>
+                  )}
+                  <span className={styles.driverName}>{r.display_name}</span>
+                </span>
+                <span className={styles.gapPct}>
+                  {idx === 0 ? 'Riferimento' : `+${r.avg_gap_pct}%`}
+                </span>
+                <span className={styles.bestLapCell}>
+                  <LapTime ms={r.best_lap_ms} emphasis="best" size="sm" />
+                  {r.best_lap_track_id && (
+                    <span className={styles.bestLapTrack}>
+                      {formatTrack(r.best_lap_track_id, tracksQuery.data)}
+                    </span>
+                  )}
+                </span>
+                <span className={styles.races}>{r.races}</span>
+              </div>
+            ))}
+          </div>
+        </>
       )}
     </div>
   );
