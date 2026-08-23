@@ -175,6 +175,47 @@ export default function Training() {
           </div>
         </section>
       )}
+
+      {/* ── Strumenti consigliati ──
+          Link a software di terzi, non sviluppati da VSD: nessun codice
+          copiato, solo link esterni + credito. Vedi thread interno per i
+          criteri di scelta (licenza chiara o link diretto all'autore). */}
+      <section className={styles.toolsSection}>
+        <div className={styles.toolsEyebrow}>STRUMENTI CONSIGLIATI</div>
+        <h2 className={styles.toolsTitle}>Per allenarti meglio</h2>
+        <div className={styles.toolsGrid}>
+          <a
+            href="https://github.com/rabbit20031225/LMU-Telemetry-Lab/releases"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.toolCard}
+          >
+            <div className={styles.toolName}>LMU Telemetry Lab</div>
+            <p className={styles.toolDesc}>
+              Analizzatore di telemetria per Le Mans Ultimate: mappa pista 2D/3D,
+              confronto giri, ghost car e HUD live configurabile. Utile per capire
+              dove si perde tempo rispetto ai compagni o a una gara precedente.
+            </p>
+            <div className={styles.toolMeta}>Software di terzi · gratuito · licenza MIT · Windows</div>
+          </a>
+
+          <a
+            href="https://github.com/ilborga70/Pro-Sim-FOV-Utility/releases/tag/5.1.0.0"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.toolCard}
+          >
+            <div className={styles.toolName}>Pro-Sim FOV Utility</div>
+            <p className={styles.toolDesc}>
+              Calcola il campo visivo (FOV) corretto in base a distanza dallo
+              schermo, dimensione e numero di monitor. Un FOV sbagliato falsa la
+              percezione di velocità e frenata — utile soprattutto su setup a
+              triplo schermo.
+            </p>
+            <div className={styles.toolMeta}>Strumento di terzi · eseguibile portable · Windows</div>
+          </a>
+        </div>
+      </section>
     </div>
   );
 }
