@@ -93,8 +93,14 @@ function handleRosterGet(payload, ctx) {
 // manualmente (vedi media/drivers/, driverPhotos.js) — decisione
 // esplicita per non aprire un canale di upload libero sul roster.
 
-const ROSTER_SELF_EDITABLE_FIELDS = ['bio', 'instagram', 'facebook'];
+const ROSTER_SELF_EDITABLE_FIELDS = ['bio', 'instagram', 'facebook', 'roster_track'];
 const DRIVER_SOCIAL_COLUMNS = ['instagram', 'facebook'];
+
+// Valori ammessi per roster_track — introdotto con l'annuncio "Due strade,
+// stesso team" (08/2026). Vincolato a un enum (non testo libero come bio)
+// perché alimenta la composizione equipaggi lato staff: un valore fuori
+// schema romperebbe silenziosamente quella logica più avanti.
+const ROSTER_TRACK_VALUES = ['competitivo', 'amatoriale'];
 
 /**
  * setupDriverSocialColumns — aggiunge le colonne "instagram"/"facebook"
@@ -134,9 +140,16 @@ function handleRosterUpdateSelf(payload, ctx) {
   payload = payload || {};
   const updates = {};
   ROSTER_SELF_EDITABLE_FIELDS.forEach(f => {
-    if (payload[f] !== undefined) updates[f] = String(payload[f]).slice(0, 500);
+    if (payload[f] === undefined) return;
+    if (f === 'roster_track') {
+      const value = String(payload[f]).trim().toLowerCase();
+      if (ROSTER_TRACK_VALUES.indexOf(value) === -1) return; // valore fuori enum, ignorato (non blocca gli altri campi nello stesso payload)
+      updates[f] = value;
+      return;
+    }
+    updates[f] = String(payload[f]).slice(0, 500);
   });
-  if (Object.keys(updates).length === 0) return fail('Nessun campo da aggiornare');
+  if (Object.keys(updates).length === 0) return fail('Nessun campo da aggiornare (o roster_track non valido — valori ammessi: ' + ROSTER_TRACK_VALUES.join('/') + ')');
 
   const sheet = getSheet(SHEETS.DRIVERS);
   if (!sheet) return fail('Foglio Drivers non trovato');

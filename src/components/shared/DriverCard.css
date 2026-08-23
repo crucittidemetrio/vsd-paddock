@@ -70,6 +70,29 @@
   margin-top: -4px;
 }
 
+.driver-card-track {
+  display: inline-block;
+  width: fit-content;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+}
+
+.driver-card-track-competitivo {
+  color: var(--vsd-orange);
+  border-color: rgba(255, 191, 63, 0.35);
+  background: rgba(255, 191, 63, 0.08);
+}
+
+.driver-card-track-amatoriale {
+  color: var(--vsd-cyan);
+  border-color: rgba(0, 212, 255, 0.3);
+  background: rgba(0, 212, 255, 0.06);
+}
+
 .driver-card-sims {
   display: flex;
   flex-wrap: wrap;

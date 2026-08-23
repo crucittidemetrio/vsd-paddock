@@ -170,6 +170,35 @@ function migrate_addPointsAdjustmentsColumn() {
  * Usata per campionati multi-gara (es. Race 1 + Race 2 per tracciato).
  * Idempotente.
  */
+/**
+ * migrate_addRosterTrackColumn
+ * Aggiunge la colonna `roster_track` al foglio Drivers — valori attesi
+ * 'competitivo' | 'amatoriale' | '' (non ancora dichiarato). Introdotta
+ * con l'annuncio "Due strade, stesso team" (08/2026): da qui in avanti
+ * ogni pilota dichiara in quale roster si riconosce, self-declare via
+ * roster.updateSelf (vedi Roster.js — ROSTER_SELF_EDITABLE_FIELDS).
+ * Campo pubblico (DRIVER_PUBLIC_FIELDS in Codice.js): non è dato
+ * sensibile, ed è utile a tutto il team sapere chi corre su quale
+ * percorso. Idempotente.
+ */
+function migrate_addRosterTrackColumn() {
+  const ss = SpreadsheetApp.openById(VSD_HUB_SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Drivers');
+  if (!sheet) { Logger.log('❌ Tab Drivers non trovato'); return; }
+
+  const lastCol = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+  if (headers.indexOf('roster_track') !== -1) {
+    Logger.log('⏭️  Colonna `roster_track` già esistente, migration skippata');
+    return;
+  }
+
+  const newColIdx = lastCol + 1;
+  sheet.getRange(1, newColIdx).setValue('roster_track');
+  Logger.log('✅ Colonna `roster_track` aggiunta a Drivers (colonna #' + newColIdx + ')');
+}
+
 function migrate_addRaceNumberColumn() {
   const ss = SpreadsheetApp.openById(VSD_HUB_SPREADSHEET_ID);
   const sheet = ss.getSheetByName('Races');

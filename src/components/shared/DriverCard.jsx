@@ -66,6 +66,12 @@ export default function DriverCard({ driver, compact = false, online }) {
         </div>
       )}
 
+      {!isEx && driver.roster_track && (
+        <div className={`driver-card-track driver-card-track-${driver.roster_track}`}>
+          {driver.roster_track === 'competitivo' ? '🏆 Competitivo' : '🎮 Amatoriale'}
+        </div>
+      )}
+
       <div className="driver-card-sims">
         {sims.map(s => <SimBadge key={s} sim={s.trim()} size="sm" />)}
       </div>

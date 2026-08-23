@@ -13,6 +13,7 @@ export default function EditProfilePanel({ driver }) {
   const [bio, setBio] = useState(driver?.bio || '');
   const [instagram, setInstagram] = useState(driver?.instagram || '');
   const [facebook, setFacebook] = useState(driver?.facebook || '');
+  const [rosterTrack, setRosterTrack] = useState(driver?.roster_track || '');
   const { mutate: save, isPending, error } = useUpdateMyProfile();
   const [success, setSuccess] = useState(false);
 
@@ -20,6 +21,7 @@ export default function EditProfilePanel({ driver }) {
     setBio(driver?.bio || '');
     setInstagram(driver?.instagram || '');
     setFacebook(driver?.facebook || '');
+    setRosterTrack(driver?.roster_track || '');
     setSuccess(false);
     setEditing(true);
   }
@@ -27,19 +29,21 @@ export default function EditProfilePanel({ driver }) {
   function handleSubmit(e) {
     e.preventDefault();
     setSuccess(false);
-    save(
-      {
-        bio: bio.trim(),
-        instagram: instagram.trim().replace(/^@/, ''),
-        facebook: facebook.trim(),
+    const payload = {
+      bio: bio.trim(),
+      instagram: instagram.trim().replace(/^@/, ''),
+      facebook: facebook.trim(),
+    };
+    // roster_track è un enum lato backend: mandarlo solo se l'utente ha
+    // scelto un'opzione, altrimenti il backend lo scarta comunque ma
+    // meglio non inviare stringa vuota inutilmente.
+    if (rosterTrack) payload.roster_track = rosterTrack;
+    save(payload, {
+      onSuccess: () => {
+        setSuccess(true);
+        setEditing(false);
       },
-      {
-        onSuccess: () => {
-          setSuccess(true);
-          setEditing(false);
-        },
-      }
-    );
+    });
   }
 
   if (!editing) {
@@ -60,6 +64,37 @@ export default function EditProfilePanel({ driver }) {
       </div>
 
       <form onSubmit={handleSubmit} className="epp-form">
+        <div className="epp-field">
+          <label className="epp-label">Percorso nel team</label>
+          <div className="epp-track-options">
+            <label className={`epp-track-option ${rosterTrack === 'competitivo' ? 'epp-track-option-active' : ''}`}>
+              <input
+                type="radio"
+                name="epp-roster-track"
+                value="competitivo"
+                checked={rosterTrack === 'competitivo'}
+                onChange={() => setRosterTrack('competitivo')}
+              />
+              <span className="epp-track-label">🏆 Roster Competitivo</span>
+              <span className="epp-track-desc">Campionati, allenamento strutturato, categorie di rating</span>
+            </label>
+            <label className={`epp-track-option ${rosterTrack === 'amatoriale' ? 'epp-track-option-active' : ''}`}>
+              <input
+                type="radio"
+                name="epp-roster-track"
+                value="amatoriale"
+                checked={rosterTrack === 'amatoriale'}
+                onChange={() => setRosterTrack('amatoriale')}
+              />
+              <span className="epp-track-label">🎮 Roster Amatoriale</span>
+              <span className="epp-track-desc">Sessioni in compagnia, senza pressione del risultato</span>
+            </label>
+          </div>
+          {!rosterTrack && (
+            <div className="epp-track-hint">Non ancora dichiarato — scegli il percorso in cui ti riconosci.</div>
+          )}
+        </div>
+
         <div className="epp-field">
           <label className="epp-label" htmlFor="epp-bio">Bio</label>
           <textarea
