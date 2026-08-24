@@ -58,6 +58,7 @@ const SocialManager = lazy(() => import('./pages/SocialManager'));
 const ClashOfClasses = lazy(() => import('./pages/ClashOfClasses'));
 const AdminClashResults = lazy(() => import('./pages/AdminClashResults'));
 const AciLmgt3Challenge = lazy(() => import('./pages/AciLmgt3Challenge'));
+const EraSeason3         = lazy(() => import('./pages/EraSeason3'));
 
 import './App.css';
 
@@ -119,6 +120,7 @@ export default function App() {
               <Route path="/ue144" element={<UE144 />} />
               <Route path="/clash-of-classes" element={<ClashOfClasses />} />
               <Route path="/aci-lmgt3-challenge" element={<AciLmgt3Challenge />} />
+              <Route path="/era-season-3" element={<EraSeason3 />} />
               <Route path="/compare" element={<Compare />} />
               <Route path="/privacy" element={<Privacy />} />
               <Route path="/terms" element={<Terms />} />

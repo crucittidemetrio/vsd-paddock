@@ -33,6 +33,7 @@ const EVENTS_ITEMS = [
 // distinta da Eventi VSD, che sono format proprietari interni.
 const EXTERNAL_ITEMS = [
   { to: '/aci-lmgt3-challenge', label: 'ACI LMGT3 Challenge', icon: '♟' },
+  { to: '/era-season-3', label: 'ERA Season 3', icon: '◈' },
 ];
 
 // Pagine rivolte all'esterno (candidati, sponsor) — visibili a tutti,
