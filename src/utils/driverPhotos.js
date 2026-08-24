@@ -3,8 +3,8 @@
 // finire qui — non aggiungere PNG originali da svariati MB in public/.
 // Aggiornare questo elenco quando arrivano nuove foto.
 export const DRIVERS_WITH_PHOTO = new Set([
-  'VSD003', 'VSD004', 'VSD005', 'VSD007', 'VSD008', 'VSD009', 'VSD011',
-  'VSD013', 'VSD017', 'VSD018', 'VSD020', 'VSD021', 'VSD022',
+  'VSD003', 'VSD004', 'VSD005', 'VSD006', 'VSD007', 'VSD008', 'VSD009',
+  'VSD011', 'VSD013', 'VSD017', 'VSD018', 'VSD020', 'VSD021', 'VSD022',
   'VSD026',
 ]);
 
