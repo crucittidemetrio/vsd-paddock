@@ -272,7 +272,7 @@ export default function ClashOfClasses() {
           <a href={SOCIAL_LINKS.INSTAGRAM} target="_blank" rel="noopener noreferrer" className={styles.btn}>Instagram</a>
           <a href={SOCIAL_LINKS.FACEBOOK} target="_blank" rel="noopener noreferrer" className={styles.btn}>Facebook</a>
         </div>
-        <div className={styles.ctaStaff}>Staff di riferimento: @Demetrio · @Calvi · @Ciccone · @Baiguera · @Fabbro</div>
+        <div className={styles.ctaStaff}>Staff di riferimento: @Demetrio (Team Principal)</div>
       </section>
 
     </div>

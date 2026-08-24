@@ -73,7 +73,7 @@ export default function Privacy() {
           <a href={CONTACT} target="_blank" rel="noopener noreferrer">
             Discord
           </a>{' '}
-          a uno degli admin del team.
+          al Team Principal.
         </p>
       </section>
 

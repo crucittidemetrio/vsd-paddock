@@ -92,7 +92,7 @@ export default function Terms() {
           <a href={CONTACT} target="_blank" rel="noopener noreferrer">
             Discord
           </a>{' '}
-          a uno degli admin del team. Per il trattamento dei dati personali vedi
+          al Team Principal. Per il trattamento dei dati personali vedi
           la pagina <a href="/privacy">Privacy &amp; Trattamento Dati</a>.
         </p>
       </section>
