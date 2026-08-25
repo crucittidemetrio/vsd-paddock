@@ -10,13 +10,16 @@
 //     (token, non webhook URL) che apra un canale privato via REST
 //     API (POST /users/@me/channels) e ci scriva dentro. Il bot deve
 //     condividere il server con il destinatario (requisito Discord
-//     anti-spam) — va quindi invitato nel server VSD una volta sola,
-//     stesso processo di un bot normale, ma qui NON serve la gateway
-//     connection: bastano chiamate REST stateless da UrlFetchApp,
-//     esattamente come per l'OAuth in discordAuth.js.
+//     anti-spam) — va quindi invitato nel server VSD una volta sola.
+//     Task #109: la chiamata di INVIO messaggio (non l'apertura canale)
+//     viene bloccata con 403 da Cloudflare quando parte da Apps Script
+//     (UrlFetchApp non può impostare uno User-Agent custom per aggirarlo)
+//     — quindi discordSendDm_ passa dal relay Vercel
+//     /api/discord-dm-relay invece di chiamare Discord direttamente.
 //
 // Script Properties richieste:
-//   DISCORD_BOT_TOKEN               — token del bot (Developer Portal)
+//   DISCORD_RELAY_URL               — https://vsd-paddock.vercel.app/api/discord-dm-relay
+//   DISCORD_RELAY_SECRET            — stesso secret dell'env Vercel DISCORD_RELAY_SECRET
 //   DISCORD_WEBHOOK_ADMIN_URL       — già esistente (Notifications.js)
 //   DISCORD_WEBHOOK_BARSPORT_URL    — già esistente (Notifications.js)
 //   DISCORD_WEBHOOK_GESTIONE_GARE_URL — nuovo, webhook dedicato canale
@@ -112,8 +115,10 @@ function messengerSendChannel_(payload, text, color, senderName, ctx) {
 }
 
 function messengerSendDm_(payload, text, color, senderName, ctx) {
-  const botToken = PropertiesService.getScriptProperties().getProperty('DISCORD_BOT_TOKEN');
-  if (!botToken) return fail('Bot Discord non configurato (DISCORD_BOT_TOKEN mancante)');
+  const props = PropertiesService.getScriptProperties();
+  if (!props.getProperty('DISCORD_RELAY_URL') || !props.getProperty('DISCORD_RELAY_SECRET')) {
+    return fail('Relay DM non configurato (DISCORD_RELAY_URL/DISCORD_RELAY_SECRET mancanti nelle Script Properties)');
+  }
 
   const target = String(payload.target || 'few').trim();
   const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
@@ -149,7 +154,7 @@ function messengerSendDm_(payload, text, color, senderName, ctx) {
       failed.push({ driver_id: driver.driver_id, display_name: driver.display_name, reason: 'discord_non_collegato' });
       return;
     }
-    const result = discordSendDm_(discordId, { embeds: [embed] }, botToken);
+    const result = discordSendDm_(discordId, { embeds: [embed] });
     if (result.ok) {
       sent.push({ driver_id: driver.driver_id, display_name: driver.display_name });
     } else {
@@ -169,63 +174,44 @@ function messengerSendDm_(payload, text, color, senderName, ctx) {
 }
 
 /**
- * Manda una DM Discord via Bot REST API — stateless, nessuna gateway
- * connection necessaria. Il bot deve già condividere il server con
- * l'utente (altrimenti Discord risponde 403). Fault-tolerant: non
- * lancia mai, ritorna sempre {ok, error?}.
+ * Manda una DM Discord — NON più chiamando Discord direttamente da Apps
+ * Script, ma passando dal relay Vercel /api/discord-dm-relay (Task
+ * #109). Motivo: UrlFetchApp funziona per aprire il canale DM ma viene
+ * bloccato con 403 {code:40333,"internal network error"} da Cloudflare
+ * sull'endpoint di invio messaggio — Apps Script non può impostare uno
+ * User-Agent custom per aggirarlo (limitazione nota di Google, mai
+ * risolta). Il relay gira su Vercel (IP/User-Agent diversi) e fa lui le
+ * due chiamate Discord vere. Fault-tolerant: non lancia mai, ritorna
+ * sempre {ok, error?}.
+ *
+ * Script Properties richieste: DISCORD_RELAY_URL, DISCORD_RELAY_SECRET
+ * (stesso secret nell'env Vercel DISCORD_RELAY_SECRET).
  *
  * @param {string} discordId - snowflake utente destinatario
  * @param {Object} messagePayload - { embeds: [...] } o { content: '...' }
- * @param {string} botToken
  */
-// Discord (via Cloudflare) blocca con 403 {code:40333,message:"internal
-// network error"} le richieste Bot che non mandano uno User-Agent nel
-// formato che si aspetta — e UrlFetchApp di Apps Script manda uno User-Agent
-// generico che viene scambiato per traffico "browser" sospetto. Non è un
-// problema di permessi/privacy: va semplicemente dichiarato lo User-Agent
-// nel formato raccomandato da Discord (discord-api-docs issue #6473).
-const DISCORD_USER_AGENT = 'DiscordBot (https://vsd-paddock.vercel.app, 1.0)';
-
-function discordSendDm_(discordId, messagePayload, botToken) {
+function discordSendDm_(discordId, messagePayload) {
   try {
-    const channelRes = UrlFetchApp.fetch(DISCORD_API_BASE_MSG + '/users/@me/channels', {
-      method: 'post',
-      contentType: 'application/json',
-      headers: { 'Authorization': 'Bot ' + botToken, 'User-Agent': DISCORD_USER_AGENT },
-      payload: JSON.stringify({ recipient_id: discordId }),
-      muteHttpExceptions: true,
-    });
-    const channelStatus = channelRes.getResponseCode();
-    if (channelStatus < 200 || channelStatus >= 300) {
-      return { ok: false, error: 'http_' + channelStatus + '_open_channel' };
+    const props = PropertiesService.getScriptProperties();
+    const relayUrl = props.getProperty('DISCORD_RELAY_URL');
+    const relaySecret = props.getProperty('DISCORD_RELAY_SECRET');
+    if (!relayUrl || !relaySecret) {
+      return { ok: false, error: 'relay_non_configurato' };
     }
-    const channel = JSON.parse(channelRes.getContentText());
-    if (!channel.id) return { ok: false, error: 'channel_id_mancante' };
 
-    const msgRes = UrlFetchApp.fetch(DISCORD_API_BASE_MSG + '/channels/' + channel.id + '/messages', {
+    const res = UrlFetchApp.fetch(relayUrl, {
       method: 'post',
       contentType: 'application/json',
-      headers: { 'Authorization': 'Bot ' + botToken, 'User-Agent': DISCORD_USER_AGENT },
-      payload: JSON.stringify(messagePayload),
+      headers: { 'x-discord-relay-secret': relaySecret },
+      payload: JSON.stringify({ discordId: discordId, messagePayload: messagePayload }),
       muteHttpExceptions: true,
     });
-    const msgStatus = msgRes.getResponseCode();
-    if (msgStatus < 200 || msgStatus >= 300) {
-      // Diagnostica: lo status HTTP da solo non basta a distinguere le
-      // cause di un 403 (privacy DM disattivate, bot bloccato, bot non
-      // più nella guild condivisa, token senza permessi...) — il body
-      // di errore di Discord (code + message) lo dice esplicitamente.
-      let detail = '';
-      try {
-        const body = JSON.parse(msgRes.getContentText());
-        if (body && (body.code !== undefined || body.message)) {
-          detail = ' [discord ' + body.code + ': ' + body.message + ']';
-        }
-      } catch (parseErr) {
-        detail = ' [body non-JSON: ' + msgRes.getContentText().slice(0, 200) + ']';
-      }
-      return { ok: false, error: 'http_' + msgStatus + '_send_message' + detail };
+    const status = res.getResponseCode();
+    if (status < 200 || status >= 300) {
+      return { ok: false, error: 'http_' + status + '_relay: ' + res.getContentText().slice(0, 200) };
     }
+    const body = JSON.parse(res.getContentText());
+    if (!body.ok) return { ok: false, error: body.error || 'relay_error_sconosciuto' };
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e.message };
