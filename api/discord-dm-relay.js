@@ -93,14 +93,29 @@ export default async function handler(request, response) {
 // Estrae code+message dal body errore Discord, senza mai lanciare se il
 // body non è JSON valido — stessa diagnostica già usata in
 // DiscordMessenger.js lato Apps Script.
+// Legge il body come testo grezzo UNA volta sola (un Response si può
+// consumare una volta sola: chiamare .json() e poi .text() sullo stesso
+// oggetto fallisce silenziosamente) e prova a interpretarlo come JSON
+// Discord ({code, message}). Se non è JSON, o non ha quei campi,
+// ritorna comunque il testo grezzo — meglio un dettaglio scomodo da
+// leggere che un errore "http_403_send_message" senza alcun contesto,
+// che in passato ci ha fatto perdere tempo a inseguire la pista
+// sbagliata (permessi/privacy del pilota) quando la causa reale era
+// un'altra.
 async function safeErrorDetail_(res) {
+  let raw = '';
   try {
-    const body = await res.json();
+    raw = await res.text();
+  } catch (e) {
+    return ' [impossibile leggere il body della risposta]';
+  }
+  try {
+    const body = JSON.parse(raw);
     if (body && (body.code !== undefined || body.message)) {
       return ' [discord ' + body.code + ': ' + body.message + ']';
     }
-    return '';
   } catch (e) {
-    return '';
+    // non JSON — usiamo il testo grezzo qui sotto
   }
+  return raw ? ' [raw: ' + raw.slice(0, 200) + ']' : ' [risposta vuota]';
 }
