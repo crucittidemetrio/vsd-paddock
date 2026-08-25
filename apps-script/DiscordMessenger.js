@@ -178,12 +178,20 @@ function messengerSendDm_(payload, text, color, senderName, ctx) {
  * @param {Object} messagePayload - { embeds: [...] } o { content: '...' }
  * @param {string} botToken
  */
+// Discord (via Cloudflare) blocca con 403 {code:40333,message:"internal
+// network error"} le richieste Bot che non mandano uno User-Agent nel
+// formato che si aspetta — e UrlFetchApp di Apps Script manda uno User-Agent
+// generico che viene scambiato per traffico "browser" sospetto. Non è un
+// problema di permessi/privacy: va semplicemente dichiarato lo User-Agent
+// nel formato raccomandato da Discord (discord-api-docs issue #6473).
+const DISCORD_USER_AGENT = 'DiscordBot (https://vsd-paddock.vercel.app, 1.0)';
+
 function discordSendDm_(discordId, messagePayload, botToken) {
   try {
     const channelRes = UrlFetchApp.fetch(DISCORD_API_BASE_MSG + '/users/@me/channels', {
       method: 'post',
       contentType: 'application/json',
-      headers: { 'Authorization': 'Bot ' + botToken },
+      headers: { 'Authorization': 'Bot ' + botToken, 'User-Agent': DISCORD_USER_AGENT },
       payload: JSON.stringify({ recipient_id: discordId }),
       muteHttpExceptions: true,
     });
@@ -197,7 +205,7 @@ function discordSendDm_(discordId, messagePayload, botToken) {
     const msgRes = UrlFetchApp.fetch(DISCORD_API_BASE_MSG + '/channels/' + channel.id + '/messages', {
       method: 'post',
       contentType: 'application/json',
-      headers: { 'Authorization': 'Bot ' + botToken },
+      headers: { 'Authorization': 'Bot ' + botToken, 'User-Agent': DISCORD_USER_AGENT },
       payload: JSON.stringify(messagePayload),
       muteHttpExceptions: true,
     });
