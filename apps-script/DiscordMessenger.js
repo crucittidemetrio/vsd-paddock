@@ -22,12 +22,14 @@
 //   DISCORD_WEBHOOK_GESTIONE_GARE_URL — nuovo, webhook dedicato canale
 //                                       #gestione-gare
 //
-// Permessi: ctx.isStaff (stesso gate di tutte le action admin) — la
-// scelta di chi ha accesso (Team Principal + responsabili sezione) è
-// stata implementata promuovendo quei driver a role='staff' nel sheet
-// Drivers, non con un allowlist separato: più semplice, coerente col
-// resto del pannello admin, accettata l'apertura alle altre sezioni
-// staff che questo comporta.
+// Permessi: ctx.isStaff OPPURE ctx.canMessage. Il TP ha inizialmente
+// promosso i responsabili sezione a role='staff', ma questo sblocca
+// TUTTA l'area admin (Best Laps, Gestione Gare, Import Risultati,
+// Candidature, Sponsor, Incidenti...) — troppo ampio, ritirato (Task
+// #102). Al suo posto: colonna can_message su Drivers (checkbox,
+// migrate_addCanMessageColumn in migrations.js), che ctx.canMessage
+// espone senza toccare role. Chi ha solo can_message resta 'driver' a
+// tutti gli effetti e vede solo la voce Messaggi Discord in sidebar.
 //
 // Sicurezza: il canale è sempre risolto da CHANNEL_WEBHOOK_PROPS (un
 // set fisso di chiavi), MAI da un property name passato dal client —
@@ -67,7 +69,7 @@ const CHANNEL_LABELS = {
  */
 function handleMessengerSend(payload, ctx) {
   if (!ctx) return fail('Auth richiesto');
-  if (!ctx.isStaff) return fail('Operazione riservata a staff e admin');
+  if (!ctx.isStaff && !ctx.canMessage) return fail('Operazione riservata a staff, admin o piloti abilitati al Messenger');
 
   payload = payload || {};
   const mode = String(payload.mode || '').trim();

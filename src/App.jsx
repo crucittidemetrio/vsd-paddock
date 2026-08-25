@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import AppShell from './components/layout/AppShell';
 import AdminRoute from './components/layout/AdminRoute';
+import MessengerRoute from './components/layout/MessengerRoute';
 import RequireTier from './components/auth/RequireTier';
 import LoginPrompt from './components/auth/LoginPrompt';
 
@@ -259,7 +260,7 @@ export default function App() {
               />
               <Route
                 path="/admin/messenger"
-                element={<AdminRoute><AdminMessenger /></AdminRoute>}
+                element={<MessengerRoute><AdminMessenger /></MessengerRoute>}
               />
               <Route
                 path="/admin/incidents"

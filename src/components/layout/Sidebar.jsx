@@ -144,7 +144,7 @@ function renderReorderableAdminItem(item, { move, isFirst, isLast, badgeCount = 
 }
 
 export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {} }) {
-  const { isVsdPilot, isStaff, isAdmin } = useAuth();
+  const { isVsdPilot, isStaff, isAdmin, canMessage } = useAuth();
   const [adminEditMode, setAdminEditMode] = useState(false);
 
   // Solo admin: la coda di validazione best lap è riservata a loro (vedi
@@ -232,6 +232,16 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
               })
               : renderNavItem(item, onMobileClose, 'is-admin', item.badgeCount)
             )}
+          </>
+        )}
+
+        {/* Permesso granulare Messenger (Task #102): un pilota può avere
+            can_message=true senza essere staff — vede solo questa voce,
+            non l'intera area Admin (già coperta sopra per chi è staff). */}
+        {!isStaff && canMessage && (
+          <>
+            <div className="nav-section-label nav-section-label-admin">Comunicazione</div>
+            {renderNavItem({ to: '/admin/messenger', label: 'Messaggi Discord', icon: '✉' }, onMobileClose, 'is-admin')}
           </>
         )}
       </nav>

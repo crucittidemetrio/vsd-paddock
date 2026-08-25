@@ -66,7 +66,7 @@ const DRIVER_PUBLIC_FIELDS = [
 ];
 
 const DRIVER_PRIVATE_EXTRA_FIELDS = [
-  'real_name', 'email', 'created_at', 'updated_at'
+  'real_name', 'email', 'created_at', 'updated_at', 'can_message'
 ];
 
 // access_code: MAI esposto, in nessun livello.
@@ -115,6 +115,7 @@ function doPost(e) {
         sims: [],
         isStaff: false,
         isAdmin: false,
+        canMessage: false,
       };
     }
 
@@ -418,13 +419,18 @@ function verifyToken(token) {
       driver = drivers.find(d => d.driver_id === driverId) || null;
     }
 
+    const isStaff = tier === 'staff' || tier === 'admin';
     return {
       driver_id: driverId,
       role: driver ? driver.role : '',
       tier: tier,
       sims: sims,
-      isStaff: tier === 'staff' || tier === 'admin',
+      isStaff: isStaff,
       isAdmin: tier === 'admin',
+      // Permesso granulare Messenger (Task #102/#106): non passa da role,
+      // così un pilota può scrivere ai compagni senza sbloccare tutta
+      // l'area admin. Vedi migrate_addCanMessageColumn in migrations.js.
+      canMessage: isStaff || (driver && driver.can_message === true),
       driver: driver,
     };
   } catch (e) {

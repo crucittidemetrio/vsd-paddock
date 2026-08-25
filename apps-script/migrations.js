@@ -367,3 +367,46 @@ function migrate_add_aciLmgt3Challenge2026() {
     Logger.log('⚠️ Cache non invalidata (normale se non in contesto API): ' + e.message);
   }
 }
+
+/**
+ * migrate_addCanMessageColumn
+ * Aggiunge la colonna `can_message` (checkbox) al foglio Drivers.
+ *
+ * Permesso granulare per il compilatore messaggi Discord (Task #86/#102):
+ * promuovere un pilota a role='staff' sblocca TUTTA l'area admin
+ * (Best Laps, Gestione Gare, Import Risultati, Candidature, Sponsor,
+ * Incidenti...), non solo il Messenger — troppo ampio per chi deve
+ * solo poter scrivere ai piloti. can_message=true dà accesso alla sola
+ * pagina /admin/messenger (vedi ctx.canMessage in verifyToken,
+ * Codice.js), lasciando role='driver' per tutto il resto.
+ *
+ * Tutte le righe esistenti vengono inizializzate a FALSE esplicito
+ * (non blank) per evitare ambiguità nel check ctx.canMessage lato
+ * backend. Idempotente.
+ */
+function migrate_addCanMessageColumn() {
+  const ss = SpreadsheetApp.openById(VSD_HUB_SPREADSHEET_ID);
+  const sheet = ss.getSheetByName('Drivers');
+  if (!sheet) { Logger.log('❌ Tab Drivers non trovato'); return; }
+
+  const lastCol = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+
+  if (headers.indexOf('can_message') !== -1) {
+    Logger.log('⏭️  Colonna `can_message` già esistente, migration skippata');
+    return;
+  }
+
+  const newColIdx = lastCol + 1;
+  sheet.getRange(1, newColIdx).setValue('can_message');
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow > 1) {
+    const dataRange = sheet.getRange(2, newColIdx, lastRow - 1, 1);
+    dataRange.setValue(false);
+    const rule = SpreadsheetApp.newDataValidation().requireCheckbox().build();
+    dataRange.setDataValidation(rule);
+  }
+
+  Logger.log('✅ Colonna `can_message` aggiunta a Drivers (colonna #' + newColIdx + '), tutte le righe inizializzate a FALSE');
+}

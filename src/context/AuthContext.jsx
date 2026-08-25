@@ -116,6 +116,10 @@ export function AuthProvider({ children }) {
   const isVsdPilot = tier === TIERS.PILOT_VSD || tier === TIERS.STAFF || tier === TIERS.ADMIN;
   const isStaff = tier === TIERS.STAFF || tier === TIERS.ADMIN;
   const isAdmin = tier === TIERS.ADMIN;
+  // Permesso granulare Messenger (Task #102): non passa da role/tier —
+  // un pilota può avere can_message=true nel sheet Drivers senza essere
+  // 'staff', così vede solo /admin/messenger e non tutta l'area admin.
+  const canMessage = isStaff || driver?.can_message === true;
 
   function hasAtLeast(minTier) {
     const currentIdx = TIER_ORDER.indexOf(tier);
@@ -138,6 +142,7 @@ export function AuthProvider({ children }) {
     isVsdPilot,
     isStaff,
     isAdmin,
+    canMessage,
     hasAtLeast,
     setDiscordSession,
     logout,
