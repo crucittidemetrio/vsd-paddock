@@ -282,6 +282,12 @@ export async function callApi(action, payload = {}) {
         return await clashReportIncidentAdapter(payload, token);
       case 'clash.incidents.list':
         return await clashIncidentsListAdapter(payload, token);
+      case 'interest.list':
+        return await interestListAdapter(payload, token);
+      case 'interest.register':
+        return await interestRegisterAdapter(payload, token);
+      case 'interest.remove':
+        return await interestRemoveAdapter(payload, token);
       case 'social.posts.list':
         return await socialPostsListAdapter(payload, token);
       case 'social.posts.create':
@@ -814,6 +820,28 @@ async function clashReportIncidentAdapter(payload, token) {
 
 async function clashIncidentsListAdapter(payload, token) {
   const res = await postToBackend('clash.incidents.list', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Manifestazione di interesse — campionati esterni (ACI, ERA, ...).
+ * Adapter pass-through, stesso schema dei Clash adapter sopra.
+ */
+async function interestListAdapter(payload, token) {
+  const res = await postToBackend('interest.list', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+async function interestRegisterAdapter(payload, token) {
+  const res = await postToBackend('interest.register', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+async function interestRemoveAdapter(payload, token) {
+  const res = await postToBackend('interest.remove', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
 }

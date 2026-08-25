@@ -7,8 +7,14 @@ import { useSocialPosts } from '../hooks/useSocialManager';
 import { STORY_PILLAR_IDS, storyPillarLabel } from '../utils/storyPillars';
 import { SOCIAL_LINKS } from '../utils/constants';
 import Avatar from '../components/shared/Avatar';
+import ChampionshipInterestSection from '../components/shared/ChampionshipInterestSection';
 import { useConsentedDriverPhoto } from '../hooks/useConsent';
 import styles from './AciLmgt3Challenge.module.css';
+
+// Chiave dominio backend per la manifestazione di interesse (tracking
+// interno VSD — NON l'iscrizione ufficiale, che resta sempre quella
+// sul portale Apex, vedi APEX_URL sotto).
+const INTEREST_KEY = 'aci-lmgt3-challenge-2026';
 
 // Championship row creata da apps-script/migrations.js →
 // migrate_add_aciLmgt3Challenge2026(). VSD non organizza questa serie:
@@ -148,6 +154,9 @@ export default function AciLmgt3Challenge() {
           <span className={`${styles.btn} ${styles.btnDisabled}`}>
             Iscrizioni chiuse il {REGISTRATION_DEADLINE}
           </span>
+          <a href="#interesse" className={`${styles.btn} ${styles.btnSecondary}`}>
+            🙋 Ci provi anche tu?
+          </a>
           {YOUTUBE_LIVE_URL && (
             <a
               href={YOUTUBE_LIVE_URL}
@@ -310,6 +319,20 @@ export default function AciLmgt3Challenge() {
           <SpecRow label="Azzeramento" value="Esclusione dalla prova successiva; si rientra con 2 punti a manifestazione rimanente" />
         </div>
       </section>
+
+      {/* ════ MANIFESTAZIONE DI INTERESSE ════ */}
+      <ChampionshipInterestSection
+        championshipKey={INTEREST_KEY}
+        anchorId="interesse"
+        eyebrow="Ci provi anche tu?"
+        title="Facci sapere che ci sei"
+        introText="Un segnale interno per lo staff VSD, utile per seguire chi del team ci prova fin dalle prequalifiche — non sostituisce nulla del percorso ufficiale."
+        fieldLabel="Vettura"
+        fieldOptions={CARS}
+        officialUrl={APEX_URL}
+        officialLabel="Iscriviti su Apex Italia Simracing"
+        disclaimerText="Questa NON è l'iscrizione ufficiale al campionato — quella si fa esclusivamente sul portale di Apex Italia Simracing, con la relativa tassa di ammissione."
+      />
 
       {/* ════ PILOTI VSD ════ */}
       <PrequalificheSection />

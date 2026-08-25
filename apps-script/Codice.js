@@ -40,6 +40,7 @@ const SHEETS = {
   INCIDENT_RESOLUTIONS: 'IncidentResolutions',
   SKILL_INDEX_HISTORY: 'SkillIndexHistory',
   REPORT_REACTIONS: 'ReportReactions',
+  CHAMPIONSHIP_INTEREST: 'ChampionshipInterest',
 };
 
 // ID dello spreadsheet principale (VSD_HUB_DB). Usato solo dagli script che
@@ -242,6 +243,12 @@ const ACTIONS = {
   'clash.standings': handleClashStandings,
   'clash.incidents.report': handleClashIncidentsReport,
   'clash.incidents.list': handleClashIncidentsList,
+
+  // Manifestazione di interesse — campionati esterni (ACI, ERA, ...)
+  // vedi ChampionshipInterest.js. NON è l'iscrizione ufficiale.
+  'interest.list': handleInterestList,
+  'interest.register': handleInterestRegister,
+  'interest.remove': handleInterestRemove,
 
   // Social Manager — admin only
   'social.posts.list': handleSocialPostsList,

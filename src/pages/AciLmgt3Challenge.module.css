@@ -753,6 +753,103 @@ a.prequalCard:hover {
   margin: 0;
 }
 
+/* ════ FORM (manifestazione di interesse) ════ */
+.form { display: flex; flex-direction: column; gap: 16px; max-width: 480px; }
+.formGroup { display: flex; flex-direction: column; gap: 6px; }
+.formLabel { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted); }
+.formStaticValue { color: var(--color-text); font-size: 14px; padding: 10px 0; }
+
+.input, .select, .textarea {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--color-text);
+  padding: 10px 14px;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 14px;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.input:focus, .select:focus, .textarea:focus {
+  outline: none;
+  border-color: rgba(0, 212, 255, 0.5);
+  background: rgba(255, 255, 255, 0.06);
+}
+.select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ffffff80' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  padding-right: 36px;
+}
+.select option { background-color: #0e1729; color: #fff; padding: 8px; }
+.textarea { resize: vertical; line-height: 1.5; }
+
+.formSuccess { color: #4ade80; font-size: 13px; padding: 10px 0; }
+.formError { color: #fca5a5; font-size: 13px; padding: 10px 0; }
+
+.formNote {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  color: var(--color-text-dim);
+  line-height: 1.6;
+  max-width: 480px;
+  padding: 12px 14px;
+  background: rgba(255, 166, 0, 0.05);
+  border: 1px solid rgba(255, 166, 0, 0.2);
+  border-radius: var(--r-md);
+}
+
+.registrationLayout {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  gap: 32px;
+  align-items: start;
+}
+@media (max-width: 720px) {
+  .registrationLayout { grid-template-columns: 1fr; }
+}
+
+.registrationCounts { display: flex; flex-direction: column; gap: 12px; }
+.countCard {
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-md);
+  padding: 16px;
+  text-align: center;
+}
+.countValue { font-family: var(--font-display); font-size: 26px; font-weight: var(--fw-bold); color: var(--vsd-cyan); }
+.countLabel { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); margin-top: 4px; }
+
+.interestListWrap { margin-top: 16px; }
+.interestList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.interestPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: var(--fs-sm);
+  color: var(--color-text);
+}
+.interestPillVehicle {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-text-dim);
+}
+
 /* ════ NOTA / DISCLAIMER ════ */
 .disclaimer {
   margin-top: 40px;

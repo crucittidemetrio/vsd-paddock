@@ -1,5 +1,6 @@
 import { usePageMeta } from '../hooks/usePageMeta';
 import { SOCIAL_LINKS } from '../utils/constants';
+import ChampionshipInterestSection from '../components/shared/ChampionshipInterestSection';
 // Riuso deliberato del CSS module di ACI LMGT3 Challenge: le classi sono
 // generiche (hero/section/specGrid/calendarGrid/cta/…), pensate per lo
 // stesso pattern di "pagina campionato esterno" — evita di duplicare
@@ -17,6 +18,11 @@ import styles from './AciLmgt3Challenge.module.css';
 // REGOLAMENTO_URL e i riferimenti sotto.
 const REGISTRATION_URL =
   'https://docs.google.com/forms/d/e/1FAIpQLSeLbtEnF8tBW0vuXky7WClP9nVkcm5pG4OdrullHnUCjkLMoQ/viewform';
+
+// Chiave dominio backend per la manifestazione di interesse (tracking
+// interno VSD — NON l'iscrizione ufficiale, che resta sempre il
+// Google Form ERA sopra).
+const INTEREST_KEY = 'era-season-3';
 
 // Nessun sito/regolamento ERA pubblico trovato — resta vuoto finché non
 // arriva un link ufficiale da citare.
@@ -72,6 +78,9 @@ export default function EraSeason3() {
             className={`${styles.btn} ${styles.btnPrimary}`}
           >
             📋 Iscriviti al campionato
+          </a>
+          <a href="#interesse" className={`${styles.btn} ${styles.btnSecondary}`}>
+            🙋 Ci provi anche tu?
           </a>
         </div>
       </section>
@@ -134,6 +143,20 @@ export default function EraSeason3() {
           ))}
         </div>
       </section>
+
+      {/* ════ MANIFESTAZIONE DI INTERESSE ════ */}
+      <ChampionshipInterestSection
+        championshipKey={INTEREST_KEY}
+        anchorId="interesse"
+        eyebrow="Ci provi anche tu?"
+        title="Facci sapere che ci sei"
+        introText="Un segnale interno per lo staff VSD, utile per seguire chi del team partecipa fin dall'iscrizione — non sostituisce il modulo ufficiale."
+        fieldLabel="Classe"
+        fieldOptions={CLASSES.map(c => c.label)}
+        officialUrl={REGISTRATION_URL}
+        officialLabel="Modulo di iscrizione ERA"
+        disclaimerText="Questa NON è l'iscrizione ufficiale al campionato — quella si fa esclusivamente tramite il modulo ERA, incluso il versamento di conferma."
+      />
 
       {/* ════ CTA ════ */}
       <section className={styles.cta}>

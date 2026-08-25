@@ -149,6 +149,14 @@ export const api = {
     incidentsList: () => call('clash.incidents.list', {}),
   },
 
+  // Manifestazione di interesse — campionati esterni (ACI, ERA, ...).
+  // NON è l'iscrizione ufficiale, vedi ChampionshipInterest.js.
+  interest: {
+    list: (championship_key) => call('interest.list', { championship_key }),
+    register: (payload) => call('interest.register', payload),
+    remove: (interest_id) => call('interest.remove', { interest_id }),
+  },
+
   social: {
     postsList: (status) => call('social.posts.list', { status }),
     postsCreate: (payload) => call('social.posts.create', payload),
