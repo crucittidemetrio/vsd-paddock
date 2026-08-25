@@ -16,12 +16,21 @@
 // Sheet usato (vedi SetupChampionshipInterest.js per la creazione):
 //   ChampionshipInterest:
 //     interest_id | championship_key | driver_id | display_name |
-//     vehicle | discord_handle | note | registered_at | status
+//     category | vehicle | discord_handle | note | registered_at |
+//     status
 //
 // Action registrate in Codice.js:
 //   'interest.list'      handleInterestList
 //   'interest.register'  handleInterestRegister
+//   'interest.update'    handleInterestUpdate   (self-service, richiede login)
 //   'interest.remove'    handleInterestRemove    (staff)
+//
+// Nota migrazione: handleInterestRegister/handleInterestUpdate
+// costruiscono la riga leggendo dinamicamente gli header della sheet
+// (non un array posizionale fisso), così restano compatibili sia col
+// vecchio schema (senza "category") sia col nuovo, indipendentemente
+// da quando viene eseguita la migrazione — vedi
+// migrateChampionshipInterestAddCategory() in SetupChampionshipInterest.js.
 // ═══════════════════════════════════════════════════════════
 
 function interestGenerateId_() {
@@ -52,6 +61,7 @@ function handleInterestList(payload, ctx) {
     const base = {
       interest_id: p.interest_id,
       display_name: p.display_name,
+      category: p.category || '',
       vehicle: p.vehicle || '',
     };
     if (isStaff) {
@@ -75,7 +85,7 @@ function handleInterestList(payload, ctx) {
  * Nessun cap: non è una griglia gestita da VSD.
  *
  * @param {Object} payload - { championship_key, display_name,
- *   vehicle?, discord_handle?, note? }
+ *   category?, vehicle?, discord_handle?, note? }
  */
 function handleInterestRegister(payload, ctx) {
   payload = payload || {};
@@ -93,6 +103,7 @@ function handleInterestRegister(payload, ctx) {
   }
   if (!displayName) return fail('Nome pilota mancante');
 
+  const category = String(payload.category || '').trim();
   const vehicle = String(payload.vehicle || '').trim();
   const discordHandle = String(payload.discord_handle || '').trim();
   const note = String(payload.note || '').trim().slice(0, 300);
@@ -111,16 +122,94 @@ function handleInterestRegister(payload, ctx) {
   const interestId = interestGenerateId_();
   const now = new Date().toISOString();
   const sheet = getSheet(SHEETS.CHAMPIONSHIP_INTEREST);
-  sheet.appendRow([interestId, key, driverId || '', displayName, vehicle, discordHandle, note, now, 'registered']);
+
+  // Riga costruita dinamicamente sugli header effettivi della sheet (non
+  // un array posizionale fisso): resta corretta sia che la migrazione
+  // della colonna "category" sia già stata eseguita sia che non lo sia
+  // ancora — vedi nota in testa al file.
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const record = {
+    interest_id: interestId,
+    championship_key: key,
+    driver_id: driverId || '',
+    display_name: displayName,
+    category: category,
+    vehicle: vehicle,
+    discord_handle: discordHandle,
+    note: note,
+    registered_at: now,
+    status: 'registered',
+  };
+  sheet.appendRow(headers.map(h => (record[h] !== undefined ? record[h] : '')));
 
   return ok({
     interest_id: interestId,
     driver_id: driverId || '',
     display_name: displayName,
+    category: category,
     vehicle: vehicle,
     registered_at: now,
     status: 'registered',
   });
+}
+
+/**
+ * interest.update — aggiorna la propria segnalazione già esistente
+ * (tipicamente per aggiungere/correggere categoria e modello vettura
+ * "in seguito", dopo essersi già segnalati la prima volta). Auth:
+ * richiede login VSD (ctx.driver_id) — l'aggiornamento è consentito
+ * solo sulla riga associata al proprio driver_id. Chi si è segnalato
+ * da anonimo (senza login) non può usare questa action: il frontend
+ * la propone solo ai piloti VSD loggati.
+ *
+ * @param {Object} payload - { championship_key, category?, vehicle?,
+ *   discord_handle?, note? } — vengono aggiornati solo i campi presenti
+ */
+function handleInterestUpdate(payload, ctx) {
+  const driverId = (ctx && ctx.driver_id) || null;
+  if (!driverId) return fail('Serve essere loggati per modificare la propria segnalazione');
+
+  payload = payload || {};
+  const key = String(payload.championship_key || '').trim();
+  if (!key) return fail('championship_key obbligatorio');
+
+  const sheet = getSheet(SHEETS.CHAMPIONSHIP_INTEREST);
+  const lastRow = sheet.getLastRow();
+  if (lastRow < 2) return fail('Nessuna segnalazione trovata da aggiornare');
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const col = {};
+  headers.forEach((h, i) => { col[h] = i; });
+  const values = sheet.getRange(2, 1, lastRow - 1, headers.length).getValues();
+
+  for (let i = 0; i < values.length; i++) {
+    const row = values[i];
+    if (String(row[col.championship_key] || '').trim() !== key) continue;
+    if (row[col.driver_id] !== driverId) continue;
+    if (String(row[col.status] || '').trim() === 'withdrawn') continue;
+
+    const sheetRow = i + 2;
+    if (payload.category !== undefined && col.category !== undefined) {
+      sheet.getRange(sheetRow, col.category + 1).setValue(String(payload.category || '').trim());
+    }
+    if (payload.vehicle !== undefined && col.vehicle !== undefined) {
+      sheet.getRange(sheetRow, col.vehicle + 1).setValue(String(payload.vehicle || '').trim());
+    }
+    if (payload.discord_handle !== undefined && col.discord_handle !== undefined) {
+      sheet.getRange(sheetRow, col.discord_handle + 1).setValue(String(payload.discord_handle || '').trim());
+    }
+    if (payload.note !== undefined && col.note !== undefined) {
+      sheet.getRange(sheetRow, col.note + 1).setValue(String(payload.note || '').trim().slice(0, 300));
+    }
+
+    return ok({
+      interest_id: row[col.interest_id],
+      category: payload.category !== undefined ? String(payload.category || '').trim() : (col.category !== undefined ? row[col.category] : ''),
+      vehicle: payload.vehicle !== undefined ? String(payload.vehicle || '').trim() : (row[col.vehicle] || ''),
+    });
+  }
+
+  return fail('Nessuna segnalazione trovata da aggiornare — registrati prima');
 }
 
 /**

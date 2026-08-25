@@ -26,6 +26,16 @@ export function useInterestRegister(championshipKey) {
   });
 }
 
+export function useInterestUpdate(championshipKey) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload) => api.interest.update({ championship_key: championshipKey, ...payload }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['interest', championshipKey] });
+    },
+  });
+}
+
 export function useInterestRemove(championshipKey) {
   const qc = useQueryClient();
   return useMutation({

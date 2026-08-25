@@ -248,6 +248,7 @@ const ACTIONS = {
   // vedi ChampionshipInterest.js. NON è l'iscrizione ufficiale.
   'interest.list': handleInterestList,
   'interest.register': handleInterestRegister,
+  'interest.update': handleInterestUpdate,
   'interest.remove': handleInterestRemove,
 
   // Social Manager — admin only

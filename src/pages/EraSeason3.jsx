@@ -151,8 +151,9 @@ export default function EraSeason3() {
         eyebrow="Ci provi anche tu?"
         title="Facci sapere che ci sei"
         introText="Un segnale interno per lo staff VSD, utile per seguire chi del team partecipa fin dall'iscrizione — non sostituisce il modulo ufficiale."
-        fieldLabel="Classe"
-        fieldOptions={CLASSES.map(c => c.label)}
+        categoryLabel="Classe"
+        categories={CLASSES.map(c => c.label)}
+        vehicleLabel="Modello vettura"
         officialUrl={REGISTRATION_URL}
         officialLabel="Modulo di iscrizione ERA"
         disclaimerText="Questa NON è l'iscrizione ufficiale al campionato — quella si fa esclusivamente tramite il modulo ERA, incluso il versamento di conferma."

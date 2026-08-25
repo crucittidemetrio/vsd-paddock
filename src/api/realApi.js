@@ -286,6 +286,8 @@ export async function callApi(action, payload = {}) {
         return await interestListAdapter(payload, token);
       case 'interest.register':
         return await interestRegisterAdapter(payload, token);
+      case 'interest.update':
+        return await interestUpdateAdapter(payload, token);
       case 'interest.remove':
         return await interestRemoveAdapter(payload, token);
       case 'social.posts.list':
@@ -836,6 +838,12 @@ async function interestListAdapter(payload, token) {
 
 async function interestRegisterAdapter(payload, token) {
   const res = await postToBackend('interest.register', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+async function interestUpdateAdapter(payload, token) {
+  const res = await postToBackend('interest.update', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
 }

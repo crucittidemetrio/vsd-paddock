@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import { useInterestList, useInterestRegister } from '../../hooks/useChampionshipInterest';
+import { useInterestList, useInterestRegister, useInterestUpdate } from '../../hooks/useChampionshipInterest';
 // Riuso deliberato del CSS module di ACI LMGT3 Challenge (stesso file
 // importato da AciLmgt3Challenge.jsx ed EraSeason3.jsx) — contiene già
 // le classi form/registrationLayout/countCard copiate da ClashOfClasses,
 // così questo componente resta visivamente coerente con entrambe le
 // pagine che lo montano senza duplicare CSS.
 import styles from '../../pages/AciLmgt3Challenge.module.css';
+
+const ALREADY_REGISTERED_ERROR = 'Ti sei già segnalato per questo campionato';
 
 /**
  * Manifestazione di interesse per un campionato ESTERNO (VSD non lo
@@ -18,14 +20,24 @@ import styles from '../../pages/AciLmgt3Challenge.module.css';
  * ufficiale (officialUrl) resta sempre l'unico modo per essere
  * davvero in griglia.
  *
+ * Categoria e vettura: il pilota può indicarle subito, oppure tornare
+ * in seguito e ripetere l'invio per aggiornarle — per i piloti VSD
+ * loggati, un secondo invio su una segnalazione già esistente non dà
+ * errore ma aggiorna categoria/vettura/discord della riga esistente
+ * (interest.update, vedi apps-script/ChampionshipInterest.js). Per chi
+ * si segnala da anonimo (senza login) questo non è possibile: un
+ * secondo invio resta un duplicato rifiutato, come prima.
+ *
  * @param {Object} props
  * @param {string} props.championshipKey - chiave dominio backend (es. 'aci-lmgt3-challenge-2026')
  * @param {string} [props.anchorId] - id sezione per link #ancora dall'hero
  * @param {string} [props.eyebrow]
  * @param {string} [props.title]
  * @param {string} props.introText - spiega cosa fa il form
- * @param {string} [props.fieldLabel] - etichetta del select opzionale (es. "Vettura", "Classe")
- * @param {string[]} [props.fieldOptions] - opzioni del select opzionale, se assente il campo non viene mostrato
+ * @param {string} [props.categoryLabel] - etichetta del select categoria (es. "Classe")
+ * @param {string[]} [props.categories] - opzioni categoria; se assente/1 elemento il selettore non viene mostrato
+ * @param {string} [props.vehicleLabel] - etichetta del campo vettura (es. "Vettura", "Modello vettura")
+ * @param {Object.<string,string[]>} [props.vehiclesByCategory] - modelli per categoria; se la categoria scelta non ha una lista, il campo diventa testo libero
  * @param {string} props.officialUrl - link all'iscrizione ufficiale esterna
  * @param {string} props.officialLabel - testo del bottone verso l'iscrizione ufficiale
  * @param {string} props.disclaimerText - testo esplicito "questa non è l'iscrizione ufficiale"
@@ -36,8 +48,10 @@ export default function ChampionshipInterestSection({
   eyebrow = 'Ci provi anche tu?',
   title = 'Facci sapere che ci sei',
   introText,
-  fieldLabel,
-  fieldOptions,
+  categoryLabel = 'Categoria',
+  categories,
+  vehicleLabel = 'Vettura',
+  vehiclesByCategory,
   officialUrl,
   officialLabel = 'Iscrizione ufficiale',
   disclaimerText,
@@ -45,14 +59,22 @@ export default function ChampionshipInterestSection({
   const { driver, isVsdPilot } = useAuth();
   const { data, isLoading } = useInterestList(championshipKey);
   const registerMutation = useInterestRegister(championshipKey);
+  const updateMutation = useInterestUpdate(championshipKey);
+
+  const hasCategoryChoice = Array.isArray(categories) && categories.length > 1;
+  const fixedCategory = Array.isArray(categories) && categories.length === 1 ? categories[0] : '';
 
   const [displayName, setDisplayName] = useState('');
+  const [category, setCategory] = useState(fixedCategory);
   const [vehicle, setVehicle] = useState('');
   const [discordHandle, setDiscordHandle] = useState('');
   const [feedback, setFeedback] = useState(null);
 
   const interests = data?.interests || [];
   const count = data?.count ?? 0;
+
+  const effectiveCategory = category || fixedCategory;
+  const vehicleOptions = (vehiclesByCategory && vehiclesByCategory[effectiveCategory]) || null;
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -62,17 +84,34 @@ export default function ChampionshipInterestSection({
       setFeedback({ ok: false, message: 'Inserisci un nome.' });
       return;
     }
+    const payload = {
+      display_name: name.trim(),
+      category: effectiveCategory,
+      vehicle: vehicle,
+      discord_handle: discordHandle.trim(),
+    };
     try {
-      await registerMutation.mutateAsync({
-        display_name: name.trim(),
-        vehicle: vehicle,
-        discord_handle: discordHandle.trim(),
-      });
+      await registerMutation.mutateAsync(payload);
       setFeedback({ ok: true, message: 'Segnalazione registrata — grazie!' });
       setDisplayName('');
-      setVehicle('');
       setDiscordHandle('');
     } catch (err) {
+      // Un pilota VSD loggato che invia di nuovo su una segnalazione già
+      // esistente non deve vedersi rifiutata la richiesta: è il modo in
+      // cui aggiunge/corregge categoria e vettura "in seguito".
+      if (isVsdPilot && err.message === ALREADY_REGISTERED_ERROR) {
+        try {
+          await updateMutation.mutateAsync({
+            category: effectiveCategory,
+            vehicle: vehicle,
+            discord_handle: discordHandle.trim(),
+          });
+          setFeedback({ ok: true, message: 'Segnalazione aggiornata — grazie!' });
+        } catch (err2) {
+          setFeedback({ ok: false, message: err2.message || 'Errore durante l’aggiornamento.' });
+        }
+        return;
+      }
       setFeedback({ ok: false, message: err.message || 'Errore durante l’invio.' });
     }
   }
@@ -121,11 +160,30 @@ export default function ChampionshipInterestSection({
             </div>
           )}
 
-          {fieldOptions && fieldOptions.length > 0 && (
+          {hasCategoryChoice && (
             <div className={styles.formGroup}>
-              <label className={styles.formLabel} htmlFor={`${anchorId}-vehicle`}>
-                {fieldLabel || 'Preferenza'} (opzionale)
+              <label className={styles.formLabel} htmlFor={`${anchorId}-category`}>
+                {categoryLabel} (opzionale)
               </label>
+              <select
+                id={`${anchorId}-category`}
+                className={styles.select}
+                value={category}
+                onChange={e => { setCategory(e.target.value); setVehicle(''); }}
+              >
+                <option value="">Nessuna preferenza</option>
+                {categories.map(c => (
+                  <option key={c} value={c}>{c}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel} htmlFor={`${anchorId}-vehicle`}>
+              {vehicleLabel} (opzionale)
+            </label>
+            {vehicleOptions && vehicleOptions.length > 0 ? (
               <select
                 id={`${anchorId}-vehicle`}
                 className={styles.select}
@@ -133,12 +191,22 @@ export default function ChampionshipInterestSection({
                 onChange={e => setVehicle(e.target.value)}
               >
                 <option value="">Nessuna preferenza</option>
-                {fieldOptions.map(v => (
+                {vehicleOptions.map(v => (
                   <option key={v} value={v}>{v}</option>
                 ))}
               </select>
-            </div>
-          )}
+            ) : (
+              <input
+                id={`${anchorId}-vehicle`}
+                type="text"
+                className={styles.input}
+                value={vehicle}
+                onChange={e => setVehicle(e.target.value)}
+                placeholder="Es. modello e classe, se già scelti"
+                maxLength={80}
+              />
+            )}
+          </div>
 
           <div className={styles.formGroup}>
             <label className={styles.formLabel} htmlFor={`${anchorId}-discord`}>Discord (opzionale)</label>
@@ -153,12 +221,18 @@ export default function ChampionshipInterestSection({
             />
           </div>
 
+          {isVsdPilot && (
+            <p className={styles.formHint}>
+              Non hai ancora scelto categoria/vettura? Puoi inviare ora e tornare in seguito per aggiornarle.
+            </p>
+          )}
+
           <button
             type="submit"
             className={`${styles.btn} ${styles.btnPrimary}`}
-            disabled={registerMutation.isPending}
+            disabled={registerMutation.isPending || updateMutation.isPending}
           >
-            {registerMutation.isPending ? 'Invio…' : 'Segnala la tua partecipazione'}
+            {(registerMutation.isPending || updateMutation.isPending) ? 'Invio…' : 'Segnala la tua partecipazione'}
           </button>
 
           {feedback && (
@@ -182,7 +256,11 @@ export default function ChampionshipInterestSection({
             {interests.map(p => (
               <li key={p.interest_id} className={styles.interestPill}>
                 {p.display_name}
-                {p.vehicle && <span className={styles.interestPillVehicle}>· {p.vehicle}</span>}
+                {(p.category || p.vehicle) && (
+                  <span className={styles.interestPillVehicle}>
+                    · {[p.category, p.vehicle].filter(Boolean).join(' · ')}
+                  </span>
+                )}
               </li>
             ))}
           </ul>

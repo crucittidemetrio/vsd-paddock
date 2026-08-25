@@ -6,6 +6,11 @@
 //
 // Esecuzione: editor Apps Script → dropdown funzioni →
 //             setupChampionshipInterestTab → ▶ Esegui (una volta sola).
+//
+// Migrazione colonna "category" (aggiunta dopo la creazione iniziale
+// del tab): editor Apps Script → dropdown funzioni →
+//           migrateChampionshipInterestAddCategory → ▶ Esegui
+//           (una volta sola, idempotente — skip se già presente).
 // ═══════════════════════════════════════════════════════════
 
 const CHAMPIONSHIP_INTEREST_HEADERS = [
@@ -13,6 +18,7 @@ const CHAMPIONSHIP_INTEREST_HEADERS = [
   'championship_key',
   'driver_id',
   'display_name',
+  'category',
   'vehicle',
   'discord_handle',
   'note',
@@ -56,6 +62,53 @@ function setupChampionshipInterestTab() {
   }
 
   Logger.log(`✅ Tab "${tabName}" creato con ${CHAMPIONSHIP_INTEREST_HEADERS.length} colonne`);
+}
+
+/**
+ * Migrazione: aggiunge la colonna "category" al tab esistente (creato
+ * prima che il campo fosse previsto), inserendola subito dopo
+ * "display_name" — stessa posizione dello schema fresh-install sopra.
+ * Idempotente: se la colonna è già presente, skip senza toccare nulla.
+ * I dati esistenti nelle altre colonne non vengono alterati:
+ * insertColumnAfter sposta automaticamente le colonne successive senza
+ * perdita di dati.
+ */
+function migrateChampionshipInterestAddCategory() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const tabName = 'ChampionshipInterest';
+  const sheet = ss.getSheetByName(tabName);
+  if (!sheet) {
+    Logger.log(`✗ Tab "${tabName}" mancante — esegui prima setupChampionshipInterestTab()`);
+    return;
+  }
+
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  if (headers.indexOf('category') !== -1) {
+    Logger.log(`⚠ Colonna "category" già presente in "${tabName}" — skip`);
+    return;
+  }
+
+  const displayNameCol = headers.indexOf('display_name'); // 0-based
+  if (displayNameCol === -1) {
+    Logger.log(`✗ Colonna "display_name" non trovata in "${tabName}" — impossibile posizionare "category"`);
+    return;
+  }
+
+  sheet.insertColumnAfter(displayNameCol + 1);
+  const newCol = displayNameCol + 2; // 1-based, colonna appena inserita
+
+  const headerCell = sheet.getRange(1, newCol);
+  headerCell.setValue('category');
+  headerCell.setFontWeight('bold');
+  headerCell.setBackground('#1f2a44');
+  headerCell.setFontColor('#ffffff');
+  headerCell.setFontSize(10);
+  headerCell.setHorizontalAlignment('left');
+
+  sheet.autoResizeColumn(newCol);
+  if (sheet.getColumnWidth(newCol) < 100) sheet.setColumnWidth(newCol, 100);
+
+  Logger.log(`✅ Colonna "category" inserita in "${tabName}" (posizione ${newCol})`);
 }
 
 /**

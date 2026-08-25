@@ -327,8 +327,9 @@ export default function AciLmgt3Challenge() {
         eyebrow="Ci provi anche tu?"
         title="Facci sapere che ci sei"
         introText="Un segnale interno per lo staff VSD, utile per seguire chi del team ci prova fin dalle prequalifiche — non sostituisce nulla del percorso ufficiale."
-        fieldLabel="Vettura"
-        fieldOptions={CARS}
+        categories={['LMGT3']}
+        vehicleLabel="Vettura"
+        vehiclesByCategory={{ LMGT3: CARS }}
         officialUrl={APEX_URL}
         officialLabel="Iscriviti su Apex Italia Simracing"
         disclaimerText="Questa NON è l'iscrizione ufficiale al campionato — quella si fa esclusivamente sul portale di Apex Italia Simracing, con la relativa tassa di ammissione."

@@ -154,6 +154,7 @@ export const api = {
   interest: {
     list: (championship_key) => call('interest.list', { championship_key }),
     register: (payload) => call('interest.register', payload),
+    update: (payload) => call('interest.update', payload),
     remove: (interest_id) => call('interest.remove', { interest_id }),
   },
 
