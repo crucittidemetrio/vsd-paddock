@@ -77,6 +77,7 @@ const ADMIN_ITEMS = [
   { to: '/admin/candidates', label: 'Candidature', icon: '◫' },
   { to: '/admin/sponsors', label: 'Sponsor', icon: '◆' },
   { to: '/admin/incidents', label: 'Registro incidenti', icon: '⚠' },
+  { to: '/admin/messenger', label: 'Messaggi Discord', icon: '✉' },
 ];
 
 // Voci riservate ad admin/Team Principal — sottoinsieme più ristretto

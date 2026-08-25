@@ -251,6 +251,9 @@ const ACTIONS = {
   'interest.update': handleInterestUpdate,
   'interest.remove': handleInterestRemove,
 
+  // Compilatore messaggi Discord — staff (canale o DM), vedi DiscordMessenger.js
+  'messenger.send': handleMessengerSend,
+
   // Social Manager — admin only
   'social.posts.list': handleSocialPostsList,
   'social.posts.create': handleSocialPostsCreate,

@@ -158,6 +158,11 @@ export const api = {
     remove: (interest_id) => call('interest.remove', { interest_id }),
   },
 
+  // Compilatore messaggi Discord — staff (canale o DM)
+  messenger: {
+    send: (payload) => call('messenger.send', payload),
+  },
+
   social: {
     postsList: (status) => call('social.posts.list', { status }),
     postsCreate: (payload) => call('social.posts.create', payload),

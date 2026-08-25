@@ -290,6 +290,8 @@ export async function callApi(action, payload = {}) {
         return await interestUpdateAdapter(payload, token);
       case 'interest.remove':
         return await interestRemoveAdapter(payload, token);
+      case 'messenger.send':
+        return await messengerSendAdapter(payload, token);
       case 'social.posts.list':
         return await socialPostsListAdapter(payload, token);
       case 'social.posts.create':
@@ -850,6 +852,16 @@ async function interestUpdateAdapter(payload, token) {
 
 async function interestRemoveAdapter(payload, token) {
   const res = await postToBackend('interest.remove', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Compilatore messaggi Discord — staff. Pass-through, stesso schema
+ * degli altri adapter sopra.
+ */
+async function messengerSendAdapter(payload, token) {
+  const res = await postToBackend('messenger.send', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
 }
