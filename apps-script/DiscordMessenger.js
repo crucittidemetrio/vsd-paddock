@@ -203,7 +203,20 @@ function discordSendDm_(discordId, messagePayload, botToken) {
     });
     const msgStatus = msgRes.getResponseCode();
     if (msgStatus < 200 || msgStatus >= 300) {
-      return { ok: false, error: 'http_' + msgStatus + '_send_message' };
+      // Diagnostica: lo status HTTP da solo non basta a distinguere le
+      // cause di un 403 (privacy DM disattivate, bot bloccato, bot non
+      // più nella guild condivisa, token senza permessi...) — il body
+      // di errore di Discord (code + message) lo dice esplicitamente.
+      let detail = '';
+      try {
+        const body = JSON.parse(msgRes.getContentText());
+        if (body && (body.code !== undefined || body.message)) {
+          detail = ' [discord ' + body.code + ': ' + body.message + ']';
+        }
+      } catch (parseErr) {
+        detail = ' [body non-JSON: ' + msgRes.getContentText().slice(0, 200) + ']';
+      }
+      return { ok: false, error: 'http_' + msgStatus + '_send_message' + detail };
     }
     return { ok: true };
   } catch (e) {
