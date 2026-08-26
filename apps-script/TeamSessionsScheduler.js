@@ -1,15 +1,21 @@
 // ═══════════════════════════════════════════════════════════
 // VSD PADDOCK — Sessioni Team (allenamenti, qualifiche, riunioni)
 // ═══════════════════════════════════════════════════════════
-// ADR-Team-Scheduler, Fase 1: CRUD sessioni riservato allo staff, senza
-// RSVP (Fase 2) né notifiche Discord (Fase 3). Le sessioni sono lette
-// da chiunque sia loggato — servono al team, non solo allo staff, per
-// sapere quando allenarsi insieme — ma create/modificate/cancellate
-// solo da staff/admin. Stesso pattern di RaceRSVP.js (ok()/fail(),
-// getCachedSheetData_/sheetToObjects, ID generati lato server).
+// ADR-Team-Scheduler:
+//  Fase 1 — CRUD sessioni riservato allo staff. Le sessioni sono lette
+//    da chiunque sia loggato — servono al team, non solo allo staff, per
+//    sapere quando allenarsi insieme — ma create/modificate/cancellate
+//    solo da staff/admin. Stesso pattern di RaceRSVP.js (ok()/fail(),
+//    getCachedSheetData_/sheetToObjects, ID generati lato server).
+//  Fase 2 — RSVP piloti (SessionRSVPs), upsert per (session_id, driver_id).
+//  Fase 3 — Notifiche Discord: alla creazione (canale #gestione-gare,
+//    stesso webhook già configurato per DiscordMessenger.js/Task #101)
+//    + reminder automatico 24h/2h prima (trigger orario, dedup via
+//    PropertiesService come checkAndNotifyRsvpReminders_ in RaceRSVP.js).
 //
-// Setup: setupTeamSessionsTab() — editor Apps Script → ▶ Esegui (una
-// tantum, idempotente).
+// Setup: setupTeamSessionsTab() + setupSessionRsvpTab() — editor Apps
+// Script → ▶ Esegui (una tantum, idempotenti). Per i reminder, aggiungi
+// un trigger time-driven → runTeamSessionReminderCheck → ogni ora.
 //
 // Registrate in Codice.js dispatcher come:
 //   'teamSessions.list':   handleTeamSessionsList
@@ -141,6 +147,14 @@ function handleTeamSessionsCreate(payload, ctx) {
   logAudit_(ctx, 'teamSessions.create', sessionId,
     'Sessione creata: "' + title + '" (' + type + ') il ' + row.datetime_start,
     null);
+
+  // Fase 3 — notifica non bloccante: se il webhook fallisce, la sessione
+  // resta comunque creata (stesso principio di notifyRaceImported_).
+  try {
+    notifyTeamSessionCreated_(row);
+  } catch (e) {
+    Logger.log('⚠️  notifyTeamSessionCreated_ error (non-blocking): ' + e.message);
+  }
 
   return ok(row);
 }
@@ -333,4 +347,130 @@ function deleteSessionRsvpsForSession_(sessionId) {
   for (let i = data.length - 1; i >= 1; i--) {
     if (data[i][sessionIdx] === sessionId) sheet.deleteRow(i + 1);
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+// FASE 3 — Notifiche Discord
+// ═══════════════════════════════════════════════════════════
+// Canale: #gestione-gare, stesso webhook già configurato per
+// DiscordMessenger.js (Task #85/#101) — nessuna nuova Script Property.
+// Riuso diretto di postToDiscordWebhook_/VSD_COLORS/PADDOCK_URL da
+// Notifications.js, stesso principio "mai bloccare il chiamante".
+
+const TEAM_SESSION_TYPE_LABELS_ = {
+  allenamento_libero: 'Allenamento libero',
+  allenamento_collettivo: 'Allenamento collettivo',
+  qualifica: 'Qualifica/Prova campionato',
+  evento_esterno: 'Evento esterno',
+  riunione: 'Riunione team',
+};
+
+/**
+ * Notifica alla creazione di una nuova sessione team. Chiamata da
+ * handleTeamSessionsCreate, sempre in try/catch lato chiamante.
+ * @param {Object} row - riga sessione appena creata (stesso shape di TEAM_SESSIONS_HEADERS)
+ */
+function notifyTeamSessionCreated_(row) {
+  const label = TEAM_SESSION_TYPE_LABELS_[row.type] || row.type;
+  const dateLabel = Utilities.formatDate(new Date(row.datetime_start), 'Europe/Rome', 'dd/MM/yyyy HH:mm');
+
+  const fields = [
+    { name: 'Tipo', value: label, inline: true },
+    { name: 'Quando', value: dateLabel, inline: true },
+  ];
+  if (row.duration_min) fields.push({ name: 'Durata', value: row.duration_min + ' min', inline: true });
+  if (row.sim) fields.push({ name: 'Sim', value: row.sim, inline: true });
+  if (row.discord_channel) fields.push({ name: 'Canale vocale', value: row.discord_channel, inline: true });
+
+  const payload = {
+    embeds: [{
+      author: { name: 'VSD Paddock' },
+      title: '📅 Nuova sessione team',
+      description: '**' + row.title + '**' + (row.notes ? '\n' + row.notes : ''),
+      color: VSD_COLORS.blue,
+      fields: fields,
+      timestamp: new Date().toISOString(),
+      footer: { text: 'Conferma la tua presenza sul Calendario' },
+      url: PADDOCK_URL + '/calendar',
+    }],
+  };
+
+  postToDiscordWebhook_(payload, 'DISCORD_WEBHOOK_GESTIONE_GARE_URL');
+}
+
+// ═══════════════════════════════════════════════════════════
+// REMINDER SESSIONI — 24h e 2h prima dell'inizio
+// ═══════════════════════════════════════════════════════════
+// Trigger time-driven da configurare a mano (editor Apps Script →
+// icona orologio → Aggiungi trigger → runTeamSessionReminderCheck →
+// time-driven → "hour timer", ogni ora — stesso meccanismo già in uso
+// per checkAndNotifyRsvpReminders_ (RaceRSVP.js) e il sync Garage61.
+//
+// A differenza del reminder RSVP (che notifica solo chi non ha ancora
+// risposto, via push per-pilota), questo è un annuncio di canale unico
+// per sessione+finestra: più adatto a un evento imminente che tutto il
+// team deve vedere, non un follow-up personale.
+//
+// Dedup: PropertiesService (finestra di ore, sotto il tetto 6h di
+// CacheService comunque non applicabile qui — vedi nota in Push.js).
+const TEAM_SESSION_REMINDER_WINDOWS_ = [
+  { hoursBefore: 24, key: '24h' },
+  { hoursBefore: 2, key: '2h' },
+];
+
+function checkAndNotifyUpcomingTeamSessions_() {
+  try {
+    const now = new Date();
+    const sessions = getCachedSheetData_(SHEETS.TEAM_SESSIONS, 300);
+    const props = PropertiesService.getScriptProperties();
+
+    sessions.forEach(session => {
+      const start = new Date(session.datetime_start);
+      if (isNaN(start.getTime())) return;
+      const hoursUntil = (start.getTime() - now.getTime()) / 3600000;
+      if (hoursUntil <= 0) return; // già iniziata/passata
+
+      TEAM_SESSION_REMINDER_WINDOWS_.forEach(w => {
+        // Finestra di 1h attorno alla soglia (il trigger gira ogni ora,
+        // non è garantito colpire l'istante esatto hoursBefore).
+        if (hoursUntil > w.hoursBefore || hoursUntil <= w.hoursBefore - 1) return;
+
+        const propKey = 'team_session_reminder_' + session.session_id + '_' + w.key;
+        if (props.getProperty(propKey)) return;
+
+        notifyTeamSessionReminder_(session, w.key);
+        props.setProperty(propKey, '1');
+      });
+    });
+  } catch (e) {
+    Logger.log('⚠️  checkAndNotifyUpcomingTeamSessions_ error (non-blocking): ' + e.message);
+  }
+}
+
+function notifyTeamSessionReminder_(session, windowKey) {
+  const label = TEAM_SESSION_TYPE_LABELS_[session.type] || session.type;
+  const whenLabel = windowKey === '24h' ? 'tra 24 ore' : 'tra 2 ore';
+
+  const payload = {
+    embeds: [{
+      author: { name: 'VSD Paddock' },
+      title: '⏰ Sessione team ' + whenLabel,
+      description: '**' + session.title + '** (' + label + ')',
+      color: VSD_COLORS.orange,
+      timestamp: new Date().toISOString(),
+      footer: { text: 'Non hai ancora confermato? Fallo dal Calendario' },
+      url: PADDOCK_URL + '/calendar',
+    }],
+  };
+
+  postToDiscordWebhook_(payload, 'DISCORD_WEBHOOK_GESTIONE_GARE_URL');
+}
+
+/**
+ * Wrapper pubblico (senza underscore) — il menu Trigger di Apps Script
+ * nasconde le funzioni con underscore finale. Stesso pattern già usato
+ * per runRsvpReminderCheck() in RaceRSVP.js.
+ */
+function runTeamSessionReminderCheck() {
+  checkAndNotifyUpcomingTeamSessions_();
 }
