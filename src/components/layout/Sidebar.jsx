@@ -50,7 +50,6 @@ const PILOT_ITEMS = [
   { to: '/recap', label: 'Season Recap', icon: '✦' },
   { to: '/records', label: 'Muro dei Record', icon: '♛' },
   { to: '/training', label: LABELS.nav_training, icon: '◆' },
-  { to: '/telemetry', label: 'Telemetria', icon: '⌁' },
   { to: '/consenso', label: 'Il mio consenso', icon: '✎' },
 ];
 

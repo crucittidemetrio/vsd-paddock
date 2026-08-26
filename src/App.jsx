@@ -27,7 +27,6 @@ const RaceDetail          = lazy(() => import('./pages/RaceDetail'));
 const Reports             = lazy(() => import('./pages/Reports'));
 const LapsDrilldown       = lazy(() => import('./pages/LapsDrilldown'));
 const Training            = lazy(() => import('./pages/Training'));
-const TelemetryViewer     = lazy(() => import('./pages/TelemetryViewer'));
 const FuelEnergy          = lazy(() => import('./pages/FuelEnergy'));
 const Academy             = lazy(() => import('./pages/Academy'));
 const Endurance           = lazy(() => import('./pages/Endurance'));
@@ -146,7 +145,6 @@ export default function App() {
                   </RequireTier>
                 }
               />
-              <Route path="/telemetry" element={<TelemetryViewer />} />
               <Route
                 path="/academy"
                 element={
