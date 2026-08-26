@@ -4,6 +4,7 @@ import {
 } from '../hooks/useTeamSessions';
 import { useTracks } from '../hooks/useLookups';
 import { useRaces } from '../hooks/useRaces';
+import { useAuth } from '../hooks/useAuth';
 import styles from './AdminTeamSessions.module.css';
 
 const TYPES = [
@@ -13,6 +14,11 @@ const TYPES = [
   { value: 'evento_esterno', label: 'Evento esterno' },
   { value: 'riunione', label: 'Riunione team' },
 ];
+
+// Deve restare allineato a TEAM_SESSION_TYPES_OPEN in
+// apps-script/TeamSessionsScheduler.js: sono i tipi che chiunque sia
+// loggato può creare, non solo staff/admin — vedi handleTeamSessionsCreate.
+const TYPES_OPEN_TO_ALL = ['allenamento_libero', 'allenamento_collettivo'];
 
 const SIMS = ['', 'LMU', 'IRC', 'ACE'];
 
@@ -31,10 +37,13 @@ function EmptyForm() {
 }
 
 export default function AdminTeamSessions() {
+  const { isStaff, driver } = useAuth();
   const [typeFilter, setTypeFilter] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState(EmptyForm);
   const [formError, setFormError] = useState(null);
+
+  const availableTypes = isStaff ? TYPES : TYPES.filter(t => TYPES_OPEN_TO_ALL.includes(t.value));
 
   const query = useTeamSessions();
   const tracksQuery = useTracks();
@@ -100,8 +109,9 @@ export default function AdminTeamSessions() {
         <div className={styles.eyebrow}>TEAM SCHEDULER</div>
         <h1 className={styles.title}>Sessioni team</h1>
         <p className={styles.sub}>
-          Allenamenti, qualifiche e riunioni pianificate dallo staff. Visibili a tutto il team
-          nel Calendario, con conferma presenza (RSVP) e notifica Discord automatica alla creazione.
+          {isStaff
+            ? 'Allenamenti, qualifiche e riunioni. Visibili a tutto il team nel Calendario, con conferma presenza (RSVP) e notifica Discord automatica alla creazione.'
+            : 'Organizza un allenamento libero o collettivo — visibile a tutto il team nel Calendario, con RSVP e notifica Discord automatica. Qualifiche, eventi esterni e riunioni restano riservati allo staff.'}
         </p>
       </header>
 
@@ -134,7 +144,7 @@ export default function AdminTeamSessions() {
               value={form.type}
               onChange={e => setForm({ ...form, type: e.target.value })}
             >
-              {TYPES.map(t => (
+              {availableTypes.map(t => (
                 <option key={t.value} value={t.value}>{t.label}</option>
               ))}
             </select>
@@ -244,14 +254,16 @@ export default function AdminTeamSessions() {
                 {s.notes && <div className={styles.notesText}>{s.notes}</div>}
               </div>
               <div className={styles.rowActions}>
-                <button
-                  type="button"
-                  className={styles.deleteBtn}
-                  onClick={() => handleRemove(s.session_id, s.title)}
-                  title="Cancella sessione"
-                >
-                  ✕
-                </button>
+                {(isStaff || s.created_by === driver?.driver_id) && (
+                  <button
+                    type="button"
+                    className={styles.deleteBtn}
+                    onClick={() => handleRemove(s.session_id, s.title)}
+                    title="Cancella sessione"
+                  >
+                    ✕
+                  </button>
+                )}
               </div>
             </div>
           ))}

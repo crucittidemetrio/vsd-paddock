@@ -185,6 +185,14 @@ export default function App() {
                   </RequireTier>
                 }
               />
+              <Route
+                path="/team-sessions"
+                element={
+                  <RequireTier minTier="pilot_vsd" fallback={<LoginPrompt feature="le sessioni team" />}>
+                    <AdminTeamSessions />
+                  </RequireTier>
+                }
+              />
 
               {/* ── Admin/Staff: AdminRoute è già staff-aware ── */}
               <Route
@@ -258,10 +266,6 @@ export default function App() {
               <Route
                 path="/admin/sponsors"
                 element={<AdminRoute><AdminSponsors /></AdminRoute>}
-              />
-              <Route
-                path="/admin/team-sessions"
-                element={<AdminRoute><AdminTeamSessions /></AdminRoute>}
               />
               <Route
                 path="/admin/messenger"

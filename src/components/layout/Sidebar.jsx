@@ -50,6 +50,7 @@ const PILOT_ITEMS = [
   { to: '/recap', label: 'Season Recap', icon: '✦' },
   { to: '/records', label: 'Muro dei Record', icon: '♛' },
   { to: '/training', label: LABELS.nav_training, icon: '◆' },
+  { to: '/team-sessions', label: 'Sessioni team', icon: '◔' },
   { to: '/consenso', label: 'Il mio consenso', icon: '✎' },
 ];
 
@@ -68,7 +69,6 @@ const ADMIN_ITEMS = [
   { to: '/admin/best-laps', label: 'Best Laps', icon: '◷' },
   { to: '/admin/races', label: 'Gestione Gare', icon: '⚑' },
   { to: '/admin/team-dashboard', label: 'Team Dashboard', icon: '▥' },
-  { to: '/admin/team-sessions', label: 'Sessioni team', icon: '◔' },
   { to: '/admin/import-results', label: 'Import Risultati', icon: '▽' },
   { to: '/admin/import-standings', label: 'Import Standings', icon: '♛' },
   { to: '/admin/garage61-sync', label: 'Sync Garage61', icon: '↻' },

@@ -37,6 +37,10 @@ const TEAM_SESSION_TYPES = [
   'evento_esterno', 'riunione',
 ];
 
+// Tipi che qualunque pilota loggato (non solo staff/admin) può creare —
+// vedi handleTeamSessionsCreate. Gli altri tipi restano riservati.
+const TEAM_SESSION_TYPES_OPEN = ['allenamento_libero', 'allenamento_collettivo'];
+
 // Fase 2 — RSVP piloti per sessione, stesso schema/statuses di RaceRSVPs
 // (RaceRSVP.js) ma FK su session_id invece di race_id.
 const SESSION_RSVP_HEADERS = ['rsvp_id', 'session_id', 'driver_id', 'status', 'note', 'responded_at'];
@@ -104,7 +108,6 @@ function handleTeamSessionsList(payload, ctx) {
  */
 function handleTeamSessionsCreate(payload, ctx) {
   if (!ctx) return fail('Auth richiesto');
-  if (!ctx.isStaff) return fail('Operazione riservata a staff o admin');
 
   payload = payload || {};
   const type = String(payload.type || '').trim();
@@ -113,6 +116,17 @@ function handleTeamSessionsCreate(payload, ctx) {
 
   if (TEAM_SESSION_TYPES.indexOf(type) === -1) {
     return fail('type non valido — atteso uno tra: ' + TEAM_SESSION_TYPES.join(', '));
+  }
+
+  // Creazione aperta a tutto il team, ma solo per gli allenamenti — sono
+  // il coordinamento organico tra piloti che prima si perdeva su Discord.
+  // Qualifica/evento_esterno/riunione hanno peso istituzionale (prep
+  // ufficiale campionato, logistica esterna, decisioni team) e restano
+  // riservati a staff/admin. La cancellazione (handleTeamSessionsRemove)
+  // resta comunque solo staff, indipendentemente da chi ha creato —
+  // mantiene il controllo di moderazione anche con creazione aperta.
+  if (!ctx.isStaff && TEAM_SESSION_TYPES_OPEN.indexOf(type) === -1) {
+    return fail('Solo staff/admin possono creare sessioni di tipo "' + type + '"');
   }
   if (!title) return fail('title obbligatorio');
   if (!datetimeStart || isNaN(new Date(datetimeStart).getTime())) {
@@ -224,12 +238,14 @@ function handleTeamSessionsUpdate(payload, ctx) {
  * teamSessions.remove — Elimina una sessione (hard delete, come
  * endurance.participants.remove — niente soft-delete per ora, non
  * serve storico su una sessione di allenamento cancellata).
- * Auth: richiesto ctx.isStaff.
+ * Auth: ctx.isStaff, oppure l'autore stesso se la sessione è di un tipo
+ * "aperto" (TEAM_SESSION_TYPES_OPEN) — coerente con la creazione: chi ha
+ * organizzato un allenamento può anche cancellarlo. Staff/admin restano
+ * comunque in grado di cancellare qualunque sessione (moderazione).
  * @param {Object} payload - { session_id }
  */
 function handleTeamSessionsRemove(payload, ctx) {
   if (!ctx) return fail('Auth richiesto');
-  if (!ctx.isStaff) return fail('Operazione riservata a staff o admin');
 
   payload = payload || {};
   const sessionId = String(payload.session_id || '').trim();
@@ -242,10 +258,19 @@ function handleTeamSessionsRemove(payload, ctx) {
   const headers = data[0];
   const idIdx = headers.indexOf('session_id');
   const titleIdx = headers.indexOf('title');
+  const typeIdx = headers.indexOf('type');
+  const createdByIdx = headers.indexOf('created_by');
 
   for (let i = 1; i < data.length; i++) {
     if (data[i][idIdx] !== sessionId) continue;
     const title = data[i][titleIdx];
+
+    if (!ctx.isStaff) {
+      const isOwnOpenSession = data[i][createdByIdx] === ctx.driver_id
+        && TEAM_SESSION_TYPES_OPEN.indexOf(data[i][typeIdx]) !== -1;
+      if (!isOwnOpenSession) return fail('Puoi cancellare solo gli allenamenti che hai creato tu — per le altre sessioni serve staff/admin');
+    }
+
     sheet.deleteRow(i + 1);
     invalidateSheetCache_(SHEETS.TEAM_SESSIONS);
     deleteSessionRsvpsForSession_(sessionId);
