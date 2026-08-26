@@ -10,8 +10,9 @@ import EntityRSVP from './EntityRSVP';
  * @param {string}   currentDriverId - null se non loggato
  * @param {Array}    drivers         - roster per join id→nome
  * @param {Function} getDriverName   - (driverId, drivers) => string
+ * @param {number}   [rosterSize]    - roster attivo, per il contatore "N/roster"
  */
-export default function SessionRSVP({ sessionId, currentDriverId, drivers, getDriverName }) {
+export default function SessionRSVP({ sessionId, currentDriverId, drivers, getDriverName, rosterSize }) {
   const { data: rsvps = [], isLoading } = useSessionRsvp(sessionId);
   const setRsvp = useSetSessionRsvp();
 
@@ -26,6 +27,7 @@ export default function SessionRSVP({ sessionId, currentDriverId, drivers, getDr
       isPending={setRsvp.isPending}
       error={setRsvp.isError ? setRsvp.error : null}
       onSetStatus={(status, note) => setRsvp.mutate({ session_id: sessionId, status, note })}
+      rosterSize={rosterSize}
     />
   );
 }

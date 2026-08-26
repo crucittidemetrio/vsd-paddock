@@ -341,16 +341,34 @@
 .listItem:hover { border-color: var(--vsd-cyan); transform: translateX(2px); }
 .listItemPast { opacity: 0.6; }
 
-/* Sessioni team (ADR-Team-Scheduler): riga come .listItem ma <button>,
-   non <Link> — apre/chiude il pannello RSVP sotto invece di navigare. */
+/* Sessioni team (ADR-Team-Scheduler): riga informativa come .listItem,
+   con il pannello RSVP sempre visibile sotto (non dietro un click). */
 .listSessionGroup { width: 100%; }
-.listItemSession {
-  width: 100%;
-  font: inherit;
-  cursor: pointer;
-}
+.listItemSession { width: 100%; }
 .listSessionRsvp { margin-top: 0.5rem; }
 .listSessionRsvp :global(.rsvp-section) { margin-top: 0; }
+
+.sessionTag {
+  display: inline-block;
+  margin-left: 0.5rem;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 999px;
+  vertical-align: middle;
+}
+
+.sessionLinkedRace {
+  margin-top: 0.2rem;
+  font-size: 0.76rem;
+  color: var(--vsd-text-muted);
+}
+.sessionLinkedRace strong { color: var(--vsd-text); font-weight: 600; }
 
 .listDate {
   text-align: center;

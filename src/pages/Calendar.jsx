@@ -29,8 +29,11 @@ const SESSION_TYPE_LABELS = {
 // viste esistenti (Month/Week/List) possono trattarle come lo stesso
 // tipo di evento senza duplicare la logica di rendering. `kind`
 // distingue le due entità per link e stile: le gare puntano a
-// /race/:id, le sessioni non hanno una pagina dettaglio (Fase 1).
-function sessionToEvent(s) {
+// /race/:id, le sessioni non hanno una pagina dettaglio.
+// `racesById` risolve l'event_id opzionale (ADR-Team-Scheduler) nel nome
+// della gara collegata, per la riga "in preparazione a …" in Lista.
+function sessionToEvent(s, racesById) {
+  const linkedRace = s.event_id && racesById ? racesById.get(s.event_id) : null;
   return {
     race_id: s.session_id,
     kind: 'session',
@@ -40,6 +43,8 @@ function sessionToEvent(s) {
     race_name: s.title,
     status: 'scheduled',
     championship_name: SESSION_TYPE_LABELS[s.type] || s.type,
+    linkedRaceName: linkedRace ? (linkedRace.race_name || linkedRace.title) : null,
+    linkedRaceDate: linkedRace ? linkedRace.date : null,
   };
 }
 
@@ -151,11 +156,22 @@ export default function Calendar() {
   const monthCells = useMemo(() => buildMonthGrid(year, month), [year, month]);
   const weekCells = useMemo(() => buildWeekGrid(currentDate), [currentDate]);
 
+  const racesById = useMemo(() => new Map((races || []).map(r => [r.race_id, r])), [races]);
+
   const events = useMemo(() => {
     const raceEvents = eventFilter !== 'sessioni' ? (races || []) : [];
-    const sessionEvents = eventFilter !== 'gare' ? (teamSessions || []).map(sessionToEvent) : [];
+    const sessionEvents = eventFilter !== 'gare'
+      ? (teamSessions || []).map(s => sessionToEvent(s, racesById))
+      : [];
     return [...raceEvents, ...sessionEvents];
-  }, [races, teamSessions, eventFilter]);
+  }, [races, teamSessions, eventFilter, racesById]);
+
+  // Roster attivo (esclude ex-VSD) — denominatore per il contatore RSVP
+  // "N/roster confermati" nella vista Lista.
+  const activeRosterSize = useMemo(
+    () => (driversRaw || []).filter(d => !d.is_ex_vsd).length,
+    [driversRaw]
+  );
 
   const racesByDate = useMemo(() => {
     const map = new Map();
@@ -199,10 +215,10 @@ export default function Calendar() {
     <div className={styles.page}>
       <header className={styles.header}>
         <div className={styles.eyebrow}>CALENDARIO</div>
-        <h1>Programma Gare</h1>
+        <h1>Programma Gare & Sessioni</h1>
         <p className={styles.subtitle}>
           {total} gare totali · {scheduled} in programma
-          {isAuthenticated && sessionCount > 0 && ` · ${sessionCount} sessioni team`}
+          {isAuthenticated && sessionCount > 0 && ` · ${sessionCount} sessioni team pianificate`}
         </p>
       </header>
 
@@ -315,6 +331,7 @@ export default function Calendar() {
           groupedByMonth={groupedByMonth}
           currentDriverId={driver?.driver_id || null}
           drivers={driversRaw}
+          rosterSize={activeRosterSize}
         />
       )}
     </div>
@@ -425,16 +442,12 @@ function WeekView({ cells, racesByDate }) {
   );
 }
 
-function ListView({ groupedByMonth, currentDriverId, drivers }) {
+function ListView({ groupedByMonth, currentDriverId, drivers, rosterSize }) {
   // Ascendente: mese più vecchio in alto, più recente in fondo — coerente
   // con l'ordine cronologico di sortedRaces (vedi Calendar()).
   const entries = Array.from(groupedByMonth.entries()).sort((a, b) => a[0].localeCompare(b[0]));
 
   const today = startOfDay(new Date());
-  // Sessione team con RSVP aperto — solo la vista Lista ha spazio per
-  // mostrarlo inline (Mese/Settimana restano chip compatti). Un solo
-  // pannello aperto alla volta, come un accordion.
-  const [expandedSessionId, setExpandedSessionId] = useState(null);
 
   // Ancora la vista alla gara più vicina a oggi (prima non-passata,
   // essendo l'elenco ordinato in modo ascendente) appena la lista è
@@ -486,7 +499,10 @@ function ListView({ groupedByMonth, currentDriverId, drivers }) {
                       <div className={styles.listTime}>{formatTime(r.date)}</div>
                     </div>
                     <div className={styles.listInfo}>
-                      <div className={styles.listName}>{raceName(r)}</div>
+                      <div className={styles.listName}>
+                        {raceName(r)}
+                        {isSession && <span className={styles.sessionTag}>Sessione team</span>}
+                      </div>
                       <div className={styles.listMeta}>
                         {r.sim && (
                           <span className={`${styles.listSim} ${styles[`listSim_${SIM_KEY[r.sim] || 'default'}`]}`}>{r.sim}</span>
@@ -494,6 +510,12 @@ function ListView({ groupedByMonth, currentDriverId, drivers }) {
                         {raceChampionship(r) && <span>· {raceChampionship(r)}</span>}
                         {r.round && <span>· R{r.round}</span>}
                       </div>
+                      {isSession && r.linkedRaceName && (
+                        <div className={styles.sessionLinkedRace}>
+                          → in preparazione a <strong>{r.linkedRaceName}</strong>
+                          {r.linkedRaceDate && ` (${new Date(r.linkedRaceDate).getDate()} ${MONTH_NAMES[new Date(r.linkedRaceDate).getMonth()].slice(0, 3).toLowerCase()})`}
+                        </div>
+                      )}
                     </div>
                     <div className={styles.listStatus}>
                       {!isSession && r.status === 'scheduled' && <span className={styles.statusScheduled}>Programmata</span>}
@@ -504,37 +526,30 @@ function ListView({ groupedByMonth, currentDriverId, drivers }) {
                   </>
                 );
 
-                // Le sessioni team (Fase 1) non hanno una pagina dettaglio —
-                // riga cliccabile che apre/chiude il pannello RSVP (Fase 2)
-                // sotto, non un link a un'altra pagina come le gare.
-                const isExpanded = isSession && expandedSessionId === r.race_id;
-
+                // Le sessioni team non hanno una pagina dettaglio — riga
+                // informativa (non un Link come le gare), con il pannello
+                // RSVP sempre visibile sotto invece che dietro un click:
+                // il team deve vedere chi ha confermato a colpo d'occhio.
                 if (isSession) {
                   return (
                     <div key={r.race_id} ref={isAnchor ? anchorRef : null} className={styles.listSessionGroup}>
-                      <button
-                        type="button"
-                        className={`${styles.listItem} ${styles.listItemSession} ${isPast ? styles.listItemPast : ''}`}
-                        onClick={() => setExpandedSessionId(isExpanded ? null : r.race_id)}
-                        aria-expanded={isExpanded}
-                      >
+                      <div className={`${styles.listItem} ${styles.listItemSession} ${isPast ? styles.listItemPast : ''}`}>
                         {inner}
-                      </button>
-                      {isExpanded && (
-                        <div className={styles.listSessionRsvp}>
-                          <RequireTier
-                            minTier="pilot_vsd"
-                            fallback={<LoginPrompt feature="la conferma di presenza" compact />}
-                          >
-                            <SessionRSVP
-                              sessionId={r.race_id}
-                              currentDriverId={currentDriverId}
-                              drivers={drivers}
-                              getDriverName={getDriverName}
-                            />
-                          </RequireTier>
-                        </div>
-                      )}
+                      </div>
+                      <div className={styles.listSessionRsvp}>
+                        <RequireTier
+                          minTier="pilot_vsd"
+                          fallback={<LoginPrompt feature="la conferma di presenza" compact />}
+                        >
+                          <SessionRSVP
+                            sessionId={r.race_id}
+                            currentDriverId={currentDriverId}
+                            drivers={drivers}
+                            getDriverName={getDriverName}
+                            rosterSize={rosterSize}
+                          />
+                        </RequireTier>
+                      </div>
                     </div>
                   );
                 }

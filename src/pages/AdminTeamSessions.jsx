@@ -3,6 +3,7 @@ import {
   useTeamSessions, useCreateTeamSession, useRemoveTeamSession,
 } from '../hooks/useTeamSessions';
 import { useTracks } from '../hooks/useLookups';
+import { useRaces } from '../hooks/useRaces';
 import styles from './AdminTeamSessions.module.css';
 
 const TYPES = [
@@ -25,7 +26,7 @@ function fmtDateTime(iso) {
 function EmptyForm() {
   return {
     type: 'allenamento_collettivo', title: '', datetime_start: '', duration_min: '60',
-    track_id: '', sim: '', discord_channel: '', notes: '',
+    track_id: '', sim: '', discord_channel: '', notes: '', event_id: '',
   };
 }
 
@@ -37,6 +38,12 @@ export default function AdminTeamSessions() {
 
   const query = useTeamSessions();
   const tracksQuery = useTracks();
+  const racesQuery = useRaces();
+  const upcomingRaces = (racesQuery.data || [])
+    .filter(r => r.status === 'scheduled')
+    .slice()
+    .sort((a, b) => new Date(a.date) - new Date(b.date));
+  const racesById = new Map((racesQuery.data || []).map(r => [r.race_id, r]));
   const sessions = (query.data || [])
     .slice()
     .sort((a, b) => new Date(a.datetime_start) - new Date(b.datetime_start));
@@ -71,6 +78,7 @@ export default function AdminTeamSessions() {
       sim: form.sim || undefined,
       discord_channel: form.discord_channel || undefined,
       notes: form.notes || undefined,
+      event_id: form.event_id || undefined,
     };
     createMutation.mutate(payload, {
       onSuccess: () => {
@@ -93,8 +101,7 @@ export default function AdminTeamSessions() {
         <h1 className={styles.title}>Sessioni team</h1>
         <p className={styles.sub}>
           Allenamenti, qualifiche e riunioni pianificate dallo staff. Visibili a tutto il team
-          nel Calendario — Fase 1: solo creazione/gestione, senza ancora conferma presenza (RSVP)
-          né notifiche Discord automatiche.
+          nel Calendario, con conferma presenza (RSVP) e notifica Discord automatica alla creazione.
         </p>
       </header>
 
@@ -179,6 +186,18 @@ export default function AdminTeamSessions() {
               onChange={e => setForm({ ...form, discord_channel: e.target.value })}
               className={styles.input}
             />
+            <select
+              className={styles.select}
+              value={form.event_id}
+              onChange={e => setForm({ ...form, event_id: e.target.value })}
+            >
+              <option value="">Collegata a una gara (opzionale)</option>
+              {upcomingRaces.map(r => (
+                <option key={r.race_id} value={r.race_id}>
+                  {r.race_name || r.title} · {fmtDateTime(r.date)}
+                </option>
+              ))}
+            </select>
           </div>
           <textarea
             placeholder="Note…"
@@ -216,6 +235,11 @@ export default function AdminTeamSessions() {
                 <div className={styles.rowSub}>
                   <span className={styles.date}>{fmtDateTime(s.datetime_start)}</span>
                   <span className={styles.meta}>{s.duration_min} min</span>
+                  {s.event_id && racesById.has(s.event_id) && (
+                    <span className={styles.meta}>
+                      → in preparazione a {racesById.get(s.event_id).race_name || racesById.get(s.event_id).title}
+                    </span>
+                  )}
                 </div>
                 {s.notes && <div className={styles.notesText}>{s.notes}</div>}
               </div>

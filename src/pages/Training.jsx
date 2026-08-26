@@ -214,6 +214,22 @@ export default function Training() {
             </p>
             <div className={styles.toolMeta}>Strumento di terzi · eseguibile portable · Windows</div>
           </a>
+
+          <a
+            href="https://lmuportal.com/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.toolCard}
+          >
+            <div className={styles.toolName}>LMU Portal</div>
+            <p className={styles.toolDesc}>
+              Calendario ufficioso di Le Mans Ultimate: orari delle sessioni
+              online (Hypercar, LMP2, LMGT3), countdown e session finder in
+              tempo reale. Utile per non perdere un evento o pianificare un
+              allenamento fuori dagli orari VSD.
+            </p>
+            <div className={styles.toolMeta}>Sito di terzi · gratuito · nessuna integrazione con vsd-paddock</div>
+          </a>
         </div>
       </section>
     </div>

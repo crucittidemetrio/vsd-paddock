@@ -27,6 +27,13 @@ const STATUS_ORDER = ['confirmed', 'tentative', 'declined'];
  * @param {Function} onSetStatus     - (status, note) => void
  * @param {boolean}  isPending       - true mentre la mutation è in corso
  * @param {Error|null} error
+ * @param {number}   [rosterSize]    - se passato, il contatore in testa
+ *                                     mostra "confermati/rosterSize" invece
+ *                                     del generico "N risposte" (usato dalle
+ *                                     sessioni team, dove il denominatore —
+ *                                     roster attivo — è un segnale utile a
+ *                                     colpo d'occhio; le gare non lo passano
+ *                                     e mantengono il comportamento originale)
  */
 export default function EntityRSVP({
   title = 'Conferma presenza',
@@ -38,6 +45,7 @@ export default function EntityRSVP({
   onSetStatus,
   isPending = false,
   error = null,
+  rosterSize,
 }) {
   const [note, setNote] = useState('');
   const [noteOpen, setNoteOpen] = useState(false);
@@ -58,7 +66,11 @@ export default function EntityRSVP({
       <div className="rsvp-header">
         <h2 className="rsvp-title">{title}</h2>
         <span className="rsvp-count">
-          {isLoading ? '…' : `${rsvps.length} risposte`}
+          {isLoading
+            ? '…'
+            : rosterSize != null
+              ? `${groups.confirmed.length}/${rosterSize} confermati`
+              : `${rsvps.length} risposte`}
         </span>
       </div>
 
