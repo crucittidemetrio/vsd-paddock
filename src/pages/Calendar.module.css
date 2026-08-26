@@ -341,6 +341,17 @@
 .listItem:hover { border-color: var(--vsd-cyan); transform: translateX(2px); }
 .listItemPast { opacity: 0.6; }
 
+/* Sessioni team (ADR-Team-Scheduler): riga come .listItem ma <button>,
+   non <Link> — apre/chiude il pannello RSVP sotto invece di navigare. */
+.listSessionGroup { width: 100%; }
+.listItemSession {
+  width: 100%;
+  font: inherit;
+  cursor: pointer;
+}
+.listSessionRsvp { margin-top: 0.5rem; }
+.listSessionRsvp :global(.rsvp-section) { margin-top: 0; }
+
 .listDate {
   text-align: center;
   padding: 0.4rem;

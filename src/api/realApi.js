@@ -346,6 +346,10 @@ export async function callApi(action, payload = {}) {
         return await teamSessionsUpdateAdapter(payload, token);
       case 'teamSessions.remove':
         return await teamSessionsRemoveAdapter(payload, token);
+      case 'sessionRsvp.list':
+        return await sessionRsvpListAdapter(payload, token);
+      case 'sessionRsvp.set':
+        return await sessionRsvpSetAdapter(payload, token);
       case 'sponsors.list':
         return await sponsorsListAdapter(payload, token);
       case 'sponsors.add':
@@ -1305,6 +1309,22 @@ async function teamSessionsUpdateAdapter(payload, token) {
  */
 async function teamSessionsRemoveAdapter(payload, token) {
   return await postToBackend('teamSessions.remove', payload || {}, token);
+}
+
+/**
+ * Frontend: sessionRsvp.list({ session_id }) → { rsvps: [...], count }
+ * Backend:  sessionRsvp.list → { rsvps: [...], count }
+ */
+async function sessionRsvpListAdapter(payload, token) {
+  return await postToBackend('sessionRsvp.list', payload || {}, token);
+}
+
+/**
+ * Frontend: sessionRsvp.set({ session_id, status, note? }) → riga RSVP aggiornata/creata
+ * Backend:  sessionRsvp.set → riga RSVP
+ */
+async function sessionRsvpSetAdapter(payload, token) {
+  return await postToBackend('sessionRsvp.set', payload || {}, token);
 }
 
 /**

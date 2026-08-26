@@ -2,8 +2,20 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useRaces } from '../hooks/useRaces';
 import { useTeamSessions } from '../hooks/useTeamSessions';
+import { useDrivers } from '../hooks/useRoster';
 import { useAuth } from '../hooks/useAuth';
+import RequireTier from '../components/auth/RequireTier';
+import LoginPrompt from '../components/auth/LoginPrompt';
+import SessionRSVP from '../components/shared/SessionRSVP';
 import styles from './Calendar.module.css';
+
+function getDriverName(driverId, drivers) {
+  if (!driverId) return '—';
+  if (!Array.isArray(drivers)) return driverId;
+  const d = drivers.find(x => x.driver_id === driverId);
+  if (!d) return driverId;
+  return d.display_name || d.full_name || driverId;
+}
 
 const SESSION_TYPE_LABELS = {
   allenamento_libero: 'Allenamento libero',
@@ -124,12 +136,14 @@ export default function Calendar() {
   const [viewMode, setViewMode] = useState('mese');
   const [eventFilter, setEventFilter] = useState('tutto'); // 'gare' | 'sessioni' | 'tutto'
   const [currentDate, setCurrentDate] = useState(() => new Date());
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, driver } = useAuth();
   const { data: races, isLoading } = useRaces();
   // Sessioni team (ADR-Team-Scheduler Fase 1): backend richiede auth,
   // quindi il layer resta vuoto per un visitatore non loggato invece di
   // fallire — il Calendario pubblico mostra comunque le gare.
   const { data: teamSessions } = useTeamSessions({ enabled: isAuthenticated });
+  // Roster per il RSVP sessioni (Fase 2) — lettura pubblica, nessun gate.
+  const { data: driversRaw } = useDrivers({ includeRemoved: true });
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -297,7 +311,11 @@ export default function Calendar() {
         <WeekView cells={weekCells} racesByDate={racesByDate} />
       )}
       {viewMode === 'lista' && (
-        <ListView groupedByMonth={groupedByMonth} />
+        <ListView
+          groupedByMonth={groupedByMonth}
+          currentDriverId={driver?.driver_id || null}
+          drivers={driversRaw}
+        />
       )}
     </div>
   );
@@ -407,12 +425,16 @@ function WeekView({ cells, racesByDate }) {
   );
 }
 
-function ListView({ groupedByMonth }) {
+function ListView({ groupedByMonth, currentDriverId, drivers }) {
   // Ascendente: mese più vecchio in alto, più recente in fondo — coerente
   // con l'ordine cronologico di sortedRaces (vedi Calendar()).
   const entries = Array.from(groupedByMonth.entries()).sort((a, b) => a[0].localeCompare(b[0]));
 
   const today = startOfDay(new Date());
+  // Sessione team con RSVP aperto — solo la vista Lista ha spazio per
+  // mostrarlo inline (Mese/Settimana restano chip compatti). Un solo
+  // pannello aperto alla volta, come un accordion.
+  const [expandedSessionId, setExpandedSessionId] = useState(null);
 
   // Ancora la vista alla gara più vicina a oggi (prima non-passata,
   // essendo l'elenco ordinato in modo ascendente) appena la lista è
@@ -483,16 +505,41 @@ function ListView({ groupedByMonth }) {
                 );
 
                 // Le sessioni team (Fase 1) non hanno una pagina dettaglio —
-                // riga informativa, non un link, a differenza delle gare.
-                return isSession ? (
-                  <div
-                    key={r.race_id}
-                    ref={isAnchor ? anchorRef : null}
-                    className={`${styles.listItem} ${isPast ? styles.listItemPast : ''}`}
-                  >
-                    {inner}
-                  </div>
-                ) : (
+                // riga cliccabile che apre/chiude il pannello RSVP (Fase 2)
+                // sotto, non un link a un'altra pagina come le gare.
+                const isExpanded = isSession && expandedSessionId === r.race_id;
+
+                if (isSession) {
+                  return (
+                    <div key={r.race_id} ref={isAnchor ? anchorRef : null} className={styles.listSessionGroup}>
+                      <button
+                        type="button"
+                        className={`${styles.listItem} ${styles.listItemSession} ${isPast ? styles.listItemPast : ''}`}
+                        onClick={() => setExpandedSessionId(isExpanded ? null : r.race_id)}
+                        aria-expanded={isExpanded}
+                      >
+                        {inner}
+                      </button>
+                      {isExpanded && (
+                        <div className={styles.listSessionRsvp}>
+                          <RequireTier
+                            minTier="pilot_vsd"
+                            fallback={<LoginPrompt feature="la conferma di presenza" compact />}
+                          >
+                            <SessionRSVP
+                              sessionId={r.race_id}
+                              currentDriverId={currentDriverId}
+                              drivers={drivers}
+                              getDriverName={getDriverName}
+                            />
+                          </RequireTier>
+                        </div>
+                      )}
+                    </div>
+                  );
+                }
+
+                return (
                   <Link
                     key={r.race_id}
                     ref={isAnchor ? anchorRef : null}

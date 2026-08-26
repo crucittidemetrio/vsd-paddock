@@ -16,6 +16,8 @@
 //   'teamSessions.create': handleTeamSessionsCreate
 //   'teamSessions.update': handleTeamSessionsUpdate
 //   'teamSessions.remove': handleTeamSessionsRemove
+//   'sessionRsvp.list':    handleSessionRsvpList
+//   'sessionRsvp.set':     handleSessionRsvpSet
 // ═══════════════════════════════════════════════════════════
 
 const TEAM_SESSIONS_HEADERS = [
@@ -29,6 +31,11 @@ const TEAM_SESSION_TYPES = [
   'evento_esterno', 'riunione',
 ];
 
+// Fase 2 — RSVP piloti per sessione, stesso schema/statuses di RaceRSVPs
+// (RaceRSVP.js) ma FK su session_id invece di race_id.
+const SESSION_RSVP_HEADERS = ['rsvp_id', 'session_id', 'driver_id', 'status', 'note', 'responded_at'];
+const SESSION_RSVP_STATUSES = ['confirmed', 'declined', 'tentative'];
+
 function setupTeamSessionsTab() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(SHEETS.TEAM_SESSIONS);
@@ -41,6 +48,24 @@ function setupTeamSessionsTab() {
   sheet.setFrozenRows(1);
   sheet.getRange(1, 1, 1, TEAM_SESSIONS_HEADERS.length).setFontWeight('bold');
   Logger.log('✅ Tab "' + SHEETS.TEAM_SESSIONS + '" creata con ' + TEAM_SESSIONS_HEADERS.length + ' colonne.');
+}
+
+/**
+ * setupSessionRsvpTab — Fase 2. Editor Apps Script → ▶ Esegui (una
+ * tantum, idempotente), come setupTeamSessionsTab().
+ */
+function setupSessionRsvpTab() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName(SHEETS.SESSION_RSVPS);
+  if (sheet) {
+    Logger.log('✓ Tab "' + SHEETS.SESSION_RSVPS + '" già esistente, nessuna modifica.');
+    return;
+  }
+  sheet = ss.insertSheet(SHEETS.SESSION_RSVPS);
+  sheet.getRange(1, 1, 1, SESSION_RSVP_HEADERS.length).setValues([SESSION_RSVP_HEADERS]);
+  sheet.setFrozenRows(1);
+  sheet.getRange(1, 1, 1, SESSION_RSVP_HEADERS.length).setFontWeight('bold');
+  Logger.log('✅ Tab "' + SHEETS.SESSION_RSVPS + '" creata con ' + SESSION_RSVP_HEADERS.length + ' colonne.');
 }
 
 /**
@@ -209,6 +234,7 @@ function handleTeamSessionsRemove(payload, ctx) {
     const title = data[i][titleIdx];
     sheet.deleteRow(i + 1);
     invalidateSheetCache_(SHEETS.TEAM_SESSIONS);
+    deleteSessionRsvpsForSession_(sessionId);
 
     logAudit_(ctx, 'teamSessions.remove', sessionId, 'Sessione eliminata: "' + title + '"', null);
 
@@ -216,4 +242,95 @@ function handleTeamSessionsRemove(payload, ctx) {
   }
 
   return fail('Sessione non trovata: ' + sessionId);
+}
+
+// ═══════════════════════════════════════════════════════════
+// FASE 2 — RSVP piloti per sessione
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * sessionRsvp.list — Tutte le risposte per una sessione. Visibile a
+ * chiunque sia loggato (stesso criterio di rsvp.list per le gare):
+ * serve al team, non solo allo staff, sapere chi ci sarà.
+ * Auth: richiesta.
+ * @param {Object} payload - { session_id }
+ */
+function handleSessionRsvpList(payload, ctx) {
+  if (!ctx || !ctx.driver_id) return fail('Auth richiesto');
+
+  payload = payload || {};
+  const sessionId = String(payload.session_id || '').trim();
+  if (!sessionId) return fail('session_id obbligatorio');
+
+  const rows = sheetToObjects(SHEETS.SESSION_RSVPS).filter(r => r.session_id === sessionId);
+  return ok({ rsvps: rows, count: rows.length });
+}
+
+/**
+ * sessionRsvp.set — Il pilota loggato imposta/aggiorna la PROPRIA
+ * risposta per una sessione. Upsert per (session_id, driver_id) — non
+ * è possibile impostare la risposta di qualcun altro. Identico a
+ * handleRsvpSet in RaceRSVP.js, solo su session_id invece di race_id.
+ * Auth: richiesta.
+ * @param {Object} payload - { session_id, status: 'confirmed'|'declined'|'tentative', note? }
+ */
+function handleSessionRsvpSet(payload, ctx) {
+  if (!ctx || !ctx.driver_id) return fail('Auth richiesto');
+
+  payload = payload || {};
+  const sessionId = String(payload.session_id || '').trim();
+  const status = String(payload.status || '').trim();
+  if (!sessionId) return fail('session_id obbligatorio');
+  if (SESSION_RSVP_STATUSES.indexOf(status) === -1) {
+    return fail('status non valido — atteso uno tra: ' + SESSION_RSVP_STATUSES.join(', '));
+  }
+
+  const sheet = getSheet(SHEETS.SESSION_RSVPS);
+  if (!sheet) return fail('Tab SessionRSVPs non trovata — esegui setupSessionRsvpTab() una volta');
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const sessionIdx = headers.indexOf('session_id');
+  const driverIdx = headers.indexOf('driver_id');
+
+  const now = new Date().toISOString();
+  const note = String(payload.note || '');
+
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][sessionIdx] === sessionId && data[i][driverIdx] === ctx.driver_id) {
+      const rowObj = {};
+      headers.forEach((h, j) => { rowObj[h] = data[i][j]; });
+      rowObj.status = status;
+      rowObj.note = note;
+      rowObj.responded_at = now;
+      const newRow = headers.map(h => (rowObj[h] !== undefined ? rowObj[h] : ''));
+      sheet.getRange(i + 1, 1, 1, newRow.length).setValues([newRow]);
+      return ok(rowObj);
+    }
+  }
+
+  const rsvpId = 'srsvp_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+  const row = {
+    rsvp_id: rsvpId, session_id: sessionId, driver_id: ctx.driver_id,
+    status, note, responded_at: now,
+  };
+  sheet.appendRow(SESSION_RSVP_HEADERS.map(h => row[h]));
+  return ok(row);
+}
+
+/**
+ * Cancella tutte le righe RSVP legate a una sessione eliminata — evita
+ * righe orfane, stesso principio di deleteRsvpsForSession_ visto nel
+ * pacchetto di handoff (adattato al nome tab reale SESSION_RSVPS).
+ */
+function deleteSessionRsvpsForSession_(sessionId) {
+  const sheet = getSheet(SHEETS.SESSION_RSVPS);
+  if (!sheet) return; // tab non ancora creata (setup non eseguito) — nessuna riga da pulire
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const sessionIdx = headers.indexOf('session_id');
+
+  for (let i = data.length - 1; i >= 1; i--) {
+    if (data[i][sessionIdx] === sessionId) sheet.deleteRow(i + 1);
+  }
 }

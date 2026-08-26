@@ -37,6 +37,7 @@ const SHEETS = {
   PUSH_SUBSCRIPTIONS: 'PushSubscriptions',
   RACE_RSVPS: 'RaceRSVPs',
   TEAM_SESSIONS: 'TeamSessions',
+  SESSION_RSVPS: 'SessionRSVPs',
   SPONSORS: 'Sponsors',
   INCIDENT_RESOLUTIONS: 'IncidentResolutions',
   SKILL_INDEX_HISTORY: 'SkillIndexHistory',
@@ -303,6 +304,9 @@ const ACTIONS = {
   'teamSessions.create': handleTeamSessionsCreate,
   'teamSessions.update': handleTeamSessionsUpdate,
   'teamSessions.remove': handleTeamSessionsRemove,
+  // RSVP piloti per sessione team — ADR-Team-Scheduler Fase 2
+  'sessionRsvp.list': handleSessionRsvpList,
+  'sessionRsvp.set': handleSessionRsvpSet,
 
   // CRM sponsor
   'sponsors.list': handleSponsorsList,

@@ -221,6 +221,12 @@ export const api = {
     remove: (session_id) => call('teamSessions.remove', { session_id }),
   },
 
+  // RSVP piloti per sessione team — ADR-Team-Scheduler Fase 2
+  sessionRsvp: {
+    list: (session_id) => call('sessionRsvp.list', { session_id }),
+    set: (payload) => call('sessionRsvp.set', payload),
+  },
+
   sponsors: {
     list: (params = {}) => call('sponsors.list', params),
     add: (payload) => call('sponsors.add', payload),
