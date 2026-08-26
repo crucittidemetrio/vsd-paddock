@@ -213,6 +213,14 @@ export const api = {
     set: (payload) => call('rsvp.set', payload),
   },
 
+  // Sessioni team (allenamenti, qualifiche, riunioni) — ADR-Team-Scheduler Fase 1
+  teamSessions: {
+    list: () => call('teamSessions.list', {}),
+    create: (payload) => call('teamSessions.create', payload),
+    update: (payload) => call('teamSessions.update', payload),
+    remove: (session_id) => call('teamSessions.remove', { session_id }),
+  },
+
   sponsors: {
     list: (params = {}) => call('sponsors.list', params),
     add: (payload) => call('sponsors.add', payload),

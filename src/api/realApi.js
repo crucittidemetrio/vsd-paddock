@@ -338,6 +338,14 @@ export async function callApi(action, payload = {}) {
         return await rsvpListAdapter(payload, token);
       case 'rsvp.set':
         return await rsvpSetAdapter(payload, token);
+      case 'teamSessions.list':
+        return await teamSessionsListAdapter(payload, token);
+      case 'teamSessions.create':
+        return await teamSessionsCreateAdapter(payload, token);
+      case 'teamSessions.update':
+        return await teamSessionsUpdateAdapter(payload, token);
+      case 'teamSessions.remove':
+        return await teamSessionsRemoveAdapter(payload, token);
       case 'sponsors.list':
         return await sponsorsListAdapter(payload, token);
       case 'sponsors.add':
@@ -1263,6 +1271,40 @@ async function rsvpSetAdapter(payload, token) {
   const res = await postToBackend('rsvp.set', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
+}
+
+/**
+ * Frontend: teamSessions.list() → array di sessioni team
+ * Backend:  teamSessions.list → { sessions: [...], count }
+ */
+async function teamSessionsListAdapter(payload, token) {
+  const res = await postToBackend('teamSessions.list', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data.sessions);
+}
+
+/**
+ * Frontend: teamSessions.create(payload) → sessione creata
+ * Backend:  teamSessions.create → riga sessione
+ */
+async function teamSessionsCreateAdapter(payload, token) {
+  return await postToBackend('teamSessions.create', payload || {}, token);
+}
+
+/**
+ * Frontend: teamSessions.update(payload) → sessione aggiornata
+ * Backend:  teamSessions.update → riga sessione
+ */
+async function teamSessionsUpdateAdapter(payload, token) {
+  return await postToBackend('teamSessions.update', payload || {}, token);
+}
+
+/**
+ * Frontend: teamSessions.remove({ session_id }) → { deleted, session_id }
+ * Backend:  teamSessions.remove → { deleted, session_id }
+ */
+async function teamSessionsRemoveAdapter(payload, token) {
+  return await postToBackend('teamSessions.remove', payload || {}, token);
 }
 
 /**

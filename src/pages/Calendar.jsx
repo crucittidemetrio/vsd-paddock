@@ -1,7 +1,35 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useRaces } from '../hooks/useRaces';
+import { useTeamSessions } from '../hooks/useTeamSessions';
+import { useAuth } from '../hooks/useAuth';
 import styles from './Calendar.module.css';
+
+const SESSION_TYPE_LABELS = {
+  allenamento_libero: 'Allenamento libero',
+  allenamento_collettivo: 'Allenamento collettivo',
+  qualifica: 'Qualifica',
+  evento_esterno: 'Evento esterno',
+  riunione: 'Riunione',
+};
+
+// Adatta una TeamSession allo stesso shape minimo di una gara, così le
+// viste esistenti (Month/Week/List) possono trattarle come lo stesso
+// tipo di evento senza duplicare la logica di rendering. `kind`
+// distingue le due entità per link e stile: le gare puntano a
+// /race/:id, le sessioni non hanno una pagina dettaglio (Fase 1).
+function sessionToEvent(s) {
+  return {
+    race_id: s.session_id,
+    kind: 'session',
+    session_type: s.type,
+    date: s.datetime_start,
+    sim: s.sim || '',
+    race_name: s.title,
+    status: 'scheduled',
+    championship_name: SESSION_TYPE_LABELS[s.type] || s.type,
+  };
+}
 
 const MONTH_NAMES = [
   'Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
@@ -94,8 +122,14 @@ function raceChampionship(r) {
 
 export default function Calendar() {
   const [viewMode, setViewMode] = useState('mese');
+  const [eventFilter, setEventFilter] = useState('tutto'); // 'gare' | 'sessioni' | 'tutto'
   const [currentDate, setCurrentDate] = useState(() => new Date());
+  const { isAuthenticated } = useAuth();
   const { data: races, isLoading } = useRaces();
+  // Sessioni team (ADR-Team-Scheduler Fase 1): backend richiede auth,
+  // quindi il layer resta vuoto per un visitatore non loggato invece di
+  // fallire — il Calendario pubblico mostra comunque le gare.
+  const { data: teamSessions } = useTeamSessions({ enabled: isAuthenticated });
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -103,9 +137,15 @@ export default function Calendar() {
   const monthCells = useMemo(() => buildMonthGrid(year, month), [year, month]);
   const weekCells = useMemo(() => buildWeekGrid(currentDate), [currentDate]);
 
+  const events = useMemo(() => {
+    const raceEvents = eventFilter !== 'sessioni' ? (races || []) : [];
+    const sessionEvents = eventFilter !== 'gare' ? (teamSessions || []).map(sessionToEvent) : [];
+    return [...raceEvents, ...sessionEvents];
+  }, [races, teamSessions, eventFilter]);
+
   const racesByDate = useMemo(() => {
     const map = new Map();
-    (races || []).forEach(r => {
+    events.forEach(r => {
       if (!r.date) return;
       const d = new Date(r.date);
       if (isNaN(d.getTime())) return;
@@ -114,14 +154,14 @@ export default function Calendar() {
       map.get(key).push(r);
     });
     return map;
-  }, [races]);
+  }, [events]);
 
   // Ordine cronologico ascendente (più vecchia in alto, più recente in fondo):
   // più leggibile in Lista, e permette di ancorare la vista alla gara più
   // vicina a oggi appena si apre la pagina (vedi ListView → scroll-to-today).
   const sortedRaces = useMemo(() => {
-    return [...(races || [])].sort((a, b) => new Date(a.date) - new Date(b.date));
-  }, [races]);
+    return [...events].sort((a, b) => new Date(a.date) - new Date(b.date));
+  }, [events]);
 
   const groupedByMonth = useMemo(() => {
     const map = new Map();
@@ -139,6 +179,7 @@ export default function Calendar() {
 
   const total = (races || []).length;
   const scheduled = (races || []).filter(r => r.status === 'scheduled').length;
+  const sessionCount = (teamSessions || []).length;
 
   return (
     <div className={styles.page}>
@@ -147,6 +188,7 @@ export default function Calendar() {
         <h1>Programma Gare</h1>
         <p className={styles.subtitle}>
           {total} gare totali · {scheduled} in programma
+          {isAuthenticated && sessionCount > 0 && ` · ${sessionCount} sessioni team`}
         </p>
       </header>
 
@@ -171,6 +213,29 @@ export default function Calendar() {
             Lista
           </button>
         </div>
+
+        {isAuthenticated && (
+          <div className={styles.viewToggle}>
+            <button
+              className={`${styles.toggleBtn} ${eventFilter === 'gare' ? styles.toggleActive : ''}`}
+              onClick={() => setEventFilter('gare')}
+            >
+              Gare
+            </button>
+            <button
+              className={`${styles.toggleBtn} ${eventFilter === 'sessioni' ? styles.toggleActive : ''}`}
+              onClick={() => setEventFilter('sessioni')}
+            >
+              Sessioni team
+            </button>
+            <button
+              className={`${styles.toggleBtn} ${eventFilter === 'tutto' ? styles.toggleActive : ''}`}
+              onClick={() => setEventFilter('tutto')}
+            >
+              Tutto
+            </button>
+          </div>
+        )}
 
         {viewMode === 'mese' && (
           <div className={styles.monthNav}>
@@ -261,17 +326,26 @@ function MonthView({ cells, racesByDate }) {
             <div key={i} className={cls}>
               <div className={styles.dayNumber}>{cell.day}</div>
               <div className={styles.dayRaces}>
-                {visible.map(r => (
-                  <Link
-                    key={r.race_id}
-                    to={`/race/${r.race_id}`}
-                    className={`${styles.raceChip} ${styles[`raceChip_${SIM_KEY[r.sim] || 'default'}`]}`}
-                    title={raceName(r)}
-                  >
-                    <span className={styles.chipSim}>{r.sim}</span>
-                    <span className={styles.chipName}>{raceName(r)}</span>
-                  </Link>
-                ))}
+                {visible.map(r => {
+                  const chipCls = `${styles.raceChip} ${styles[`raceChip_${SIM_KEY[r.sim] || 'default'}`]}`;
+                  const chipContent = (
+                    <>
+                      <span className={styles.chipSim}>{r.kind === 'session' ? '◔' : r.sim}</span>
+                      <span className={styles.chipName}>{raceName(r)}</span>
+                    </>
+                  );
+                  // Le sessioni team (Fase 1) non hanno pagina dettaglio —
+                  // chip informativo, non navigabile (a differenza delle gare).
+                  return r.kind === 'session' ? (
+                    <span key={r.race_id} className={chipCls} title={raceName(r)}>
+                      {chipContent}
+                    </span>
+                  ) : (
+                    <Link key={r.race_id} to={`/race/${r.race_id}`} className={chipCls} title={raceName(r)}>
+                      {chipContent}
+                    </Link>
+                  );
+                })}
                 {overflow > 0 && <div className={styles.raceOverflow}>+{overflow}</div>}
               </div>
             </div>
@@ -305,21 +379,25 @@ function WeekView({ cells, racesByDate }) {
                 {racesToday.length === 0 && (
                   <div className={styles.weekEmpty}>—</div>
                 )}
-                {racesToday.map(r => (
-                  <Link
-                    key={r.race_id}
-                    to={`/race/${r.race_id}`}
-                    className={`${styles.weekRace} ${styles[`weekRace_${SIM_KEY[r.sim] || 'default'}`]}`}
-                  >
-                    <div className={styles.weekRaceTime}>{formatTime(r.date)}</div>
-                    <div className={styles.weekRaceName}>{raceName(r)}</div>
-                    <div className={styles.weekRaceMeta}>
-                      <span className={styles.weekRaceSim}>{r.sim}</span>
-                      {r.status === 'live' && <span className={styles.statusLive}>LIVE</span>}
-                      {r.status === 'cancelled' && <span className={styles.statusCancelled}>Annullata</span>}
-                    </div>
-                  </Link>
-                ))}
+                {racesToday.map(r => {
+                  const cls = `${styles.weekRace} ${styles[`weekRace_${SIM_KEY[r.sim] || 'default'}`]}`;
+                  const content = (
+                    <>
+                      <div className={styles.weekRaceTime}>{formatTime(r.date)}</div>
+                      <div className={styles.weekRaceName}>{raceName(r)}</div>
+                      <div className={styles.weekRaceMeta}>
+                        <span className={styles.weekRaceSim}>{r.kind === 'session' ? raceChampionship(r) : r.sim}</span>
+                        {r.status === 'live' && <span className={styles.statusLive}>LIVE</span>}
+                        {r.status === 'cancelled' && <span className={styles.statusCancelled}>Annullata</span>}
+                      </div>
+                    </>
+                  );
+                  return r.kind === 'session' ? (
+                    <div key={r.race_id} className={cls}>{content}</div>
+                  ) : (
+                    <Link key={r.race_id} to={`/race/${r.race_id}`} className={cls}>{content}</Link>
+                  );
+                })}
               </div>
             </div>
           );
@@ -377,14 +455,10 @@ function ListView({ groupedByMonth }) {
                 const d = new Date(r.date);
                 const isPast = startOfDay(d) < today;
                 const isAnchor = r.race_id === anchorRaceId;
+                const isSession = r.kind === 'session';
 
-                return (
-                  <Link
-                    key={r.race_id}
-                    ref={isAnchor ? anchorRef : null}
-                    to={`/race/${r.race_id}`}
-                    className={`${styles.listItem} ${isPast ? styles.listItemPast : ''}`}
-                  >
+                const inner = (
+                  <>
                     <div className={styles.listDate}>
                       <div className={styles.listDay}>{d.getDate()}</div>
                       <div className={styles.listTime}>{formatTime(r.date)}</div>
@@ -392,17 +466,40 @@ function ListView({ groupedByMonth }) {
                     <div className={styles.listInfo}>
                       <div className={styles.listName}>{raceName(r)}</div>
                       <div className={styles.listMeta}>
-                        <span className={`${styles.listSim} ${styles[`listSim_${SIM_KEY[r.sim] || 'default'}`]}`}>{r.sim}</span>
+                        {r.sim && (
+                          <span className={`${styles.listSim} ${styles[`listSim_${SIM_KEY[r.sim] || 'default'}`]}`}>{r.sim}</span>
+                        )}
                         {raceChampionship(r) && <span>· {raceChampionship(r)}</span>}
                         {r.round && <span>· R{r.round}</span>}
                       </div>
                     </div>
                     <div className={styles.listStatus}>
-                      {r.status === 'scheduled' && <span className={styles.statusScheduled}>Programmata</span>}
-                      {r.status === 'completed' && <span className={styles.statusCompleted}>Conclusa</span>}
+                      {!isSession && r.status === 'scheduled' && <span className={styles.statusScheduled}>Programmata</span>}
+                      {!isSession && r.status === 'completed' && <span className={styles.statusCompleted}>Conclusa</span>}
                       {r.status === 'live' && <span className={styles.statusLive}>LIVE</span>}
                       {r.status === 'cancelled' && <span className={styles.statusCancelled}>Annullata</span>}
                     </div>
+                  </>
+                );
+
+                // Le sessioni team (Fase 1) non hanno una pagina dettaglio —
+                // riga informativa, non un link, a differenza delle gare.
+                return isSession ? (
+                  <div
+                    key={r.race_id}
+                    ref={isAnchor ? anchorRef : null}
+                    className={`${styles.listItem} ${isPast ? styles.listItemPast : ''}`}
+                  >
+                    {inner}
+                  </div>
+                ) : (
+                  <Link
+                    key={r.race_id}
+                    ref={isAnchor ? anchorRef : null}
+                    to={`/race/${r.race_id}`}
+                    className={`${styles.listItem} ${isPast ? styles.listItemPast : ''}`}
+                  >
+                    {inner}
                   </Link>
                 );
               })}

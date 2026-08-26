@@ -36,6 +36,7 @@ const SHEETS = {
   CANDIDATES: 'Candidates',
   PUSH_SUBSCRIPTIONS: 'PushSubscriptions',
   RACE_RSVPS: 'RaceRSVPs',
+  TEAM_SESSIONS: 'TeamSessions',
   SPONSORS: 'Sponsors',
   INCIDENT_RESOLUTIONS: 'IncidentResolutions',
   SKILL_INDEX_HISTORY: 'SkillIndexHistory',
@@ -296,6 +297,12 @@ const ACTIONS = {
   // Conferma presenza gara (RSVP)
   'rsvp.list': handleRsvpList,
   'rsvp.set': handleRsvpSet,
+
+  // Sessioni team (allenamenti, qualifiche, riunioni) — ADR-Team-Scheduler Fase 1
+  'teamSessions.list': handleTeamSessionsList,
+  'teamSessions.create': handleTeamSessionsCreate,
+  'teamSessions.update': handleTeamSessionsUpdate,
+  'teamSessions.remove': handleTeamSessionsRemove,
 
   // CRM sponsor
   'sponsors.list': handleSponsorsList,

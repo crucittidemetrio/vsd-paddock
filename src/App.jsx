@@ -54,6 +54,7 @@ const AdminAuditLog = lazy(() => import('./pages/AdminAuditLog'));
 const AdminHome = lazy(() => import('./pages/AdminHome'));
 const AdminCandidates = lazy(() => import('./pages/AdminCandidates'));
 const AdminSponsors = lazy(() => import('./pages/AdminSponsors'));
+const AdminTeamSessions = lazy(() => import('./pages/AdminTeamSessions'));
 const AdminMessenger = lazy(() => import('./pages/AdminMessenger'));
 const AdminIncidents = lazy(() => import('./pages/AdminIncidents'));
 const SocialManager = lazy(() => import('./pages/SocialManager'));
@@ -257,6 +258,10 @@ export default function App() {
               <Route
                 path="/admin/sponsors"
                 element={<AdminRoute><AdminSponsors /></AdminRoute>}
+              />
+              <Route
+                path="/admin/team-sessions"
+                element={<AdminRoute><AdminTeamSessions /></AdminRoute>}
               />
               <Route
                 path="/admin/messenger"
