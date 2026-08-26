@@ -44,6 +44,31 @@
   font-size: 13px;
 }
 
+.metaGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px 16px;
+  margin: 0 0 20px;
+  padding: 14px 16px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.metaItem dt {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.metaItem dd {
+  margin: 2px 0 0;
+  font-size: 13px;
+  color: #fff;
+}
+
 .dropzone {
   border: 2px dashed rgba(255, 255, 255, 0.15);
   border-radius: 12px;

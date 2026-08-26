@@ -7,13 +7,10 @@
 // Nessuna modifica ad Apps Script: il file .duckdb non lascia mai il
 // browser del pilota (vedi ADR, Obiettivo 1 — Opzione A).
 //
-// ATTENZIONE — SCHEMA NON VERIFICATO (bloccante, vedi ADR §4 punto 1):
-// i nomi di tabelle/colonne usati da TelemetryViewer.jsx (stints,
-// telemetry_samples, throttle/brake/steering/speed_kmh) sono placeholder
-// ragionevoli, MAI validati contro un vero export .duckdb di LMU. Prima
-// del rollout va aperto un file reale e corretta la query in
-// TelemetryViewer.jsx di conseguenza — questo file (apertura DB/file)
-// resta valido a prescindere dallo schema interno.
+// SCHEMA VERIFICATO il 2026-08-26 su un export reale LMU (Daytona, GT3,
+// gara). Struttura confermata: una tabella per canale (non
+// stints/telemetry_samples come ipotizzato inizialmente), vedi commento
+// in TelemetryViewer.jsx per i dettagli.
 
 import * as duckdb from '@duckdb/duckdb-wasm';
 import duckdb_wasm from '@duckdb/duckdb-wasm/dist/duckdb-mvp.wasm?url';
