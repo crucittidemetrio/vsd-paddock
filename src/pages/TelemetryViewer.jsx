@@ -57,6 +57,14 @@ function formatClock(seconds) {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+function formatLapTime(seconds) {
+  if (seconds == null) return 'in corso';
+  if (seconds === 0) return 'non valido';
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toFixed(3).padStart(6, '0')}`;
+}
+
 export default function TelemetryViewer() {
   const [status, setStatus] = useState('idle'); // idle | loading | ready | error
   const [errorMessage, setErrorMessage] = useState(null);
@@ -95,11 +103,23 @@ export default function TelemetryViewer() {
 
       const lapResult = await conn.query('SELECT ts, value AS lap_number FROM lmu_telemetry.main."Lap" ORDER BY ts');
       const lapRows = lapResult.toArray().map((r) => r.toJSON());
-      const lapsBuilt = lapRows.map((row, i) => ({
-        lapNumber: Number(row.lap_number),
-        startTs: Number(row.ts),
-        endTs: i + 1 < lapRows.length ? Number(lapRows[i + 1].ts) : null,
-      }));
+
+      // "Lap Time" registra, nello stesso istante in cui inizia un nuovo
+      // giro (stesso ts della tabella "Lap"), il tempo del giro appena
+      // concluso. value=0 significa giro invalidato (fuoripista/taglio).
+      const lapTimeResult = await conn.query('SELECT ts, value FROM lmu_telemetry.main."Lap Time" ORDER BY ts');
+      const lapTimeRows = lapTimeResult.toArray().map((r) => r.toJSON());
+      const lapTimeByTs = new Map(lapTimeRows.map((r) => [Number(r.ts).toFixed(4), Number(r.value)]));
+
+      const lapsBuilt = lapRows.map((row, i) => {
+        const endTs = i + 1 < lapRows.length ? Number(lapRows[i + 1].ts) : null;
+        return {
+          lapNumber: Number(row.lap_number),
+          startTs: Number(row.ts),
+          endTs,
+          lapTime: endTs != null ? lapTimeByTs.get(endTs.toFixed(4)) ?? null : null,
+        };
+      });
 
       lapsRef.current = lapsBuilt;
       setLaps(lapsBuilt);
@@ -221,7 +241,8 @@ export default function TelemetryViewer() {
                         className={`${styles.stintBtn} ${lap.lapNumber === selectedLap ? styles.stintBtnActive : ''}`}
                         onClick={() => handleSelectLap(lap.lapNumber)}
                       >
-                        Giro {lap.lapNumber} — inizio {formatClock(lap.startTs)}
+                        Giro {lap.lapNumber} — {formatLapTime(lap.lapTime)}
+                        <span className={styles.stintBtnSub}>da {formatClock(lap.startTs)}</span>
                       </button>
                     </li>
                   ))}

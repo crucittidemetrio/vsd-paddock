@@ -140,6 +140,13 @@
   cursor: pointer;
 }
 
+.stintBtnSub {
+  display: block;
+  margin-top: 2px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
 .stintBtn:hover { border-color: rgba(0, 212, 255, 0.3); }
 .stintBtnActive {
   border-color: #00d4ff;
