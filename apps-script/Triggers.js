@@ -54,9 +54,14 @@ function setupTriggers() {
       .create();
   });
 
-  // Sync Garage61 automatico — stessa cadenza già documentata a mano
-  // in garage61.js (lag upstream ~1-3h → ogni 4h è il compromesso già
-  // scelto in precedenza, qui solo reso installabile da codice).
+  // Sync Garage61 automatico — ogni 4h (invariato). Garage61 aveva
+  // segnalato volume eccessivo di chiamate /laps (v13, ago 2026); la
+  // causa era la ri-paginazione dell'intero storico ad ogni run, non la
+  // frequenza in sé. Fix applicato in garage61SyncLaps_ (garage61.js):
+  // fetch incrementale via after=GARAGE61_LAST_SYNC_AT, confermato da
+  // Garage61 come parametro supportato da /laps. La cadenza ogni-4h
+  // resta quindi il compromesso originale (lag upstream ~1-3h) — non
+  // serve più ridurla per stare dentro i rate limit.
   ensureTimeTrigger('garage61RunSync', 'sync Garage61 ogni 4h', () => {
     ScriptApp.newTrigger('garage61RunSync')
       .timeBased()

@@ -36,6 +36,21 @@
 //   garage61BackfillSessionType() ri-fetch i lap già nel sheet (via
 //   garage61_lap_id) da Garage61 e aggiorna la cella session_type con
 //   il valore corretto. One-shot, idempotente.
+//
+// Fetch incrementale via after= (v13, ago 2026):
+//   Garage61 ha segnalato volume eccessivo di chiamate /laps (VSD
+//   Paddock riscaricava l'intero storico di OGNI pista mappata ad ogni
+//   sync, offset=0, senza alcun filtro incrementale). Confermato
+//   direttamente da Garage61 (Alex, 27/08/2026): /laps supporta un
+//   parametro "after" (timestamp) che restringe la risposta ai soli lap
+//   creati da allora. garage61SyncLaps_ ora salva GARAGE61_LAST_SYNC_AT
+//   in Script Properties dopo ogni sync reale e lo passa come after= alla
+//   richiesta successiva, per-pista — quindi ogni run (tranne il primo,
+//   che resta un backfill completo) scarica solo i lap nuovi. Il dedup
+//   client-side (existingG61LapIds) resta come rete di sicurezza sui
+//   bordi della finestra temporale. Trigger invariato (ogni 4h,
+//   Triggers.js): il fix riduce il volume per chiamata, non la
+//   frequenza.
 // ═══════════════════════════════════════════════════════════
 
 const GARAGE61_BASE_URL = 'https://garage61.net/api/v1';
@@ -63,6 +78,22 @@ function garage61Get_(path) {
     throw new Error(`Garage61 API error: HTTP ${status}`);
   }
   return JSON.parse(body);
+}
+
+/**
+ * Fetch /teams/{slug}/statistics — record aggregati per giorno/pilota/
+ * auto/pista (lapsDriven, cleanLapsDriven, ecc.), SENZA richiedere il
+ * parametro "tracks" (a differenza di /laps). Usato sia per la scoperta
+ * piste (garage61FindMissingTracksFromHistory_) sia come gate leggero
+ * pre-/laps nel sync (v13, vedi garage61SyncLaps_).
+ *
+ * Nessuna paginazione nota per questo endpoint lato Garage61 (uso a
+ * chiamata singola confermato in produzione il 27/07/2026); gestione
+ * difensiva della forma della risposta.
+ */
+function garage61FetchStatistics_(slug) {
+  const data = garage61Get_(`/teams/${slug}/statistics`);
+  return data.drivingStatistics || data.items || (Array.isArray(data) ? data : []);
 }
 
 function garage61FetchAll_(basePath) {
@@ -463,8 +494,7 @@ function garage61AddMissingTracks() {
  */
 function garage61FindMissingTracksFromHistory_() {
   const slug = PropertiesService.getScriptProperties().getProperty('GARAGE61_TEAM_SLUG');
-  const data = garage61Get_(`/teams/${slug}/statistics`);
-  const stats = data.drivingStatistics || data.items || (Array.isArray(data) ? data : []);
+  const stats = garage61FetchStatistics_(slug);
 
   const tracksRaw = garage61ReadSheetRaw_(SHEETS.TRACKS);
   const mappedG61Ids = new Set(
@@ -904,6 +934,26 @@ function garage61SyncLaps_(options) {
   });
   Logger.log(`  Team members con iRacing account: ${iracingBySlug.size}`);
 
+  // ─── Incremental fetch via after= (v13) ──────────────────────────
+  // Conferma diretta di Garage61 (Alex, 27/08/2026): GET /laps supporta
+  // un filtro "after" (timestamp). Prima di questa fix ogni sync
+  // riscaricava l'intero storico di ogni pista mappata da offset=0,
+  // ogni volta — anche quando non c'era nulla di nuovo. Con after=
+  // impostato all'ultimo sync riuscito, ogni chiamata /laps torna solo
+  // i lap creati da allora: la paginazione per pista collassa a 1
+  // chiamata (quasi sempre 0 risultati) invece di riscorrere tutta la
+  // cronologia. Il dedup client-side (existingG61LapIds) resta come
+  // rete di sicurezza sui bordi della finestra temporale.
+  //
+  // Al primissimo sync (nessun GARAGE61_LAST_SYNC_AT salvato) after
+  // resta assente: backfill completo one-time, come da comportamento
+  // storico.
+  const props = PropertiesService.getScriptProperties();
+  const lastSyncAt = props.getProperty('GARAGE61_LAST_SYNC_AT');
+  Logger.log(lastSyncAt
+    ? `  Fetch incrementale: after=${lastSyncAt}`
+    : '  Nessun GARAGE61_LAST_SYNC_AT salvato: backfill completo (solo al primo sync).');
+
   const stats = {
     tracksProcessed: 0, lapsTotal: 0, imported: 0,
     skippedDedup: 0, skippedQuality: 0, skippedCarUnmapped: 0, skippedDriverUnmapped: 0,
@@ -918,12 +968,14 @@ function garage61SyncLaps_(options) {
 
   for (const [g61TrackId, vsdTrackId] of trackByG61Id) {
     stats.tracksProcessed++;
+
     let trackLapCount = 0;
     let offset = 0;
     const perPage = 100;
 
     for (let iter = 0; iter < 50; iter++) {
-      const path = `/laps?teams=${slug}&tracks=${g61TrackId}&limit=${perPage}&offset=${offset}`;
+      const afterParam = lastSyncAt ? `&after=${encodeURIComponent(lastSyncAt)}` : '';
+      const path = `/laps?teams=${slug}&tracks=${g61TrackId}&limit=${perPage}&offset=${offset}${afterParam}`;
       let data;
       try {
         data = garage61Get_(path);
@@ -1075,6 +1127,17 @@ function garage61SyncLaps_(options) {
   stats.sessionTypeDistributionAll = sessionTypeDistributionAll;
 
   if (writeToSheet) {
+    // Persisti il timestamp di questo sync SOLO su sync reale (mai in
+    // dry-run). Usiamo "now" — catturato PRIMA di qualsiasi chiamata
+    // /laps in questo run, non dopo — così un lap creato mentre il sync
+    // è in corso resta coperto dalla finestra after= del prossimo giro
+    // invece di rischiare di cadere nel buco tra i due timestamp.
+    try {
+      props.setProperty('GARAGE61_LAST_SYNC_AT', now);
+    } catch (e) {
+      Logger.log('⚠️ impossibile salvare GARAGE61_LAST_SYNC_AT (prossimo sync farà un altro backfill completo): ' + e.message);
+    }
+
     if (newRecords.length > 0) {
       const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(SHEETS.BEST_LAPS);
       const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
@@ -1176,4 +1239,3 @@ function handleLapsSyncFromGarage61(payload, ctx) {
     return fail(e.message || 'Errore durante il sync Garage61');
   }
 }
-
