@@ -3,7 +3,7 @@ import {
   AreaChart, Area, ComposedChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend,
 } from 'recharts';
-import { useFuelSummary } from '../../hooks/useFuelLog';
+import { useFuelSummary, useFuelStints } from '../../hooks/useFuelLog';
 import { useNow } from '../../hooks/useNow';
 import './FuelPanel.css';
 
@@ -14,6 +14,14 @@ function formatLapTimeS(s) {
   const m = Math.floor(s / 60);
   const sec = s % 60;
   return `${m}:${sec.toFixed(1).padStart(4, '0')}`;
+}
+
+// Degrado stint: positivo = giro finale più lento del primo giro pulito
+// (gomme/carburante che calano, atteso), negativo = migliorato (giri di
+// warm-up iniziali, o passo tenuto meglio del previsto).
+function formatDeltaS(s) {
+  if (s == null || !Number.isFinite(s)) return '—';
+  return `${s >= 0 ? '+' : ''}${s.toFixed(2)}s`;
 }
 
 /**
@@ -124,6 +132,15 @@ export default function FuelPanel({ raceId, carNumber, plannedEndTime = null }) 
   // per vedere l'ANDAMENTO (tiene? cala? un pit si vede come picco), non
   // per confrontare tempi assoluti con la classifica ufficiale.
   const paceSeries = (data?.series || []).filter(p => p.lap_time_s != null);
+
+  // Stint (fuel.stints) — dominio separato da fuel.summary: gira su un
+  // proprio polling/query, non blocca il resto del pannello se manca o
+  // è ancora vuoto (companion non aggiornato, o gara appena iniziata).
+  const { data: stintsData } = useFuelStints(raceId, carNumber);
+  const stints = stintsData?.stints || [];
+  const hotstintDriverKey = stintsData?.hotstint
+    ? `${stintsData.hotstint.driver_id}-${stintsData.hotstint.start_lap}`
+    : null;
 
   return (
     <section className="fp-section">
@@ -398,6 +415,52 @@ export default function FuelPanel({ raceId, carNumber, plannedEndTime = null }) 
                 />
               </ComposedChart>
             </ResponsiveContainer>
+          </div>
+        )}
+
+        {stints.length > 0 && (
+          <div className="fp-stints">
+            <div className="fp-chart-title">
+              Stint
+              <span className="fp-chart-caveat">
+                giro d&apos;uscita e giri sotto gialla esclusi dal passo medio
+              </span>
+            </div>
+            <div className="fp-stints-table-wrap">
+              <table className="fp-stints-table">
+                <thead>
+                  <tr>
+                    <th>Pilota</th>
+                    <th>Giri</th>
+                    <th>Miglior giro</th>
+                    <th>Passo medio</th>
+                    <th>Degrado</th>
+                    <th>Consumo</th>
+                    <th>Vel. media</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stints.map(stint => {
+                    const key = `${stint.driver_id}-${stint.start_lap}`;
+                    const isHot = key === hotstintDriverKey;
+                    return (
+                      <tr key={key} className={isHot ? 'fp-stint-hot' : ''}>
+                        <td>
+                          {isHot && <span className="fp-stint-hot-badge" title="Hotstint: miglior passo medio">🔥</span>}
+                          {stint.driver_name || stint.driver_id || '—'}
+                        </td>
+                        <td>{stint.start_lap}–{stint.end_lap} <span className="fp-stint-lapcount">({stint.lap_count})</span></td>
+                        <td>{formatLapTimeS(stint.best_lap_s)}</td>
+                        <td>{formatLapTimeS(stint.avg_lap_s)}</td>
+                        <td>{formatDeltaS(stint.degradation_s)}</td>
+                        <td>{stint.fuel_used_l != null ? `${stint.fuel_used_l.toFixed(1)} L` : '—'}</td>
+                        <td>{stint.avg_speed_kmh != null ? `${stint.avg_speed_kmh.toFixed(0)} km/h` : '—'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
         </>

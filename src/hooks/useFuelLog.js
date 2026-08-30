@@ -48,3 +48,25 @@ export function useMySession() {
     staleTime: 10 * 1000,
   });
 }
+
+/**
+ * useFuelStints — stint (sequenza di giri tra due soste ai box) calcolati
+ * backend-side da fuel.stints, con l'hotstint (miglior passo medio)
+ * evidenziato — vedi FuelLog.js/handleFuelStints per la logica di
+ * raggruppamento e i campi restituiti per ogni stint.
+ *
+ * Stesso ritmo di polling di useFuelSummary: gara in corso, i giri
+ * (e quindi gli stint) arrivano man mano che il companion li invia.
+ * Richiede companion aggiornato (lap_time_s/in_pits/yellow_flag/ecc. —
+ * vedi companion/fuel_bridge.py): con un companion vecchio la risposta
+ * arriva comunque ma con stint senza best_lap_s/avg_lap_s valorizzati.
+ */
+export function useFuelStints(raceId, carNumber) {
+  return useQuery({
+    queryKey: ['fuel', 'stints', raceId, carNumber],
+    queryFn: () => api.fuel.stints(raceId, carNumber),
+    enabled: !!raceId && !!carNumber,
+    refetchInterval: 15 * 1000,
+    staleTime: 10 * 1000,
+  });
+}

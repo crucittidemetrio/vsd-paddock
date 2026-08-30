@@ -311,6 +311,7 @@ endurance: {
       summary: (race_id, car_number, opts = {}) =>
         call('fuel.summary', { race_id, car_number, ...opts }),
       mySession: () => call('fuel.mySession', {}),
+      stints: (race_id, car_number) => call('fuel.stints', { race_id, car_number }),
     },
 };
 
