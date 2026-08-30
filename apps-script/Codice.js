@@ -20,7 +20,12 @@ const SHEETS = {
   CHAMPIONSHIPS: 'Championships',
   ENDURANCE_AUDITIONS: 'EnduranceAuditions',
   ENDURANCE_PARTICIPANTS: 'EnduranceParticipants',
-  ENDURANCE_AUDITION_STINTS: 'EnduranceAuditionStints',
+  // ENDURANCE_AUDITION_STINTS rimossa (audit ago 2026): mai referenziata —
+  // SetupEndurance.js crea/verifica il tab 'EnduranceAuditionStints' con una
+  // propria stringa letterale, non con questa costante. Tab vuoto, nessun
+  // handler operativo lo legge/scrive: scaffolding per il tracking risultati
+  // audizioni endurance, mai completato. Tab reale ancora presente sullo
+  // spreadsheet — valutare se completare la feature o eliminare il tab.
   ENDURANCE_STINTS: 'EnduranceStints',
   RACE_CREWS: 'RaceCrews',
   FUEL_LOG: 'FuelLog',
