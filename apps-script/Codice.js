@@ -367,6 +367,7 @@ const ACTIONS = {
   'fuel.logLive': handleFuelLogLive,
   'fuel.summary': handleFuelSummary,
   'fuel.mySession': handleFuelMySession,
+  'fuel.stints': handleFuelStints,
 };
 
 // ═══════════════════════════════════════════════════════════

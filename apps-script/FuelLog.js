@@ -14,6 +14,7 @@
 //   'fuel.logSample':  handleFuelLogSample
 //   'fuel.summary':    handleFuelSummary
 //   'fuel.mySession':  handleFuelMySession
+//   'fuel.stints':     handleFuelStints
 // ═══════════════════════════════════════════════════════════
 
 // Sessione personale considerata "attiva" solo se l'ultimo campione del
@@ -58,6 +59,37 @@ function setupFuelLogTelemetryColumns() {
 }
 
 /**
+ * Migrazione one-shot: aggiunge le colonne di passo/stint a una tab
+ * FuelLog GIÀ ESISTENTE — lap_time_s/sector1-3_s (tempo giro e settori
+ * reali dal buffer Scoring della shared memory LMU, non più solo
+ * l'approssimazione via created_at), in_pits/yellow_flag (giro
+ * "sporco" da escludere da passo/consumo medio) e num_pitstops/
+ * driver_name (confini di stint + attribuzione pilota nei driver-swap).
+ * Stesso pattern idempotente di setupFuelLogTelemetryColumns: aggiunge
+ * solo le colonne mancanti, nessun backfill sulle righe esistenti.
+ *
+ * Esecuzione: editor Apps Script → dropdown funzioni →
+ *             setupFuelLogStintColumns → ▶ Esegui (una volta sola).
+ */
+function setupFuelLogStintColumns() {
+  const sheet = getSheet(SHEETS.FUEL_LOG);
+  if (!sheet) {
+    Logger.log('⚠️  Tab FuelLog non trovata — esegui prima setupFuelLogTab().');
+    return;
+  }
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  ['lap_time_s', 'sector1_s', 'sector2_s', 'sector3_s', 'in_pits', 'num_pitstops', 'driver_name', 'yellow_flag'].forEach(col => {
+    if (headers.indexOf(col) !== -1) {
+      Logger.log('✓ Colonna "' + col + '" già esistente, nessuna modifica.');
+      return;
+    }
+    const nextCol = sheet.getLastColumn() + 1;
+    sheet.getRange(1, nextCol).setValue(col).setFontWeight('bold');
+    Logger.log('✅ Colonna "' + col + '" aggiunta in posizione ' + nextCol + '.');
+  });
+}
+
+/**
  * fuel.logSample — Registra un campione di consumo (un giro).
  * Auth: richiesta. driver_id preso da ctx (token), MAI dal payload,
  * per evitare che un token compromesso possa scrivere a nome di un
@@ -66,7 +98,11 @@ function setupFuelLogTelemetryColumns() {
  * @param {Object} payload - {
  *   race_id, car_number, lap_number,
  *   fuel_remaining_l, fuel_capacity_l,
- *   virtual_energy_pct?  // solo classi ibride (LMDh/Hypercar), opzionale
+ *   virtual_energy_pct?,  // solo classi ibride (LMDh/Hypercar), opzionale
+ *   lap_time_s?, sector1_s?, sector2_s?, sector3_s?,  // buffer Scoring, giro appena concluso
+ *   in_pits?, yellow_flag?,   // booleani: giro "sporco" (out/in-lap o FCY/locale) — esclusi da passo/consumo medio
+ *   num_pitstops?,            // contatore cumulativo, usato per i confini di stint
+ *   driver_name?              // chi guidava (mDriverName) — solo testo di conferma, driver_id resta da ctx
  * }
  * @param {Object} ctx - Auth context (richiesto)
  * @returns {Object} ok({ sample }) oppure fail
@@ -114,6 +150,26 @@ function handleFuelLogSample(payload, ctx) {
       ? Number(payload.speed_max_kmh) : '',
     speed_avg_kmh: payload.speed_avg_kmh !== undefined && payload.speed_avg_kmh !== null && payload.speed_avg_kmh !== ''
       ? Number(payload.speed_avg_kmh) : '',
+    // Wave: passo/stint dal buffer Scoring — tempo giro e settori reali
+    // (non l'approssimazione via created_at usata prima), più i due
+    // flag "giro sporco" (in_pits, yellow_flag) che fuel.summary e
+    // fuel.stints usano per escludere questo giro da passo/consumo
+    // medio. num_pitstops/driver_name servono solo a fuel.stints per
+    // capire dove finisce uno stint e chi lo ha guidato. Tutti
+    // opzionali per restare compatibili con companion non aggiornati.
+    lap_time_s: payload.lap_time_s !== undefined && payload.lap_time_s !== null && payload.lap_time_s !== ''
+      ? Number(payload.lap_time_s) : '',
+    sector1_s: payload.sector1_s !== undefined && payload.sector1_s !== null && payload.sector1_s !== ''
+      ? Number(payload.sector1_s) : '',
+    sector2_s: payload.sector2_s !== undefined && payload.sector2_s !== null && payload.sector2_s !== ''
+      ? Number(payload.sector2_s) : '',
+    sector3_s: payload.sector3_s !== undefined && payload.sector3_s !== null && payload.sector3_s !== ''
+      ? Number(payload.sector3_s) : '',
+    in_pits: payload.in_pits === true,
+    yellow_flag: payload.yellow_flag === true,
+    num_pitstops: payload.num_pitstops !== undefined && payload.num_pitstops !== null && payload.num_pitstops !== ''
+      ? Number(payload.num_pitstops) : '',
+    driver_name: payload.driver_name ? String(payload.driver_name).trim() : '',
     source: 'telemetry',
     created_at: new Date().toISOString(),
   };
@@ -187,6 +243,20 @@ function handleFuelLogLive(payload, ctx) {
 
 function fuelLiveKey_(raceId, carNumber) {
   return 'fuel_live_' + raceId + '|' + carNumber;
+}
+
+// Un giro è "pulito" (utilizzabile per passo/consumo medio e per il
+// ranking hotstint) solo se non è un out/in-lap (in_pits) e non è
+// stato percorso sotto bandiera gialla, a tutto campo o locale
+// (yellow_flag) — entrambi falsano il dato: un in-lap è più lento per
+// via del limitatore, un giro sotto FCY consuma meno carburante del
+// normale, quindi includerlo abbasserebbe la stima di consumo e
+// rischierebbe un rifornimento insufficiente al box successivo.
+// Righe scritte da un companion pre-Wave (senza questi due campi)
+// risultano '' non true/false: trattate come pulite (comportamento
+// invariato per lo storico esistente).
+function isCleanLap_(sample) {
+  return sample.in_pits !== true && sample.yellow_flag !== true;
 }
 
 // Ping considerato valido solo se recente — se il companion si chiude
@@ -264,6 +334,12 @@ function handleFuelSummary(payload, ctx) {
       speed_min_kmh: s.speed_min_kmh !== '' && s.speed_min_kmh != null ? Number(s.speed_min_kmh) : null,
       speed_max_kmh: s.speed_max_kmh !== '' && s.speed_max_kmh != null ? Number(s.speed_max_kmh) : null,
       speed_avg_kmh: s.speed_avg_kmh !== '' && s.speed_avg_kmh != null ? Number(s.speed_avg_kmh) : null,
+      // Wave: passo reale dal buffer Scoring (sostituisce l'approssimazione
+      // via created_at quando disponibile — vedi loop delta sotto) e i due
+      // flag "giro sporco" usati da isCleanLap_.
+      lap_time_s: s.lap_time_s !== '' && s.lap_time_s != null ? Number(s.lap_time_s) : null,
+      in_pits: s.in_pits === true,
+      yellow_flag: s.yellow_flag === true,
     }))
     .sort((a, b) => {
       if (a.lap_number !== b.lap_number) return a.lap_number - b.lap_number;
@@ -302,33 +378,46 @@ function handleFuelSummary(payload, ctx) {
 
   // Delta positivo = consumo. Delta negativo = rabbocco (pit) — escluso
   // dalla media mobile, altrimenti falserebbe la stima di consumo.
+  // Wave: in più, il consumo/passo del giro "cur" entra in gioco SOLO
+  // se isCleanLap_(cur) — un in/out-lap o un giro sotto gialla non
+  // rappresenta il consumo/passo "di gara" e falserebbe la proiezione
+  // (tipicamente un giro a bandiera gialla consuma MENO carburante del
+  // normale: includerlo abbassa la stima e rischia un rifornimento
+  // insufficiente al pit stop successivo).
   const fuelDeltas = [];
   const energyDeltas = [];
   const lapTimeDeltas = [];
   for (let i = 1; i < samples.length; i++) {
     const prev = samples[i - 1];
     const cur = samples[i];
-    if (prev.fuel_remaining_l != null && cur.fuel_remaining_l != null) {
+    const clean = isCleanLap_(cur);
+    if (clean && prev.fuel_remaining_l != null && cur.fuel_remaining_l != null) {
       const d = prev.fuel_remaining_l - cur.fuel_remaining_l;
       if (d > 0) fuelDeltas.push(d);
     }
-    if (prev.virtual_energy_pct != null && cur.virtual_energy_pct != null) {
+    if (clean && prev.virtual_energy_pct != null && cur.virtual_energy_pct != null) {
       const d = prev.virtual_energy_pct - cur.virtual_energy_pct;
       if (d > 0) energyDeltas.push(d);
     }
-    // Tempo reale tra un campione e il successivo — usato per convertire
-    // "minuti a fine stint" in "giri residui" lato frontend (vedi
-    // FuelPanel.jsx, calcolo automatico target laps per gare ufficiali).
-    const prevT = new Date(prev.created_at).getTime();
-    const curT = new Date(cur.created_at).getTime();
-    if (!isNaN(prevT) && !isNaN(curT) && curT > prevT) {
-      const lapTimeS = (curT - prevT) / 1000;
-      lapTimeDeltas.push(lapTimeS);
+    // Tempo giro: preferito il valore reale dal buffer Scoring
+    // (lap_time_s, timer di gioco) quando il companion lo manda; solo
+    // se assente si torna al vecchio calcolo via created_at (companion
+    // non aggiornati, o dati storici pre-Wave) — quest'ultimo include
+    // anche latenza di rete quindi è sempre un'approssimazione.
+    // Usato per convertire "minuti a fine stint" in "giri residui" lato
+    // frontend (vedi FuelPanel.jsx, calcolo automatico target laps).
+    let lapTimeS = cur.lap_time_s;
+    if (lapTimeS == null) {
+      const prevT = new Date(prev.created_at).getTime();
+      const curT = new Date(cur.created_at).getTime();
+      if (!isNaN(prevT) && !isNaN(curT) && curT > prevT) lapTimeS = (curT - prevT) / 1000;
+    }
+    if (lapTimeS != null) {
       // Riattaccato al campione stesso (non solo all'array flat delle
       // delta) così la series sotto può esporre il passo giro-per-giro
-      // per il grafico "Passo Gara" — approssimato dal tempo reale tra
-      // due campioni consecutivi, non un vero timer di sessione LMU.
+      // per il grafico "Passo Gara".
       cur._lapTimeS = lapTimeS;
+      if (clean) lapTimeDeltas.push(lapTimeS);
     }
   }
 
@@ -430,4 +519,128 @@ function handleFuelMySession(_payload, ctx) {
     lap_number: latest.lap_number !== '' ? Number(latest.lap_number) : null,
     created_at: latest.created_at,
   });
+}
+
+// Soglia minima di giri puliti perché uno stint entri in gara per il
+// titolo di "hotstint" — evita che un singolo giro isolato (es. subito
+// prima di una bandiera rossa) con un tempo fortunato vinca il
+// confronto solo perché non c'è nulla con cui fare la media.
+const FUEL_STINTS_MIN_CLEAN_LAPS_FOR_HOTSTINT = 3;
+
+/**
+ * fuel.stints — Raggruppa i giri di una vettura (letti da FuelLog) in
+ * stint (sequenza di giri tra due soste ai box) e calcola passo medio,
+ * degrado, consumo e velocità media per ciascuno — sola lettura, non
+ * scrive nulla. Individua anche l'"hotstint": lo stint con il miglior
+ * passo medio tra quelli con abbastanza giri puliti da essere
+ * significativi (vedi FUEL_STINTS_MIN_CLEAN_LAPS_FOR_HOTSTINT).
+ *
+ * Confine di stint = nuova riga quando la riga PRECEDENTE aveva
+ * in_pits=true (questa riga è l'out-lap del nuovo stint), oppure
+ * num_pitstops è salito rispetto alla riga precedente (copre il caso
+ * in cui il campione in_pits fosse mancante), oppure cambia driver_id
+ * (driver swap). "Giro pulito" = stessa definizione di isCleanLap_,
+ * PIÙ il primo giro di ogni stint escluso a prescindere (out-lap:
+ * anche quando in_pits non lo marca esplicitamente, il passo di un
+ * out-lap non è mai rappresentativo dello stint).
+ *
+ * Richiede companion aggiornato (lap_time_s, sector1-3_s, in_pits,
+ * yellow_flag, num_pitstops, driver_name) — righe FuelLog pre-Wave senza
+ * questi campi vengono comunque incluse nel raggruppamento (in_pits/
+ * yellow_flag assenti = giro trattato come pulito) ma senza lap_time_s
+ * non contribuiscono a best/avg/degradation di nessuno stint.
+ *
+ * @param {Object} payload - { race_id, car_number }
+ * @param {Object} ctx - Auth context (richiesto, stesso livello di fuel.summary)
+ * @returns {Object} ok({
+ *   stints: [{ driver_id, driver_name, start_lap, end_lap, lap_count,
+ *              clean_lap_count, best_lap_s, avg_lap_s, degradation_s,
+ *              fuel_used_l, avg_speed_kmh }],
+ *   hotstint: <uno degli oggetti sopra, o null se nessuno stint ha
+ *              abbastanza giri puliti>
+ * })
+ */
+function handleFuelStints(payload, ctx) {
+  if (!ctx) return fail('Auth richiesto');
+
+  payload = payload || {};
+  const raceId = String(payload.race_id || '').trim();
+  const carNumber = String(payload.car_number || '').trim();
+  if (!raceId) return fail('race_id obbligatorio');
+  if (!carNumber) return fail('car_number obbligatorio');
+
+  const rows = sheetToObjects(SHEETS.FUEL_LOG)
+    .filter(s => String(s.race_id).trim() === raceId && String(s.car_number).trim() === carNumber)
+    .map(s => ({
+      driver_id: s.driver_id,
+      driver_name: s.driver_name || '',
+      lap_number: Number(s.lap_number),
+      lap_time_s: s.lap_time_s !== '' && s.lap_time_s != null ? Number(s.lap_time_s) : null,
+      fuel_remaining_l: s.fuel_remaining_l !== '' ? Number(s.fuel_remaining_l) : null,
+      speed_avg_kmh: s.speed_avg_kmh !== '' && s.speed_avg_kmh != null ? Number(s.speed_avg_kmh) : null,
+      in_pits: s.in_pits === true,
+      yellow_flag: s.yellow_flag === true,
+      num_pitstops: s.num_pitstops !== '' && s.num_pitstops != null ? Number(s.num_pitstops) : null,
+      created_at: s.created_at,
+    }))
+    .sort((a, b) => {
+      if (a.lap_number !== b.lap_number) return a.lap_number - b.lap_number;
+      return String(a.created_at || '').localeCompare(String(b.created_at || ''));
+    });
+
+  if (rows.length === 0) return ok({ stints: [], hotstint: null });
+
+  const stintGroups = [];
+  let current = null;
+  rows.forEach((row, i) => {
+    const prev = i > 0 ? rows[i - 1] : null;
+    const startsNewStint = !prev
+      || prev.in_pits === true
+      || (prev.num_pitstops != null && row.num_pitstops != null && row.num_pitstops > prev.num_pitstops)
+      || prev.driver_id !== row.driver_id;
+    if (startsNewStint) {
+      current = { driver_id: row.driver_id, driver_name: row.driver_name, laps: [] };
+      stintGroups.push(current);
+    }
+    current.laps.push(row);
+  });
+
+  const stints = stintGroups.map(group => {
+    const laps = group.laps;
+    // idx !== 0: il primo giro dello stint (out-lap) è sempre escluso
+    // dal passo, anche se in_pits non l'ha marcato esplicitamente — vedi
+    // commento sopra la funzione.
+    const cleanLaps = laps.filter((lap, idx) => idx !== 0 && isCleanLap_(lap) && lap.lap_time_s != null);
+    const lapTimes = cleanLaps.map(l => l.lap_time_s);
+    const bestLapS = lapTimes.length ? Math.min(...lapTimes) : null;
+    const avgLapS = lapTimes.length ? lapTimes.reduce((s, v) => s + v, 0) / lapTimes.length : null;
+    const degradationS = lapTimes.length >= 2 ? (lapTimes[lapTimes.length - 1] - lapTimes[0]) : null;
+
+    const fuelValues = laps.map(l => l.fuel_remaining_l).filter(v => v != null);
+    const fuelUsedL = fuelValues.length >= 2 ? Math.max(0, fuelValues[0] - fuelValues[fuelValues.length - 1]) : null;
+
+    const speedValues = cleanLaps.map(l => l.speed_avg_kmh).filter(v => v != null);
+    const avgSpeedKmh = speedValues.length ? speedValues.reduce((s, v) => s + v, 0) / speedValues.length : null;
+
+    return {
+      driver_id: group.driver_id,
+      driver_name: group.driver_name,
+      start_lap: laps[0].lap_number,
+      end_lap: laps[laps.length - 1].lap_number,
+      lap_count: laps.length,
+      clean_lap_count: cleanLaps.length,
+      best_lap_s: bestLapS,
+      avg_lap_s: avgLapS,
+      degradation_s: degradationS,
+      fuel_used_l: fuelUsedL,
+      avg_speed_kmh: avgSpeedKmh,
+    };
+  });
+
+  const eligible = stints.filter(s => s.clean_lap_count >= FUEL_STINTS_MIN_CLEAN_LAPS_FOR_HOTSTINT && s.avg_lap_s != null);
+  const hotstint = eligible.length
+    ? eligible.reduce((best, s) => (s.avg_lap_s < best.avg_lap_s ? s : best))
+    : null;
+
+  return ok({ stints, hotstint });
 }

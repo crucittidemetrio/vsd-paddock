@@ -23,8 +23,9 @@ Setup (pilota, nessuna modifica manuale di file richiesta):
      loggati, nessun ID da copiare). Comportamento invariato se invece
      si digita un race_id (gara ufficiale o test con etichetta fissa).
   3. Lancia Le Mans Ultimate, entra in pista — i campioni partono da
-     soli ad ogni cambio giro (comprese velocità min/max/media del giro
-     e traccia/vettura rilevate in automatico). Ctrl+C per fermare.
+     soli ad ogni cambio giro (comprese velocità min/max/media del giro,
+     tempo giro/settori, pit/bandiera gialla e traccia/vettura rilevate
+     in automatico). Ctrl+C per fermare.
 
   (config.example.json resta disponibile per chi preferisce compilare
   il file a mano invece di rispondere alle domande.)
@@ -248,6 +249,37 @@ def post_live_async(cfg: dict, payload: dict) -> None:
     threading.Thread(target=post_live, args=(cfg, payload), daemon=True).start()
 
 
+def _find_player_scoring(scor_data):
+    """Trova la riga del player in vehScoringInfo. L'indice NON è detto
+    coincida con playerVehicleIdx della telemetria — gli array Scoring e
+    Telemetry non hanno garanzia di essere ordinati allo stesso modo
+    (Scoring tende a seguire l'ordine di classifica) — quindi si cerca
+    sempre per mIsPlayer==True invece di riusare l'indice della
+    telemetria."""
+    info = scor_data.scoringInfo
+    count = min(info.mNumVehicles, len(scor_data.vehScoringInfo))
+    for i in range(count):
+        veh = scor_data.vehScoringInfo[i]
+        if veh.mIsPlayer:
+            return veh
+    return None
+
+
+def _session_yellow_active(scoring_info) -> bool:
+    """True se in quell'istante è attiva una gialla a tutto campo
+    (mYellowFlagState — valori -1=invalid e 0=none esclusi) oppure una
+    gialla locale in uno qualsiasi dei 3 settori (mSectorFlag). Sono
+    entrambi campi di sessione (non per-vettura): una gialla vale per
+    chiunque la stia attraversando, non solo per chi l'ha causata."""
+    try:
+        state = int.from_bytes(scoring_info.mYellowFlagState, "little", signed=True)
+    except Exception:  # noqa: BLE001 — lettura strappata, tratta come "nessuna gialla"
+        state = 0
+    fcy_active = state not in (-1, 0)
+    local_yellow = any(b != 0 for b in scoring_info.mSectorFlag)
+    return fcy_active or local_yellow
+
+
 def _decode_name(raw) -> str:
     """Decodifica un campo char[] della shared memory (mTrackName,
     mVehicleName) in stringa Python pulita. La shared memory riempie il
@@ -297,6 +329,16 @@ def main() -> None:
     # svuotate e ridotte a min/max/media quando il giro cambia — vedi
     # sotto, subito prima di costruire il payload del campione per-giro.
     lap_speed_samples = []
+    # in_pits/yellow_flag: booleani accumulati con OR ad OGNI poll (non
+    # letti una tantum al cambio giro) perché sono transitori — con un
+    # poll ogni 2s, un ingresso ai box o una gialla locale potrebbero
+    # già essere rientrati esattamente nell'istante in cui rileviamo il
+    # cambio giro, perdendo l'evento. Accumulando lungo tutto il giro
+    # invece del singolo istante si cattura in modo affidabile "è
+    # successo qualcosa di sporco in questo giro", che è quello che
+    # serve al backend per escluderlo da passo/consumo medio.
+    lap_in_pits_flag = False
+    lap_yellow_flag = False
 
     # Stato "modalità personale": race_id generato in automatico,
     # rinnovato dopo SOLO_SESSION_GAP_S secondi di inattività — stessa
@@ -325,6 +367,8 @@ def main() -> None:
                 # Non in pista (menu, box, replay) — niente da mandare.
                 last_sent_lap = None
                 lap_speed_samples = []
+                lap_in_pits_flag = False
+                lap_yellow_flag = False
                 time.sleep(POLL_INTERVAL_S)
                 continue
 
@@ -348,6 +392,18 @@ def main() -> None:
                 vel = car.mLocalVel
                 speed_kmh = (vel.x ** 2 + vel.y ** 2 + vel.z ** 2) ** 0.5 * 3.6
 
+            # Buffer Scoring (separato dalla Telemetry sopra): passo/settori/
+            # pit/gialle/pilota vivono qui, non nel buffer Telemetry. Trovato
+            # per mIsPlayer, non per indice (vedi _find_player_scoring).
+            # Letto ad OGNI tick (non solo al cambio giro) perché in_pits e
+            # yellow servono accumulati lungo tutto il giro — vedi commento
+            # su lap_in_pits_flag/lap_yellow_flag più sopra.
+            scor_data = sim.LMUData.scoring
+            player_scoring = _find_player_scoring(scor_data)
+            if player_scoring is not None:
+                lap_in_pits_flag = lap_in_pits_flag or bool(player_scoring.mInPits)
+                lap_yellow_flag = lap_yellow_flag or _session_yellow_active(scor_data.scoringInfo)
+
             if sane and lap_number != last_sent_lap:
                 race_id, car_number = current_ids()
 
@@ -361,6 +417,19 @@ def main() -> None:
                     speed_avg = sum(lap_speed_samples) / len(lap_speed_samples)
                 lap_speed_samples = []
 
+                # Idem per in_pits/yellow: il valore accumulato appartiene al
+                # giro appena concluso, va letto e azzerato qui — PRIMA che
+                # il resto del tick inizi ad accumulare per il nuovo giro
+                # (l'accumulo sopra questo blocco, essendo eseguito ogni
+                # tick, ha già aggiornato i flag anche per QUESTO tick: se il
+                # nuovo giro iniziasse già "sporco" — es. subito dopo essere
+                # usciti dai box — verrebbe comunque incluso qui sotto,
+                # correttamente, come parte del giro appena concluso).
+                lap_was_in_pits = lap_in_pits_flag
+                lap_was_yellow = lap_yellow_flag
+                lap_in_pits_flag = False
+                lap_yellow_flag = False
+
                 payload = {
                     "race_id": race_id,
                     "car_number": car_number,
@@ -369,6 +438,8 @@ def main() -> None:
                     "fuel_capacity_l": round(fuel_capacity, 2),
                     "track_name": track_name,
                     "vehicle_name": vehicle_name,
+                    "in_pits": lap_was_in_pits,
+                    "yellow_flag": lap_was_yellow,
                 }
                 # Energia virtuale solo se la vettura la usa davvero
                 # (classi non ibride restano a 0 — evitiamo rumore).
@@ -378,6 +449,32 @@ def main() -> None:
                     payload["speed_min_kmh"] = round(speed_min, 1)
                     payload["speed_max_kmh"] = round(speed_max, 1)
                     payload["speed_avg_kmh"] = round(speed_avg, 1)
+
+                # Passo/settori/pilota dal buffer Scoring — mLastLapTime e
+                # affini sono già "il giro appena concluso" secondo il gioco
+                # stesso a questo punto (il buffer Scoring si aggiorna a
+                # 5Hz, molto più frequente del nostro poll a 2s, quindi ha
+                # sempre fatto in tempo ad aggiornarsi). Valori <=0 sono la
+                # convenzione rF2/LMU per "non ancora disponibile" (es.
+                # primissimo giro dopo la connessione) — omessi anziché
+                # inviati come zero, per non falsare le medie lato backend.
+                if player_scoring is not None:
+                    driver_name = _decode_name(player_scoring.mDriverName)
+                    if driver_name:
+                        payload["driver_name"] = driver_name
+                    payload["num_pitstops"] = int(player_scoring.mNumPitstops)
+
+                    lap_time_s = float(player_scoring.mLastLapTime)
+                    sector1_s = float(player_scoring.mLastSector1)
+                    sector2_cum_s = float(player_scoring.mLastSector2)  # cumulato: settore1+settore2
+                    if lap_time_s > 0:
+                        payload["lap_time_s"] = round(lap_time_s, 3)
+                    if sector1_s > 0:
+                        payload["sector1_s"] = round(sector1_s, 3)
+                    if sector1_s > 0 and sector2_cum_s > sector1_s:
+                        payload["sector2_s"] = round(sector2_cum_s - sector1_s, 3)
+                        if lap_time_s > sector2_cum_s:
+                            payload["sector3_s"] = round(lap_time_s - sector2_cum_s, 3)
 
                 post_sample_async(cfg, payload)
                 last_sent_lap = lap_number
@@ -417,6 +514,8 @@ def main() -> None:
             sim = connect()
             last_sent_lap = None
             lap_speed_samples = []
+            lap_in_pits_flag = False
+            lap_yellow_flag = False
 
         time.sleep(POLL_INTERVAL_S)
 
