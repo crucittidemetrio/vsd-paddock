@@ -5,7 +5,9 @@ Questa cartella contiene due script indipendenti:
 - **`fuel_bridge.py`** — telemetria live carburante/energia durante la
   gara (guida sotto, per ogni pilota).
 - **`results_bridge.py`** — import automatico dei risultati post-gara
-  (guida in fondo al file, solo staff/admin).
+  (guida in fondo al file, solo staff/admin). Come per il fuel bridge,
+  esiste un `.exe` già compilato: nessun membro dello staff deve avere
+  competenze Python per usarlo.
 
 ---
 
@@ -185,26 +187,45 @@ affidabile da cui partire (vedi anche la ricerca sulle API ACE/LMU).
 
 ## Setup (staff/admin)
 
-Serve un token generato dal **tuo** profilo (bottone "Genera token
-companion") con account staff/admin — `raceResults.import` è
-un'azione riservata, un token da pilota semplice viene rifiutato dal
-backend.
+Nessuna installazione, nessun Python: un unico file da scaricare e
+avviare, stesso principio del fuel bridge.
+
+**Cosa ti serve prima di iniziare:**
+
+- Un account **staff o admin** su VSD Paddock — `raceResults.import` è
+  un'azione riservata, un token da pilota semplice viene rifiutato dal
+  backend.
+- Il tuo token personale, generato una volta dal tuo profilo (bottone
+  **"Genera token companion"**).
+
+**Setup:**
+
+| Passo | Cosa fare |
+|---|---|
+| 1 | Scarica `vsd-results-bridge.exe` — nessun account richiesto: https://github.com/crucittidemetrio/vsd-paddock/releases/download/companion-latest/vsd-results-bridge.exe |
+| 2 | Doppio click. Come per il fuel bridge, Windows mostrerà "Windows ha protetto il PC" al primo avvio — clicca **"Ulteriori informazioni"** → **"Esegui comunque"** (vedi spiegazione nella guida piloti sopra, vale identica qui) |
+| 3 | Si apre una finestra nera. **Solo la prima volta**, chiede il token e la cartella da sorvegliare — puoi indicare la tua cartella Download per zero attrito: salvi il JSON scaricato da LMU e lo script se ne accorge da solo |
+| 4 | Lascia la finestra aperta. Quando arriva un file risultati, ti chiede a terminale a quale gara del calendario abbinarlo e lo importa da solo |
+
+Le volte successive non richiede più le domande — si ricorda tutto.
+Per cambiare token o cartella, cancella `results_config.json` accanto
+all'exe.
+
+Per importare un singolo file senza lasciare la finestra aperta
+(watch-loop):
+
+```
+vsd-results-bridge.exe "C:\percorso\al\file.json"
+```
+
+### Eseguire da sorgente (sviluppo/test, solo per chi ha Python)
 
 ```
 cd companion
 python results_bridge.py
 ```
 
-Al primo avvio chiede il token e la cartella da sorvegliare (di
-default quella dello script; puoi indicare la tua cartella Download
-per zero attrito — salvi il JSON scaricato da LMU e lo script se ne
-accorge da solo). Le volte successive parte diretto.
-
-Per importare un singolo file senza aprire il watch-loop:
-
-```
-python results_bridge.py "C:\percorso\al\file.json"
-```
+Stesso comportamento dell'exe, comprese le domande al primo avvio.
 
 ## Come funziona
 
@@ -234,6 +255,10 @@ companion/
   results_bridge_state.json     ← generato da solo, traccia i file già importati
 ```
 
-Nessuna dipendenza esterna (solo standard library) — non serve
-compilare un exe, uno script staff può girare direttamente `python
-results_bridge.py`.
+Nessuna dipendenza esterna (solo standard library) — l'exe è compilato
+dallo stesso workflow `.github/workflows/build-companion.yml` che
+builda `vsd-fuel-bridge.exe`, ad ogni push su `main` che tocca
+`companion/`. Link pubblico stabile (nessun login, non cambia mai):
+`https://github.com/crucittidemetrio/vsd-paddock/releases/download/companion-latest/vsd-results-bridge.exe`.
+Per compilarlo a mano: `pyinstaller --onefile --name vsd-results-bridge results_bridge.py`
+(nessun `--hidden-import` necessario, a differenza del fuel bridge).

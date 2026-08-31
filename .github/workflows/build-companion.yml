@@ -1,20 +1,22 @@
-name: Build companion exe
+name: Build companion exes
 
-# Compila vsd-fuel-bridge.exe su un runner Windows ad ogni push su main
-# che tocca companion/ — nessun pilota deve avere Python installato.
+# Compila vsd-fuel-bridge.exe (piloti) E vsd-results-bridge.exe (staff)
+# su un runner Windows ad ogni push su main che tocca companion/ —
+# nessuno deve avere Python installato per usarli.
 #
-# Pubblica l'exe in DUE posti:
+# Pubblica entrambi gli exe in DUE posti:
 #  1. Artifact della run (richiede login GitHub, utile per lo staff/QA)
 #  2. GitHub Release pubblica a tag fisso "companion-latest" (NESSUN
-#     login richiesto — questo è il link da dare ai piloti). Ogni push
-#     sovrascrive l'asset della stessa release, quindi il link resta
-#     sempre identico: non va ricondiviso ad ogni aggiornamento.
+#     login richiesto — questo è il link da dare a piloti/staff). Ogni
+#     push sovrascrive gli asset della stessa release, quindi i link
+#     restano sempre identici: non vanno ricondivisi ad ogni aggiornamento.
 #
-# Nota per chi lo riceve: l'exe non è firmato digitalmente (una firma
-# codice richiede un'identità aziendale registrata a pagamento), quindi
-# Windows SmartScreen mostrerà "Windows ha protetto il PC" al primo
-# avvio — è normale, va cliccato "Ulteriori informazioni" → "Esegui
-# comunque". Vedi companion/README.md per i dettagli da dare ai piloti.
+# Nota per chi li riceve: gli exe non sono firmati digitalmente (una
+# firma codice richiede un'identità aziendale registrata a pagamento),
+# quindi Windows SmartScreen mostrerà "Windows ha protetto il PC" al
+# primo avvio — è normale, va cliccato "Ulteriori informazioni" →
+# "Esegui comunque". Vedi companion/README.md per i dettagli da dare a
+# piloti/staff.
 
 permissions:
   contents: write
@@ -43,17 +45,29 @@ jobs:
       - name: Installa PyInstaller
         run: pip install pyinstaller
 
-      - name: Build exe
+      - name: Build fuel_bridge.exe
         # --paths/--hidden-import: lmu_data.py è importato a runtime via
         # sys.path.insert (vedi fuel_bridge.py), che l'analisi statica
         # di PyInstaller non vede da sola — senza questi due flag l'exe
         # compila ma crasha al primo avvio con ModuleNotFoundError.
         run: pyinstaller --onefile --name vsd-fuel-bridge --paths vendor --hidden-import lmu_data fuel_bridge.py
 
+      - name: Build results_bridge.exe
+        # Nessun --hidden-import necessario: results_bridge.py usa solo
+        # standard library (json/sys/time/pathlib/urllib), niente import
+        # dinamico via sys.path da nascondere all'analisi statica.
+        run: pyinstaller --onefile --name vsd-results-bridge results_bridge.py
+
       - uses: actions/upload-artifact@v4
         with:
           name: vsd-fuel-bridge-exe
           path: companion/dist/vsd-fuel-bridge.exe
+          retention-days: 90
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vsd-results-bridge-exe
+          path: companion/dist/vsd-results-bridge.exe
           retention-days: 90
 
       - name: Pubblica/aggiorna la Release pubblica (companion-latest)
@@ -64,9 +78,10 @@ jobs:
           name: "Companion — build automatica"
           body: >
             Build automatica dell'ultimo commit su companion/. Scarica
-            vsd-fuel-bridge.exe qui sotto — link stabile, nessun login
+            vsd-fuel-bridge.exe (piloti) o vsd-results-bridge.exe
+            (staff/admin) qui sotto — link stabili, nessun login
             richiesto. Guida d'uso: companion/README.md.
-          artifacts: companion/dist/vsd-fuel-bridge.exe
+          artifacts: "companion/dist/vsd-fuel-bridge.exe,companion/dist/vsd-results-bridge.exe"
           allowUpdates: true
           replacesArtifacts: true
           makeLatest: false

@@ -25,13 +25,17 @@ Cosa fa:
   4. Segna il file come già processato, cosi' non lo re-importa al
      giro successivo.
 
-Setup:
-  1. python results_bridge.py
+Setup (nessun Python richiesto: doppio click su vsd-results-bridge.exe,
+già compilato da .github/workflows/build-companion.yml — vedi
+companion/README.md per il link pubblico. Sotto, l'equivalente da
+sorgente per chi ha Python):
+  1. python results_bridge.py  (oppure vsd-results-bridge.exe)
   2. Al primo avvio chiede token (da profilo → "Genera token
      companion", serve un account staff/admin: raceResults.import
      è un'azione riservata) e la cartella da sorvegliare.
   3. Lascia lo script aperto, o rilancialo con un file specifico:
        python results_bridge.py "C:\\Downloads\\risultati_gara.json"
+       (o: vsd-results-bridge.exe "C:\\Downloads\\risultati_gara.json")
      per importare un singolo file senza aprire il watch-loop.
 
 Limite noto: LMU non ha un'API ufficiale (vedi ricerca companion/
