@@ -19,6 +19,11 @@ const PUBLIC_ITEMS = [
   { to: '/results', label: LABELS.nav_results, icon: '⚑' },
   { to: '/compare', label: 'Confronto', icon: '⚖' },
   { to: '/endurance', label: LABELS.nav_endurance, icon: '◐' },
+  // Voce visibile a tutti (individuabile da chiunque visiti il sito),
+  // il contenuto è invece gated a pilot_vsd+ dentro Setup.jsx stesso
+  // (stesso pattern di RaceDetail.jsx: pagina pubblica, sezioni interne
+  // protette con RequireTier/LoginPrompt).
+  { to: '/setup', label: 'Setup', icon: '⚙' },
 ];
 
 // Eventi VSD — formati proprietari interni (non le gare/campionati standard),
