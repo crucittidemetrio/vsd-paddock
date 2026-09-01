@@ -37,6 +37,7 @@ const ChampionshipDetail  = lazy(() => import('./pages/ChampionshipDetail'));
 const AdminImportResults  = lazy(() => import('./pages/AdminImportResults'));
 const AdminImportLapData  = lazy(() => import('./pages/AdminImportLapData'));
 const PaceAnalysis        = lazy(() => import('./pages/PaceAnalysis'));
+const PitWall             = lazy(() => import('./pages/PitWall'));
 const AdminImportStandings= lazy(() => import('./pages/AdminImportStandings'));
 const AdminTeamDashboard  = lazy(() => import('./pages/AdminTeamDashboard'));
 const AdminGarage61Sync   = lazy(() => import('./pages/AdminGarage61Sync'));
@@ -146,6 +147,14 @@ export default function App() {
                 element={
                   <RequireTier minTier="pilot_vsd" fallback={<LoginPrompt feature="l'Analisi di Passo" />}>
                     <PaceAnalysis />
+                  </RequireTier>
+                }
+              />
+              <Route
+                path="/pitwall"
+                element={
+                  <RequireTier minTier="pilot_vsd" fallback={<LoginPrompt feature="il Pit Wall" />}>
+                    <PitWall />
                   </RequireTier>
                 }
               />

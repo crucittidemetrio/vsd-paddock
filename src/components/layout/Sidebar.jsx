@@ -57,6 +57,7 @@ const PILOT_ITEMS = [
   { to: '/training', label: LABELS.nav_training, icon: '◆' },
   { to: '/team-sessions', label: 'Sessioni team', icon: '◔' },
   { to: '/pace-analysis', label: 'Analisi di Passo', icon: '⏱' },
+  { to: '/pitwall', label: 'Pit Wall', icon: '◉' },
   { to: '/consenso', label: 'Il mio consenso', icon: '✎' },
 ];
 
