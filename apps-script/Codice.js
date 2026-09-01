@@ -48,6 +48,7 @@ const SHEETS = {
   SKILL_INDEX_HISTORY: 'SkillIndexHistory',
   REPORT_REACTIONS: 'ReportReactions',
   CHAMPIONSHIP_INTEREST: 'ChampionshipInterest',
+  LAP_DATA: 'LapData',
 };
 
 // ID dello spreadsheet principale (VSD_HUB_DB). Usato solo dagli script che
@@ -373,6 +374,11 @@ const ACTIONS = {
   'fuel.summary': handleFuelSummary,
   'fuel.mySession': handleFuelMySession,
   'fuel.stints': handleFuelStints,
+
+  // Obiettivo 3 — Analisi di Passo da SimHub (upload manuale CSV a fine sessione)
+  'lapData.import': handleLapDataImport,
+  'lapData.sessions': handleLapDataSessions,
+  'lapData.session': handleLapDataSession,
 };
 
 // ═══════════════════════════════════════════════════════════

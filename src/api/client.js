@@ -121,6 +121,13 @@ export const api = {
       call('raceResults.import', { race_id, json_data }),
   },
 
+  // Obiettivo 3 — Analisi di Passo da SimHub (upload manuale CSV)
+  lapData: {
+    import: (csv_text) => call('lapData.import', { csv_text }),
+    sessions: () => call('lapData.sessions'),
+    session: (session_id) => call('lapData.session', { session_id }),
+  },
+
   academy: {
     ranking: (sim) => call('academy.ranking', { sim }),
   },

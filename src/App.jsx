@@ -35,6 +35,8 @@ const EnduranceDetail     = lazy(() => import('./pages/EnduranceDetail'));
 const UE144               = lazy(() => import('./pages/UE144'));
 const ChampionshipDetail  = lazy(() => import('./pages/ChampionshipDetail'));
 const AdminImportResults  = lazy(() => import('./pages/AdminImportResults'));
+const AdminImportLapData  = lazy(() => import('./pages/AdminImportLapData'));
+const PaceAnalysis        = lazy(() => import('./pages/PaceAnalysis'));
 const AdminImportStandings= lazy(() => import('./pages/AdminImportStandings'));
 const AdminTeamDashboard  = lazy(() => import('./pages/AdminTeamDashboard'));
 const AdminGarage61Sync   = lazy(() => import('./pages/AdminGarage61Sync'));
@@ -140,6 +142,14 @@ export default function App() {
                 }
               />
               <Route
+                path="/pace-analysis"
+                element={
+                  <RequireTier minTier="pilot_vsd" fallback={<LoginPrompt feature="l'Analisi di Passo" />}>
+                    <PaceAnalysis />
+                  </RequireTier>
+                }
+              />
+              <Route
                 path="/training"
                 element={
                   <RequireTier minTier="pilot_vsd" fallback={<LoginPrompt feature="il modulo Training" />}>
@@ -200,6 +210,10 @@ export default function App() {
               <Route
                 path="/admin/import-results"
                 element={<AdminRoute><AdminImportResults /></AdminRoute>}
+              />
+              <Route
+                path="/admin/import-lap-data"
+                element={<AdminRoute><AdminImportLapData /></AdminRoute>}
               />
               <Route
                 path="/admin/team-dashboard"

@@ -256,6 +256,12 @@ export async function callApi(action, payload = {}) {
         return await raceResultsListAdapter(payload, token);
      case 'raceResults.import':                              // ← NEW
         return await raceResultsImportAdapter(payload, token); // ← NEW
+      case 'lapData.import':
+        return await postToBackend('lapData.import', payload || {}, token);
+      case 'lapData.sessions':
+        return await postToBackend('lapData.sessions', payload || {}, token);
+      case 'lapData.session':
+        return await postToBackend('lapData.session', payload || {}, token);
       case 'academy.ranking':
         return await academyRankingAdapter(payload, token);
       case 'recap.mine':
