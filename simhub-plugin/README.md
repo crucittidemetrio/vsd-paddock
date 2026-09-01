@@ -42,12 +42,26 @@ fisso che ci serve. Un plugin minimale su misura evita entrambi i problemi.
    SimHub il pannello proprietà (es. tab "Additional plugins" → dashboard
    editor → cerca proprietà, oppure Controls → Formulas) e verifica dal
    vivo questi path — sono le uniche cose che potrebbero non compilare o
-   restituire sempre vuoto/zero:
+   restituire sempre vuoto/zero.
+
+   **Già confermate via browser proprietà live del plugin NeoRed LMU Data**
+   (già installato sulla macchina di gara, 288 proprietà, basato sulla REST
+   API locale di LMU su `localhost:6397` — più affidabile della shared
+   memory generica): sezione Weather → `Current.AmbientTemp` (aria) e
+   `Track.Temp` (asfalto); sezione Game Infos → `PitState` (in-pit). Manca
+   solo il **prefisso completo** con cui SimHub espone queste property nel
+   namespace del plugin (`NeoRedPrefix` in cima al file, dedotto dal nome
+   del DLL `NeoRed.lmuDataPlugin.dll` ma non verificato) — click destro/copia
+   sul nome di una property in SimHub e correggi se il path pieno è diverso.
+
+   NeoRed **non** espone carburante residuo grezzo (sezione Energy ha solo
+   consumo/stima per giro, niente livello in litri) né bandiera gialla live
+   (solo `FlagRules`, impostazione di sessione) — questi restano su property
+   generiche core di SimHub, ancora da verificare:
    - `DataCorePlugin.GameData.NewData.Fuel`
-   - `DataCorePlugin.GameData.NewData.RoadTemperature` (non "TrackTemperature")
-   - `DataCorePlugin.GameData.NewData.AirTemperature`
-   - `DataCorePlugin.GameData.NewData.IsInPit` (potrebbe essere `IsInPitLane`)
    - `DataCorePlugin.GameData.NewData.Flag_Yellow` (nome incerto per rF2/LMU)
+
+   Anche queste, non toccate dalla ricerca NeoRed:
    - `DataCorePlugin.GameData.NewData.DriverName` (potrebbe essere `PlayerName`)
    - `DataCorePlugin.GameData.NewData.CompletedLaps`
    - `DataCorePlugin.GameData.NewData.LastLapTime`

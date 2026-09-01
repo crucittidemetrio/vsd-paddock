@@ -29,12 +29,29 @@
 // PropertyNames sotto è l'UNICO punto da correggere se il debug in
 // SimHub mostra path diversi da quelli qui sotto.
 //
-// PRIMA DI FIDARTI DI QUESTO FILE: apri SimHub → tab "Additional
-// plugins" o il pannello Formulas/proprietà con LMU in esecuzione,
-// cerca dal vivo i path Fuel/RoadTemperature/AirTemperature/
-// IsInPit/Flag_Yellow/DriverName/CompletedLaps/LastLapTime e correggi
-// le costanti in PropertyNames se differiscono. Questo è esattamente
-// lo STEP 0.3 che tocca a te.
+// Aggiornamento post-spike (browser proprietà NeoRed LMU Data plugin,
+// già installato e attivo sulla macchina di gara): temperature e stato
+// pit-lane sono confermate DA UI LIVE, non più solo ipotesi:
+//   - Weather → "Current.AmbientTemp" e "Track.Temp" (aria/asfalto)
+//   - Game Infos → "PitState" (in-pit)
+// Il PREFISSO completo di queste property (namespace del plugin NeoRed
+// davanti al suffisso mostrato in UI) resta da confermare dal vivo — la
+// UI di SimHub mostra path abbreviati per sezione, non la stringa piena
+// da passare a GetPropertyValue(). Il prefisso sotto (NeoRedPrefix) è
+// dedotto dal nome del DLL (NeoRed.lmuDataPlugin.dll) ma NON verificato:
+// prima di buildare, click destro/copia sul nome di una property in
+// SimHub (es. "Current.AmbientTemp") e correggi NeoRedPrefix se il path
+// copiato è diverso.
+// Carburante residuo in litri e bandiera gialla NON sono esposti da
+// NeoRed (sezione Energy ha solo consumo/stima, nessun livello grezzo;
+// "flag" in NeoRed è solo FlagRules, impostazione di sessione) — restano
+// sulle property generiche core di SimHub, ancora da verificare.
+//
+// PRIMA DI FIDARTI DI QUESTO FILE: apri SimHub con LMU in esecuzione e
+// verifica NeoRedPrefix + Fuel + FlagYellow + DriverName + CompletedLaps
+// + LastLapTime (vedi lista in PropertyNames sotto) e correggi le
+// costanti se differiscono. Questo è esattamente lo STEP 0.3 che tocca
+// a te.
 // ═══════════════════════════════════════════════════════════
 
 using System;
@@ -50,11 +67,24 @@ namespace VsdLapDataLogger
     /// </summary>
     internal static class PropertyNames
     {
+        // Prefisso plugin NeoRed LMU Data — dedotto dal nome del DLL
+        // (NeoRed.lmuDataPlugin.dll), NON confermato dal vivo. Verificare
+        // con click destro/copia su una property in SimHub e correggere
+        // qui se il path pieno differisce (unico punto da toccare).
+        public const string NeoRedPrefix = "NeoRed.lmuDataPlugin.";
+
+        // ── Confermate via browser proprietà NeoRed live (screenshot UI) ──
+        public const string RoadTemperature = NeoRedPrefix + "Weather.Track.Temp";          // °C — sezione Weather, NON "TrackTemperature"
+        public const string AirTemperature = NeoRedPrefix + "Weather.Current.AmbientTemp";  // °C — sezione Weather
+        public const string IsInPit = NeoRedPrefix + "GameInfos.PitState";                  // sezione Game Infos — tipo esatto (bool/enum/stringa) da verificare, ReadBool gestisce entrambi
+
+        // ── NeoRed non le espone (verificato: sezione Energy = solo consumo/stima,
+        //    "flag" = solo FlagRules di sessione) → restano su property core SimHub,
+        //    ancora da confermare dal vivo ──
         public const string Fuel = "DataCorePlugin.GameData.NewData.Fuel";                 // litri
-        public const string RoadTemperature = "DataCorePlugin.GameData.NewData.RoadTemperature"; // °C — NON "TrackTemperature"
-        public const string AirTemperature = "DataCorePlugin.GameData.NewData.AirTemperature";   // °C
-        public const string IsInPit = "DataCorePlugin.GameData.NewData.IsInPit";           // bool — verificare, potrebbe essere IsInPitLane
         public const string FlagYellow = "DataCorePlugin.GameData.NewData.Flag_Yellow";    // bool — verificare nome esatto per rF2/LMU
+
+        // ── Non toccate dalla ricerca NeoRed, ancora ipotesi da verificare ──
         public const string DriverName = "DataCorePlugin.GameData.NewData.DriverName";     // string — verificare, potrebbe essere PlayerName
         public const string CompletedLaps = "DataCorePlugin.GameData.NewData.CompletedLaps"; // int
         public const string LastLapTime = "DataCorePlugin.GameData.NewData.LastLapTime";   // TimeSpan
@@ -174,6 +204,9 @@ namespace VsdLapDataLogger
             }
         }
 
+        // Tollerante anche a PitState come stringa/enum (es. "None"/"Pit"),
+        // non solo bool — il tipo esatto restituito da NeoRed per PitState
+        // non è confermato, quindi copriamo tutti i casi plausibili.
         private static bool ReadBool(PluginManager pm, string propertyName)
         {
             try
@@ -181,6 +214,12 @@ namespace VsdLapDataLogger
                 var raw = pm.GetPropertyValue(propertyName);
                 if (raw == null) return false;
                 if (raw is bool b) return b;
+                if (raw is string s)
+                {
+                    if (string.IsNullOrEmpty(s)) return false;
+                    var normalized = s.Trim().ToLowerInvariant();
+                    return normalized != "none" && normalized != "false" && normalized != "0" && normalized != "no";
+                }
                 return Convert.ToDouble(raw, CultureInfo.InvariantCulture) != 0;
             }
             catch

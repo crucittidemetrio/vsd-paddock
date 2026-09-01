@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>VsdPitwallBridge</RootNamespace>
+    <AssemblyName>VsdPitwallBridge</AssemblyName>
+    <!-- Il plugin rF2/LMU è a 64 bit: il bridge deve girare in x64, non AnyCPU/x86 -->
+    <PlatformTarget>x64</PlatformTarget>
+    <Platforms>x64</Platforms>
+  </PropertyGroup>
+
+  <!--
+    NOTA: se preferisci non fare interop manuale sulla shared memory (vedi commento
+    in RF2Scoring.cs), sostituisci con il pacchetto NuGet "rF2SharedMemoryNet"
+    (Domaslau/rF2SharedMemoryNet) e usa i suoi struct già mappati/testati:
+
+    <ItemGroup>
+      <PackageReference Include="rF2SharedMemoryNet" Version="*" />
+    </ItemGroup>
+
+    Verifica il nome esatto del pacchetto su nuget.org prima di aggiungerlo: non è
+    incluso di default in questo scheletro per non introdurre una dipendenza non
+    verificata a occhio.
+  -->
+
+</Project>
