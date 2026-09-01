@@ -1,0 +1,81 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Progetto minimale per compilare VsdLapDataLoggerPlugin.cs come plugin
+    SimHub SENZA passare dal template Visual Studio ufficiale
+    (C:\Program Files (x86)\SimHub\PluginSdk\User.PluginSdkDemo) — quel
+    template si gestisce comodamente solo con l'IDE Visual Studio
+    completo (Solution Explorer, "Aggiungi elemento esistente"), che su
+    questa macchina NON risulta installato (solo Visual Studio Build
+    Tools, senza interfaccia). Questo .csproj usa invece l'SDK moderno
+    via "dotnet build" — stesso identico comando già usato con successo
+    per VSD Pitwall Bridge, nessun IDE necessario.
+
+    Nomi/percorsi delle DLL SimHub e versione target (v4.8) NON inventati:
+    letti direttamente dal vero User.PluginSdkDemo.csproj presente su
+    questa macchina.
+  -->
+
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>VsdLapDataLogger</AssemblyName>
+    <RootNamespace>VsdLapDataLogger</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!--
+      Reference assembly per compilare un target .NET Framework 4.8 anche
+      senza Visual Studio/Developer Pack installato — stesso trucco usato
+      per compilare target .NET Framework da ambienti "solo SDK moderno"
+      (CI Linux, sandbox, ecc.). Se sulla macchina il Developer Pack v4.8
+      è già presente (via Build Tools), questo pacchetto semplicemente
+      non serve ma non causa conflitti.
+    -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3">
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <!--
+    SIMHUB_INSTALL_PATH: variabile d'ambiente impostata dall'installer di
+    SimHub stesso (confermato leggendo il vero User.PluginSdkDemo.csproj
+    su questa macchina) — punta alla cartella di installazione con lo
+    slash finale incluso, es. "C:\Program Files (x86)\SimHub\". Se il
+    build fallisce con un errore tipo "impossibile trovare SimHub.Plugins.dll"
+    (percorso vuoto/sbagliato), la variabile non è impostata: ditelo e la
+    sostituiamo con il percorso assoluto.
+  -->
+  <ItemGroup>
+    <Reference Include="SimHub.Plugins">
+      <HintPath>$(SIMHUB_INSTALL_PATH)SimHub.Plugins.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="GameReaderCommon">
+      <HintPath>$(SIMHUB_INSTALL_PATH)GameReaderCommon.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!--
+    Compile Include di default dell'SDK (globbing automatico di tutti i
+    .cs nella cartella) basta da solo: VsdLapDataLoggerPlugin.cs è l'unico
+    file .cs qui dentro, nessun bisogno di elencarlo esplicitamente (anzi,
+    farlo causerebbe un doppio include).
+  -->
+
+  <!--
+    Stesso identico passo del template ufficiale (vedi PostBuildEvent nel
+    suo .csproj): a fine build copia la DLL (+ PDB) direttamente nella
+    cartella di installazione di SimHub — non serve copiarla a mano,
+    basta riavviare SimHub dopo la build.
+  -->
+  <Target Name="CopyPluginToSimHub" AfterTargets="Build" Condition="'$(SIMHUB_INSTALL_PATH)' != ''">
+    <ItemGroup>
+      <PluginOutputFiles Include="$(TargetDir)$(AssemblyName).dll" />
+      <PluginOutputFiles Include="$(TargetDir)$(AssemblyName).pdb" Condition="Exists('$(TargetDir)$(AssemblyName).pdb')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(PluginOutputFiles)" DestinationFolder="$(SIMHUB_INSTALL_PATH)" />
+  </Target>
+
+</Project>

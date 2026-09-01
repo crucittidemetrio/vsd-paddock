@@ -48,6 +48,20 @@
   border-radius: var(--r-md);
 }
 
+.user-card-link {
+  text-decoration: none;
+  cursor: pointer;
+  transition: background var(--t-fast);
+}
+
+.user-card-link:hover {
+  background: var(--color-surface-hover, rgba(255, 255, 255, 0.05));
+}
+
+.user-card-link:hover .user-name {
+  color: var(--vsd-cyan);
+}
+
 .user-avatar {
   width: 36px;
   height: 36px;

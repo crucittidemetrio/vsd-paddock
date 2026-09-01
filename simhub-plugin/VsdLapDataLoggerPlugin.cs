@@ -57,6 +57,7 @@
 using System;
 using System.Globalization;
 using System.IO;
+using GameReaderCommon; // GameData — confermato leggendo User.PluginSdkDemo.csproj reale (referenzia GameReaderCommon.dll)
 using SimHub.Plugins; // dal template User.PluginSdkDemo — vedi README
 
 namespace VsdLapDataLogger
@@ -79,16 +80,41 @@ namespace VsdLapDataLogger
         public const string IsInPit = NeoRedPrefix + "GameInfos.PitState";                  // sezione Game Infos — tipo esatto (bool/enum/stringa) da verificare, ReadBool gestisce entrambi
 
         // ── NeoRed non le espone (verificato: sezione Energy = solo consumo/stima,
-        //    "flag" = solo FlagRules di sessione) → restano su property core SimHub,
-        //    ancora da confermare dal vivo ──
-        public const string Fuel = "DataCorePlugin.GameData.NewData.Fuel";                 // litri
-        public const string FlagYellow = "DataCorePlugin.GameData.NewData.Flag_Yellow";    // bool — verificare nome esatto per rF2/LMU
+        //    "flag" = solo FlagRules di sessione) → restano su property core SimHub ──
+        public const string Fuel = "DataCorePlugin.GameData.NewData.Fuel";                 // litri — CONFERMATO dal test reale (calo sensato giro dopo giro)
 
-        // ── Non toccate dalla ricerca NeoRed, ancora ipotesi da verificare ──
-        public const string DriverName = "DataCorePlugin.GameData.NewData.DriverName";     // string — verificare, potrebbe essere PlayerName
+        // Flag_Yellow: nome property confermato corretto (esiste davvero in SimHub,
+        // vedi forum ufficiale). MA per LMU è un limite noto e documentato, non un
+        // bug nostro: la property segnala "bandiera gialla in QUALSIASI punto del
+        // circuito", non solo nel settore del pilota — a differenza di iRacing/ACC
+        // che la localizzano. Quindi durante una sessione con traffico/incidenti
+        // (anche IA) può restare vera per giri interi senza che sia un errore di
+        // lettura. Fonte: simhubdash.com/community-2/simhub-support/
+        // yellow-flags-local-sector-only-in-lmu/ — la fix "vera" richiederebbe
+        // leggere GameRawData.Data.mSectorFlag01/02/03 per settore, molto più
+        // complesso di quanto serva qui: per ora "giro pulito" in Analisi di Passo
+        // filtra semplicemente su questo valore, sapendo che può essere
+        // sovra-inclusivo (troppi giri esclusi) più che sotto-inclusivo.
+        public const string FlagYellow = "DataCorePlugin.GameData.NewData.Flag_Yellow";
+
+        // DriverName: la property generica "DataCorePlugin.GameData.NewData.DriverName"
+        // testata dal vivo il 01/09/2026 è risultata sempre vuota (limite noto SimHub
+        // per molti giochi, non solo LMU). Nel browser proprietà NeoRed la sezione
+        // "Team Infos" espone "Driver" — path dedotto per lo stesso pattern già
+        // confermato per Weather (nome sezione senza spazi + nome proprietà). NON
+        // ancora verificato dal vivo con un valore reale: se torna ancora vuoto,
+        // il path pieno differisce e va corretto qui.
+        public const string DriverName = NeoRedPrefix + "TeamInfos.Driver";
+
+        // ── Confermate dal test reale del 01/09/2026 (valori sensati nel CSV) ──
         public const string CompletedLaps = "DataCorePlugin.GameData.NewData.CompletedLaps"; // int
         public const string LastLapTime = "DataCorePlugin.GameData.NewData.LastLapTime";   // TimeSpan
-        public const string GameName = "DataCorePlugin.GameData.GameName";                 // string (per popolare "sim")
+
+        // "sim" NON viene più letto da una property SimHub (nessun risultato utile
+        // cercando "game"/"name" nel browser proprietà, vedi verifica dal vivo del
+        // 01/09/2026) — questo plugin è scritto solo per LMU (usa proprietà
+        // specifiche NeoRed), quindi il valore è fisso. Un punto di rottura in meno.
+        public const string GameNameFixed = "LMU";
     }
 
     public class VsdLapDataLoggerPlugin : IPlugin, IDataPlugin
@@ -165,7 +191,7 @@ namespace VsdLapDataLogger
         private void WriteLapRow(PluginManager pluginManager, int lapNumber)
         {
             var driverName = ReadString(pluginManager, PropertyNames.DriverName);
-            var sim = ReadString(pluginManager, PropertyNames.GameName);
+            var sim = PropertyNames.GameNameFixed;
             var lapTimeMs = ReadLapTimeMs(pluginManager);
             var trackTemp = ReadDouble(pluginManager, PropertyNames.RoadTemperature);
             var airTemp = ReadDouble(pluginManager, PropertyNames.AirTemperature);

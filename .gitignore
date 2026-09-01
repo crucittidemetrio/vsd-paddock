@@ -34,3 +34,5 @@ companion/results_bridge_state.json
 companion/dist/
 companion/build/
 companion/*.spec
+simhub-plugin/bin/
+simhub-plugin/obj/

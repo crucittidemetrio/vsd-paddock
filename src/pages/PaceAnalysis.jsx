@@ -25,7 +25,13 @@ function buildDriverSeries(laps, drivers, onlyClean) {
   const filtered = onlyClean ? laps.filter((l) => l.clean) : laps;
   const byLap = {};
   filtered.forEach((l) => {
-    if (l.lap_time_ms == null) return;
+    // lap_time_ms <= 0 è il sentinel "nessun tempo ancora" (tipicamente il
+    // giro 1, prima che SimHub abbia un LastLapTime valido — vedi
+    // simhub-plugin) — stessa convenzione già usata in PitWall.jsx
+    // (fmtLapTime: "seconds <= 0" → nessun tempo). Non è un giro a 0
+    // secondi reale: va escluso dal grafico, non plottato come punto a y=0
+    // (altrimenti sballa anche il dominio dell'asse Y).
+    if (l.lap_time_ms == null || l.lap_time_ms <= 0) return;
     const key = l.lap_number;
     if (!byLap[key]) byLap[key] = { lap_number: key };
     byLap[key][driverLabel(l)] = l.lap_time_ms / 1000; // secondi, più leggibile in tooltip
@@ -35,7 +41,8 @@ function buildDriverSeries(laps, drivers, onlyClean) {
 
 function buildDriverStats(laps, driver) {
   const driverLaps = laps.filter((l) => driverLabel(l) === driver);
-  const cleanLaps = driverLaps.filter((l) => l.clean && l.lap_time_ms != null);
+  // Stessa esclusione del sentinel "nessun tempo" di buildDriverSeries sopra.
+  const cleanLaps = driverLaps.filter((l) => l.clean && l.lap_time_ms != null && l.lap_time_ms > 0);
   const times = cleanLaps.map((l) => l.lap_time_ms);
   const best = times.length ? Math.min(...times) : null;
   const avg = times.length ? times.reduce((a, b) => a + b, 0) / times.length : null;
@@ -93,6 +100,11 @@ export default function PaceAnalysis() {
       <section className={styles.selectorRow}>
         <label className={styles.selectorLabel}>Sessione</label>
         {sessionsQuery.isLoading && <span className={styles.hint}>Caricamento…</span>}
+        {sessionsQuery.isError && (
+          <span className={styles.hint}>
+            Errore nel caricare le sessioni ({sessionsQuery.error?.message || 'sconosciuto'}).
+          </span>
+        )}
         {sessionsQuery.data && (
           <select
             className={styles.select}

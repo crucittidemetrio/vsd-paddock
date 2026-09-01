@@ -32,29 +32,60 @@ export default function TopBar({ onHamburgerClick = () => {} }) {
       <div className="topbar-right">
         {isAuthenticated ? (
           <>
-            <div className="user-card">
-              <div className="user-avatar">
-                {discordAvatarUrl ? (
-                  <img
-                    src={discordAvatarUrl}
-                    alt={driver?.display_name || 'avatar'}
-                    style={{
-                      width: '100%',
-                      height: '100%',
-                      borderRadius: '50%',
-                      objectFit: 'cover',
-                      display: 'block',
-                    }}
-                  />
-                ) : (
-                  initials
-                )}
+            {/* Cliccabile → scheda pilota personale (/roster/:driverId), stessa
+                destinazione delle roster card (vedi Roster.jsx). Se per qualche
+                motivo non abbiamo ancora un driver_id (es. profilo minimale
+                subito dopo il login Discord), resta un div non cliccabile
+                invece di puntare a un link rotto. */}
+            {driver?.driver_id ? (
+              <Link to={`/roster/${driver.driver_id}`} className="user-card user-card-link">
+                <div className="user-avatar">
+                  {discordAvatarUrl ? (
+                    <img
+                      src={discordAvatarUrl}
+                      alt={driver?.display_name || 'avatar'}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        display: 'block',
+                      }}
+                    />
+                  ) : (
+                    initials
+                  )}
+                </div>
+                <div className="user-meta">
+                  <div className="user-name">{driver?.display_name || '—'}</div>
+                  <div className="user-role">{driver?.role?.toUpperCase() || ''}</div>
+                </div>
+              </Link>
+            ) : (
+              <div className="user-card">
+                <div className="user-avatar">
+                  {discordAvatarUrl ? (
+                    <img
+                      src={discordAvatarUrl}
+                      alt={driver?.display_name || 'avatar'}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                        display: 'block',
+                      }}
+                    />
+                  ) : (
+                    initials
+                  )}
+                </div>
+                <div className="user-meta">
+                  <div className="user-name">{driver?.display_name || '—'}</div>
+                  <div className="user-role">{driver?.role?.toUpperCase() || ''}</div>
+                </div>
               </div>
-              <div className="user-meta">
-                <div className="user-name">{driver?.display_name || '—'}</div>
-                <div className="user-role">{driver?.role?.toUpperCase() || ''}</div>
-              </div>
-            </div>
+            )}
             <button className="logout-btn" onClick={logout}>
               {LABELS.nav_logout}
             </button>
