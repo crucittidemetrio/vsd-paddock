@@ -20,9 +20,9 @@ memory, 5Hz) e lo trasmette via WebSocket a un client (il futuro modulo
   affidabile solo per la vettura del giocatore locale, non per i compagni di
   squadra in altre postazioni. Se serve, va aggiunto come sorgente separata
   per-macchina, non nel bridge condiviso.
-- **Non scrive su Google Sheets/VSD_HUB_DB.** Il live feed resta locale;
-  solo a fine stint/sessione va mandato uno snapshot riassuntivo verso
-  l'endpoint Apps Script esistente (pattern di `RaceResultsImport.gs`).
+- **Il live feed (WebSocket) resta locale, non scrive mai su Sheets.** A
+  fine sessione, però (vedi sotto), il bridge manda SEPARATAMENTE un
+  riepilogo — best lap per pilota — al backend, non l'intero flusso live.
 
 ## Origine dei dati
 
@@ -55,14 +55,44 @@ Se in futuro LMU aggiorna l'API con nuovi campi, questi finiscono negli array
 funzionare, semplicemente non li legge finche' non vengono aggiunti
 esplicitamente allo struct.
 
+## Registrazione best lap a fine sessione (pitwall.logSession)
+
+Oltre al live feed via WebSocket, il bridge tiene traccia dell'ultimo
+snapshot valido dello Scoring buffer. Quando la sessione LMU finisce (il
+buffer smette di rispondere), manda al backend Apps Script il miglior giro
+di **ogni pilota in griglia** che ne ha fatto uno valido — non solo il
+giocatore locale, perché lo Scoring buffer copre tutta la griglia.
+
+Stesso contratto della companion Python (`companion/fuel_bridge.py`): body
+JSON `{action, token, payload}` come `text/plain` verso la stessa Web App
+Apps Script, azione `pitwall.logSession`. Il token è personale (pulsante
+"Genera token companion" nel profilo VSD-Paddock, staff/admin — la
+registrazione scrive dati per tutta la griglia, non solo per il titolare
+del token) e viene chiesto al primo avvio, poi salvato in
+`Documenti\VSD Paddock\pitwall-config.json` (vedi `PitwallConfig.cs`).
+
+**Cosa NON fa**: non scrive nel tab "manuale" di BestLaps dietro al Muro
+dei Record — un giro di una sessione qualsiasi non è automaticamente un
+record ufficiale. Finisce in un tab separato (`PitwallSessions`, vedi
+`apps-script/PitwallSessions.js`), consultabile nella pagina `/pitwall`
+sotto "Sessioni registrate". Se un giro merita di diventare un record
+ufficiale, resta una scelta editoriale dello staff col flusso manuale già
+esistente.
+
+**Setup una tantum lato backend** (Apps Script editor → ▶ Esegui):
+`setupPitwallSessionsTab` — crea il tab se non esiste già, idempotente.
+
 ## Setup lato LMU
 
 1. Le Mans Ultimate → Settings → Gameplay → **Enable Plugins**: ON.
 2. Riavvia il gioco.
 3. Avvia il bridge (`dotnet run`, build x64) mentre LMU e' in sessione.
+4. Al primo avvio, se non hai già un token: incollalo quando richiesto (dal
+   tuo profilo VSD-Paddock, pulsante "Genera token companion").
 
 ## Prossimi passi
 
-- Hook React (`useWebSocket`) lato vsd-paddock per il modulo `/pitwall`.
-- Endpoint Apps Script per lo snapshot di fine stint (riuso pattern
-  `RaceResultsImport.gs`).
+- ~~Hook React (`useWebSocket`) lato vsd-paddock per il modulo `/pitwall`~~ — fatto.
+- ~~Endpoint Apps Script per lo snapshot di fine sessione~~ — fatto
+  (`pitwall.logSession`, best lap per pilota — non uno snapshot completo
+  di ogni stint/pit stop, quello resta un possibile step successivo).

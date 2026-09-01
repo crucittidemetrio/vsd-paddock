@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Net;
+using System.Net.Http;
 using System.Net.WebSockets;
 using System.Text;
 using System.Text.Json;
@@ -19,8 +20,10 @@ public class Program
         Console.WriteLine($"WebSocket in ascolto su {WsPrefix}");
         Console.WriteLine("In attesa che Le Mans Ultimate sia avviato e in sessione...");
 
+        var cfg = PitwallConfig.LoadOrCreate();
+
         var httpTask = RunWebSocketServerAsync();
-        var pollTask = RunScoringPollLoopAsync();
+        var pollTask = RunScoringPollLoopAsync(cfg);
 
         await Task.WhenAll(httpTask, pollTask);
     }
@@ -79,29 +82,49 @@ public class Program
 
     // ------------------------------------------------------------------
     // Loop di polling: legge lo Scoring buffer, costruisce il payload,
-    // lo manda a tutti i client connessi.
+    // lo manda a tutti i client connessi. Tiene anche traccia dell'ultimo
+    // snapshot valido per poter registrare il best lap di ogni pilota
+    // (griglia intera, non solo il giocatore locale) quando la sessione
+    // finisce — vedi PostSessionSummaryAsync più sotto.
     // ------------------------------------------------------------------
-    private static async Task RunScoringPollLoopAsync()
+    private static async Task RunScoringPollLoopAsync(PitwallConfig cfg)
     {
         using var reader = new RF2ScoringReader();
+        using var http = new HttpClient();
         bool wasOpen = false;
+        string? sessionId = null;
+        RF2Scoring? lastScoring = null;
 
         while (true)
         {
             if (!reader.TryOpen())
             {
-                if (wasOpen) Console.WriteLine("Sessione LMU persa, in attesa di riconnessione...");
+                if (wasOpen)
+                {
+                    Console.WriteLine("Sessione LMU persa, in attesa di riconnessione...");
+                    if (lastScoring is { } finalScoring && sessionId != null)
+                    {
+                        await PostSessionSummaryAsync(http, cfg, finalScoring, sessionId);
+                    }
+                }
                 wasOpen = false;
+                sessionId = null;
+                lastScoring = null;
                 await Task.Delay(1000);
                 continue;
             }
 
-            if (!wasOpen) Console.WriteLine("Sessione LMU agganciata.");
+            if (!wasOpen)
+            {
+                Console.WriteLine("Sessione LMU agganciata.");
+                sessionId = "PW-" + DateTime.UtcNow.ToString("yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture);
+            }
             wasOpen = true;
 
             var snapshot = reader.ReadOnce();
             if (snapshot is { } scoring)
             {
+                lastScoring = scoring;
                 var payload = BuildPayload(scoring);
                 await BroadcastAsync(payload);
             }
@@ -186,6 +209,81 @@ public class Program
             {
                 Clients.TryRemove(id, out _);
             }
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Registrazione fine sessione: best lap di ogni pilota in griglia
+    // verso l'endpoint Apps Script pitwall.logSession. Stesso contratto
+    // JSON della companion Python (companion/fuel_bridge.py:post_sample):
+    // body {action, token, payload} come text/plain, per evitare preflight
+    // CORS lato Apps Script. NON scrive nel tab "manuale" di BestLaps —
+    // vedi nota in apps-script/PitwallSessions.js sul perché.
+    // ------------------------------------------------------------------
+    private static async Task PostSessionSummaryAsync(HttpClient http, PitwallConfig cfg, RF2Scoring scoring, string sessionId)
+    {
+        var info = scoring.mScoringInfo;
+        int numVehicles = Math.Clamp(info.mNumVehicles, 0, RFactor2Constants.MAX_MAPPED_VEHICLES);
+
+        var drivers = scoring.mVehicles
+            .Take(numVehicles)
+            .Where(v => v.mBestLapTime > 0) // -1 = nessun giro valido ancora, niente da registrare
+            .Select(v => new
+            {
+                driver_name = RF2StringHelper.ToTrimmedString(v.mDriverName),
+                vehicle_name = RF2StringHelper.ToTrimmedString(v.mVehicleName),
+                vehicle_class = RF2StringHelper.ToTrimmedString(v.mVehicleClass),
+                best_lap_time_ms = (long)Math.Round(v.mBestLapTime * 1000),
+                laps = (int)v.mTotalLaps,
+                final_place = (int)v.mPlace,
+            })
+            .ToArray();
+
+        if (drivers.Length == 0)
+        {
+            Console.WriteLine("Nessun giro valido in questa sessione, niente da registrare.");
+            return;
+        }
+
+        var payload = new
+        {
+            session_id = sessionId,
+            track_name = RF2StringHelper.ToTrimmedString(info.mTrackName),
+            sim = "LMU",
+            session_type = info.mSession,
+            captured_at = DateTimeOffset.UtcNow,
+            drivers,
+        };
+
+        var body = JsonSerializer.Serialize(new
+        {
+            action = "pitwall.logSession",
+            token = cfg.Token,
+            payload,
+        });
+
+        try
+        {
+            using var content = new StringContent(body, Encoding.UTF8, "text/plain");
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(25)); // margine ampio, Apps Script a volte è lento
+            var response = await http.PostAsync(cfg.ApiUrl, content, cts.Token);
+            var responseText = await response.Content.ReadAsStringAsync();
+            using var doc = JsonDocument.Parse(responseText);
+            if (doc.RootElement.TryGetProperty("ok", out var okProp) && okProp.GetBoolean())
+            {
+                Console.WriteLine($"Sessione {sessionId} registrata: {drivers.Length} piloti con un giro valido.");
+            }
+            else
+            {
+                var error = doc.RootElement.TryGetProperty("error", out var errProp) ? errProp.GetString() : "sconosciuto";
+                Console.WriteLine($"Backend ha rifiutato la sessione {sessionId}: {error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            // Una sessione persa non deve far crashare il bridge: logga e
+            // vai avanti, la prossima sessione riprova comunque.
+            Console.WriteLine($"Impossibile registrare la sessione {sessionId}: {ex.Message}");
         }
     }
 }

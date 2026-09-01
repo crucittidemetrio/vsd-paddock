@@ -49,6 +49,7 @@ const SHEETS = {
   REPORT_REACTIONS: 'ReportReactions',
   CHAMPIONSHIP_INTEREST: 'ChampionshipInterest',
   LAP_DATA: 'LapData',
+  PITWALL_SESSIONS: 'PitwallSessions',
 };
 
 // ID dello spreadsheet principale (VSD_HUB_DB). Usato solo dagli script che
@@ -379,6 +380,11 @@ const ACTIONS = {
   'lapData.import': handleLapDataImport,
   'lapData.sessions': handleLapDataSessions,
   'lapData.session': handleLapDataSession,
+
+  // VSD Pitwall Bridge — best lap per pilota, snapshot automatico a fine sessione
+  'pitwall.logSession': handlePitwallLogSession,
+  'pitwall.sessions': handlePitwallSessions,
+  'pitwall.session': handlePitwallSession,
 };
 
 // ═══════════════════════════════════════════════════════════

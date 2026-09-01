@@ -128,6 +128,14 @@ export const api = {
     session: (session_id) => call('lapData.session', { session_id }),
   },
 
+  // pitwall.logSession NON è qui: lo chiama solo il bridge C# via HTTP
+  // diretto (stesso contratto {action, token, payload} della companion
+  // Python), mai il frontend.
+  pitwall: {
+    sessions: () => call('pitwall.sessions'),
+    session: (session_id) => call('pitwall.session', { session_id }),
+  },
+
   academy: {
     ranking: (sim) => call('academy.ranking', { sim }),
   },

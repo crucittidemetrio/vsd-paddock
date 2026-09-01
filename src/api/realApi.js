@@ -262,6 +262,10 @@ export async function callApi(action, payload = {}) {
         return await postToBackend('lapData.sessions', payload || {}, token);
       case 'lapData.session':
         return await postToBackend('lapData.session', payload || {}, token);
+      case 'pitwall.sessions':
+        return await postToBackend('pitwall.sessions', payload || {}, token);
+      case 'pitwall.session':
+        return await postToBackend('pitwall.session', payload || {}, token);
       case 'academy.ranking':
         return await academyRankingAdapter(payload, token);
       case 'recap.mine':
