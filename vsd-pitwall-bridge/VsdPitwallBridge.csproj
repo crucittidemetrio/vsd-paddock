@@ -13,6 +13,22 @@
   </PropertyGroup>
 
   <!--
+    Si attiva SOLO quando si specifica l'opzione "runtime" (r minuscola,
+    es. "dotnet publish -c Release -r win-x64"): build/run normali (senza
+    quella opzione) restano identici a prima, compreso il build di verifica
+    in ambienti non-Windows. Con "-r win-x64" produce invece un .exe
+    singolo e autosufficiente (nessun .NET richiesto sulla macchina di
+    destinazione) — pensato per distribuire il bridge a chi deve solo farlo
+    girare, senza SDK/terminale/comandi da digitare. Vedi README.md,
+    sezione "Distribuire il bridge (.exe)".
+  -->
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+  </PropertyGroup>
+
+  <!--
     NOTA: se preferisci non fare interop manuale sulla shared memory (vedi commento
     in RF2Scoring.cs), sostituisci con il pacchetto NuGet "rF2SharedMemoryNet"
     (Domaslau/rF2SharedMemoryNet) e usa i suoi struct già mappati/testati:

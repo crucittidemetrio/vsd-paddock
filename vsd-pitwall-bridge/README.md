@@ -90,9 +90,46 @@ esistente.
 4. Al primo avvio, se non hai già un token: incollalo quando richiesto (dal
    tuo profilo VSD-Paddock, pulsante "Genera token companion").
 
+## Distribuire il bridge (.exe, niente terminale)
+
+`dotnet build`/`dotnet run` restano il modo giusto per sviluppare, ma per
+chi deve solo **farlo girare** (te la prossima volta, un compagno di
+squadra che fa da pit-wall) c'è un pacchetto autosufficiente: un unico
+`.exe`, nessun .NET da installare sulla macchina di destinazione, niente
+comandi da digitare a parte quello che lo genera una volta:
+
+```powershell
+dotnet publish -c Release -r win-x64
+```
+
+Il file finito è in `bin\Release\net8.0\win-x64\publish\VsdPitwallBridge.exe`
+— copialo dove vuoi (anche su un'altra macchina) e fai doppio click. Si apre
+comunque una finestra nera con i log (`Sessione LMU agganciata.`, ecc.) —
+è l'output del programma stesso, non un terminale in cui digitare comandi:
+serve solo a vedere cosa sta succedendo, e al primo avvio a incollarci
+dentro il token quando richiesto (una volta sola, poi lo ricorda).
+
+Su chi lo riceve resta comunque un prerequisito non evitabile: **Le Mans
+Ultimate con Enable Plugins attivo** (punto 1-2 sopra) sulla stessa
+macchina — il bridge legge la memoria condivisa del gioco, non può farlo
+da remoto.
+
+⚠️ **Non verificato in questa sessione**: la build normale con questa
+opzione attivata (`dotnet build -c Release`, senza `-r`) è stata testata e
+resta identica a prima; il comando `dotnet publish -r win-x64` in sé no,
+perché richiede di scaricare il runtime Windows da NuGet e il sandbox
+usato per le verifiche non ci arriva. Sulla tua macchina, con accesso
+NuGet normale, dovrebbe scaricarlo ed eseguire senza intervento — se dà
+errori (spazio disco, permessi), mandameli e li guardiamo.
+
 ## Prossimi passi
 
 - ~~Hook React (`useWebSocket`) lato vsd-paddock per il modulo `/pitwall`~~ — fatto.
 - ~~Endpoint Apps Script per lo snapshot di fine sessione~~ — fatto
   (`pitwall.logSession`, best lap per pilota — non uno snapshot completo
   di ogni stint/pit stop, quello resta un possibile step successivo).
+- ~~Distribuzione senza terminale~~ — fatto (`.exe` self-contained, vedi
+  sopra). Resta comunque un solo PC alla volta a vedere il live (chi lo
+  lancia) — farlo vedere in tempo reale a tutti da PC diversi richiederebbe
+  un relay cloud sempre acceso, scelta architetturale volutamente non
+  presa in questa fase (vedi ADR-LMU-Integration.md).
