@@ -13,10 +13,11 @@
 // concordato — NON telemetria a tick, NON un flusso realtime (quello è
 // per un'altra fase, vedi ADR-LMU-Integration.md).
 //
-// ⚠️ NON COMPILATO NÉ TESTATO in questa sessione — scritto in un
-// sandbox Linux senza SimHub/Visual Studio disponibili. Vedi
-// README.md in questa cartella per i passi di build/verifica reali
-// (STEP 0.3 dello spike, bloccato lato utente).
+// Compilato e testato dal vivo su LMU il 01/09/2026 (build SDK-style via
+// `dotnet build`, vedi VsdLapDataLogger.csproj e README.md in questa
+// cartella). Scritto originariamente in un sandbox Linux senza SimHub —
+// da qui l'uso di GetPropertyValue(string) invece di campi tipizzati,
+// vedi sotto.
 //
 // Perché GetPropertyValue(string) invece di data.NewData.XxxYyy
 // tipizzato: non avevo modo di verificare qui i nomi esatti dei
@@ -29,29 +30,25 @@
 // PropertyNames sotto è l'UNICO punto da correggere se il debug in
 // SimHub mostra path diversi da quelli qui sotto.
 //
-// Aggiornamento post-spike (browser proprietà NeoRed LMU Data plugin,
-// già installato e attivo sulla macchina di gara): temperature e stato
-// pit-lane sono confermate DA UI LIVE, non più solo ipotesi:
-//   - Weather → "Current.AmbientTemp" e "Track.Temp" (aria/asfalto)
-//   - Game Infos → "PitState" (in-pit)
-// Il PREFISSO completo di queste property (namespace del plugin NeoRed
-// davanti al suffisso mostrato in UI) resta da confermare dal vivo — la
-// UI di SimHub mostra path abbreviati per sezione, non la stringa piena
-// da passare a GetPropertyValue(). Il prefisso sotto (NeoRedPrefix) è
-// dedotto dal nome del DLL (NeoRed.lmuDataPlugin.dll) ma NON verificato:
-// prima di buildare, click destro/copia sul nome di una property in
-// SimHub (es. "Current.AmbientTemp") e correggi NeoRedPrefix se il path
-// copiato è diverso.
-// Carburante residuo in litri e bandiera gialla NON sono esposti da
-// NeoRed (sezione Energy ha solo consumo/stima, nessun livello grezzo;
-// "flag" in NeoRed è solo FlagRules, impostazione di sessione) — restano
-// sulle property generiche core di SimHub, ancora da verificare.
+// Aggiornamento 02/09/2026 — temperature (track_temp_c/air_temp_c erano
+// vuote nel test reale del 01/09): la property NeoRed-prefixed era una
+// scommessa debole (dedotta solo dal nome del DLL, mai verificata dal
+// vivo). Ricerca incrociata (forum SimHub ufficiale + progetti plugin
+// terzi pubblici) conferma che RoadTemperature/AirTemperature sono
+// proprietà CORE generiche di SimHub — "DataCorePlugin.GameData.NewData.X",
+// stesso identico prefisso già confermato per Fuel/Flag_Yellow/
+// CompletedLaps nel test reale — non specifiche del plugin NeoRed.
+// Quindi ora si prova PRIMA la property core (alta confidenza) e solo
+// come fallback quella NeoRed (bassa confidenza, mai confermata): se
+// la core esiste per LMU come per gli altri sim supportati, funziona
+// al primo test senza bisogno di verifica manuale nell'editor formule.
 //
-// PRIMA DI FIDARTI DI QUESTO FILE: apri SimHub con LMU in esecuzione e
-// verifica NeoRedPrefix + Fuel + FlagYellow + DriverName + CompletedLaps
-// + LastLapTime (vedi lista in PropertyNames sotto) e correggi le
-// costanti se differiscono. Questo è esattamente lo STEP 0.3 che tocca
-// a te.
+// DriverName resta il punto più debole: la property core è confermata
+// VUOTA per LMU dal test reale (limite noto SimHub, non solo LMU). Il
+// fallback NeoRed "TeamInfos.Driver" resta un'ipotesi non verificata —
+// se il CSV mostra ancora "" dopo il prossimo test, va controllato a
+// mano nell'editor formule di SimHub (drag&drop della property per
+// vedere la stringa $prop(...) esatta).
 // ═══════════════════════════════════════════════════════════
 
 using System;
@@ -74,9 +71,15 @@ namespace VsdLapDataLogger
         // qui se il path pieno differisce (unico punto da toccare).
         public const string NeoRedPrefix = "NeoRed.lmuDataPlugin.";
 
-        // ── Confermate via browser proprietà NeoRed live (screenshot UI) ──
-        public const string RoadTemperature = NeoRedPrefix + "Weather.Track.Temp";          // °C — sezione Weather, NON "TrackTemperature"
-        public const string AirTemperature = NeoRedPrefix + "Weather.Current.AmbientTemp";  // °C — sezione Weather
+        // ── Temperature: provate PRIMA come property core SimHub (alta
+        //    confidenza, stesso prefisso già confermato per Fuel/
+        //    Flag_Yellow/CompletedLaps), poi come fallback NeoRed (bassa
+        //    confidenza, mai confermata dal vivo) — vedi ReadDoubleWithFallback.
+        public const string RoadTemperatureCore = "DataCorePlugin.GameData.NewData.RoadTemperature"; // °C
+        public const string AirTemperatureCore = "DataCorePlugin.GameData.NewData.AirTemperature";   // °C
+        public const string RoadTemperatureNeoRed = NeoRedPrefix + "Weather.Track.Temp";          // fallback, NON confermato
+        public const string AirTemperatureNeoRed = NeoRedPrefix + "Weather.Current.AmbientTemp";  // fallback, NON confermato
+
         public const string IsInPit = NeoRedPrefix + "GameInfos.PitState";                  // sezione Game Infos — tipo esatto (bool/enum/stringa) da verificare, ReadBool gestisce entrambi
 
         // ── NeoRed non le espone (verificato: sezione Energy = solo consumo/stima,
@@ -180,21 +183,33 @@ namespace VsdLapDataLogger
 
             if (completedLaps <= _lastCompletedLaps.Value) return;
 
-            // Giro appena completato → scrivi la riga.
-            WriteLapRow(pluginManager, completedLaps);
+            // Giro appena completato. lap_time_ms=0/null capita in due casi noti
+            // e NON è un giro vero da loggare: (1) il "giro 1" fittizio subito
+            // dopo l'uscita ai box a inizio sessione (LastLapTime non ancora
+            // popolato), (2) un "giro fantasma" quando si rientra ai box/si
+            // esce dalla sessione (CompletedLaps scatta ma nessun tempo valido
+            // è stato segnato — osservato nel test reale del 01/09: riga con
+            // fuel_l in AUMENTO, cioè rifornimento ai box, 10s dopo l'ultimo
+            // giro vero). In entrambi i casi saltiamo la scrittura invece di
+            // loggare uno zero e delegare il filtro al frontend — il numero
+            // di giro può avere "buchi" nella sequenza, riflette la realtà.
+            var lapTimeMs = ReadLapTimeMs(pluginManager);
+            if (lapTimeMs != null && lapTimeMs.Value > 0)
+            {
+                WriteLapRow(pluginManager, completedLaps, lapTimeMs.Value);
+            }
 
             _lastCompletedLaps = completedLaps;
             _lapInPitsAccum = false;
             _lapYellowAccum = false;
         }
 
-        private void WriteLapRow(PluginManager pluginManager, int lapNumber)
+        private void WriteLapRow(PluginManager pluginManager, int lapNumber, double lapTimeMs)
         {
             var driverName = ReadString(pluginManager, PropertyNames.DriverName);
             var sim = PropertyNames.GameNameFixed;
-            var lapTimeMs = ReadLapTimeMs(pluginManager);
-            var trackTemp = ReadDouble(pluginManager, PropertyNames.RoadTemperature);
-            var airTemp = ReadDouble(pluginManager, PropertyNames.AirTemperature);
+            var trackTemp = ReadDoubleWithFallback(pluginManager, PropertyNames.RoadTemperatureCore, PropertyNames.RoadTemperatureNeoRed);
+            var airTemp = ReadDoubleWithFallback(pluginManager, PropertyNames.AirTemperatureCore, PropertyNames.AirTemperatureNeoRed);
             var fuel = ReadDouble(pluginManager, PropertyNames.Fuel);
 
             var line = string.Join(",",
@@ -202,7 +217,7 @@ namespace VsdLapDataLogger
                 Csv(driverName),
                 Csv(sim),
                 lapNumber.ToString(CultureInfo.InvariantCulture),
-                lapTimeMs?.ToString(CultureInfo.InvariantCulture) ?? "",
+                lapTimeMs.ToString(CultureInfo.InvariantCulture),
                 _lapInPitsAccum ? "TRUE" : "FALSE",
                 _lapYellowAccum ? "TRUE" : "FALSE",
                 trackTemp?.ToString(CultureInfo.InvariantCulture) ?? "",
@@ -228,6 +243,16 @@ namespace VsdLapDataLogger
             {
                 return null;
             }
+        }
+
+        // Prova prima "primary" (alta confidenza), poi "fallback" solo se
+        // primary torna null — MAI se primary torna un numero valido ma
+        // "sospetto" (es. 0): un 0°C reale è plausibile in alcune condizioni
+        // meteo, quindi non lo trattiamo come "assente".
+        private static double? ReadDoubleWithFallback(PluginManager pm, string primary, string fallback)
+        {
+            var value = ReadDouble(pm, primary);
+            return value ?? ReadDouble(pm, fallback);
         }
 
         // Tollerante anche a PitState come stringa/enum (es. "None"/"Pit"),
