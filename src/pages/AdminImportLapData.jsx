@@ -1,5 +1,6 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 import { useImportLapData } from '../hooks/useLapData';
+import { useDrivers } from '../hooks/useRoster';
 import styles from './AdminImportResults.module.css';
 
 /**
@@ -52,10 +53,16 @@ export default function AdminImportLapData() {
   const [fileName, setFileName] = useState('');
   const [csvText, setCsvText] = useState('');
   const [importResult, setImportResult] = useState(null);
+  const [driverIdOverride, setDriverIdOverride] = useState('');
   const fileInputRef = useRef(null);
   const [isDragOver, setIsDragOver] = useState(false);
 
   const importMutation = useImportLapData();
+  const driversQuery = useDrivers({ status: 'active' });
+  const sortedDrivers = useMemo(
+    () => (driversQuery.data || []).slice().sort((a, b) => a.display_name.localeCompare(b.display_name)),
+    [driversQuery.data]
+  );
 
   const preview = useMemo(() => (csvText.trim() ? previewCsv(csvText) : null), [csvText]);
 
@@ -81,16 +88,20 @@ export default function AdminImportLapData() {
   function handleImport() {
     if (!preview?.ok || importMutation.isPending) return;
     setImportResult(null);
-    importMutation.mutate(csvText, {
-      onSuccess: (stats) => setImportResult({ ok: true, stats }),
-      onError: (err) => setImportResult({ ok: false, error: err.message }),
-    });
+    importMutation.mutate(
+      { csvText, driverIdOverride: driverIdOverride || undefined },
+      {
+        onSuccess: (stats) => setImportResult({ ok: true, stats }),
+        onError: (err) => setImportResult({ ok: false, error: err.message }),
+      }
+    );
   }
 
   function handleReset() {
     setFileName('');
     setCsvText('');
     setImportResult(null);
+    setDriverIdOverride('');
     if (fileInputRef.current) fileInputRef.current.value = '';
   }
 
@@ -163,6 +174,33 @@ export default function AdminImportLapData() {
               </p>
             </div>
           )}
+        </section>
+      )}
+
+      {preview?.ok && (
+        <section className={styles.section}>
+          <label className={styles.sectionLabel} htmlFor="lapdata-driver-override">
+            2. Pilota (opzionale)
+          </label>
+          <select
+            id="lapdata-driver-override"
+            className={styles.select}
+            value={driverIdOverride}
+            onChange={(e) => setDriverIdOverride(e.target.value)}
+          >
+            <option value="">Rileva automaticamente dal nome nel CSV</option>
+            {sortedDrivers.map((d) => (
+              <option key={d.driver_id} value={d.driver_id}>
+                {d.display_name}
+              </option>
+            ))}
+          </select>
+          <p className={styles.previewSkipped}>
+            Il nome pilota letto da SimHub non è sempre affidabile (dipende da una proprietà
+            del gioco non garantita). Se sai già di chi è questa sessione — quasi sempre il caso
+            per un upload manuale — selezionalo qui: verrà assegnato a TUTTI i giri del file,
+            ignorando il campo <code>driver_name</code> del CSV.
+          </p>
         </section>
       )}
 

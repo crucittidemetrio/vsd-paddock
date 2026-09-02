@@ -123,7 +123,8 @@ export const api = {
 
   // Obiettivo 3 — Analisi di Passo da SimHub (upload manuale CSV)
   lapData: {
-    import: (csv_text) => call('lapData.import', { csv_text }),
+    import: (csv_text, driver_id_override) =>
+      call('lapData.import', { csv_text, driver_id_override }),
     sessions: () => call('lapData.sessions'),
     session: (session_id) => call('lapData.session', { session_id }),
   },

@@ -8,13 +8,19 @@ import { api } from '../api/client';
  *
  * Uso:
  *   const m = useImportLapData();
- *   m.mutate(csvText, { onSuccess, onError });
+ *   m.mutate({ csvText, driverIdOverride }, { onSuccess, onError });
+ *
+ * driverIdOverride (opzionale): forza il pilota per TUTTE le righe
+ * invece di affidarsi al campo driver_name letto da SimHub — utile
+ * perché quella property non è garantita al 100% (vedi commenti nel
+ * plugin C#) e le sessioni caricate a mano sono quasi sempre di un
+ * solo pilota che lo staff conosce con certezza.
  */
 export function useImportLapData() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (csvText) => api.lapData.import(csvText),
+    mutationFn: ({ csvText, driverIdOverride }) => api.lapData.import(csvText, driverIdOverride),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['lapData', 'sessions'] });
     },

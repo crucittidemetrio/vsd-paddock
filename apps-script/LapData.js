@@ -106,7 +106,14 @@ function parseLapDataCsv_(csvText) {
  * lapData.import — wrapper frontend-callable.
  * Gated su staff/admin (stesso livello di raceResults.import).
  *
- * @param {Object} payload - { csv_text: string }
+ * @param {Object} payload - { csv_text: string, driver_id_override?: string }
+ *   driver_id_override: quando lo staff sa con certezza a chi appartiene
+ *   la sessione (upload manuale, quasi sempre un singolo pilota in test
+ *   solitario) puoi forzare il driver_id per TUTTE le righe invece di
+ *   affidarti al campo driver_name letto da SimHub — che dipende da una
+ *   property SimHub/NeoRed mai confermata al 100% (vedi commenti in
+ *   simhub-plugin/VsdLapDataLoggerPlugin.cs). Il match automatico da CSV
+ *   resta il default quando il campo non è passato.
  * @param {Object} ctx - Auth context (richiesto, isStaff)
  * @returns {Object} ok({ imported, vsd_matched, external, laps_per_driver, session_id, skipped_duplicates }) oppure fail
  */
@@ -125,15 +132,22 @@ function handleLapDataImport(payload, ctx) {
     return fail('Colonne CSV mancanti: ' + missingCols.join(', '));
   }
 
+  const driverIdOverride = payload.driver_id_override ? String(payload.driver_id_override).trim() : '';
+  if (driverIdOverride) {
+    const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
+    const exists = drivers.some(d => d.driver_id === driverIdOverride);
+    if (!exists) return fail('driver_id_override sconosciuto: ' + driverIdOverride);
+  }
+
   try {
-    const stats = importLapData_(parsed.records);
+    const stats = importLapData_(parsed.records, driverIdOverride);
     return ok(stats);
   } catch (e) {
     return fail('Errore durante import: ' + e.message);
   }
 }
 
-function importLapData_(records) {
+function importLapData_(records, driverIdOverride) {
   const sheet = getSheet(SHEETS.LAP_DATA);
   const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const driverNameMap = buildDriverNameMap_(); // riuso da Academy.js, stessa mappa di raceResults.import
@@ -166,7 +180,7 @@ function importLapData_(records) {
   const lapsPerDriver = {};
 
   records.forEach((r, idx) => {
-    const matchedDriverId = matchDriverName_(r.driver_name, driverNameMap) || '';
+    const matchedDriverId = driverIdOverride || matchDriverName_(r.driver_name, driverNameMap) || '';
     const driverKey = matchedDriverId || String(r.driver_name || '').toLowerCase().trim();
     const sid = String(r.session_id || '').trim();
     const lapNum = String(r.lap_number || '').trim();
