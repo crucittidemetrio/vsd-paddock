@@ -120,6 +120,13 @@ namespace VsdLapDataLogger
         public const string GameNameFixed = "LMU";
     }
 
+    // Senza questi tre attributi SimHub mostra in "Aggiungi/rimuovi funzionalità"
+    // le chiavi di traduzione grezze invece di un nome leggibile (visto dal vivo:
+    // "PluginNameVsdLapDataLoggerPlugin" / "PluginDescription_VsdLapDataLoggerPlugin")
+    // — stesso pattern usato da qualsiasi plugin community, es. TruckSimulatorPlugin.
+    [PluginName("VSD Lap Data Logger")]
+    [PluginDescription("Registra un CSV per giro (tempo, temperature, carburante, pit/yellow) per l'Analisi di Passo di vsd-paddock.")]
+    [PluginAuthor("VSD Paddock")]
     public class VsdLapDataLoggerPlugin : IPlugin, IDataPlugin
     {
         public PluginManager PluginManager { get; set; }
