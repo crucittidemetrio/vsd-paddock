@@ -30,12 +30,28 @@ export default function TeamRecords() {
     return m;
   }, [tracksQuery.data]);
 
-  const records = useMemo(() => {
+  // Un record per (track_id, race_class): raggruppati per pista, con
+  // una riga per ogni categoria — non più un solo tempo "assoluto"
+  // per pista. I giri senza categoria assegnata in Cars finiscono nel
+  // bucket "Non classificato" invece di sparire.
+  const groupedByTrack = useMemo(() => {
     const list = recordsQuery.data?.records || [];
-    return [...list].sort((a, b) =>
-      trackLabel(a.track_id, tracksById).localeCompare(trackLabel(b.track_id, tracksById))
-    );
+    const byTrack = new Map();
+    list.forEach(r => {
+      if (!byTrack.has(r.track_id)) byTrack.set(r.track_id, []);
+      byTrack.get(r.track_id).push(r);
+    });
+    return Array.from(byTrack.entries())
+      .sort((a, b) => trackLabel(a[0], tracksById).localeCompare(trackLabel(b[0], tracksById)))
+      .map(([trackId, recs]) => [
+        trackId,
+        recs.slice().sort((a, b) =>
+          String(a.race_class || 'zzz').localeCompare(String(b.race_class || 'zzz'))
+        ),
+      ]);
   }, [recordsQuery.data, tracksById]);
+
+  const records = recordsQuery.data?.records || [];
 
   return (
     <div className={styles.container}>
@@ -43,9 +59,9 @@ export default function TeamRecords() {
         <div className={styles.eyebrow}>MURO DEI RECORD</div>
         <h1 className={styles.title}>Record di pista</h1>
         <p className={styles.sub}>
-          Il giro più veloce mai registrato dal team su ogni pista — qualsiasi vettura o
-          categoria, non filtrato. Per classifiche divise per categoria/vettura vai su{' '}
-          <Link to="/laps">Best Laps</Link>.
+          Il giro più veloce mai registrato dal team su ogni pista, diviso per categoria —
+          un Hypercar e una GT3 non si confrontano. Per la classifica completa di tutti i
+          piloti vai su <Link to="/laps">Best Laps</Link>.
         </p>
         {isAdmin && (
           <button
@@ -82,29 +98,31 @@ export default function TeamRecords() {
         <div className={styles.empty}>Nessun record ancora registrato per questo simulatore.</div>
       )}
 
-      {records.length > 0 && (
+      {groupedByTrack.length > 0 && (
         <div className={styles.list}>
-          {records.map(r => {
-            const carInfo = formatCarInfo(r.car_id, carsQuery.data);
-            return (
-              <div key={`${r.sim}-${r.track_id}`} className={styles.card}>
-                <span className={styles.cardIcon}>🏆</span>
-                <div>
-                  <div className={styles.cardTrack}>{trackLabel(r.track_id, tracksById)}</div>
-                  <div className={styles.cardHolder}>
-                    {r.display_name}
-                    {r.is_ex_vsd && <span className={styles.verifiedBadge}>EX</span>}
-                    {r.verified && <span className={styles.verifiedBadge}>Garage61</span>}
-                    {carInfo.race_class && (
-                      <span className={styles.classBadge}>{carInfo.race_class}</span>
-                    )}
+          {groupedByTrack.map(([trackId, recs]) => (
+            <div key={`${activeSim}-${trackId}`} className={styles.trackGroup}>
+              <div className={styles.trackGroupHeader}>{trackLabel(trackId, tracksById)}</div>
+              {recs.map(r => {
+                const carInfo = formatCarInfo(r.car_id, carsQuery.data);
+                return (
+                  <div key={`${r.sim}-${r.track_id}-${r.race_class || 'nc'}`} className={styles.card}>
+                    <span className={styles.cardIcon}>🏆</span>
+                    <div>
+                      <div className={styles.cardHolder}>
+                        <span className={styles.classBadge}>{r.race_class || 'Non classificato'}</span>
+                        {r.display_name}
+                        {r.is_ex_vsd && <span className={styles.verifiedBadge}>EX</span>}
+                        {r.verified && <span className={styles.verifiedBadge}>Garage61</span>}
+                      </div>
+                      {r.car_id && <div className={styles.cardCar}>{carInfo.name}</div>}
+                    </div>
+                    <div className={styles.cardTime}>{r.lap_time_display}</div>
                   </div>
-                  {r.car_id && <div className={styles.cardCar}>{carInfo.name}</div>}
-                </div>
-                <div className={styles.cardTime}>{r.lap_time_display}</div>
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          ))}
         </div>
       )}
     </div>

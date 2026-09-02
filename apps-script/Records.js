@@ -2,10 +2,10 @@
 // VSD PADDOCK — Muro dei Record
 // ═══════════════════════════════════════════════════════════
 //
-// Per ogni combinazione (sim, track_id), il giro più veloce mai
-// registrato dal team — calcolato a runtime da BestLaps (manuali +
-// import Garage61), nessuna tabella dedicata, stesso principio di
-// Academy.js e SeasonRecap.js.
+// Per ogni combinazione (sim, track_id, race_class), il giro più
+// veloce mai registrato dal team — calcolato a runtime da BestLaps
+// (manuali + import Garage61), nessuna tabella dedicata, stesso
+// principio di Academy.js e SeasonRecap.js.
 //
 // Decisioni di scope:
 //   - Solo tesserati attualmente attivi (stesso criterio di
@@ -14,11 +14,15 @@
 //     BestLaps. Applicato per coerenza con la decisione già presa
 //     per il VR — se in futuro serve un archivio storico che include
 //     anche gli ex, è una scelta diversa e va fatta esplicitamente.
-//   - Nessun filtro/raggruppamento per auto o classe: il record è
-//     "il giro più veloce mai fatto a quella pista da chiunque",
-//     non normalizzato per vettura. Scelta deliberata per tenere il
-//     muro leggibile invece che frammentato in decine di combinazioni
-//     pista+auto con un solo giro ciascuna.
+//   - Raggruppato per race_class (classe auto, da Cars.race_class):
+//     un record separato per ogni categoria su ogni pista, stesso
+//     criterio già usato da useTeamLeaderboard in BestLaps. In
+//     precedenza il muro mostrava un solo giro per pista senza tener
+//     conto della classe — cambiato su richiesta esplicita del team,
+//     perché un tempo Hypercar e uno GT3 sulla stessa pista non sono
+//     confrontabili. I giri di auto SENZA race_class assegnato in
+//     Cars finiscono in un bucket "Non classificato" invece di
+//     sparire, per non far perdere record già mostrati in passato.
 //   - Campo `verified`: true se il giro viene da garage61_lap_id
 //     valorizzato (import telemetria automatico), false se inserito
 //     a mano — stesso discriminatore già usato per useManualBestLaps.
@@ -51,8 +55,13 @@ function handleTeamRecords(payload, ctx) {
 
   const allLaps = getCachedSheetData_(SHEETS.BEST_LAPS, 600);
   const drivers = getCachedSheetData_(SHEETS.DRIVERS, 600);
+  const cars = getCachedSheetData_(SHEETS.CARS, 21600);
   const driverMap = {};
   drivers.forEach(d => { driverMap[d.driver_id] = d; });
+  const carRaceClass = {};
+  cars.forEach(c => {
+    if (c.car_id) carRaceClass[c.car_id] = (c.race_class && String(c.race_class).trim()) || null;
+  });
 
   function isExVsd_(driverId) {
     const d = driverMap[driverId];
@@ -78,27 +87,36 @@ function handleTeamRecords(payload, ctx) {
 
   const recordsByKey = {};
   laps.forEach(l => {
-    const key = l.sim + '|' + l.track_id;
+    const raceClass = carRaceClass[l.car_id] || null; // null → bucket "Non classificato"
+    const key = l.sim + '|' + l.track_id + '|' + (raceClass || '');
     const ms = Number(l.lap_time_ms);
-    if (!recordsByKey[key] || ms < Number(recordsByKey[key].lap_time_ms)) {
-      recordsByKey[key] = l;
+    if (!recordsByKey[key] || ms < Number(recordsByKey[key].lap.lap_time_ms)) {
+      recordsByKey[key] = { lap: l, race_class: raceClass };
     }
   });
 
   const records = Object.values(recordsByKey)
-    .map(l => ({
-      sim: l.sim,
-      track_id: l.track_id,
-      driver_id: l.driver_id,
-      display_name: (driverMap[l.driver_id] && driverMap[l.driver_id].display_name) || l.driver_id,
-      lap_time_ms: Number(l.lap_time_ms),
-      lap_time_display: l.lap_time_display || '',
-      car_id: l.car_id || '',
-      set_date: l.set_date || '',
-      verified: Boolean(l.garage61_lap_id),
-      is_ex_vsd: isExVsd_(l.driver_id),
-    }))
-    .sort((a, b) => a.sim.localeCompare(b.sim) || a.track_id.localeCompare(b.track_id));
+    .map(entry => {
+      const l = entry.lap;
+      return {
+        sim: l.sim,
+        track_id: l.track_id,
+        race_class: entry.race_class, // null = non classificato
+        driver_id: l.driver_id,
+        display_name: (driverMap[l.driver_id] && driverMap[l.driver_id].display_name) || l.driver_id,
+        lap_time_ms: Number(l.lap_time_ms),
+        lap_time_display: l.lap_time_display || '',
+        car_id: l.car_id || '',
+        set_date: l.set_date || '',
+        verified: Boolean(l.garage61_lap_id),
+        is_ex_vsd: isExVsd_(l.driver_id),
+      };
+    })
+    .sort((a, b) =>
+      a.sim.localeCompare(b.sim) ||
+      a.track_id.localeCompare(b.track_id) ||
+      String(a.race_class || 'zzz').localeCompare(String(b.race_class || 'zzz'))
+    );
 
   return ok({ records, count: records.length });
 }
@@ -117,7 +135,7 @@ function testTeamRecords() {
   Logger.log('Record trovati: ' + result.data.count);
   result.data.records.forEach(r => {
     Logger.log(
-      `${r.sim} ${r.track_id}: ${r.display_name} — ${r.lap_time_display}` +
+      `${r.sim} ${r.track_id} [${r.race_class || 'non classificato'}]: ${r.display_name} — ${r.lap_time_display}` +
       (r.verified ? ' (Garage61)' : ' (manuale)')
     );
   });

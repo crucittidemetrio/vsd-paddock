@@ -90,7 +90,21 @@
 .list {
   display: flex;
   flex-direction: column;
+  gap: 24px;
+}
+
+.trackGroup {
+  display: flex;
+  flex-direction: column;
   gap: 8px;
+}
+
+.trackGroupHeader {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 17px;
+  font-weight: 700;
+  color: #fff;
+  padding-left: 2px;
 }
 
 .card {
