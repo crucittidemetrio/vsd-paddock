@@ -254,3 +254,49 @@
   color: #4ade80;
   letter-spacing: 0.5px;
 }
+
+/* "La tua vettura" — carburante/gomme, vedi MyCarPanel in PitWall.jsx */
+.tireGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.tireCard {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.tireLabel {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  font-weight: 700;
+  color: #00d4ff;
+  margin-bottom: 6px;
+}
+
+.tireRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 2px 0;
+}
+
+.tireRow span:last-child {
+  color: #e8eaf6;
+}
+
+.tireWarning {
+  margin-top: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  color: #f54f4f;
+  letter-spacing: 0.5px;
+}

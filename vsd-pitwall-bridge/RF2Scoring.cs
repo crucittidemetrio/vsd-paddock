@@ -19,6 +19,7 @@ namespace VsdPitwallBridge;
 public static class RFactor2Constants
 {
     public const string MM_SCORING_FILE_NAME = "$rFactor2SMMP_Scoring$";
+    public const string MM_TELEMETRY_FILE_NAME = "$rFactor2SMMP_Telemetry$"; // vedi RF2Telemetry.cs
     public const int MAX_MAPPED_VEHICLES = 128;
 }
 

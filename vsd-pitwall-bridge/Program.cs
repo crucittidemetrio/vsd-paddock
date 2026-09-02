@@ -94,6 +94,7 @@ public class Program
     private static async Task RunScoringPollLoopAsync(PitwallConfig cfg)
     {
         using var reader = new RF2ScoringReader();
+        using var telemetryReader = new RF2TelemetryReader(); // vedi RF2Telemetry.cs — solo vettura locale
         using var http = new HttpClient();
         bool wasOpen = false;
         string? sessionId = null;
@@ -135,7 +136,14 @@ public class Program
             {
                 lastScoring = scoring;
                 LogSectorAnomalies(scoring);
-                var payload = BuildPayload(scoring);
+
+                // Telemetry e' un buffer separato (puo' non esserci ancora, o il
+                // plugin puo' non esporlo): un fallimento qui non deve bloccare
+                // classifica/gap/settori, che restano sempre disponibili dallo
+                // Scoring buffer da solo.
+                RF2Telemetry? telemetry = telemetryReader.TryOpen() ? telemetryReader.ReadOnce() : null;
+
+                var payload = BuildPayload(scoring, telemetry);
                 await BroadcastAsync(payload);
             }
 
@@ -146,11 +154,11 @@ public class Program
     /// <summary>
     /// Trasforma i dati grezzi in un payload pit-wall: gap dal leader (gia'
     /// calcolato dal gioco in mTimeBehindLeader/mLapsBehindLeader), stato
-    /// pit/penalita', ordinato per posizione. Il carburante NON e' qui: vive
-    /// nel Telemetry buffer (mFuel) ed e' affidabile solo per la vettura del
-    /// giocatore locale — va aggiunto come sorgente separata se serve.
+    /// pit/penalita', ordinato per posizione, più "myCar" (carburante e
+    /// gomme, SOLO vettura del giocatore locale — vedi RF2Telemetry.cs sul
+    /// perché non per tutta la griglia).
     /// </summary>
-    private static object BuildPayload(RF2Scoring scoring)
+    private static object BuildPayload(RF2Scoring scoring, RF2Telemetry? telemetry)
     {
         var info = scoring.mScoringInfo;
         int numVehicles = Math.Clamp(info.mNumVehicles, 0, RFactor2Constants.MAX_MAPPED_VEHICLES);
@@ -201,6 +209,29 @@ public class Program
             })
             .ToArray();
 
+        // Vettura del giocatore locale nello Scoring buffer (mIsPlayer!=0) —
+        // usata solo per trovare l'mID con cui pescare la riga giusta nel
+        // Telemetry buffer, che ha un proprio array separato di vetture.
+        int? localPlayerId = null;
+        foreach (var v in scoring.mVehicles.Take(numVehicles))
+        {
+            if (v.mIsPlayer != 0) { localPlayerId = v.mID; break; }
+        }
+
+        object? myCar = null;
+        if (telemetry is { } tel && localPlayerId is { } pid)
+        {
+            int numTelVehicles = Math.Clamp(tel.mNumVehicles, 0, RFactor2Constants.MAX_MAPPED_VEHICLES);
+            foreach (var vt in tel.mVehicles.Take(numTelVehicles))
+            {
+                if (vt.mID == pid)
+                {
+                    myCar = BuildMyCarPayload(vt);
+                    break;
+                }
+            }
+        }
+
         return new
         {
             track = RF2StringHelper.ToTrimmedString(info.mTrackName),
@@ -214,7 +245,51 @@ public class Program
             ambientTemp = info.mAmbientTemp,
             raining = info.mRaining,
             vehicles,
+            myCar, // null se non si sta guidando (spettatore) o Telemetry buffer non ancora pronto
             updatedAt = DateTimeOffset.UtcNow,
+        };
+    }
+
+    // "myCar": carburante + 4 gomme della vettura del giocatore locale. Solo
+    // qui il Telemetry buffer e' affidabile (vedi nota in testa a
+    // RF2Telemetry.cs) — per questo non e' nell'array vehicles sopra.
+    private static object BuildMyCarPayload(RF2VehicleTelemetry vt)
+    {
+        return new
+        {
+            fuelL = vt.mFuel > 0 ? vt.mFuel : (double?)null,
+            fuelCapacityL = vt.mFuelCapacity > 0 ? vt.mFuelCapacity : (double?)null,
+            engineWaterTempC = vt.mEngineWaterTemp,
+            engineOilTempC = vt.mEngineOilTemp,
+            tires = new[]
+            {
+                BuildTirePayload(vt.mWheels[0], "FL"),
+                BuildTirePayload(vt.mWheels[1], "FR"),
+                BuildTirePayload(vt.mWheels[2], "RL"),
+                BuildTirePayload(vt.mWheels[3], "RR"),
+            },
+        };
+    }
+
+    // Temperatura gomme: Kelvin nel buffer nativo, convertita qui in Celsius
+    // (non lato frontend). "left/center/right" invece di "inner/mid/outer":
+    // vedi nota in testa a RF2Telemetry.cs sul perché non è un mapping
+    // affidabile senza verifica dal vivo.
+    private static object BuildTirePayload(RF2Wheel w, string pos)
+    {
+        static double? KtoC(double kelvin) => kelvin > 0 ? kelvin - 273.15 : (double?)null;
+
+        return new
+        {
+            pos,
+            pressureKpa = w.mPressure > 0 ? w.mPressure : (double?)null,
+            wearPct = w.mWear >= 0 ? Math.Round(w.mWear * 100, 1) : (double?)null,
+            brakeTempC = w.mBrakeTemp > 0 ? w.mBrakeTemp : (double?)null,
+            tempLeftC = KtoC(w.mTemperature[0]),
+            tempCenterC = KtoC(w.mTemperature[1]),
+            tempRightC = KtoC(w.mTemperature[2]),
+            flat = w.mFlat != 0,
+            detached = w.mDetached != 0,
         };
     }
 

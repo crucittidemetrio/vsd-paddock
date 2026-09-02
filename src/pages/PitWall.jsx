@@ -139,6 +139,7 @@ export default function PitWall() {
               </section>
             )}
             <ClassificaTable rows={rows} />
+            <MyCarPanel myCar={payload.myCar} />
           </>
         )}
 
@@ -219,6 +220,87 @@ function SessionsHistory() {
           </table>
         </div>
       )}
+    </section>
+  );
+}
+
+// "La tua vettura" — carburante e gomme, dato letto dal Telemetry buffer
+// (separato dallo Scoring buffer usato per la classifica). Affidabile SOLO
+// per la vettura di chi lancia il bridge: se sei in sessione ma non stai
+// guidando (spettatore), myCar è null dal backend e il pannello non si
+// mostra — non è un bug, è il limite noto del gioco (vedi
+// vsd-pitwall-bridge/RF2Telemetry.cs).
+function MyCarPanel({ myCar }) {
+  if (!myCar) return null;
+
+  const fuelPct =
+    myCar.fuelL != null && myCar.fuelCapacityL
+      ? Math.round((myCar.fuelL / myCar.fuelCapacityL) * 100)
+      : null;
+
+  return (
+    <section className={styles.panel}>
+      <div className={styles.panelTitle}>La tua vettura</div>
+      <p className={styles.hint} style={{ marginBottom: 10 }}>
+        Solo per chi guida — il gioco garantisce questi dati solo per la vettura del giocatore locale.
+      </p>
+      <div className={styles.sessionGrid}>
+        <div className={styles.sessionItem}>
+          <span className={styles.sessionLabel}>Carburante</span>
+          <span className={styles.sessionValue}>
+            {myCar.fuelL != null ? myCar.fuelL.toFixed(1) : '—'}
+            {myCar.fuelCapacityL != null ? ` / ${myCar.fuelCapacityL.toFixed(0)} L` : ' L'}
+            {fuelPct != null ? ` (${fuelPct}%)` : ''}
+          </span>
+        </div>
+        <div className={styles.sessionItem}>
+          <span className={styles.sessionLabel}>Acqua motore</span>
+          <span className={styles.sessionValue}>
+            {myCar.engineWaterTempC != null ? myCar.engineWaterTempC.toFixed(0) : '—'}°C
+          </span>
+        </div>
+        <div className={styles.sessionItem}>
+          <span className={styles.sessionLabel}>Olio motore</span>
+          <span className={styles.sessionValue}>
+            {myCar.engineOilTempC != null ? myCar.engineOilTempC.toFixed(0) : '—'}°C
+          </span>
+        </div>
+      </div>
+
+      <div className={styles.tireGrid}>
+        {myCar.tires.map((t) => (
+          <div key={t.pos} className={styles.tireCard}>
+            <div className={styles.tireLabel}>{t.pos}</div>
+            <div className={styles.tireRow}>
+              <span>Pressione</span>
+              <span>{t.pressureKpa != null ? `${t.pressureKpa.toFixed(0)} kPa` : '—'}</span>
+            </div>
+            <div className={styles.tireRow}>
+              <span>Usura</span>
+              <span>{t.wearPct != null ? `${t.wearPct}%` : '—'}</span>
+            </div>
+            <div className={styles.tireRow}>
+              <span>Freno</span>
+              <span>{t.brakeTempC != null ? `${t.brakeTempC.toFixed(0)}°C` : '—'}</span>
+            </div>
+            <div className={styles.tireRow}>
+              <span>Temp. (sx/centro/dx)</span>
+              <span>
+                {[t.tempLeftC, t.tempCenterC, t.tempRightC]
+                  .map((v) => (v != null ? v.toFixed(0) : '—'))
+                  .join('/')}
+                °C
+              </span>
+            </div>
+            {(t.flat || t.detached) && (
+              <div className={styles.tireWarning}>
+                {t.flat ? 'FORATA ' : ''}
+                {t.detached ? 'STACCATA' : ''}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
