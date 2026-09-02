@@ -46,25 +46,26 @@ function fmtInterval(v) {
 }
 
 // Settore 3 non è un campo diretto dello Scoring buffer (solo S1/S2 lo
-// sono) — si ricava per differenza dal tempo sul giro. Stimato, non un
-// dato riportato a parte dal gioco: se S1/S2 mancano (sentinel -1) o il
-// giro non è valido, torna null invece di un numero inventato.
+// sono) — si ricava per differenza dal tempo sul giro. Usiamo il giro
+// MIGLIORE (bestLapTime/bestLapSector1/2), non l'ultimo giro completato:
+// vedi nota sopra ClassificaTable sul perché. Stimato, non un dato
+// riportato a parte dal gioco: se mancano i pezzi torna null invece di un
+// numero inventato.
 function estimatedSector3(v) {
-  if (v.lastLapTime == null || v.lastLapTime <= 0) return null;
-  if (v.lastSector1 == null || v.lastSector1 <= 0) return null;
-  if (v.lastSector2 == null || v.lastSector2 <= 0) return null;
-  return v.lastLapTime - v.lastSector1 - v.lastSector2;
+  if (v.bestLapTime == null || v.bestLapTime <= 0) return null;
+  if (v.bestLapSector1 == null || v.bestLapSector1 <= 0) return null;
+  if (v.bestLapSector2 == null || v.bestLapSector2 <= 0) return null;
+  return v.bestLapTime - v.bestLapSector1 - v.bestLapSector2;
 }
 
 // Viola = miglior tempo di settore di TUTTA la sessione (qualunque pilota,
 // qualunque giro) — stesso significato "purple sector" delle schermate F1.
 // Verde = miglior tempo di settore personale del pilota stesso, ma non il
 // migliore assoluto. Nessun colore = né l'uno né l'altro.
-function sectorClass(value, personalBest, sessionBest, styles) {
+function sectorClass(value, sessionBest, styles) {
   if (value == null || value <= 0) return undefined;
   if (sessionBest != null && value <= sessionBest + 0.0005) return styles.sectorPurple;
-  if (personalBest != null && value <= personalBest + 0.0005) return styles.sectorGreen;
-  return undefined;
+  return styles.sectorGreen;
 }
 
 // Le sessioni registrate arrivano dal backend in millisecondi (stessa
@@ -282,12 +283,21 @@ function ClassificaTable({ rows }) {
   // Miglior tempo di settore dell'intera sessione (tutti i piloti nel
   // filtro classe corrente) — ricalcolato ad ogni render, costo
   // trascurabile per una griglia di poche decine di vetture.
+  //
+  // Usiamo bestLapSector1/2 (settori DEL giro migliore, campo mBestLapSector1/2
+  // — vedi RF2Scoring.cs) invece di bestSector1/2 ("miglior settore mai segnato,
+  // non per forza nello stesso giro"). Con lastSector1/2 (giro appena
+  // completato) il viola compariva solo nell'istante esatto in cui un pilota
+  // migliorava il record e spariva al giro successivo — osservato dal vivo
+  // il 02/09: "non vedo mai viola". Il settore del giro migliore invece resta
+  // stabile finché il record non viene battuto da qualcun altro, come nelle
+  // schermate F1/WEC.
   const sessionBestS1 = useMemo(() => {
-    const vals = rows.map((v) => v.bestSector1).filter((t) => t != null && t > 0);
+    const vals = rows.map((v) => v.bestLapSector1).filter((t) => t != null && t > 0);
     return vals.length ? Math.min(...vals) : null;
   }, [rows]);
   const sessionBestS2 = useMemo(() => {
-    const vals = rows.map((v) => v.bestSector2).filter((t) => t != null && t > 0);
+    const vals = rows.map((v) => v.bestLapSector2).filter((t) => t != null && t > 0);
     return vals.length ? Math.min(...vals) : null;
   }, [rows]);
 
@@ -330,11 +340,11 @@ function ClassificaTable({ rows }) {
                   <td>{v.laps}</td>
                   <td>{fmtGap(v)}</td>
                   <td>{fmtInterval(v)}</td>
-                  <td className={sectorClass(v.lastSector1, v.bestSector1, sessionBestS1, styles)}>
-                    {v.lastSector1 > 0 ? v.lastSector1.toFixed(3) : '—'}
+                  <td className={sectorClass(v.bestLapSector1, sessionBestS1, styles)}>
+                    {v.bestLapSector1 > 0 ? v.bestLapSector1.toFixed(3) : '—'}
                   </td>
-                  <td className={sectorClass(v.lastSector2, v.bestSector2, sessionBestS2, styles)}>
-                    {v.lastSector2 > 0 ? v.lastSector2.toFixed(3) : '—'}
+                  <td className={sectorClass(v.bestLapSector2, sessionBestS2, styles)}>
+                    {v.bestLapSector2 > 0 ? v.bestLapSector2.toFixed(3) : '—'}
                   </td>
                   <td>{s3 != null && s3 > 0 ? s3.toFixed(3) : '—'}</td>
                   <td>{fmtLapTime(v.lastLapTime)}</td>
@@ -353,7 +363,8 @@ function ClassificaTable({ rows }) {
         </table>
       </div>
       <p className={styles.hint} style={{ marginTop: 8 }}>
-        Viola = miglior settore di tutta la sessione, verde = miglior settore personale.
+        S1/S2/S3 sono i settori del giro migliore di ciascun pilota (stesso giro di "Miglior").
+        Viola = record assoluto della sessione, verde = record personale.
         *S3 stimato (giro − S1 − S2), non riportato a parte dal gioco.
       </p>
     </section>
