@@ -156,13 +156,18 @@
 .flagYellow { color: #f5a623; }
 
 /* Settori: viola = miglior tempo di sessione (tutti i piloti), verde =
-   miglior tempo personale — stessa convenzione delle schermate F1. */
-.sectorPurple {
+   miglior tempo personale — stessa convenzione delle schermate F1.
+   Selettore qualificato con ".table td" (non solo la classe da sola):
+   ".table td" ha specificità classe+elemento (0,1,1), più alta della sola
+   classe (0,1,0) — senza qualificarlo il colore bianco standard di
+   ".table td" vinceva sempre, il colore non si vedeva mai pur essendo la
+   classe applicata correttamente (bug reale, non un problema di dati). */
+.table td.sectorPurple {
   color: #d896ff;
   font-weight: 700;
 }
 
-.sectorGreen {
+.table td.sectorGreen {
   color: #4ade80;
   font-weight: 700;
 }
