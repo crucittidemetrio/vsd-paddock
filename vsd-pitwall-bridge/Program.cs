@@ -161,6 +161,17 @@ public class Program
                 timeBehindNext = v.mTimeBehindNext,
                 lastLapTime = v.mLastLapTime,
                 bestLapTime = v.mBestLapTime,
+                // Settori — dato già presente nello Scoring buffer (RF2VehicleScoring),
+                // semplicemente mai selezionato prima in questo payload. Convenzione
+                // rF2/LMU: -1 = "non ancora impostato", stesso sentinel di
+                // mBestLapTime/mLastLapTime — il frontend lo tratta allo stesso modo
+                // di fmtLapTime(). Nessun campo "settore 3" diretto: si ricava lato
+                // frontend come lastLapTime - lastSector1 - lastSector2 (stimato, non
+                // riportato a parte dal gioco).
+                lastSector1 = v.mLastSector1,
+                lastSector2 = v.mLastSector2,
+                bestSector1 = v.mBestSector1, // miglior tempo di settore MAI segnato (non per forza dello stesso giro)
+                bestSector2 = v.mBestSector2,
                 inPits = v.mInPits != 0,
                 pitState = v.mPitState, // grezzo, vedi nota su mPitState in RF2Scoring.cs (valore 5
                                         // osservato in test reale, non nell'enum 0-4 documentato)

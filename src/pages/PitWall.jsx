@@ -45,6 +45,28 @@ function fmtInterval(v) {
   return '—';
 }
 
+// Settore 3 non è un campo diretto dello Scoring buffer (solo S1/S2 lo
+// sono) — si ricava per differenza dal tempo sul giro. Stimato, non un
+// dato riportato a parte dal gioco: se S1/S2 mancano (sentinel -1) o il
+// giro non è valido, torna null invece di un numero inventato.
+function estimatedSector3(v) {
+  if (v.lastLapTime == null || v.lastLapTime <= 0) return null;
+  if (v.lastSector1 == null || v.lastSector1 <= 0) return null;
+  if (v.lastSector2 == null || v.lastSector2 <= 0) return null;
+  return v.lastLapTime - v.lastSector1 - v.lastSector2;
+}
+
+// Viola = miglior tempo di settore di TUTTA la sessione (qualunque pilota,
+// qualunque giro) — stesso significato "purple sector" delle schermate F1.
+// Verde = miglior tempo di settore personale del pilota stesso, ma non il
+// migliore assoluto. Nessun colore = né l'uno né l'altro.
+function sectorClass(value, personalBest, sessionBest, styles) {
+  if (value == null || value <= 0) return undefined;
+  if (sessionBest != null && value <= sessionBest + 0.0005) return styles.sectorPurple;
+  if (personalBest != null && value <= personalBest + 0.0005) return styles.sectorGreen;
+  return undefined;
+}
+
 // Le sessioni registrate arrivano dal backend in millisecondi (stessa
 // convenzione lap_time_ms di BestLaps/LapData) — il live feed invece manda
 // secondi grezzi dallo Scoring buffer, da cui fmtLapTime() sopra.
@@ -257,6 +279,18 @@ function SessionInfo({ payload }) {
 }
 
 function ClassificaTable({ rows }) {
+  // Miglior tempo di settore dell'intera sessione (tutti i piloti nel
+  // filtro classe corrente) — ricalcolato ad ogni render, costo
+  // trascurabile per una griglia di poche decine di vetture.
+  const sessionBestS1 = useMemo(() => {
+    const vals = rows.map((v) => v.bestSector1).filter((t) => t != null && t > 0);
+    return vals.length ? Math.min(...vals) : null;
+  }, [rows]);
+  const sessionBestS2 = useMemo(() => {
+    const vals = rows.map((v) => v.bestSector2).filter((t) => t != null && t > 0);
+    return vals.length ? Math.min(...vals) : null;
+  }, [rows]);
+
   return (
     <section className={styles.panel}>
       <div className={styles.tableWrap}>
@@ -270,6 +304,9 @@ function ClassificaTable({ rows }) {
               <th>Giri</th>
               <th>Gap Leader</th>
               <th>Intervallo</th>
+              <th>S1</th>
+              <th>S2</th>
+              <th>S3*</th>
               <th>Ultimo</th>
               <th>Miglior</th>
               <th>Pit</th>
@@ -277,34 +314,48 @@ function ClassificaTable({ rows }) {
             </tr>
           </thead>
           <tbody>
-            {rows.map((v) => (
-              <tr key={v.id} className={v.inPits ? styles.rowInPits : undefined}>
-                <td>
-                  {v.place}
-                  {FINISH_LABELS[v.finishStatus] && (
-                    <span className={styles.finishTag}> {FINISH_LABELS[v.finishStatus]}</span>
-                  )}
-                </td>
-                <td>{v.driver || '—'}</td>
-                <td>{v.vehicle || '—'}</td>
-                <td>{v.vClass || '—'}</td>
-                <td>{v.laps}</td>
-                <td>{fmtGap(v)}</td>
-                <td>{fmtInterval(v)}</td>
-                <td>{fmtLapTime(v.lastLapTime)}</td>
-                <td>{fmtLapTime(v.bestLapTime)}</td>
-                <td>{v.inPits ? <span className={styles.pitBadge}>BOX</span> : ''}</td>
-                <td>{v.numPenalties > 0 ? v.numPenalties : ''}</td>
-              </tr>
-            ))}
+            {rows.map((v) => {
+              const s3 = estimatedSector3(v);
+              return (
+                <tr key={v.id} className={v.inPits ? styles.rowInPits : undefined}>
+                  <td>
+                    {v.place}
+                    {FINISH_LABELS[v.finishStatus] && (
+                      <span className={styles.finishTag}> {FINISH_LABELS[v.finishStatus]}</span>
+                    )}
+                  </td>
+                  <td>{v.driver || '—'}</td>
+                  <td>{v.vehicle || '—'}</td>
+                  <td>{v.vClass || '—'}</td>
+                  <td>{v.laps}</td>
+                  <td>{fmtGap(v)}</td>
+                  <td>{fmtInterval(v)}</td>
+                  <td className={sectorClass(v.lastSector1, v.bestSector1, sessionBestS1, styles)}>
+                    {v.lastSector1 > 0 ? v.lastSector1.toFixed(3) : '—'}
+                  </td>
+                  <td className={sectorClass(v.lastSector2, v.bestSector2, sessionBestS2, styles)}>
+                    {v.lastSector2 > 0 ? v.lastSector2.toFixed(3) : '—'}
+                  </td>
+                  <td>{s3 != null && s3 > 0 ? s3.toFixed(3) : '—'}</td>
+                  <td>{fmtLapTime(v.lastLapTime)}</td>
+                  <td>{fmtLapTime(v.bestLapTime)}</td>
+                  <td>{v.inPits ? <span className={styles.pitBadge}>BOX</span> : ''}</td>
+                  <td>{v.numPenalties > 0 ? v.numPenalties : ''}</td>
+                </tr>
+              );
+            })}
             {rows.length === 0 && (
               <tr>
-                <td colSpan={11} className={styles.hint}>Nessuna vettura in classifica.</td>
+                <td colSpan={14} className={styles.hint}>Nessuna vettura in classifica.</td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+      <p className={styles.hint} style={{ marginTop: 8 }}>
+        Viola = miglior settore di tutta la sessione, verde = miglior settore personale.
+        *S3 stimato (giro − S1 − S2), non riportato a parte dal gioco.
+      </p>
     </section>
   );
 }

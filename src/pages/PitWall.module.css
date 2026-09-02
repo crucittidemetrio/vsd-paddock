@@ -152,6 +152,18 @@
 .flagGreen { color: #4ade80; }
 .flagYellow { color: #f5a623; }
 
+/* Settori: viola = miglior tempo di sessione (tutti i piloti), verde =
+   miglior tempo personale — stessa convenzione delle schermate F1. */
+.sectorPurple {
+  color: #d896ff;
+  font-weight: 700;
+}
+
+.sectorGreen {
+  color: #4ade80;
+  font-weight: 700;
+}
+
 .selectorRow {
   display: flex;
   align-items: center;
