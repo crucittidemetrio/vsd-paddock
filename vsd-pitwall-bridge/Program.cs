@@ -201,6 +201,14 @@ public class Program
                 bestLapSector1 = v.mBestLapSector1,
                 bestLapSector2 = v.mBestLapSector2,
                 inPits = v.mInPits != 0,
+                // Gialla PER VETTURA — campo già presente in RF2VehicleScoring (mai
+                // selezionato prima), letto direttamente dalla memoria condivisa del
+                // gioco, non da SimHub. Risolve un limite documentato in
+                // VsdLapDataLoggerPlugin.cs: la property SimHub "Flag_Yellow" segnala
+                // bandiera gialla in QUALSIASI punto del circuito, non per vettura —
+                // durante un incidente restava vera per giri interi anche per chi non
+                // era coinvolto. Qui invece è per-vettura, dato diretto del gioco.
+                underYellow = v.mUnderYellow != 0,
                 pitState = v.mPitState, // grezzo, vedi nota su mPitState in RF2Scoring.cs (valore 5
                                         // osservato in test reale, non nell'enum 0-4 documentato)
                 numPitstops = v.mNumPitstops,

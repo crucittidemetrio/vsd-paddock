@@ -255,6 +255,13 @@
   background: rgba(245, 166, 35, 0.05);
 }
 
+/* Gialla per-vettura (mUnderYellow) — bordo invece di sfondo, per non
+   confondersi visivamente con .rowInPits (che usa già una tinta di sfondo
+   simile). Vedi commento in Program.cs su mUnderYellow. */
+.rowUnderYellow {
+  box-shadow: inset 3px 0 0 0 #f5a623;
+}
+
 .pitBadge {
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;

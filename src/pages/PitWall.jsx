@@ -428,8 +428,11 @@ function ClassificaTable({ rows }) {
           <tbody>
             {rows.map((v) => {
               const s3 = estimatedSector3(v);
+              const rowClass = [v.inPits && styles.rowInPits, v.underYellow && styles.rowUnderYellow]
+                .filter(Boolean)
+                .join(' ') || undefined;
               return (
-                <tr key={v.id} className={v.inPits ? styles.rowInPits : undefined}>
+                <tr key={v.id} className={rowClass}>
                   <td>
                     {v.place}
                     {FINISH_LABELS[v.finishStatus] && (
@@ -468,6 +471,8 @@ function ClassificaTable({ rows }) {
         S1/S2/S3 sono i settori del giro migliore di ciascun pilota (stesso giro di "Miglior").
         Viola = record assoluto della sessione, verde = record personale.
         *S3 stimato (giro − S1 − S2), non riportato a parte dal gioco.
+        Riga con bordo giallo a sinistra = quel pilota è sotto bandiera gialla in questo momento
+        (per vettura, non "gialla ovunque in pista" — dato diretto dal gioco).
       </p>
     </section>
   );
