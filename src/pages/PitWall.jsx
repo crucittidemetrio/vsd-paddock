@@ -243,6 +243,7 @@ function MyCarPanel({ myCar }) {
       <div className={styles.panelTitle}>La tua vettura</div>
       <p className={styles.hint} style={{ marginBottom: 10 }}>
         Solo per chi guida — il gioco garantisce questi dati solo per la vettura del giocatore locale.
+        Le "zone" danno sono un conteggio, non una mappa (il gioco non documenta quale zona è quale punto dell'auto).
       </p>
       <div className={styles.sessionGrid}>
         <div className={styles.sessionItem}>
@@ -265,7 +266,26 @@ function MyCarPanel({ myCar }) {
             {myCar.engineOilTempC != null ? myCar.engineOilTempC.toFixed(0) : '—'}°C
           </span>
         </div>
+        <div className={styles.sessionItem}>
+          <span className={styles.sessionLabel}>Danni</span>
+          <span className={styles.sessionValue}>
+            {myCar.dentedZones > 0 ? `${myCar.dentedZones}/8 zone` : 'Nessuno'}
+          </span>
+        </div>
       </div>
+
+      {(myCar.overheating || myCar.bodyDetached || myCar.dentedZones > 0 || myCar.lastImpactMagnitude != null) && (
+        <div className={styles.tireWarning} style={{ marginTop: 4 }}>
+          {myCar.overheating && 'MOTORE IN SURRISCALDAMENTO  '}
+          {myCar.bodyDetached && 'CARROZZERIA DANNEGGIATA  '}
+          {myCar.dentedZones > 0 &&
+            `DANNI: ${myCar.dentedZones}/8 zone (gravità max ${myCar.maxDentSeverity})  `}
+          {myCar.lastImpactMagnitude != null &&
+            `ULTIMO URTO: magnitudo ${myCar.lastImpactMagnitude.toFixed(1)}${
+              myCar.lastImpactSecondsAgo != null ? `, ${Math.round(myCar.lastImpactSecondsAgo)}s fa` : ''
+            }`}
+        </div>
+      )}
 
       <div className={styles.tireGrid}>
         {myCar.tires.map((t) => (

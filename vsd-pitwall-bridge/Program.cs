@@ -250,17 +250,40 @@ public class Program
         };
     }
 
-    // "myCar": carburante + 4 gomme della vettura del giocatore locale. Solo
-    // qui il Telemetry buffer e' affidabile (vedi nota in testa a
-    // RF2Telemetry.cs) — per questo non e' nell'array vehicles sopra.
+    // "myCar": carburante + gomme + danni della vettura del giocatore
+    // locale. Solo qui il Telemetry buffer e' affidabile (vedi nota in
+    // testa a RF2Telemetry.cs) — per questo non e' nell'array vehicles sopra.
     private static object BuildMyCarPayload(RF2VehicleTelemetry vt)
     {
+        // Danni: mDentSeverity ha 8 valori "a zone attorno all'auto", ma il
+        // commento originale del plugin dice solo "8 locations around the
+        // car" — nessuna mappa documentata di quale indice sia quale zona
+        // (anteriore/laterale/ecc). Invece di inventare una posizione non
+        // verificata, esponiamo un riepilogo (danno massimo + quante zone
+        // colpite) più il vettore grezzo, per un domani in cui la mappa
+        // venga confermata dal vivo.
+        var dents = vt.mDentSeverity.Select(b => (int)b).ToArray();
+        int maxDentSeverity = dents.Length > 0 ? dents.Max() : 0;
+        int dentedZones = dents.Count(d => d > 0);
+
+        // mLastImpactMagnitude > 0 come sentinel "c'e' stato un urto in
+        // questa sessione" — mLastImpactET da solo e' ambiguo (0 potrebbe
+        // essere "mai" o "urto proprio all'inizio della sessione").
+        bool hasImpact = vt.mLastImpactMagnitude > 0;
+
         return new
         {
             fuelL = vt.mFuel > 0 ? vt.mFuel : (double?)null,
             fuelCapacityL = vt.mFuelCapacity > 0 ? vt.mFuelCapacity : (double?)null,
             engineWaterTempC = vt.mEngineWaterTemp,
             engineOilTempC = vt.mEngineOilTemp,
+            overheating = vt.mOverheating != 0,
+            bodyDetached = vt.mDetached != 0, // parti di carrozzeria staccate (non le ruote — vedi tire.detached)
+            maxDentSeverity, // 0=nessun danno, 1=poco, 2=tanto
+            dentedZones, // quante delle 8 zone hanno un danno > 0
+            dentSeverityRaw = dents, // vettore grezzo, posizione esatta non documentata dal gioco
+            lastImpactMagnitude = hasImpact ? vt.mLastImpactMagnitude : (double?)null,
+            lastImpactSecondsAgo = hasImpact ? Math.Max(0, vt.mElapsedTime - vt.mLastImpactET) : (double?)null,
             tires = new[]
             {
                 BuildTirePayload(vt.mWheels[0], "FL"),
