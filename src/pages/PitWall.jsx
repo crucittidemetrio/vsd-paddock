@@ -436,8 +436,8 @@ function ClassificaTable({ rows }) {
                       <span className={styles.finishTag}> {FINISH_LABELS[v.finishStatus]}</span>
                     )}
                   </td>
-                  <td>{v.driver || '—'}</td>
-                  <td>{v.vehicle || '—'}</td>
+                  <td className={styles.truncate} title={v.driver || undefined}>{v.driver || '—'}</td>
+                  <td className={styles.truncate} title={v.vehicle || undefined}>{v.vehicle || '—'}</td>
                   <td>{v.vClass || '—'}</td>
                   <td>{v.laps}</td>
                   <td>{fmtGap(v)}</td>

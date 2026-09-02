@@ -1,5 +1,8 @@
 .pageWrap {
-  max-width: 1200px;
+  /* Più largo delle altre pagine (1200px): la classifica ha 14 colonne,
+     su schermo stretto costringeva a scorrere in orizzontale per leggerla
+     — vedi anche .truncate e il padding ridotto delle celle sotto. */
+  max-width: 1700px;
   margin: 0 auto;
   padding: 32px 24px 80px;
 }
@@ -209,7 +212,7 @@
 
 .table th {
   text-align: left;
-  padding: 6px 10px;
+  padding: 5px 8px;
   font-size: 10px;
   letter-spacing: 0.5px;
   text-transform: uppercase;
@@ -219,7 +222,7 @@
 }
 
 .table td {
-  padding: 8px 10px;
+  padding: 6px 8px;
   color: #e8eaf6;
   border-bottom: 1px solid rgba(255, 255, 255, 0.04);
   white-space: nowrap;
@@ -231,6 +234,16 @@
 .table td:nth-child(3) {
   font-family: 'Inter', sans-serif;
   font-size: 13px;
+}
+
+/* Pilota/Vettura: sono le colonne più larghe in assoluto (nomi tipo "Oreca
+   07 ELMS Custom Team 2025 #397") — troncate con "..." invece di allargare
+   tutta la tabella, nome completo disponibile al passaggio del mouse
+   (title). Vedi anche .pageWrap più largo sopra. */
+.truncate {
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .rowInPits {
