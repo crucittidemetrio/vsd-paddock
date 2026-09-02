@@ -92,22 +92,37 @@ esistente.
 
 ## Distribuire il bridge (.exe, niente terminale)
 
-`dotnet build`/`dotnet run` restano il modo giusto per sviluppare, ma per
-chi deve solo **farlo girare** (te la prossima volta, un compagno di
-squadra che fa da pit-wall) c'è un pacchetto autosufficiente: un unico
-`.exe`, nessun .NET da installare sulla macchina di destinazione, niente
-comandi da digitare a parte quello che lo genera una volta:
+`dotnet build`/`dotnet run` restano il modo giusto per sviluppare. Per
+distribuirlo ai piloti, **non mandare mai l'.exe come allegato Discord**:
+un eseguibile appena compilato, non firmato e senza storico, viene quasi
+sempre bloccato dallo scanner antivirus di Discord (falso positivo — vale
+ancora di più per una build self-contained single-file come questa, che
+somiglia euristicamente a un payload impacchettato). Stesso identico
+problema già risolto per i companion Python, stessa soluzione: build
+automatica via GitHub Actions (`.github/workflows/build-pitwall-bridge.yml`,
+si attiva ad ogni push su main che tocca questa cartella) pubblicata come
+GitHub Release pubblica a link stabile — [scarica VsdPitwallBridge.exe qui](https://github.com/crucittidemetrio/vsd-paddock/releases/tag/race-tools-latest),
+nessun login richiesto, nessun re-invio ad ogni aggiornamento (il link
+resta identico).
+
+Per generarlo a mano in locale (debug/test prima di pushare):
 
 ```powershell
 dotnet publish -c Release -r win-x64
 ```
 
-Il file finito è in `bin\Release\net8.0\win-x64\publish\VsdPitwallBridge.exe`
-— copialo dove vuoi (anche su un'altra macchina) e fai doppio click. Si apre
-comunque una finestra nera con i log (`Sessione LMU agganciata.`, ecc.) —
-è l'output del programma stesso, non un terminale in cui digitare comandi:
-serve solo a vedere cosa sta succedendo, e al primo avvio a incollarci
-dentro il token quando richiesto (una volta sola, poi lo ricorda).
+Il file finito è in `bin\Release\net8.0\win-x64\publish\VsdPitwallBridge.exe`.
+Fai doppio click per avviarlo. Si apre comunque una finestra nera con i log
+(`Sessione LMU agganciata.`, ecc.) — è l'output del programma stesso, non un
+terminale in cui digitare comandi: serve solo a vedere cosa sta succedendo,
+e al primo avvio a incollarci dentro il token quando richiesto (una volta
+sola, poi lo ricorda).
+
+**Windows SmartScreen**: al primo avvio (sia dalla Release che dalla build
+locale) Windows mostrerà "Windows ha protetto il PC" — normale per un
+eseguibile senza firma digitale (costerebbe un'identità aziendale a
+pagamento, sproporzionato qui). Clicca "Ulteriori informazioni" → "Esegui
+comunque".
 
 Su chi lo riceve resta comunque un prerequisito non evitabile: **Le Mans
 Ultimate con Enable Plugins attivo** (punto 1-2 sopra) sulla stessa

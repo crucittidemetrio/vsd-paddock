@@ -1,0 +1,77 @@
+name: Build pitwall bridge exe
+
+# Compila VsdPitwallBridge.exe su un runner Windows ad ogni push su main
+# che tocca vsd-pitwall-bridge/ — stesso identico schema di
+# build-companion.yml (Python), applicato qui al bridge C#.
+#
+# Perché non allegare mai l'exe direttamente su Discord: un eseguibile
+# .NET "self-contained single-file" appena compilato, senza firma
+# digitale e senza storico/reputazione, viene quasi sempre bloccato
+# dallo scanner antivirus integrato di Discord (euristica: assomiglia al
+# modo in cui i malware impacchettano un payload in un solo file). Una
+# GitHub Release pubblica bypassa il problema alla radice: si scarica da
+# github.com, non transita mai per gli allegati di Discord.
+#
+# Pubblica l'exe in DUE posti, stesso pattern del companion:
+#  1. Artifact della run (richiede login GitHub, utile per staff/QA)
+#  2. GitHub Release pubblica a tag fisso "race-tools-latest" (NESSUN
+#     login richiesto — questo è il link da dare ai piloti). Ogni push
+#     sovrascrive l'asset della stessa release, quindi il link resta
+#     sempre identico: non va ricondiviso ad ogni aggiornamento.
+#
+# Nota per chi lo riceve: non è firmato digitalmente (una firma codice
+# richiede un'identità aziendale registrata a pagamento, sproporzionata
+# per un progetto hobbistico), quindi Windows SmartScreen mostrerà
+# "Windows ha protetto il PC" al primo avvio — è normale, va cliccato
+# "Ulteriori informazioni" → "Esegui comunque". Vedi
+# vsd-pitwall-bridge/README.md per i dettagli da dare ai piloti.
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'vsd-pitwall-bridge/**'
+      - '.github/workflows/build-pitwall-bridge.yml'
+  workflow_dispatch: {}
+
+jobs:
+  build-exe:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: vsd-pitwall-bridge
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish VsdPitwallBridge.exe (self-contained win-x64)
+        run: dotnet publish -c Release -r win-x64
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vsd-pitwall-bridge-exe
+          path: vsd-pitwall-bridge/bin/Release/net8.0/win-x64/publish/VsdPitwallBridge.exe
+          retention-days: 90
+
+      - name: Pubblica/aggiorna la Release pubblica (race-tools-latest)
+        uses: ncipollo/release-action@v1
+        with:
+          tag: race-tools-latest
+          commit: main
+          name: "Race tools — build automatica"
+          body: >
+            Build automatica dell'ultimo commit su vsd-pitwall-bridge/.
+            Scarica VsdPitwallBridge.exe qui sotto — link stabile,
+            nessun login richiesto. Guida d'uso:
+            vsd-pitwall-bridge/README.md e docs/Guida_PitWall_AnalisiPasso.pdf.
+          artifacts: "vsd-pitwall-bridge/bin/Release/net8.0/win-x64/publish/VsdPitwallBridge.exe"
+          allowUpdates: true
+          replacesArtifacts: true
+          makeLatest: false
+          token: ${{ secrets.GITHUB_TOKEN }}
