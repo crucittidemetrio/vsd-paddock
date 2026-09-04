@@ -56,7 +56,7 @@ function formatGap(deltaMs) {
 
 export default function AdminTeamDashboard() {
   const [selectedDriverId, setSelectedDriverId] = useState('');
-  const [raceConfig, setRaceConfig] = useState({ sim: '', track_id: '', car_id: '' });
+  const [raceConfig, setRaceConfig] = useState({ sim: 'LMU', track_id: '', car_id: '' }); // LMU sim primario
 
   const { data: drivers, isLoading: driversLoading } = useDrivers();
   const { data: laps, isLoading: lapsLoading } = useBestLaps({});

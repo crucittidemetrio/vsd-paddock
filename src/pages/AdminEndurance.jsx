@@ -39,7 +39,7 @@ function shortId(id) {
 
 export default function AdminEndurance() {
   const [statusFilter, setStatusFilter] = useState('');
-  const [simFilter, setSimFilter] = useState('');
+  const [simFilter, setSimFilter] = useState('LMU'); // LMU sim primario — vedi richiesta team
 
   const filters = useMemo(() => {
     const f = {};

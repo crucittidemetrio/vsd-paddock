@@ -40,7 +40,7 @@ export default function BestLaps() {
   const { driver, isVsdPilot, isStaff, isAdmin } = useAuth();
   const [viewMode, setViewMode] = useState('leaderboard');
   const [seasonFilter, setSeasonFilter] = useState('season2026');
-  const [simFilter, setSimFilter] = useState('all');
+  const [simFilter, setSimFilter] = useState('LMU'); // LMU sim primario — vedi richiesta team
   const [trackFilter, setTrackFilter] = useState('all');
   const [raceClassFilter, setRaceClassFilter] = useState('all');
   const [showExVsd, toggleShowExVsd] = useShowExDrivers();
