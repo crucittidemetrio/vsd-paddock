@@ -34,12 +34,16 @@ Danni 100%, Dynamic Track attivo, Virtual Energy Tank attivo, pit stop non obbli
 🟠 **LMGT3** — Ferrari 296 GT3, Porsche 911 GT3 R, Corvette Z06 GT3.R, Ford Mustang GT3, BMW M4 GT3, McLaren 720S GT3 Evo, Aston Martin Vantage GT3, Mercedes-AMG GT3, Lamborghini Huracán LMGT3 Evo2, Lexus RCF LMGT3
 
 **📅 Calendario**
-🇺🇸 R1 — Sebring — 13 Set, 18:30
-🇮🇹 R2 — Imola — 27 Set, 18:30
-🇧🇪 R3 — Spa-Francorchamps — 11 Ott, 18:30
-🇯🇵 R4 — Fuji Speedway — 25 Ott, 19:30
-🇮🇹 R5 — Monza — 08 Nov, 19:30
-🇫🇷 R6 — Le Mans — 22 Nov, 19:30
+Apertura server: **21:00 (ora reale)** per tutti i round. L'orario indicato sotto è l'orologio in-game all'avvio gara (varia per round).
+🇺🇸 R1 — Sebring — 13 Set — in-game 14:00
+🇮🇹 R2 — Imola — 27 Set — in-game 10:00
+🇧🇪 R3 — Spa-Francorchamps — 11 Ott — in-game 15:00
+🇯🇵 R4 — Fuji Speedway — 25 Ott — in-game 13:00
+🇮🇹 R5 — Monza — 08 Nov — in-game 13:00
+🇫🇷 R6 — Le Mans — 22 Nov — in-game 16:00
+
+**🛞 Gomme**
+Termocoperte attive per tutte le classi. 14 pneumatici a disposizione per pilota, per round (practice + qualifica + gara) — gestione libera.
 
 ━━━━━━━━━━━━━━━━━━━━
 
@@ -91,12 +95,16 @@ Each round: 10' Practice (open lobby) → 15' Qualifying (private session) → *
 🟠 **LMGT3** — Ferrari 296 GT3, Porsche 911 GT3 R, Corvette Z06 GT3.R, Ford Mustang GT3, BMW M4 GT3, McLaren 720S GT3 Evo, Aston Martin Vantage GT3, Mercedes-AMG GT3, Lamborghini Huracán LMGT3 Evo2, Lexus RCF LMGT3
 
 **📅 Calendar**
-🇺🇸 R1 — Sebring — Sep 13, 18:30 CET
-🇮🇹 R2 — Imola — Sep 27, 18:30 CET
-🇧🇪 R3 — Spa-Francorchamps — Oct 11, 18:30 CET
-🇯🇵 R4 — Fuji Speedway — Oct 25, 19:30 CET
-🇮🇹 R5 — Monza — Nov 8, 19:30 CET
-🇫🇷 R6 — Le Mans — Nov 22, 19:30 CET
+Server opens: **21:00 CET (real time)** for every round. Times below are the in-game clock at race start (varies per round).
+🇺🇸 R1 — Sebring — Sep 13 — in-game 14:00
+🇮🇹 R2 — Imola — Sep 27 — in-game 10:00
+🇧🇪 R3 — Spa-Francorchamps — Oct 11 — in-game 15:00
+🇯🇵 R4 — Fuji Speedway — Oct 25 — in-game 13:00
+🇮🇹 R5 — Monza — Nov 8 — in-game 13:00
+🇫🇷 R6 — Le Mans — Nov 22 — in-game 16:00
+
+**🛞 Tyres**
+Tyre warmers active for all classes. 14 tyres per driver, per round (practice + qualifying + race) — free strategy.
 
 ━━━━━━━━━━━━━━━━━━━━
 
