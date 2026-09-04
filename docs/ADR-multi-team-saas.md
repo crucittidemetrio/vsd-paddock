@@ -81,14 +81,30 @@ Riscrittura completa: le 132 azioni diventano query Postgres con Row Level Secur
 **Pro:** RLS reale invece di controlli manuali, realtime nativo, l'unica opzione davvero pronta per scala seria.
 **Contro:** mesi di lavoro, nessun cliente pagante confermato oggi che giustifichi l'investimento.
 
+### Opzione D — Prodotto Supabase parallelo (nuovo build, VSD intoccato)
+
+Nessuna migrazione: si costruisce un secondo prodotto da zero su Supabase, pensato per altri team paganti. VSD continua a girare sul suo Sheet/Apps Script esattamente come oggi, senza alcuna modifica.
+
+| Dimensione | Valutazione |
+|---|---|
+| Complessità | Alta, ma di tipo diverso da C — non è porting, è un build nuovo: schema multi-tenant + RLS + auth + billing da zero |
+| Costo | Sviluppo pieno di un secondo sistema; probabilmente **più** ore nel breve termine dell'Opzione B, perché non si riusa la logica delle 132 azioni esistenti |
+| Scalabilità | Ottima fin da subito (RLS nativa, Supabase Realtime) |
+| Rischio per VSD | **Nullo** — il sistema di produzione VSD non viene toccato in nessun modo |
+
+**Pro:** l'unica opzione che unisce "architettura seria pronta a scalare" e "zero rischio sulla produzione VSD". Elimina il problema più grave dell'Opzione C.
+**Contro:** non riduce il costo di sviluppo (anzi, spesso lo aumenta rispetto a B), non risolve da solo il relay del Pit Wall, e apre una trappola di manutenzione a lungo termine: due codebase da tenere allineate a mano, per sempre, salvo scegliere consapevolmente di farle divergere. Non riduce inoltre il rischio di business: si costruisce comunque senza un cliente pagante confermato.
+
+**Se si sceglie questa strada:** partire da un MVP mirato (roster, calendario, pit wall, best laps — le feature che differenziano da Calapex/TeamManager.cc/Pitwall.live), non da parità completa con le 132 azioni di VSD.
+
 ## Analisi dei trade-off
 
-Il vero collo di bottiglia non è quale database scegliere — è che le 132 azioni servono oggi le operazioni di gara reali di VSD, con margine di regressione pari a zero. Nessuna delle tre opzioni è priva di rischio se affrettata. Senza un cliente pagante confermato (come chiarito in precedenza), il costo dell'Opzione C non è oggi giustificato. L'Opzione B è una via di mezzo ma con un profilo di rischio scomodo (sicurezza affidata a disciplina manuale su 132 punti). L'Opzione A è l'unica che permette di testare la disponibilità a pagare con rischio tecnico quasi nullo sul sistema live di VSD.
+Il vero collo di bottiglia non è quale database scegliere — è che le 132 azioni servono oggi le operazioni di gara reali di VSD, con margine di regressione pari a zero. Nessuna delle quattro opzioni è priva di rischio o costo se affrettata. Senza un cliente pagante confermato (come chiarito in precedenza), il costo delle Opzioni C e D non è oggi giustificato. L'Opzione B è una via di mezzo ma con un profilo di rischio scomodo (sicurezza affidata a disciplina manuale su 132 punti). L'Opzione D elimina il rischio di regressione su VSD ma non il costo di sviluppo né il rischio di business (costruire senza cliente confermato). L'Opzione A resta l'unica che permette di testare la disponibilità a pagare con rischio tecnico quasi nullo.
 
 ## Decisione consigliata (sequenziale, non binaria)
 
 1. **Ora:** Opzione A. Se/quando compare un prospect reale, si clona Sheet + deployment Apps Script per lui (poche ore di lavoro, stessa procedura già usata per le migrazioni interne di VSD). Valida la domanda a rischio quasi zero.
-2. **Solo quando ≥3 team pagano/si sono impegnati concretamente** e il costo del cloning manuale diventa il vero collo di bottiglia: si riapre la scelta tra Opzione B e C, questa volta con dati d'uso reali (quanti team concorrenti, che carico) invece che ipotetici.
+2. **Solo quando ≥3 team pagano/si sono impegnati concretamente** e il costo del cloning manuale diventa il vero collo di bottiglia: si riapre la scelta tra Opzione B, C e D, questa volta con dati d'uso reali (quanti team concorrenti, che carico) invece che ipotetici. Se a quel punto si sceglie D, partire da un MVP mirato (roster, calendario, pit wall, best laps), non da parità con le 132 azioni.
 3. **Indipendente dalla questione multi-team:** il WebSocket del Pit Wall limitato a `localhost` va risolto comunque — anche il solo VSD trarrebbe beneficio da poter far seguire il muretto box a uno stratega da remoto. Il tema era già stato scoperto e rimandato in precedenza (relay via Apps Script vs server WebSocket dedicato); è un progetto legittimo a sé, indipendente dal discorso SaaS.
 
 ## Conseguenze
