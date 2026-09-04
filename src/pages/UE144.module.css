@@ -560,6 +560,17 @@
   white-space: nowrap;
 }
 
+.calendarTemps {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 8px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--color-text-dim);
+  flex-wrap: wrap;
+}
+
 /* ════ PROTESTE ════ */
 .protestBox {
   background: var(--vsd-bg-elevated);

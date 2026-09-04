@@ -68,55 +68,76 @@ const POINTS = [
   { pos: 10, pts: 1 },
 ];
 
+// Ora server = 21:00 reale, fissa per tutti i round (vedi SERVER_TIME sotto).
+// time = orologio in-game all'avvio gara (varia per round, da regolamento
+// ufficiale — non va confuso con l'ora reale di apertura server).
+// airTemp/trackTemp = temperature di scenario inizio→fine, impostate lato
+// server: valori climatici reali per sede/periodo, corretti verso l'alto
+// su asfalto/pista (tranne Sebring) per garantire grip e trazione — vedi
+// regolamento cap. 8 per il dettaglio.
+const SERVER_TIME = '21:00';
+
 const CALENDAR = [
   {
     round: 'R1',
     circuit: 'Sebring International Raceway',
     date: '13 Set 2026',
-    time: '18:30',
+    time: '14:00',
     weather: 'Sereno → Notte serena',
     multiplier: '5×',
+    airTemp: '31°C → 22°C',
+    trackTemp: '42°C → 24°C',
   },
   {
     round: 'R2',
     circuit: 'Autodromo Enzo e Dino Ferrari',
     location: 'Imola',
     date: '27 Set 2026',
-    time: '18:30',
+    time: '10:00',
     weather: 'Nuvoloso → Sereno',
     multiplier: '2×',
+    airTemp: '17°C → 23°C',
+    trackTemp: '22°C → 28°C',
   },
   {
     round: 'R3',
     circuit: 'Circuit de Spa-Francorchamps',
     date: '11 Ott 2026',
-    time: '18:30',
+    time: '15:00',
     weather: 'Sereno → Pioggia → Asciutto',
     multiplier: '10×',
+    airTemp: '12°C → 6°C → 10°C',
+    trackTemp: '18°C → 14°C → 17°C',
   },
   {
     round: 'R4',
     circuit: 'Fuji Speedway',
     date: '25 Ott 2026',
-    time: '19:30',
+    time: '13:00',
     weather: 'Nuvoloso → Nebbia → Sereno',
     multiplier: '4×',
+    airTemp: '17°C → 12°C → 10°C',
+    trackTemp: '20°C → 16°C → 15°C',
   },
   {
     round: 'R5',
     circuit: 'Autodromo Nazionale Monza',
     date: '08 Nov 2026',
-    time: '19:30',
+    time: '13:00',
     weather: 'Sereno e Caldo',
     multiplier: '2×',
+    airTemp: '15°C → 11°C',
+    trackTemp: '22°C → 16°C',
   },
   {
     round: 'R6',
     circuit: 'Circuit des 24 Heures du Mans',
     date: '22 Nov 2026',
-    time: '19:30',
+    time: '16:00',
     weather: 'Variabile → Notte → Alba',
     multiplier: '10×',
+    airTemp: '8°C → 3°C → 2°C',
+    trackTemp: '14°C → 10°C → 8°C',
   },
 ];
 
@@ -245,6 +266,7 @@ export default function UE144() {
         <div className={styles.sectionEyebrow}>Stagione 2026 · Start Settembre</div>
         <h2 className={styles.sectionTitle}>Calendario ufficiale</h2>
         <p className={styles.calendarNote}>
+          Apertura server: <strong>{SERVER_TIME} (ora reale)</strong> per tutti i round.
           Il campionato richiederà massima flessibilità sui setup per adattarsi
           all'evoluzione termica del Real Road.
         </p>
@@ -258,11 +280,15 @@ export default function UE144() {
               </div>
               <div className={styles.calendarMeta}>
                 <span className={styles.calendarDate}>📅 {r.date}</span>
-                <span className={styles.calendarTime}>🕐 {r.time} in-game</span>
+                <span className={styles.calendarTime}>🕐 {r.time} in-game (server {SERVER_TIME})</span>
               </div>
               <div className={styles.calendarWeather}>
                 <span className={styles.weatherText}>{r.weather}</span>
                 <span className={styles.weatherMult}>{r.multiplier}</span>
+              </div>
+              <div className={styles.calendarTemps}>
+                <span>🌡️ Aria {r.airTemp}</span>
+                <span>🛣️ Asfalto {r.trackTemp}</span>
               </div>
             </div>
           ))}
