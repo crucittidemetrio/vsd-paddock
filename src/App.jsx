@@ -11,7 +11,7 @@ import LoginPrompt from './components/auth/LoginPrompt';
 import Login from './pages/Login';
 import AuthCallback from './pages/AuthCallback';
 import Landing from './pages/Landing';
-import Roster from './pages/Roster';
+import Roster from './pages/Roster';h
 import Race from './pages/Race';
 import BestLaps from './pages/BestLaps';
 import AdminRaceStints from './pages/AdminRaceStints';
@@ -61,6 +61,7 @@ const AdminSponsors = lazy(() => import('./pages/AdminSponsors'));
 const AdminTeamSessions = lazy(() => import('./pages/AdminTeamSessions'));
 const AdminMessenger = lazy(() => import('./pages/AdminMessenger'));
 const AdminIncidents = lazy(() => import('./pages/AdminIncidents'));
+const AdminTreasury = lazy(() => import('./pages/AdminTreasury'));
 const SocialManager = lazy(() => import('./pages/SocialManager'));
 const ClashOfClasses = lazy(() => import('./pages/ClashOfClasses'));
 const AdminClashResults = lazy(() => import('./pages/AdminClashResults'));
@@ -299,6 +300,15 @@ export default function App() {
               <Route
                 path="/admin/incidents"
                 element={<AdminRoute><AdminIncidents /></AdminRoute>}
+              />
+              {/* Dato finanziario — solo admin/Team Principal, non staff generico */}
+              <Route
+                path="/admin/treasury"
+                element={
+                  <RequireTier minTier="admin" fallback={<Navigate to="/admin" replace />}>
+                    <AdminTreasury />
+                  </RequireTier>
+                }
               />
             </Route>
             
