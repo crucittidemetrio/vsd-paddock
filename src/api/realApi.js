@@ -454,6 +454,14 @@ export async function callApi(action, payload = {}) {
         return await postToBackend('consent.adminList', payload, token);
       case 'consent.socialFlags':
         return await postToBackend('consent.socialFlags', payload, token);
+      case 'treasury.list':
+        return await postToBackend('treasury.list', payload, token);
+      case 'treasury.add':
+        return await postToBackend('treasury.add', payload, token);
+      case 'treasury.update':
+        return await postToBackend('treasury.update', payload, token);
+      case 'treasury.remove':
+        return await postToBackend('treasury.remove', payload, token);
       default:
         return fail(`Action non instradata: ${action}`);
     }
