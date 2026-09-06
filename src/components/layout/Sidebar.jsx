@@ -95,6 +95,7 @@ const ADMIN_ONLY_ITEMS = [
   { to: '/admin/social-manager', label: 'Social Manager', icon: '◎' },
   { to: '/admin/consents', label: 'Consensi (staff)', icon: '✎' },
   { to: '/admin/audit-log', label: 'Registro di controllo', icon: '☰' },
+  { to: '/admin/treasury', label: 'Cassa / rendiconto', icon: '€' },
 ];
 
 function renderNavItem(item, onMobileClose, extraClass = '', badgeCount = 0) {
