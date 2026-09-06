@@ -11,7 +11,7 @@ import LoginPrompt from './components/auth/LoginPrompt';
 import Login from './pages/Login';
 import AuthCallback from './pages/AuthCallback';
 import Landing from './pages/Landing';
-import Roster from './pages/Roster';h
+import Roster from './pages/Roster';
 import Race from './pages/Race';
 import BestLaps from './pages/BestLaps';
 import AdminRaceStints from './pages/AdminRaceStints';
