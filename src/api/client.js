@@ -249,6 +249,13 @@ export const api = {
     update: (payload) => call('sponsors.update', payload),
     remove: (sponsor_id) => call('sponsors.remove', { sponsor_id }),
   },
+  // Cassa / rendiconto team — solo admin (vedi apps-script/Treasury.js)
+  treasury: {
+    list: (params = {}) => call('treasury.list', params),
+    add: (payload) => call('treasury.add', payload),
+    update: (payload) => call('treasury.update', payload),
+    remove: (entry_id) => call('treasury.remove', { entry_id }),
+  },
 
   incidents: {
     list: (params = {}) => call('incidents.list', params),
