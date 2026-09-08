@@ -42,9 +42,18 @@ const CLASSES = [
 ];
 
 const CALENDAR = [
-  { round: 1, circuit: 'Silverstone Circuit', nation: 'Regno Unito', note: 'Apertura stagione', date: '2026-09-20' },
-  { round: 2, circuit: 'Autodromo di Imola', nation: 'Italia', note: 'Round di casa', date: '2026-10-04' },
-  { round: 3, circuit: 'Spa-Francorchamps', nation: 'Belgio', note: 'Finale — Trofeo delle Classi', date: '2026-10-18' },
+  {
+    round: 1, circuit: 'Silverstone Circuit', nation: 'Regno Unito', note: 'Apertura stagione', date: '2026-09-20',
+    weather: '☁️ Nuvoloso, asfalto umido', airTemp: '18-19°C', trackTemp: '24-26°C',
+  },
+  {
+    round: 2, circuit: 'Autodromo di Imola', nation: 'Italia', note: 'Round di casa', date: '2026-10-04',
+    weather: '☀️ Sereno', airTemp: '22-23°C', trackTemp: '32-34°C',
+  },
+  {
+    round: 3, circuit: 'Spa-Francorchamps', nation: 'Belgio', note: 'Finale — Trofeo delle Classi', date: '2026-10-18',
+    weather: '🌦️ Sereno freddo o pioggia leggera costante', airTemp: '14-16°C', trackTemp: '19-22°C',
+  },
 ];
 
 function formatClashDate_(iso) {
@@ -147,6 +156,10 @@ export default function ClashOfClasses() {
       <section className={styles.section}>
         <div className={styles.sectionEyebrow}>Calendario</div>
         <h2 className={styles.sectionTitle}>Tre round, tre grandi circuiti</h2>
+        <p className={styles.calendarNote}>
+          Meteo calibrato sul periodo reale di ogni round —
+          {' '}<strong>condizioni fisse per tutto lo sprint (40')</strong>, nessun cambio a gara in corso.
+        </p>
         <div className={styles.calendarGrid}>
           {CALENDAR.map(r => (
             <div key={r.round} className={styles.calendarCard}>
@@ -157,6 +170,13 @@ export default function ClashOfClasses() {
                 <span className={styles.calendarNoteTag}>{r.note}</span>
               </div>
               <div className={styles.calendarDate}>📅 {formatClashDate_(r.date)}</div>
+              <div className={styles.calendarWeather}>
+                <span className={styles.weatherText}>{r.weather}</span>
+              </div>
+              <div className={styles.calendarTemps}>
+                <span>🌡️ Aria {r.airTemp}</span>
+                <span>🛣️ Asfalto {r.trackTemp}</span>
+              </div>
             </div>
           ))}
         </div>

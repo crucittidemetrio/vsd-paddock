@@ -201,6 +201,42 @@
 }
 .calendarDate { font-size: 12px; color: var(--color-text-muted); }
 
+.calendarNote {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--vsd-orange);
+  margin: -16px 0 20px;
+  opacity: 0.85;
+}
+
+.calendarWeather {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  margin-top: 8px;
+  border-top: 1px solid var(--color-border);
+  gap: 8px;
+}
+
+.weatherText {
+  font-size: var(--fs-xs);
+  color: var(--color-text-dim);
+  letter-spacing: 0.03em;
+}
+
+.calendarTemps {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding-top: 8px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--color-text-dim);
+  flex-wrap: wrap;
+}
+
 /* ════ FORMATO ════ */
 .formatGrid {
   display: grid;
