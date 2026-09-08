@@ -94,3 +94,32 @@ export function useRemoveSocialMedia() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['social', 'media'] }),
   });
 }
+
+// ── Piano editoriale — sezioni archiviate manualmente ─────
+// Indipendente dalla finestra -10/+45gg calcolata in useEditorialPlan
+// (SocialManager.jsx): un admin archivia quando i post di chiusura
+// (risultati/highlight) sono davvero fatti, non quando scade un timer.
+
+export function useSocialPlanDismissed() {
+  return useQuery({
+    queryKey: ['social', 'planDismissed'],
+    queryFn: () => api.social.planDismissedList(),
+    staleTime: 30_000,
+  });
+}
+
+export function useDismissSocialPlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (race_id) => api.social.planDismiss(race_id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['social', 'planDismissed'] }),
+  });
+}
+
+export function useUndismissSocialPlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (race_id) => api.social.planUndismiss(race_id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['social', 'planDismissed'] }),
+  });
+}

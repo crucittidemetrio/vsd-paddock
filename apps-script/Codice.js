@@ -34,6 +34,7 @@ const SHEETS = {
   SOCIAL_POSTS: 'SocialPosts',
   SOCIAL_METRICS: 'SocialMetrics',
   SOCIAL_MEDIA: 'SocialMedia',
+  SOCIAL_PLAN_DISMISSED: 'SocialPlanDismissed',
   CLASH_PARTICIPANTS: 'ClashParticipants',
   CLASH_RESULTS: 'ClashResults',
   CLASH_INCIDENT_REPORTS: 'ClashIncidentReports',
@@ -276,6 +277,9 @@ const ACTIONS = {
   'social.media.list': handleSocialMediaList,
   'social.media.add': handleSocialMediaAdd,
   'social.media.remove': handleSocialMediaRemove,
+  'social.plan.dismiss': handleSocialPlanDismiss,
+  'social.plan.undismiss': handleSocialPlanUndismiss,
+  'social.plan.dismissed.list': handleSocialPlanDismissedList,
   // Consenso privacy — pubblicazione dati su sito pubblico/social
   'consent.status': handleConsentStatus,
   'consent.accept': handleConsentAccept,

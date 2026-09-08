@@ -324,6 +324,12 @@ export async function callApi(action, payload = {}) {
         return await socialMediaAddAdapter(payload, token);
       case 'social.media.remove':
         return await socialMediaRemoveAdapter(payload, token);
+      case 'social.plan.dismiss':
+        return await socialPlanDismissAdapter(payload, token);
+      case 'social.plan.undismiss':
+        return await socialPlanUndismissAdapter(payload, token);
+      case 'social.plan.dismissed.list':
+        return await socialPlanDismissedListAdapter(payload, token);
       case 'championships.list':                              // ← NEW
         return await championshipsListAdapter(payload, token); // ← NEW
       case 'championships.importStandings':
@@ -1006,6 +1012,36 @@ async function socialMediaRemoveAdapter(payload, token) {
   const res = await postToBackend('social.media.remove', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
+}
+
+/**
+ * Frontend: social.planDismiss(race_id)
+ * Backend:  social.plan.dismiss({ race_id }) → { race_id, dismissed_by, dismissed_at, already }
+ */
+async function socialPlanDismissAdapter(payload, token) {
+  const res = await postToBackend('social.plan.dismiss', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: social.planUndismiss(race_id)
+ * Backend:  social.plan.undismiss({ race_id }) → { race_id, undismissed }
+ */
+async function socialPlanUndismissAdapter(payload, token) {
+  const res = await postToBackend('social.plan.undismiss', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Frontend: social.planDismissedList() → array di { race_id, dismissed_by, dismissed_at }
+ * Backend:  social.plan.dismissed.list({}) → { dismissed: [...], count }
+ */
+async function socialPlanDismissedListAdapter(payload, token) {
+  const res = await postToBackend('social.plan.dismissed.list', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data.dismissed);
 }
 
 /**

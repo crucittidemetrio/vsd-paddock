@@ -47,6 +47,19 @@ const SOCIAL_MEDIA_HEADERS = [
   'uploaded_by', 'uploaded_at',
 ];
 
+// SocialPlanDismissed: sezioni del piano editoriale (useEditorialPlan,
+// frontend) archiviate manualmente da un admin, per race_id. Il piano
+// mostra le gare in una finestra fissa -10/+45 giorni (vedi commento in
+// SocialManager.jsx), ma quella finestra è cieca al contenuto: se i
+// pilastri di chiusura (risultati/highlight) non sono ancora pubblicati
+// al giorno 10, la sezione sparisce comunque. Questo tab dà un
+// controllo manuale indipendente dalla finestra a tempo — un admin
+// archivia quando i post di chiusura sono davvero fatti, non quando
+// scade un timer. Chiave naturale race_id (una riga per gara al più).
+const SOCIAL_PLAN_DISMISSED_HEADERS = [
+  'race_id', 'dismissed_by', 'dismissed_at',
+];
+
 /**
  * Setup one-time — crea i tab SocialPosts/SocialMetrics se mancanti.
  * Esecuzione: editor Apps Script → dropdown funzioni →
@@ -59,6 +72,7 @@ function setupSocialManagerTabs() {
     { name: SHEETS.SOCIAL_POSTS, headers: SOCIAL_POSTS_HEADERS },
     { name: SHEETS.SOCIAL_METRICS, headers: SOCIAL_METRICS_HEADERS },
     { name: SHEETS.SOCIAL_MEDIA, headers: SOCIAL_MEDIA_HEADERS },
+    { name: SHEETS.SOCIAL_PLAN_DISMISSED, headers: SOCIAL_PLAN_DISMISSED_HEADERS },
   ];
 
   const results = [];
@@ -620,4 +634,73 @@ function handleSocialMediaRemove(payload, ctx) {
 
   sheet.deleteRow(rowIndex + 1);
   return ok({ media_id: mediaId, deleted: true });
+}
+
+// ═══════════════════════════════════════════════════════════
+// SOCIAL PLAN DISMISSED — archiviazione manuale sezioni piano
+// ═══════════════════════════════════════════════════════════
+
+/**
+ * social.plan.dismiss — Archivia una sezione del piano editoriale per
+ * una gara, indipendentemente dalla finestra a tempo -10/+45 giorni
+ * calcolata lato frontend. Idempotente: se race_id è già archiviato,
+ * aggiorna solo dismissed_by/dismissed_at invece di duplicare la riga.
+ * @param {Object} payload - { race_id }
+ */
+function handleSocialPlanDismiss(payload, ctx) {
+  if (!ctx || !ctx.isAdmin) return fail('Accesso riservato ad admin/team principal');
+
+  const raceId = payload && String(payload.race_id || '').trim();
+  if (!raceId) return fail('race_id obbligatorio');
+
+  const sheet = getSheet(SHEETS.SOCIAL_PLAN_DISMISSED);
+  if (!sheet) return fail('Foglio SocialPlanDismissed non trovato — esegui setupSocialManagerTabs() prima');
+
+  const data = sheet.getDataRange().getValues();
+  const rowIndex = data.findIndex((row, i) => i > 0 && row[0] === raceId);
+  const now = new Date().toISOString();
+  const dismissedBy = ctx.driver_id || '';
+
+  if (rowIndex !== -1) {
+    sheet.getRange(rowIndex + 1, 2, 1, 2).setValues([[dismissedBy, now]]);
+    return ok({ race_id: raceId, dismissed_by: dismissedBy, dismissed_at: now, already: true });
+  }
+
+  sheet.appendRow([raceId, dismissedBy, now]);
+  return ok({ race_id: raceId, dismissed_by: dismissedBy, dismissed_at: now, already: false });
+}
+
+/**
+ * social.plan.undismiss — Rimette in vista una sezione archiviata per
+ * errore. Rimuove semplicemente la riga da SocialPlanDismissed; se la
+ * gara è ancora nella finestra -10/+45 giorni, il piano la rimostra
+ * al prossimo refresh.
+ * @param {Object} payload - { race_id }
+ */
+function handleSocialPlanUndismiss(payload, ctx) {
+  if (!ctx || !ctx.isAdmin) return fail('Accesso riservato ad admin/team principal');
+
+  const raceId = payload && String(payload.race_id || '').trim();
+  if (!raceId) return fail('race_id obbligatorio');
+
+  const sheet = getSheet(SHEETS.SOCIAL_PLAN_DISMISSED);
+  if (!sheet) return fail('Foglio SocialPlanDismissed non trovato');
+
+  const data = sheet.getDataRange().getValues();
+  const rowIndex = data.findIndex((row, i) => i > 0 && row[0] === raceId);
+  if (rowIndex === -1) return fail('race_id non risulta archiviato: ' + raceId);
+
+  sheet.deleteRow(rowIndex + 1);
+  return ok({ race_id: raceId, undismissed: true });
+}
+
+/**
+ * social.plan.dismissed.list — Tutti i race_id attualmente archiviati,
+ * per far filtrare al frontend il piano editoriale lato client.
+ */
+function handleSocialPlanDismissedList(payload, ctx) {
+  if (!ctx || !ctx.isAdmin) return fail('Accesso riservato ad admin/team principal');
+
+  const dismissed = sheetToObjects(SHEETS.SOCIAL_PLAN_DISMISSED);
+  return ok({ dismissed, count: dismissed.length });
 }

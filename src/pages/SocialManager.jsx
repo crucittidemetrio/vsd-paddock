@@ -16,6 +16,9 @@ import {
   useSocialMedia,
   useAddSocialMedia,
   useRemoveSocialMedia,
+  useSocialPlanDismissed,
+  useDismissSocialPlan,
+  useUndismissSocialPlan,
 } from '../hooks/useSocialManager';
 import { useRaces } from '../hooks/useRaces';
 import { useAuth } from '../hooks/useAuth';
@@ -40,6 +43,16 @@ const PILLARS = [
   { id: 'risultati', label: 'Risultati', icon: '🏆', offsetDays: 1 },
   { id: 'highlight', label: 'Highlight/storytelling', icon: '🎬', offsetDays: 3 },
 ];
+
+// Pilastro extra, aggiunto SOLO alla gara con la data più recente di
+// ogni championship_id (calcolato su tutte le gare del campionato, non
+// solo quelle nella finestra -10/+45gg — vedi useEditorialPlan). I
+// campionati non hanno un'entità propria: ogni round è comunque una
+// riga nel foglio Races con lo stesso championship_id, quindi "ultima
+// gara del campionato" è il punto giusto per agganciare il recap di
+// chiusura invece di inventare una struttura a parte (deciso con
+// Demetrio, sett. 2026).
+const CHAMPIONSHIP_CLOSING_PILLAR = { id: 'chiusura_campionato', label: 'Chiusura campionato', icon: '🏁', offsetDays: 4 };
 
 // Pilastri "evergreen" — vita di squadra e community, non legati a una
 // gara. A differenza dei pilastri sopra (generati nella finestra ±45gg
@@ -783,14 +796,18 @@ function pillarTopic(race, pillarId, dateLabel) {
     case 'live': return `Aggiornamento live durante ${name}`;
     case 'risultati': return `Risultati e podio di ${name}`;
     case 'highlight': return `Momento più bello di ${name} (sorpasso, incidente, onboard)`;
+    case 'chiusura_campionato': return `Recap di chiusura campionato — ultima gara ${name}`;
     default: return name;
   }
 }
 
 // Finestra di rilevanza: gare da 10 giorni fa a 45 giorni nel futuro —
 // abbastanza per coprire tutti i pilastri (T-7...T+3) di ogni round
-// senza riempire la vista con l'intera storia del team.
-function useEditorialPlan(posts) {
+// senza riempire la vista con l'intera storia del team. Indipendente
+// da questa finestra, un admin può archiviare manualmente una sezione
+// (SocialPlanDismissed, per race_id) quando i post di chiusura sono
+// davvero fatti — vedi il bottone Archivia in EditorialPlanView.
+function useEditorialPlan(posts, dismissedRaceIds) {
   const racesQuery = useRaces();
   const races = racesQuery.data || [];
 
@@ -798,16 +815,37 @@ function useEditorialPlan(posts) {
     const now = new Date();
     const windowStart = addDays(now, -10);
     const windowEnd = addDays(now, 45);
+    const dismissed = dismissedRaceIds || new Set();
+
+    // Ultima gara di ogni campionato, calcolata su TUTTE le gare (non
+    // solo quelle nella finestra) — altrimenti un campionato la cui
+    // ultima gara cade oltre i 45gg non verrebbe mai riconosciuto come
+    // "ultima" quando quella gara entra a sua volta nella finestra.
+    const lastRaceByChampionship = {};
+    races.forEach(r => {
+      if (!r.championship_id || !r.date) return;
+      const d = new Date(r.date);
+      if (isNaN(d.getTime())) return;
+      const current = lastRaceByChampionship[r.championship_id];
+      if (!current || d.getTime() > new Date(current.date).getTime()) {
+        lastRaceByChampionship[r.championship_id] = r;
+      }
+    });
 
     return races
       .filter(r => {
+        if (dismissed.has(r.race_id)) return false;
         const d = r.date ? new Date(r.date) : null;
         return d && !isNaN(d.getTime()) && d >= windowStart && d <= windowEnd;
       })
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
       .map(race => {
         const raceDate = new Date(race.date);
-        const pillars = PILLARS.map(pillar => {
+        const isChampionshipCloser = race.championship_id
+          && lastRaceByChampionship[race.championship_id]
+          && lastRaceByChampionship[race.championship_id].race_id === race.race_id;
+        const pillarDefs = isChampionshipCloser ? [...PILLARS, CHAMPIONSHIP_CLOSING_PILLAR] : PILLARS;
+        const pillars = pillarDefs.map(pillar => {
           const pillarDate = addDays(raceDate, pillar.offsetDays);
           const dateStr = pillarDate.toISOString().slice(0, 10);
           const match = posts.find(p => p.race_id === race.race_id && p.pillar === pillar.id);
@@ -820,9 +858,9 @@ function useEditorialPlan(posts) {
         });
         return { race, pillars };
       });
-  }, [races, posts]);
+  }, [races, posts, dismissedRaceIds]);
 
-  return { plan, isLoading: racesQuery.isLoading, error: racesQuery.error };
+  return { plan, races, isLoading: racesQuery.isLoading, error: racesQuery.error };
 }
 
 function daysBetween(from, to) {
@@ -963,9 +1001,27 @@ function StoryPlanView({ storyPlan, onCreate }) {
 }
 
 function EditorialPlanView({ posts, onCreateFromSuggestion }) {
-  const { plan, isLoading: racesLoading, error: racesError } = useEditorialPlan(posts);
+  const dismissedQuery = useSocialPlanDismissed();
+  const dismissedRows = dismissedQuery.data || [];
+  const dismissedRaceIds = useMemo(
+    () => new Set(dismissedRows.map(d => d.race_id)),
+    [dismissedRows]
+  );
+  const dismissMutation = useDismissSocialPlan();
+  const undismissMutation = useUndismissSocialPlan();
+  const { plan, races, isLoading: racesLoading, error: racesError } = useEditorialPlan(posts, dismissedRaceIds);
   const evergreenPlan = useEvergreenPlan(posts);
   const storyPlan = useStoryPlan(posts);
+
+  function handleArchive(race) {
+    const label = race.race_name || race.race_id;
+    if (!window.confirm(`Archiviare "${label}" dal piano editoriale? Puoi ripristinarla dalla sezione "Sezioni archiviate" qui sotto.`)) return;
+    dismissMutation.mutate(race.race_id);
+  }
+
+  function handleUndismiss(raceId) {
+    undismissMutation.mutate(raceId);
+  }
 
   function handlePillarCreate(race, pillar) {
     onCreateFromSuggestion({
@@ -1010,7 +1066,10 @@ function EditorialPlanView({ posts, onCreateFromSuggestion }) {
         calendario gare, e i capitoli story book della sfida ACI, creati a mano quando
         c'è un fatto vero da raccontare invece che a scadenza — così il piano non resta
         vuoto nei periodi senza eventi. Ogni slot mancante ha un bottone rapido per
-        creare la bozza già precompilata.
+        creare la bozza già precompilata. L'ultima gara di ogni campionato riceve
+        un pilastro extra di chiusura, e ogni sezione può essere archiviata a mano
+        col bottone dedicato quando i post di chiusura sono fatti — non serve
+        aspettare che esca dalla finestra ±45gg.
       </p>
 
       <EvergreenPlanView evergreenPlan={evergreenPlan} onCreate={handleEvergreenCreate} />
@@ -1026,7 +1085,18 @@ function EditorialPlanView({ posts, onCreateFromSuggestion }) {
         <div key={race.race_id} className={styles.raceCard}>
           <div className={styles.raceCardHead}>
             <span className={styles.raceCardName}>{race.race_name}</span>
-            <span className={styles.raceCardMeta}>{race.sim} · {fmtDate(race.date)}</span>
+            <span style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
+              <span className={styles.raceCardMeta}>{race.sim} · {fmtDate(race.date)}</span>
+              <button
+                type="button"
+                className={styles.btnMini}
+                title="Archivia questa sezione dal piano editoriale, a prescindere dalla finestra ±45gg"
+                onClick={() => handleArchive(race)}
+                disabled={dismissMutation.isPending}
+              >
+                🗑 Archivia
+              </button>
+            </span>
           </div>
           <div className={styles.pillarRow}>
             {pillars.map(pillar => (
@@ -1054,6 +1124,63 @@ function EditorialPlanView({ posts, onCreateFromSuggestion }) {
           </div>
         </div>
       ))}
+
+      <ArchivedPlanView
+        dismissedRows={dismissedRows}
+        races={races}
+        onUndismiss={handleUndismiss}
+        isPending={undismissMutation.isPending}
+      />
+    </div>
+  );
+}
+
+// Sezioni archiviate manualmente (SocialPlanDismissed) — separata dal piano
+// vero e proprio: qui interessa solo dare all'admin un modo di annullare
+// un'archiviazione fatta per errore, senza dover apire il foglio Google a
+// mano. races arriva già caricato da useEditorialPlan (stessa queryKey di
+// useRaces, nessuna fetch aggiuntiva) solo per risolvere race_id → nome gara.
+function ArchivedPlanView({ dismissedRows, races, onUndismiss, isPending }) {
+  const raceById = useMemo(
+    () => Object.fromEntries((races || []).map(r => [r.race_id, r])),
+    [races]
+  );
+
+  if (dismissedRows.length === 0) return null;
+
+  return (
+    <div className={styles.raceCard}>
+      <div className={styles.raceCardHead}>
+        <span className={styles.raceCardName}>🗑 Sezioni archiviate</span>
+        <span className={styles.raceCardMeta}>{dismissedRows.length} archiviate manualmente, fuori dal piano</span>
+      </div>
+      <div className={styles.table}>
+        <div className={styles.tableHeaderRow}>
+          <span>Gara</span>
+          <span>Archiviata il</span>
+          <span></span>
+        </div>
+        {dismissedRows.map(d => {
+          const race = raceById[d.race_id];
+          return (
+            <div key={d.race_id} className={styles.tableRow}>
+              <span>{race ? race.race_name : d.race_id}</span>
+              <span className={styles.cellTime}>{fmtDate(d.dismissed_at)}</span>
+              <span>
+                <button
+                  type="button"
+                  className={styles.btnMini}
+                  onClick={() => onUndismiss(d.race_id)}
+                  disabled={isPending}
+                  title="Rimetti questa sezione nel piano editoriale"
+                >
+                  ↩ Ripristina
+                </button>
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
