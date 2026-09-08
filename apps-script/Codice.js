@@ -45,6 +45,7 @@ const SHEETS = {
   TEAM_SESSIONS: 'TeamSessions',
   SESSION_RSVPS: 'SessionRSVPs',
   SPONSORS: 'Sponsors',
+  TREASURY: 'Treasury',
   INCIDENT_RESOLUTIONS: 'IncidentResolutions',
   SKILL_INDEX_HISTORY: 'SkillIndexHistory',
   REPORT_REACTIONS: 'ReportReactions',
@@ -324,6 +325,12 @@ const ACTIONS = {
   'sponsors.add': handleSponsorsAdd,
   'sponsors.update': handleSponsorsUpdate,
   'sponsors.remove': handleSponsorsRemove,
+
+  // Cassa / rendiconto team (solo admin)
+  'treasury.list': handleTreasuryList,
+  'treasury.add': handleTreasuryAdd,
+  'treasury.update': handleTreasuryUpdate,
+  'treasury.remove': handleTreasuryRemove,
 
   // Registro incidenti / steward
   'incidents.list': handleIncidentsList,
