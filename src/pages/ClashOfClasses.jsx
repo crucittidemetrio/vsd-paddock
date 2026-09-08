@@ -28,7 +28,7 @@ const CLASSES = [
   },
   {
     id: 'GT3',
-    label: 'GT3',
+    label: 'LMGT3',
     sublabel: 'La nuova scuola',
     icon: '🔵',
     car: 'Mercedes-AMG LMGT3',
@@ -65,7 +65,7 @@ function formatClashDate_(iso) {
 const FORMAT = [
   { label: 'Prove Libere', value: '10\'', detail: 'Set-up libero, carburante e gomme a scelta' },
   { label: 'Qualifica', value: '10\'', detail: 'Sessione unica: il giro migliore vale la griglia' },
-  { label: 'Gara Sprint', value: '40\'', detail: 'Griglia combinata GTE + GT3, classifiche separate' },
+  { label: 'Gara Sprint', value: '40\'', detail: 'Griglia combinata GTE + LMGT3, classifiche separate' },
 ];
 
 const POINTS_TABLE = [
@@ -77,8 +77,8 @@ const POINTS_TABLE = [
 
 export default function ClashOfClasses() {
   usePageMeta({
-    title: 'Clash of Classes — GTE vs GT3 | VSD',
-    description: 'VSD Clash of Classes: mini-campionato esibizione GTE vs GT3 su Le Mans Ultimate. 3 round — Silverstone, Imola, Spa-Francorchamps. Aperto a tutta la community.',
+    title: 'Clash of Classes — GTE vs LMGT3 | VSD',
+    description: 'VSD Clash of Classes: mini-campionato esibizione GTE vs LMGT3 su Le Mans Ultimate. 3 round — Silverstone, Imola, Spa-Francorchamps. Aperto a tutta la community.',
   });
 
   return (
@@ -90,7 +90,7 @@ export default function ClashOfClasses() {
         <h1 className={styles.heroTitle}>
           CLASH OF <span className={styles.heroTitleAccent}>CLASSES</span>
         </h1>
-        <p className={styles.heroSub}>GTE vs GT3 — Old School vs New School</p>
+        <p className={styles.heroSub}>GTE vs LMGT3 — Old School vs New School</p>
         <div className={styles.heroOpen}>
           <span className={styles.heroBadge}>🌍 Aperto a tutta la community</span>
           <span className={styles.heroBadge}>🏁 3 round · LMU</span>
@@ -117,7 +117,7 @@ export default function ClashOfClasses() {
         <p className={styles.leadText}>
           VSD Clash of Classes mette a confronto due modi di intendere la guida sim: la disciplina
           pura delle GTE, senza reti di sicurezza elettroniche, contro la precisione tecnologica
-          delle GT3 moderne. Ogni pilota corre per sé, ma contribuisce anche al punteggio della
+          delle LMGT3 moderne. Ogni pilota corre per sé, ma contribuisce anche al punteggio della
           propria classe nella sfida collettiva — il <strong>Trofeo delle Classi</strong> — che
           decreterà quale scuola di guida dominerà la stagione.
         </p>
@@ -126,7 +126,7 @@ export default function ClashOfClasses() {
       {/* ════ CLASSI ════ */}
       <section className={styles.section}>
         <div className={styles.sectionEyebrow}>Le classi in gara</div>
-        <h2 className={styles.sectionTitle}>GTE vs GT3: chi guida cosa</h2>
+        <h2 className={styles.sectionTitle}>GTE vs LMGT3: chi guida cosa</h2>
         <div className={styles.classGrid}>
           {CLASSES.map(cls => (
             <div key={cls.id} className={`${styles.classCard} ${styles[`cls_${cls.id}`]}`}>
@@ -250,12 +250,12 @@ export default function ClashOfClasses() {
           <p>
             Il totale di ogni round si somma sui 3 round: dopo Spa-Francorchamps, la classe col
             punteggio cumulativo più alto vince il <strong>Trofeo delle Classi</strong>. In
-            parallelo, la <strong>Classifica Assoluta</strong> unisce tutti i piloti (GTE+GT3): chi
+            parallelo, la <strong>Classifica Assoluta</strong> unisce tutti i piloti (GTE+LMGT3): chi
             la guida a fine stagione è il <strong>Vincitore Assoluto</strong>, a prescindere dalla
             classe.
           </p>
           <p className={styles.trophyTitlesNote}>
-            Quattro riconoscimenti: Vincitore Classifica GTE · Vincitore Classifica GT3 · Classe
+            Quattro riconoscimenti: Vincitore Classifica GTE · Vincitore Classifica LMGT3 · Classe
             vincitrice del Trofeo · Vincitore Assoluto.
           </p>
         </div>
@@ -282,7 +282,7 @@ export default function ClashOfClasses() {
 
       {/* ════ CTA / CONTATTI ════ */}
       <section className={styles.cta}>
-        <h2 className={styles.ctaTitle}>GTE o GT3 — la tua classe, la tua sfida</h2>
+        <h2 className={styles.ctaTitle}>GTE o LMGT3 — la tua classe, la tua sfida</h2>
         <p className={styles.ctaText}>
           Evento aperto a tutta la community VSD, non solo al roster ufficiale del team.
         </p>
@@ -352,7 +352,7 @@ function RegistrationSection() {
       <h2 className={styles.sectionTitle}>Scegli la tua classe</h2>
       <p className={styles.leadText}>
         La classe scelta resta fissa per tutte e 3 le gare della serie: nessun cambio classe a
-        stagione avviata. Chiusura iscrizioni: 48 ore prima di Round 1 (data da definire).
+        stagione avviata. Chiusura iscrizioni: 48 ore prima di Round 1 — entro il 18 settembre 2026.
       </p>
 
       <div className={styles.registrationLayout}>
@@ -387,7 +387,7 @@ function RegistrationSection() {
               onChange={e => handleClassChange(e.target.value)}
             >
               <option value="GTE">GTE — vecchia scuola</option>
-              <option value="GT3">GT3 — nuova scuola</option>
+              <option value="GT3">LMGT3 — nuova scuola</option>
             </select>
           </div>
           <div className={styles.formGroup}>
@@ -443,7 +443,7 @@ function RegistrationSection() {
           </div>
           <div className={styles.countCard}>
             <div className={styles.countValue}>{loadingParticipants ? '—' : counts.GT3 || 0}</div>
-            <div className={styles.countLabel}>Classe GT3</div>
+            <div className={styles.countLabel}>Classe LMGT3</div>
           </div>
         </div>
       </div>
@@ -455,7 +455,7 @@ function RegistrationSection() {
 
 const STANDINGS_TABS = [
   { id: 'gte', label: 'GTE' },
-  { id: 'gt3', label: 'GT3' },
+  { id: 'gt3', label: 'LMGT3' },
   { id: 'overall', label: 'Assoluta' },
   { id: 'trophy', label: 'Trofeo delle Classi' },
 ];
@@ -570,21 +570,21 @@ function TrophyTable({ trophy }) {
         </div>
         <div className={styles.trophyVs}>VS</div>
         <div className={`${styles.trophyTotalCard} ${trophy.leading_class === 'GT3' ? styles.trophyLeading : ''}`}>
-          <div className={styles.trophyClassLabel}>GT3</div>
+          <div className={styles.trophyClassLabel}>LMGT3</div>
           <div className={styles.trophyClassPoints}>{trophy.gt3_total}</div>
         </div>
       </div>
       {trophy.leading_class && (
         <p className={styles.trophyStatus}>
           {trophy.decided ? 'Classe vincitrice del Trofeo: ' : 'In testa dopo i round disputati: '}
-          <strong>{trophy.leading_class}</strong>
+          <strong>{trophy.leading_class === 'GT3' ? 'LMGT3' : trophy.leading_class}</strong>
         </p>
       )}
       {trophy.by_round?.length > 0 && (
         <div className={styles.trophyRoundsWrap}>
           <table className={styles.standingsTable}>
             <thead>
-              <tr><th>Round</th><th className={styles.stNum}>GTE</th><th className={styles.stNum}>GT3</th></tr>
+              <tr><th>Round</th><th className={styles.stNum}>GTE</th><th className={styles.stNum}>LMGT3</th></tr>
             </thead>
             <tbody>
               {trophy.by_round.map(r => (

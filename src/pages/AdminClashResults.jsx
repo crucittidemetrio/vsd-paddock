@@ -378,7 +378,7 @@ function ParticipantsTab() {
     <section className={styles.card}>
       <div className={styles.toolbar}>
         <span className={styles.hint}>
-          {isLoading ? 'Caricamento…' : `${total}/${maxGrid} iscritti — GTE ${counts.GTE || 0} · GT3 ${counts.GT3 || 0}`}
+          {isLoading ? 'Caricamento…' : `${total}/${maxGrid} iscritti — GTE ${counts.GTE || 0} · LMGT3 ${counts.GT3 || 0}`}
         </span>
       </div>
 
@@ -402,7 +402,7 @@ function ParticipantsTab() {
           }))}
         >
           <option value="GTE">GTE</option>
-          <option value="GT3">GT3</option>
+          <option value="GT3">LMGT3</option>
         </select>
         <select
           className={styles.select}
@@ -476,7 +476,7 @@ function ParticipantsTab() {
                             onChange={e => handleEditClassChange(e.target.value)}
                           >
                             <option value="GTE">GTE</option>
-                            <option value="GT3">GT3</option>
+                            <option value="GT3">LMGT3</option>
                           </select>
                         </td>
                         <td>
