@@ -22,6 +22,7 @@ import {
 } from '../hooks/useSocialManager';
 import { useRaces } from '../hooks/useRaces';
 import { useAuth } from '../hooks/useAuth';
+// eslint-disable-next-line no-unused-vars -- helpers pilastri evergreen/story: temporaneamente non renderizzati (sett 2026) per semplificare il piano editoriale; codice conservato per riabilitazione rapida.
 import { STORY_PILLARS, storyTopic } from '../utils/storyPillars';
 import styles from './SocialManager.module.css';
 
@@ -36,12 +37,21 @@ const PLATFORM_OPTIONS = [
 // ripresi da outputs/calendario_editoriale_ue144.md, generalizzati a
 // qualunque gara nel foglio Races (non solo UE144) usando le pagine
 // reali già esistenti come link di destinazione.
+// Pilastri gara-per-gara. `channels` è la lista dei canali dove pubblicare
+// PER OGNI PILASTRO, decisa insieme a Demetrio (sett 2026) — la matrice non
+// va lasciata aperta a runtime, altrimenti ogni volta serve ricordarsi
+// "dove postiamo cosa?" e il piano perde il senso di guida.
+//   ig       = Instagram (post feed o Reel, dipende dal pilastro)
+//   fb       = Facebook pagina
+//   fb_group = Facebook gruppo "VSD — Sim Racing Italia"
+//   discord  = Discord team
+// L'iscrizioni/entry list (T-2gg) è stato RIMOSSO consapevolmente: risultava
+// ridondante rispetto all'anteprima nella pratica.
 const PILLARS = [
-  { id: 'anteprima', label: 'Anteprima gara', icon: '📣', offsetDays: -7 },
-  { id: 'iscrizioni', label: 'Iscrizioni/entry list', icon: '📝', offsetDays: -2 },
-  { id: 'live', label: 'Live/race day', icon: '🔴', offsetDays: 0 },
-  { id: 'risultati', label: 'Risultati', icon: '🏆', offsetDays: 1 },
-  { id: 'highlight', label: 'Highlight/storytelling', icon: '🎬', offsetDays: 3 },
+  { id: 'anteprima', label: 'Anteprima gara', icon: '📣', offsetDays: -7, channels: ['ig', 'fb', 'discord'] },
+  { id: 'live', label: 'Live/race day', icon: '🔴', offsetDays: 0, channels: ['discord'] },
+  { id: 'risultati', label: 'Risultati', icon: '🏆', offsetDays: 1, channels: ['ig', 'fb', 'fb_group', 'discord'] },
+  { id: 'highlight', label: 'Highlight/Reel', icon: '🎬', offsetDays: 3, channels: ['ig', 'fb', 'fb_group', 'discord'] },
 ];
 
 // Pilastro extra, aggiunto SOLO alla gara con la data più recente di
@@ -52,7 +62,7 @@ const PILLARS = [
 // gara del campionato" è il punto giusto per agganciare il recap di
 // chiusura invece di inventare una struttura a parte (deciso con
 // Demetrio, sett. 2026).
-const CHAMPIONSHIP_CLOSING_PILLAR = { id: 'chiusura_campionato', label: 'Chiusura campionato', icon: '🏁', offsetDays: 4 };
+const CHAMPIONSHIP_CLOSING_PILLAR = { id: 'chiusura_campionato', label: 'Chiusura campionato', icon: '🏁', offsetDays: 4, channels: ['ig', 'fb', 'fb_group', 'discord'] };
 
 // Pilastri "evergreen" — vita di squadra e community, non legati a una
 // gara. A differenza dei pilastri sopra (generati nella finestra ±45gg
@@ -792,7 +802,6 @@ function pillarTopic(race, pillarId, dateLabel) {
   const name = race.race_name || race.race_id;
   switch (pillarId) {
     case 'anteprima': return `Anteprima gara ${name} (${race.sim}), in programma ${dateLabel}`;
-    case 'iscrizioni': return `Ultimo richiamo iscrizioni per ${name}, chiusura imminente`;
     case 'live': return `Aggiornamento live durante ${name}`;
     case 'risultati': return `Risultati e podio di ${name}`;
     case 'highlight': return `Momento più bello di ${name} (sorpasso, incidente, onboard)`;
@@ -863,10 +872,81 @@ function useEditorialPlan(posts, dismissedRaceIds) {
   return { plan, races, isLoading: racesQuery.isLoading, error: racesQuery.error };
 }
 
+// Timeline piatta ordinata per data: appiattisce useEditorialPlan (che
+// raggruppa per gara) in una sequenza di "azioni" da eseguire, ognuna
+// con il proprio quando/dove/cosa. Serve alla vista principale del piano
+// editoriale — è quella che risponde alla domanda "cosa devo postare
+// questa settimana?", che l'organizzazione per-gara non risolveva.
+//
+// Nasconde per default i pilastri già pubblicati (status === 'pubblicato')
+// e quelli il cui giorno è passato di più di 3 gg senza post: sotto quella
+// soglia l'utente probabilmente vuole ancora vederli come "in ritardo",
+// oltre no — diventano rumore. La vista archivio esistente resta l'unico
+// posto dove recuperare quello che il piano ha nascosto.
+const CHANNEL_META = {
+  ig:       { icon: '📱', label: 'Instagram' },
+  fb:       { icon: '📘', label: 'Facebook' },
+  fb_group: { icon: '👥', label: 'Gruppo FB' },
+  discord:  { icon: '💬', label: 'Discord' },
+};
+
+function useEditorialTimeline(plan) {
+  return useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const staleThreshold = -3; // giorni
+
+    const items = [];
+    plan.forEach(({ race, pillars }) => {
+      pillars.forEach(pillar => {
+        const isPublished = pillar.post && pillar.post.status === 'pubblicato';
+        if (isPublished) return;
+        const pillarDate = new Date(pillar.date);
+        pillarDate.setHours(0, 0, 0, 0);
+        const daysFromToday = Math.round((pillarDate.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+        if (daysFromToday < staleThreshold) return;
+        items.push({ race, pillar, daysFromToday });
+      });
+    });
+
+    items.sort((a, b) => {
+      const t = new Date(a.pillar.date).getTime() - new Date(b.pillar.date).getTime();
+      if (t !== 0) return t;
+      return (a.pillar.offsetDays || 0) - (b.pillar.offsetDays || 0);
+    });
+
+    // Raggruppa per finestra temporale: in ritardo, questa settimana,
+    // prossima settimana, più avanti. La soglia "settimana" è mobile
+    // lunedì→domenica calcolata dal giorno di oggi.
+    const dow = today.getDay(); // 0=Dom..6=Sab
+    const daysToSunday = (7 - dow) % 7; // 0..6
+    const endOfThisWeek = addDays(today, daysToSunday); endOfThisWeek.setHours(23,59,59,999);
+    const endOfNextWeek = addDays(endOfThisWeek, 7);
+
+    const buckets = { late: [], thisWeek: [], nextWeek: [], later: [] };
+    items.forEach(item => {
+      const d = new Date(item.pillar.date);
+      if (item.daysFromToday < 0) buckets.late.push(item);
+      else if (d <= endOfThisWeek) buckets.thisWeek.push(item);
+      else if (d <= endOfNextWeek) buckets.nextWeek.push(item);
+      else buckets.later.push(item);
+    });
+
+    return buckets;
+  }, [plan]);
+}
+
 function daysBetween(from, to) {
   return Math.floor((to.getTime() - from.getTime()) / (24 * 60 * 60 * 1000));
 }
 
+/* eslint-disable no-unused-vars -- Blocco pilastri "evergreen" e "story":
+ * lasciato in codice ma non renderizzato in EditorialPlanView (sett 2026,
+ * decisione di prodotto per semplificare il piano editoriale al solo
+ * flusso gara-per-gara). Non rimosso perché la cadenza fissa dei pilastri
+ * (Pilot Spotlight, Dietro le quinte, ...) può tornare utile appena
+ * l'esperienza col piano gare risulta sostenibile. Riabilitare: reimportare
+ * <EvergreenPlanView> / <StoryPlanView> dentro EditorialPlanView. */
 function evergreenTopic(pillarId) {
   switch (pillarId) {
     case 'spotlight': return 'Pilot spotlight — presentazione di un pilota del roster';
@@ -999,6 +1079,7 @@ function StoryPlanView({ storyPlan, onCreate }) {
     </div>
   );
 }
+/* eslint-enable no-unused-vars */
 
 function EditorialPlanView({ posts, onCreateFromSuggestion }) {
   const dismissedQuery = useSocialPlanDismissed();
@@ -1010,8 +1091,7 @@ function EditorialPlanView({ posts, onCreateFromSuggestion }) {
   const dismissMutation = useDismissSocialPlan();
   const undismissMutation = useUndismissSocialPlan();
   const { plan, races, isLoading: racesLoading, error: racesError } = useEditorialPlan(posts, dismissedRaceIds);
-  const evergreenPlan = useEvergreenPlan(posts);
-  const storyPlan = useStoryPlan(posts);
+  const buckets = useEditorialTimeline(plan);
 
   function handleArchive(race) {
     const label = race.race_name || race.race_id;
@@ -1024,106 +1104,41 @@ function EditorialPlanView({ posts, onCreateFromSuggestion }) {
   }
 
   function handlePillarCreate(race, pillar) {
+    const chanToPlat = { ig: 'instagram', fb: 'facebook' };
+    const platforms = (pillar.channels || []).map(c => chanToPlat[c]).filter(Boolean);
     onCreateFromSuggestion({
       race_id: race.race_id,
       pillar: pillar.id,
       scheduled_date: pillar.date,
       link_destination: pillarLinkDestination(race, pillar.id),
-      platforms: pillar.id === 'highlight' ? ['instagram'] : ['facebook', 'instagram'],
+      platforms: platforms.length ? platforms : ['facebook', 'instagram'],
       topic: pillarTopic(race, pillar.id, pillar.dateLabel),
     });
   }
 
-  function handleEvergreenCreate(pillar) {
-    onCreateFromSuggestion({
-      race_id: '',
-      pillar: pillar.id,
-      scheduled_date: new Date().toISOString().slice(0, 10),
-      link_destination: evergreenLinkDestination(pillar.id),
-      platforms: ['facebook', 'instagram'],
-      topic: evergreenTopic(pillar.id),
-    });
-  }
-
-  function handleStoryCreate(pillar) {
-    onCreateFromSuggestion({
-      race_id: '',
-      pillar: pillar.id,
-      scheduled_date: new Date().toISOString().slice(0, 10),
-      link_destination: '',
-      platforms: ['facebook', 'instagram'],
-      topic: storyTopic(pillar.id),
-    });
-  }
+  const totalItems = buckets.late.length + buckets.thisWeek.length + buckets.nextWeek.length + buckets.later.length;
 
   return (
     <div className={styles.section}>
       <h2 className={styles.sectionTitle} style={{ margin: 0 }}>Piano editoriale</h2>
       <p className={styles.subtleHint}>
-        Ogni gara nella finestra ±45 giorni genera automaticamente 5 slot di contenuto
-        (anteprima, iscrizioni, live, risultati, highlight). A questi si affiancano 4
-        categorie di vita di squadra e community a cadenza fissa, indipendenti dal
-        calendario gare, e i capitoli story book della sfida ACI, creati a mano quando
-        c'è un fatto vero da raccontare invece che a scadenza — così il piano non resta
-        vuoto nei periodi senza eventi. Ogni slot mancante ha un bottone rapido per
-        creare la bozza già precompilata. L'ultima gara di ogni campionato riceve
-        un pilastro extra di chiusura, e ogni sezione può essere archiviata a mano
-        col bottone dedicato quando i post di chiusura sono fatti — non serve
-        aspettare che esca dalla finestra ±45gg.
+        Cosa postare, quando, e su quale canale. Ogni gara nella finestra ±45 giorni genera
+        automaticamente 4 azioni (anteprima, live, risultati, highlight) con i canali già assegnati:
+        clicca "+ Crea bozza" per aprire il post già precompilato. Le azioni pubblicate spariscono
+        dalla vista; quelle in ritardo di oltre 3 giorni si nascondono da sole per non generare
+        rumore. L'ultima gara di ogni campionato ha un pilastro extra di chiusura.
       </p>
-
-      <EvergreenPlanView evergreenPlan={evergreenPlan} onCreate={handleEvergreenCreate} />
-      <StoryPlanView storyPlan={storyPlan} onCreate={handleStoryCreate} />
 
       {racesLoading && <div className={styles.loading}>Caricamento gare…</div>}
       {racesError && <div className={styles.errorBox}>Errore gare: {racesError.message}</div>}
-      {!racesLoading && plan.length === 0 && (
-        <div className={styles.empty}>Nessuna gara nella finestra ±45 giorni. Torna a controllare più vicino alla prossima gara.</div>
+      {!racesLoading && totalItems === 0 && (
+        <div className={styles.empty}>Nessuna azione in coda. Torna a controllare più vicino alla prossima gara.</div>
       )}
 
-      {plan.map(({ race, pillars }) => (
-        <div key={race.race_id} className={styles.raceCard}>
-          <div className={styles.raceCardHead}>
-            <span className={styles.raceCardName}>{race.race_name}</span>
-            <span style={{ display: 'flex', alignItems: 'baseline', gap: 12 }}>
-              <span className={styles.raceCardMeta}>{race.sim} · {fmtDate(race.date)}</span>
-              <button
-                type="button"
-                className={styles.btnMini}
-                title="Archivia questa sezione dal piano editoriale, a prescindere dalla finestra ±45gg"
-                onClick={() => handleArchive(race)}
-                disabled={dismissMutation.isPending}
-              >
-                🗑 Archivia
-              </button>
-            </span>
-          </div>
-          <div className={styles.pillarRow}>
-            {pillars.map(pillar => (
-              <div
-                key={pillar.id}
-                className={`${styles.pillarChip} ${pillar.post ? styles['pillarStatus_' + pillar.post.status] : styles.pillarMissing}`}
-                title={`${pillar.label} — ${pillar.dateLabel}`}
-              >
-                <div className={styles.pillarChipTop}>
-                  <span>{pillar.icon}</span>
-                  <span className={styles.pillarChipLabel}>{pillar.label}</span>
-                </div>
-                <div className={styles.pillarChipDate}>{pillar.dateLabel}</div>
-                {pillar.post ? (
-                  <div className={styles.pillarChipStatus}>
-                    {STATUS_ICON[pillar.post.status]} {STATUS_LABEL[pillar.post.status]}
-                  </div>
-                ) : (
-                  <button type="button" className={styles.btnMini} onClick={() => handlePillarCreate(race, pillar)}>
-                    + Crea bozza
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
+      <TimelineBucket title="In ritardo" items={buckets.late} tone="late" onCreate={handlePillarCreate} onArchive={handleArchive} dismissPending={dismissMutation.isPending} />
+      <TimelineBucket title="Questa settimana" items={buckets.thisWeek} tone="now" onCreate={handlePillarCreate} onArchive={handleArchive} dismissPending={dismissMutation.isPending} />
+      <TimelineBucket title="Prossima settimana" items={buckets.nextWeek} tone="soon" onCreate={handlePillarCreate} onArchive={handleArchive} dismissPending={dismissMutation.isPending} />
+      <TimelineBucket title="Più avanti" items={buckets.later} tone="later" collapsedByDefault onCreate={handlePillarCreate} onArchive={handleArchive} dismissPending={dismissMutation.isPending} />
 
       <ArchivedPlanView
         dismissedRows={dismissedRows}
@@ -1131,6 +1146,103 @@ function EditorialPlanView({ posts, onCreateFromSuggestion }) {
         onUndismiss={handleUndismiss}
         isPending={undismissMutation.isPending}
       />
+    </div>
+  );
+}
+
+// Un raggruppamento della timeline (es. "Questa settimana"). Il "Più
+// avanti" può nascere già chiuso: chi apre il piano vuole vedere prima
+// quello che gli tocca oggi/domani, non le tre gare del mese prossimo.
+function TimelineBucket({ title, items, tone, collapsedByDefault, onCreate, onArchive, dismissPending }) {
+  const [collapsed, setCollapsed] = useState(!!collapsedByDefault);
+  if (items.length === 0) return null;
+  const toneClass = styles[`bucket_${tone}`] || '';
+  return (
+    <div className={`${styles.bucket} ${toneClass}`}>
+      <button
+        type="button"
+        className={styles.bucketHead}
+        onClick={() => setCollapsed(c => !c)}
+        aria-expanded={!collapsed}
+      >
+        <span className={styles.bucketTitle}>{title}</span>
+        <span className={styles.bucketCount}>{items.length}</span>
+        <span className={styles.bucketChevron}>{collapsed ? '▸' : '▾'}</span>
+      </button>
+      {!collapsed && (
+        <div className={styles.bucketBody}>
+          {items.map(({ race, pillar, daysFromToday }) => (
+            <TimelineRow
+              key={`${race.race_id}-${pillar.id}`}
+              race={race}
+              pillar={pillar}
+              daysFromToday={daysFromToday}
+              onCreate={onCreate}
+              onArchive={onArchive}
+              dismissPending={dismissPending}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Una singola azione della timeline: data, cosa (pilastro + gara), dove
+// (canali), stato (bozza/programmato/pubblicato o "+ Crea bozza").
+function TimelineRow({ race, pillar, daysFromToday, onCreate, onArchive, dismissPending }) {
+  const dayLabel = daysFromToday === 0
+    ? 'oggi'
+    : daysFromToday === 1
+      ? 'domani'
+      : daysFromToday === -1
+        ? 'ieri'
+        : daysFromToday < 0
+          ? `${-daysFromToday}gg fa`
+          : `tra ${daysFromToday}gg`;
+
+  return (
+    <div className={styles.timelineRow}>
+      <div className={styles.timelineWhen}>
+        <div className={styles.timelineDate}>{pillar.dateLabel}</div>
+        <div className={styles.timelineRel}>{dayLabel}</div>
+      </div>
+      <div className={styles.timelineWhat}>
+        <div className={styles.timelineTitle}>
+          <span>{pillar.icon}</span>
+          <span>{pillar.label}: <strong>{race.race_name}</strong></span>
+        </div>
+        <div className={styles.timelineMeta}>
+          {race.sim} · gara {fmtDate(race.date)}
+        </div>
+        <div className={styles.timelineChannels}>
+          {(pillar.channels || []).map(c => (
+            <span key={c} className={styles.channelChip} title={CHANNEL_META[c]?.label || c}>
+              {CHANNEL_META[c]?.icon || '•'} {CHANNEL_META[c]?.label || c}
+            </span>
+          ))}
+        </div>
+      </div>
+      <div className={styles.timelineAction}>
+        {pillar.post ? (
+          <div className={styles.pillarChipStatus}>
+            {STATUS_ICON[pillar.post.status]} {STATUS_LABEL[pillar.post.status]}
+          </div>
+        ) : (
+          <button type="button" className={styles.btnPrimary} onClick={() => onCreate(race, pillar)}>
+            + Crea bozza
+          </button>
+        )}
+        <button
+          type="button"
+          className={styles.btnMini}
+          title="Archivia tutte le azioni di questa gara"
+          onClick={() => onArchive(race)}
+          disabled={dismissPending}
+        >
+          🗑
+        </button>
+      </div>
     </div>
   );
 }
