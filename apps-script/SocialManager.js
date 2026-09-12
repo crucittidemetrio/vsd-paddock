@@ -704,3 +704,163 @@ function handleSocialPlanDismissedList(payload, ctx) {
   const dismissed = sheetToObjects(SHEETS.SOCIAL_PLAN_DISMISSED);
   return ok({ dismissed, count: dismissed.length });
 }
+
+// ═══════════════════════════════════════════════════════════
+// DIGEST PIANO EDITORIALE — promemoria settimanale su Discord
+// ═══════════════════════════════════════════════════════════
+// Colma un buco reale, emerso dall'audit del 12 set 2026 (apertura
+// gruppo FB, Demetrio unico operatore social): il piano editoriale
+// (SocialManager.jsx, useEditorialTimeline) sa perfettamente cosa è
+// "in ritardo" o "da fare questa settimana", ma quel calcolo vive solo
+// nel browser — se non apri la tab Piano editoriale, non lo sai.
+// Un promemoria che arriva DA SOLO su Discord ogni lunedì chiude il
+// gap, invece di dover ricordarsi di controllare.
+//
+// Replica la logica di pillars/bucket di useEditorialPlan e
+// useEditorialTimeline lato server — non è importabile da lì (mondi
+// diversi, frontend vs Apps Script), quindi è tenuta volutamente più
+// semplice: solo "in ritardo" + "questa settimana" (le due fasce che
+// richiedono azione a breve; "prossima settimana"/"più avanti" restano
+// da controllare a mano nella tab) più i pilastri evergreen scaduti.
+//
+// Registrazione trigger: setupTriggers() in Triggers.js (lunedì 8:00).
+
+const SOCIAL_DIGEST_PILLARS = [
+  { id: 'anteprima', label: 'Anteprima gara', icon: '📣', offsetDays: -7 },
+  { id: 'live', label: 'Live/race day', icon: '🔴', offsetDays: 0 },
+  { id: 'risultati', label: 'Risultati', icon: '🏆', offsetDays: 1 },
+  { id: 'highlight', label: 'Highlight/Reel', icon: '🎬', offsetDays: 3 },
+];
+const SOCIAL_DIGEST_CLOSING_PILLAR = { id: 'chiusura_campionato', label: 'Chiusura campionato', icon: '🏁', offsetDays: 4 };
+const SOCIAL_DIGEST_EVERGREEN_PILLARS = [
+  { id: 'spotlight', label: 'Pilot spotlight', icon: '🎙️', cadenceDays: 14 },
+  { id: 'dietro_quinte', label: 'Dietro le quinte', icon: '🔧', cadenceDays: 14 },
+  { id: 'milestone', label: 'News/milestone squadra', icon: '📰', cadenceDays: 14 },
+  { id: 'community', label: 'Community engagement', icon: '💬', cadenceDays: 14 },
+];
+
+function addDaysSocialDigest_(date, n) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + n);
+  return d;
+}
+
+/**
+ * Promemoria settimanale del piano editoriale su Discord (canale
+ * gestione-gare). Fault-tolerant: try/catch, non lancia mai — un
+ * trigger fallito qui non deve rompere altro.
+ * Dropdown function → runSocialPlanDigest → ▶ Esegui (test manuale),
+ * oppure lasciare al trigger settimanale (Triggers.js).
+ */
+function runSocialPlanDigest() {
+  try {
+    const races = sheetToObjects(SHEETS.RACES);
+    const posts = sheetToObjects(SHEETS.SOCIAL_POSTS);
+    const dismissedRows = sheetToObjects(SHEETS.SOCIAL_PLAN_DISMISSED);
+    const dismissed = new Set(dismissedRows.map(d => d.race_id));
+
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const windowStart = addDaysSocialDigest_(now, -10);
+    const windowEnd = addDaysSocialDigest_(now, 45);
+
+    // Ultima gara di ogni campionato — stessa logica di useEditorialPlan
+    // (SocialManager.jsx): calcolata su TUTTE le gare, non solo quelle
+    // nella finestra, altrimenti una chiusura oltre i 45gg non verrebbe
+    // mai riconosciuta come tale quando entra a sua volta in finestra.
+    const lastRaceByChampionship = {};
+    races.forEach(r => {
+      if (!r.championship_id || !r.date) return;
+      const d = new Date(r.date);
+      if (isNaN(d.getTime())) return;
+      const current = lastRaceByChampionship[r.championship_id];
+      if (!current || d.getTime() > new Date(current.date).getTime()) {
+        lastRaceByChampionship[r.championship_id] = r;
+      }
+    });
+
+    const dow = now.getDay(); // 0=Dom..6=Sab
+    const daysToSunday = (7 - dow) % 7;
+    const endOfThisWeek = addDaysSocialDigest_(now, daysToSunday);
+    endOfThisWeek.setHours(23, 59, 59, 999);
+
+    const late = [];
+    const thisWeek = [];
+
+    races
+      .filter(r => {
+        if (dismissed.has(r.race_id)) return false;
+        const d = r.date ? new Date(r.date) : null;
+        return d && !isNaN(d.getTime()) && d >= windowStart && d <= windowEnd;
+      })
+      .forEach(race => {
+        const raceDate = new Date(race.date);
+        const isCloser = race.championship_id
+          && lastRaceByChampionship[race.championship_id]
+          && lastRaceByChampionship[race.championship_id].race_id === race.race_id;
+        const pillarDefs = isCloser ? SOCIAL_DIGEST_PILLARS.concat([SOCIAL_DIGEST_CLOSING_PILLAR]) : SOCIAL_DIGEST_PILLARS;
+
+        pillarDefs.forEach(pillar => {
+          const match = posts.find(p => p.race_id === race.race_id && p.pillar === pillar.id);
+          if (match && match.status === 'pubblicato') return; // fatto, non serve promemoria
+
+          const pillarDate = addDaysSocialDigest_(raceDate, pillar.offsetDays);
+          pillarDate.setHours(0, 0, 0, 0);
+          const daysFromToday = Math.round((pillarDate.getTime() - now.getTime()) / 86400000);
+          if (daysFromToday < -3) return; // stale, si nasconde anche in UI (useEditorialTimeline)
+
+          const label = pillar.icon + ' ' + pillar.label + ' — ' + (race.race_name || race.race_id);
+          if (daysFromToday < 0) late.push(label);
+          else if (pillarDate <= endOfThisWeek) thisWeek.push(label);
+        });
+      });
+
+    // Pilastri evergreen scaduti — stessa logica di useEvergreenPlan
+    // (SocialManager.jsx): ultimo post per categoria (senza race_id),
+    // in ritardo se sono passati >= cadenceDays giorni (o mai creato).
+    const evergreenDue = [];
+    SOCIAL_DIGEST_EVERGREEN_PILLARS.forEach(pillar => {
+      const matches = posts.filter(p => p.pillar === pillar.id && !p.race_id);
+      const sorted = matches.slice().sort((a, b) => {
+        const da = String(a.scheduled_date || a.created_at || '');
+        const db = String(b.scheduled_date || b.created_at || '');
+        return db.localeCompare(da);
+      });
+      const last = sorted[0] || null;
+      const lastDateStr = last ? (last.scheduled_date || last.created_at) : null;
+      const lastDate = lastDateStr ? new Date(lastDateStr) : null;
+      const daysSince = lastDate && !isNaN(lastDate.getTime())
+        ? Math.floor((now.getTime() - lastDate.getTime()) / 86400000)
+        : null;
+      const isDue = daysSince === null || daysSince >= pillar.cadenceDays;
+      if (isDue) evergreenDue.push(pillar.icon + ' ' + pillar.label);
+    });
+
+    if (late.length === 0 && thisWeek.length === 0 && evergreenDue.length === 0) {
+      Logger.log('Digest piano editoriale: nulla da segnalare questa settimana.');
+      return { ok: true, skipped: true };
+    }
+
+    const fields = [];
+    if (late.length > 0) fields.push({ name: '🔴 In ritardo (' + late.length + ')', value: late.join('\n').slice(0, 1024) });
+    if (thisWeek.length > 0) fields.push({ name: '📅 Questa settimana (' + thisWeek.length + ')', value: thisWeek.join('\n').slice(0, 1024) });
+    if (evergreenDue.length > 0) fields.push({ name: '♻️ Evergreen da fare (' + evergreenDue.length + ')', value: evergreenDue.join('\n').slice(0, 1024) });
+
+    const payload = {
+      embeds: [{
+        author: { name: 'VSD Paddock' },
+        title: '📣 Piano editoriale — promemoria settimanale',
+        color: VSD_COLORS.cyan,
+        fields: fields,
+        timestamp: new Date().toISOString(),
+        footer: { text: 'Apri Social Manager → Piano editoriale per i dettagli' },
+        url: PADDOCK_URL + '/admin/social-manager',
+      }],
+    };
+
+    return postToDiscordWebhook_(payload, 'DISCORD_WEBHOOK_GESTIONE_GARE_URL');
+  } catch (e) {
+    Logger.log('⚠️  runSocialPlanDigest error: ' + e.message);
+    return { ok: false, error: e.message };
+  }
+}

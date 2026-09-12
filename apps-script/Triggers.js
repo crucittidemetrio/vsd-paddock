@@ -146,6 +146,21 @@ function setupTriggers() {
       .create();
   });
 
+  // Digest piano editoriale social — #gestione-gare (SocialManager.js,
+  // runSocialPlanDigest). Aggiunto dopo l'audit del 12 set 2026: con
+  // Demetrio unico operatore social, nessun altro promemoria del
+  // progetto tocca mai il piano editoriale (il digest settimanale
+  // sopra è su tutt'altro dominio) — senza questo trigger l'unico modo
+  // di sapere "cosa devo postare" era aprire la tab a mano. Lunedì
+  // mattina presto, prima del digest generale.
+  ensureTimeTrigger('runSocialPlanDigest', 'digest piano editoriale ogni lunedì 8:00', () => {
+    ScriptApp.newTrigger('runSocialPlanDigest')
+      .timeBased()
+      .onWeekDay(ScriptApp.WeekDay.MONDAY)
+      .atHour(8)
+      .create();
+  });
+
   Logger.log(results.join('\n'));
   return results;
 }
