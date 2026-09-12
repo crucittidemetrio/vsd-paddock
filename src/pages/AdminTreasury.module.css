@@ -113,6 +113,79 @@
   border-color: #f5a623;
 }
 
+.exportBtn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  padding: 7px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.7);
+  background: transparent;
+  cursor: pointer;
+}
+
+.exportBtn:hover {
+  border-color: rgba(0, 212, 255, 0.4);
+  color: #00d4ff;
+}
+
+.exportBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.chartSection {
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 16px 18px 10px;
+  margin-bottom: 20px;
+}
+
+.chartHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.chartMeta {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.chartLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  padding: 6px 4px 4px;
+}
+
+.chartLegendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.legendDotIn,
+.legendDotOut,
+.legendDotBalance {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.legendDotIn { background: #22c55e; }
+.legendDotOut { background: #ef4444; }
+.legendDotBalance { background: #00d4ff; border-radius: 50%; }
+
 .addForm {
   background: rgba(255, 255, 255, 0.025);
   border: 1px solid rgba(255, 255, 255, 0.08);

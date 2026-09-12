@@ -225,6 +225,20 @@
   50% { opacity: 0.5; }
 }
 
+/* Sotto-etichette dei gruppi tematici dentro Admin (Gare, Piloti,
+   Contenuti, Finanze, Sistema) — più discrete della label di sezione
+   principale, cosi' restano leggibili come sotto-livello e non
+   competono visivamente con "Admin" sopra di loro. */
+.nav-subsection-label {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+  opacity: 0.6;
+  padding: var(--sp-3) var(--sp-3) 2px var(--sp-4);
+}
+
 /* Riordino personalizzabile voci Admin */
 .nav-section-label-admin {
   display: flex;

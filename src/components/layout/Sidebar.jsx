@@ -71,32 +71,68 @@ const TOOLS_ITEMS = [
 // Voci future "soon" — solo pilota loggato
 const FUTURE_ITEMS = [];
 
+// Ogni voce ha un campo `group` usato SOLO per raggruppare la vista in
+// sola lettura (vedi groupAdminItems più sotto) — l'ordine libero via
+// drag/frecce (useAdminNavOrder) resta un elenco piatto indipendente,
+// non tocchiamo quel meccanismo. Admin Home non ha gruppo: resta sempre
+// la prima voce, da sola, come punto d'ingresso.
 const ADMIN_ITEMS = [
-  { to: '/admin', label: 'Admin Home', icon: '⌂' },
-  { to: '/admin/best-laps', label: 'Best Laps', icon: '◷' },
-  { to: '/admin/races', label: 'Gestione Gare', icon: '⚑' },
-  { to: '/admin/team-dashboard', label: 'Team Dashboard', icon: '▥' },
-  { to: '/admin/import-results', label: 'Import Risultati', icon: '▽' },
-  { to: '/admin/import-lap-data', label: 'Import Analisi di Passo', icon: '⏱' },
-  { to: '/admin/import-standings', label: 'Import Standings', icon: '♛' },
-  { to: '/admin/garage61-sync', label: 'Sync Garage61', icon: '↻' },
-  { to: '/admin/posters', label: 'Race Posters', icon: '▭' },
-  { to: '/admin/endurance', label: 'Endurance Admin', icon: '◐' },
-  { to: '/admin/clash-results', label: 'Clash of Classes — Risultati', icon: '⚔' },
-  { to: '/admin/candidates', label: 'Candidature', icon: '◫' },
-  { to: '/admin/sponsors', label: 'Sponsor', icon: '◆' },
-  { to: '/admin/incidents', label: 'Registro incidenti', icon: '⚠' },
-  { to: '/admin/messenger', label: 'Messaggi Discord', icon: '✉' },
+  { to: '/admin', label: 'Admin Home', icon: '⌂', group: null },
+  { to: '/admin/best-laps', label: 'Best Laps', icon: '◷', group: 'gare' },
+  { to: '/admin/races', label: 'Gestione Gare', icon: '⚑', group: 'gare' },
+  { to: '/admin/team-dashboard', label: 'Team Dashboard', icon: '▥', group: 'piloti' },
+  { to: '/admin/import-results', label: 'Import Risultati', icon: '▽', group: 'gare' },
+  { to: '/admin/import-lap-data', label: 'Import Analisi di Passo', icon: '⏱', group: 'gare' },
+  { to: '/admin/import-standings', label: 'Import Standings', icon: '♛', group: 'gare' },
+  { to: '/admin/garage61-sync', label: 'Sync Garage61', icon: '↻', group: 'gare' },
+  { to: '/admin/posters', label: 'Race Posters', icon: '▭', group: 'gare' },
+  { to: '/admin/endurance', label: 'Endurance Admin', icon: '◐', group: 'gare' },
+  { to: '/admin/clash-results', label: 'Clash of Classes — Risultati', icon: '⚔', group: 'gare' },
+  { to: '/admin/candidates', label: 'Candidature', icon: '◫', group: 'piloti' },
+  { to: '/admin/sponsors', label: 'Sponsor', icon: '◆', group: 'finanze' },
+  { to: '/admin/incidents', label: 'Registro incidenti', icon: '⚠', group: 'piloti' },
+  { to: '/admin/messenger', label: 'Messaggi Discord', icon: '✉', group: 'contenuti' },
 ];
 
 // Voci riservate ad admin/Team Principal — sottoinsieme più ristretto
 // dell'area Admin (isStaff include anche staff generico, questo no).
 const ADMIN_ONLY_ITEMS = [
-  { to: '/admin/social-manager', label: 'Social Manager', icon: '◎' },
-  { to: '/admin/consents', label: 'Consensi (staff)', icon: '✎' },
-  { to: '/admin/audit-log', label: 'Registro di controllo', icon: '☰' },
-  { to: '/admin/treasury', label: 'Cassa / rendiconto', icon: '€' },
+  { to: '/admin/social-manager', label: 'Social Manager', icon: '◎', group: 'contenuti' },
+  { to: '/admin/consents', label: 'Consensi (staff)', icon: '✎', group: 'sistema' },
+  { to: '/admin/audit-log', label: 'Registro di controllo', icon: '☰', group: 'sistema' },
+  { to: '/admin/treasury', label: 'Cassa / rendiconto', icon: '€', group: 'finanze' },
 ];
+
+// Ordine ed etichette dei sotto-gruppi nella vista Admin non in modifica.
+// Un gruppo compare solo se ha almeno una voce visibile per il ruolo
+// corrente (es. Contenuti sparisce per staff non-admin, che non vede
+// Social Manager né — qui — Messaggi Discord se non ha can_message).
+const ADMIN_GROUP_ORDER = ['gare', 'piloti', 'contenuti', 'finanze', 'sistema'];
+const ADMIN_GROUP_LABELS = {
+  gare: 'Gare & Risultati',
+  piloti: 'Piloti',
+  contenuti: 'Contenuti & Comunicazione',
+  finanze: 'Finanze',
+  sistema: 'Sistema',
+};
+
+// Divide le voci Admin (già ordinate secondo la preferenza utente) in:
+// - home: la voce Admin Home, se presente, resa da sola in cima
+// - groups: bucket nell'ordine fisso ADMIN_GROUP_ORDER, ciascuno con le
+//   sue voci nell'ordine relativo già stabilito da orderedAdminItems
+function groupAdminItems(items) {
+  const home = items.find(i => i.group == null) || null;
+  const buckets = {};
+  items.forEach(item => {
+    if (item.group == null) return;
+    if (!buckets[item.group]) buckets[item.group] = [];
+    buckets[item.group].push(item);
+  });
+  const groups = ADMIN_GROUP_ORDER
+    .filter(key => buckets[key] && buckets[key].length > 0)
+    .map(key => ({ key, label: ADMIN_GROUP_LABELS[key], items: buckets[key] }));
+  return { home, groups };
+}
 
 function renderNavItem(item, onMobileClose, extraClass = '', badgeCount = 0) {
   const tagText = extraClass.includes('is-soon') ? 'soon'
@@ -233,14 +269,31 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
                 Ripristina ordine predefinito
               </button>
             )}
-            {orderedAdminItems.map((item, idx) => adminEditMode
-              ? renderReorderableAdminItem(item, {
+            {adminEditMode ? (
+              // Modalità riordino: elenco piatto invariato, frecce su/giù
+              // operano sull'intero ordine — i sotto-gruppi sono solo un
+              // raggruppamento visivo per la lettura, non toccano questo.
+              orderedAdminItems.map((item, idx) => renderReorderableAdminItem(item, {
                 move,
                 isFirst: idx === 0,
                 isLast: idx === orderedAdminItems.length - 1,
                 badgeCount: item.badgeCount,
-              })
-              : renderNavItem(item, onMobileClose, 'is-admin', item.badgeCount)
+              }))
+            ) : (
+              (() => {
+                const { home, groups } = groupAdminItems(orderedAdminItems);
+                return (
+                  <>
+                    {home && renderNavItem(home, onMobileClose, 'is-admin', home.badgeCount)}
+                    {groups.map(g => (
+                      <div key={g.key}>
+                        <div className="nav-subsection-label">{g.label}</div>
+                        {g.items.map(item => renderNavItem(item, onMobileClose, 'is-admin', item.badgeCount))}
+                      </div>
+                    ))}
+                  </>
+                );
+              })()
             )}
           </>
         )}

@@ -186,3 +186,77 @@ function handleSponsorsRemove(payload, ctx) {
   sheet.deleteRow(rowIndex + 1);
   return ok({ deleted: true, sponsor_id: sponsorId });
 }
+
+// ═══════════════════════════════════════════════════════════
+// DIGEST FOLLOW-UP SPONSOR — promemoria settimanale su Discord
+// ═══════════════════════════════════════════════════════════
+// Colma lo stesso tipo di buco già chiuso per il piano editoriale social
+// (SocialManager.js, runSocialPlanDigest): i follow-up scaduti oggi si
+// vedono SOLO aprendo Admin Home (AdminHome.jsx) — se quella tab non si
+// apre per qualche settimana, uno sponsor "da richiamare" può restare
+// silenzioso per mesi senza che nessuno se ne accorga. Stesso canale
+// admin usato da notifyNewSponsorLead_/notifySponsorActivated_ (dato
+// commerciale, non da esporre ai piloti in generale).
+//
+// Registrazione trigger: setupTriggers() in Triggers.js (lunedì 8:30 —
+// mezz'ora dopo il digest social, per non sovrapporre le due chiamate).
+
+/**
+ * Promemoria settimanale dei follow-up sponsor scaduti o in scadenza
+ * questa settimana. Fault-tolerant: try/catch, non lancia mai.
+ * Esclude 'declined'/'lapsed' (trattativa chiusa, nessun follow-up ha
+ * senso) — stesso filtro già usato in AdminHome.jsx.
+ * Dropdown function → runSponsorFollowUpDigest → ▶ Esegui (test manuale),
+ * oppure lasciare al trigger settimanale (Triggers.js).
+ */
+function runSponsorFollowUpDigest() {
+  try {
+    const sponsors = sheetToObjects(SHEETS.SPONSORS)
+      .filter(s => s.status !== 'declined' && s.status !== 'lapsed');
+
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const dow = now.getDay();
+    const daysToSunday = (7 - dow) % 7;
+    const endOfThisWeek = addDaysSocialDigest_(now, daysToSunday);
+    endOfThisWeek.setHours(23, 59, 59, 999);
+
+    const late = [];
+    const thisWeek = [];
+
+    sponsors.forEach(s => {
+      if (!s.next_follow_up) return;
+      const d = new Date(s.next_follow_up);
+      if (isNaN(d.getTime())) return;
+      const label = s.company_name + (s.status ? ` (${s.status})` : '');
+      if (d < now) late.push(label);
+      else if (d <= endOfThisWeek) thisWeek.push(label);
+    });
+
+    if (late.length === 0 && thisWeek.length === 0) {
+      Logger.log('Digest follow-up sponsor: nulla da segnalare questa settimana.');
+      return { ok: true, skipped: true };
+    }
+
+    const fields = [];
+    if (late.length > 0) fields.push({ name: '🔴 Follow-up scaduti (' + late.length + ')', value: late.join('\n').slice(0, 1024) });
+    if (thisWeek.length > 0) fields.push({ name: '📅 Da fare questa settimana (' + thisWeek.length + ')', value: thisWeek.join('\n').slice(0, 1024) });
+
+    const payload = {
+      embeds: [{
+        author: { name: 'VSD Paddock — Partnership' },
+        title: '🤝 Follow-up sponsor — promemoria settimanale',
+        color: VSD_COLORS.orange,
+        fields: fields,
+        timestamp: new Date().toISOString(),
+        footer: { text: 'CRM Sponsor · Admin' },
+        url: PADDOCK_URL + '/admin/sponsors',
+      }],
+    };
+
+    return postToDiscordAdmin_(payload);
+  } catch (e) {
+    Logger.log('⚠️  runSponsorFollowUpDigest error: ' + e.message);
+    return { ok: false, error: e.message };
+  }
+}

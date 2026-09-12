@@ -161,6 +161,20 @@ function setupTriggers() {
       .create();
   });
 
+  // Digest follow-up sponsor — canale admin (Sponsors.js,
+  // runSponsorFollowUpDigest). Stesso ragionamento del digest social sopra:
+  // oggi il follow-up scaduto si vede solo aprendo Admin Home a mano.
+  // Mezz'ora dopo il digest social (8:00) per non far coincidere le due
+  // chiamate sullo stesso minuto.
+  ensureTimeTrigger('runSponsorFollowUpDigest', 'digest follow-up sponsor ogni lunedì 8:30', () => {
+    ScriptApp.newTrigger('runSponsorFollowUpDigest')
+      .timeBased()
+      .onWeekDay(ScriptApp.WeekDay.MONDAY)
+      .atHour(8)
+      .nearMinute(30)
+      .create();
+  });
+
   Logger.log(results.join('\n'));
   return results;
 }

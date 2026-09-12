@@ -1,4 +1,7 @@
 import { useMemo, useState } from 'react';
+import {
+  ComposedChart, Bar, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts';
 import { useTreasury, useAddTreasuryEntry, useUpdateTreasuryEntry, useRemoveTreasuryEntry } from '../hooks/useTreasury';
 import styles from './AdminTreasury.module.css';
 
@@ -11,6 +14,12 @@ function fmtEuro(n) {
   return (Number(n) || 0).toLocaleString('it-IT', { style: 'currency', currency: 'EUR' });
 }
 
+function fmtEuroCompact(n) {
+  // Versione senza decimali/simbolo ripetuto — per assi ed etichette del
+  // grafico, dove lo spazio è poco e i centesimi sono rumore.
+  return (Number(n) || 0).toLocaleString('it-IT', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 });
+}
+
 function fmtDate(d) {
   if (!d) return '—';
   try {
@@ -18,6 +27,45 @@ function fmtDate(d) {
   } catch {
     return String(d);
   }
+}
+
+// '2026-09' → 'set 2026' — le date dei movimenti sono già ISO (YYYY-MM-DD
+// o simile), quindi la chiave mese è solo una fetta di stringa: niente
+// parsing Date che rischi di scivolare di fuso orario sul primo del mese.
+function fmtMonthLabel(monthKey) {
+  const [y, m] = monthKey.split('-').map(Number);
+  if (!y || !m) return monthKey;
+  const d = new Date(y, m - 1, 1);
+  return d.toLocaleDateString('it-IT', { month: 'short', year: 'numeric' });
+}
+
+// Genera e scarica un CSV client-side dei movimenti passati — niente
+// round-trip al backend, i dati sono già in memoria dalla query.
+function downloadTreasuryCsv(entries) {
+  const header = ['Data', 'Tipo', 'Importo', 'Controparte', 'Descrizione'];
+  const rows = entries.map(e => [
+    e.date ? String(e.date).slice(0, 10) : '',
+    e.type === 'entrata' ? 'Entrata' : 'Uscita',
+    (Number(e.amount) || 0).toFixed(2).replace('.', ','),
+    e.counterparty || '',
+    e.description || '',
+  ]);
+  const escapeCsv = (v) => {
+    const s = String(v ?? '');
+    return /[";\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const csv = [header, ...rows].map(r => r.map(escapeCsv).join(';')).join('\r\n');
+  // BOM per far riconoscere l'UTF-8 a Excel su Windows (altrimenti storpia gli accenti)
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const today = new Date().toISOString().slice(0, 10);
+  a.href = url;
+  a.download = `vsd-cassa-${today}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 }
 
 function EmptyForm() {
@@ -39,7 +87,15 @@ export default function AdminTreasury() {
   const [editingId, setEditingId] = useState(null);
   const [editForm, setEditForm] = useState(null);
 
-  const query = useTreasury(typeFilter || undefined);
+  // Sempre TUTTI i movimenti, senza filtro lato backend: il filtro
+  // entrate/uscite qui sotto è solo per la vista elenco. Prima il tipo
+  // veniva passato alla query stessa, quindi con "Entrate" selezionato
+  // il backend restituiva SOLO entrate — e "Saldo cassa"/i conteggi dei
+  // chip finivano per riflettere il sottoinsieme filtrato invece del
+  // totale reale (uscite azzerate → saldo mostrato = entrate). Bug non
+  // ipotetico: è esattamente il tipo di numero che un Team Principal
+  // legge una volta e considera vero.
+  const query = useTreasury();
   const entries = useMemo(() => query.data?.entries || [], [query.data]);
   const addMutation = useAddTreasuryEntry();
   const updateMutation = useUpdateTreasuryEntry();
@@ -66,11 +122,48 @@ export default function AdminTreasury() {
       .sort((a, b) => (Number(b.amount) || 0) - (Number(a.amount) || 0));
   }, [entries]);
 
-  const totalIn = query.data?.totalIn ?? 0;
-  const totalOut = query.data?.totalOut ?? 0;
-  const balance = query.data?.balance ?? (totalIn - totalOut);
+  // Totali sempre calcolati sul set completo (vedi commento sopra),
+  // non su query.data.totalIn/Out che il backend calcola DOPO il filtro.
+  const totalIn = useMemo(
+    () => entries.filter(e => e.type === 'entrata').reduce((s, e) => s + (Number(e.amount) || 0), 0),
+    [entries]
+  );
+  const totalOut = useMemo(
+    () => entries.filter(e => e.type === 'uscita').reduce((s, e) => s + (Number(e.amount) || 0), 0),
+    [entries]
+  );
+  const balance = totalIn - totalOut;
 
-  const visibleEntries = entries.slice().sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  const visibleEntries = useMemo(
+    () => entries
+      .filter(e => !typeFilter || e.type === typeFilter)
+      .slice()
+      .sort((a, b) => String(b.date).localeCompare(String(a.date))),
+    [entries, typeFilter]
+  );
+
+  // Andamento mensile — bucket per YYYY-MM (slice della data ISO, niente
+  // parsing Date per evitare scivoloni di fuso orario sul primo del
+  // mese), poi saldo cumulato mese su mese per il trend di cassa.
+  const monthlyBalanceData = useMemo(() => {
+    if (entries.length === 0) return [];
+    const byMonth = new Map();
+    entries.forEach(e => {
+      const key = e.date ? String(e.date).slice(0, 7) : null;
+      if (!key) return;
+      const cur = byMonth.get(key) || { month: key, in: 0, out: 0 };
+      if (e.type === 'entrata') cur.in += Number(e.amount) || 0;
+      else cur.out += Number(e.amount) || 0;
+      byMonth.set(key, cur);
+    });
+    const months = [...byMonth.keys()].sort();
+    let running = 0;
+    return months.map(month => {
+      const { in: inAmt, out: outAmt } = byMonth.get(month);
+      running += inAmt - outAmt;
+      return { month, monthLabel: fmtMonthLabel(month), in: inAmt, out: outAmt, balance: running };
+    });
+  }, [entries]);
 
   function handleAddSubmit(e) {
     e.preventDefault();
@@ -146,6 +239,53 @@ export default function AdminTreasury() {
         </div>
       </div>
 
+      {monthlyBalanceData.length > 1 && (
+        <section className={styles.chartSection}>
+          <div className={styles.chartHead}>
+            <h2 className={styles.reportTitle}>Andamento cassa</h2>
+            <span className={styles.chartMeta}>
+              entrate/uscite per mese · saldo cumulato — {monthlyBalanceData.length} mesi
+            </span>
+          </div>
+          <ResponsiveContainer width="100%" height={260}>
+            <ComposedChart data={monthlyBalanceData} margin={{ top: 8, right: 20, left: 4, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+              <XAxis dataKey="monthLabel" stroke="rgba(255,255,255,0.4)" fontSize={11} />
+              <YAxis stroke="rgba(255,255,255,0.4)" fontSize={11} tickFormatter={fmtEuroCompact} width={72} />
+              <Tooltip
+                contentStyle={{
+                  background: '#0a0e1a',
+                  border: '1px solid rgba(0,212,255,0.3)',
+                  borderRadius: 6,
+                  fontSize: 12,
+                }}
+                labelStyle={{ color: '#00d4ff', fontFamily: 'monospace' }}
+                formatter={(value, name) => [
+                  fmtEuro(value),
+                  name === 'in' ? 'Entrate' : name === 'out' ? 'Uscite' : 'Saldo cumulato',
+                ]}
+              />
+              <Bar dataKey="in" fill="#22c55e" fillOpacity={0.55} radius={[3, 3, 0, 0]} />
+              <Bar dataKey="out" fill="#ef4444" fillOpacity={0.55} radius={[3, 3, 0, 0]} />
+              <Line
+                type="monotone"
+                dataKey="balance"
+                stroke="var(--vsd-cyan)"
+                strokeWidth={2.5}
+                dot={{ r: 3, fill: 'var(--vsd-cyan)', strokeWidth: 0 }}
+                activeDot={{ r: 5 }}
+                isAnimationActive={false}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+          <div className={styles.chartLegend}>
+            <span className={styles.chartLegendItem}><span className={styles.legendDotIn} /> Entrate del mese</span>
+            <span className={styles.chartLegendItem}><span className={styles.legendDotOut} /> Uscite del mese</span>
+            <span className={styles.chartLegendItem}><span className={styles.legendDotBalance} /> Saldo cumulato</span>
+          </div>
+        </section>
+      )}
+
       <div className={styles.summaryRow}>
         <button
           type="button"
@@ -167,6 +307,15 @@ export default function AdminTreasury() {
           onClick={() => setTypeFilter('uscita')}
         >
           Uscite ({entries.filter(e => e.type === 'uscita').length})
+        </button>
+        <button
+          type="button"
+          className={styles.exportBtn}
+          onClick={() => downloadTreasuryCsv(visibleEntries)}
+          disabled={visibleEntries.length === 0}
+          title="Scarica CSV dei movimenti nella vista corrente"
+        >
+          ⇩ Esporta CSV
         </button>
         <button type="button" className={styles.addBtn} onClick={() => setShowForm(v => !v)}>
           {showForm ? 'Annulla' : '+ Nuovo movimento'}
