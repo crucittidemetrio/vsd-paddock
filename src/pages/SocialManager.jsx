@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { upload } from '@vercel/blob/client';
 import {
-  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import {
   useSocialPosts,
@@ -341,6 +341,10 @@ function DashboardHome({ posts, metrics, postsQuery, metricsQuery }) {
                       <stop offset="0%" stopColor="#5865f2" stopOpacity={0.35} />
                       <stop offset="100%" stopColor="#5865f2" stopOpacity={0} />
                     </linearGradient>
+                    <linearGradient id="fbGroupGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#f5a623" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="#f5a623" stopOpacity={0} />
+                    </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" vertical={false} />
                   <XAxis dataKey="dateLabel" tick={{ fill: '#8a96b0', fontSize: 11 }} axisLine={false} tickLine={false} />
@@ -349,10 +353,13 @@ function DashboardHome({ posts, metrics, postsQuery, metricsQuery }) {
                     contentStyle={{ background: '#0d1730', border: '1px solid #1f2a4a', borderRadius: 8, fontSize: 12 }}
                     labelStyle={{ color: '#8a96b0' }}
                   />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Area type="monotone" dataKey="instagram" name="Instagram" stroke="#e1306c"
                     fill="url(#igGrad)" strokeWidth={2} connectNulls dot={{ r: 3 }} />
                   <Area type="monotone" dataKey="facebook" name="Facebook" stroke="#3b8bff"
                     fill="url(#fbGrad)" strokeWidth={2} connectNulls dot={{ r: 3 }} />
+                  <Area type="monotone" dataKey="facebook_group" name="Gruppo FB" stroke="#f5a623"
+                    fill="url(#fbGroupGrad)" strokeWidth={2} connectNulls dot={{ r: 3 }} />
                   <Area type="monotone" dataKey="discord" name="Discord" stroke="#5865f2"
                     fill="url(#dcGrad)" strokeWidth={2} connectNulls dot={{ r: 3 }} />
                 </AreaChart>
