@@ -31,7 +31,15 @@ function lapTimestamp(lap) {
 function useRaceLaps() {
   return useQuery({
     queryKey: ['raceLaps'],
-    queryFn: () => api.laps.raceLaps(),
+    // `|| []` di sicurezza: questa stessa query key viene anche
+    // pre-popolata da useLandingData (Landing.jsx) con un valore che in
+    // teoria è sempre un array ma in pratica dipende da una risposta
+    // aggregata lato server che può arrivare incompleta sotto carico.
+    // React Query tratta `data: undefined` su una query "riuscita" come
+    // errore fatale ("[raceLaps] data is undefined"), quindi qui e in
+    // useLandingData normalizziamo entrambi i lati piuttosto che
+    // affidarci a uno solo dei due.
+    queryFn: () => api.laps.raceLaps().then(d => d || []),
     staleTime: 60_000,
   });
 }
