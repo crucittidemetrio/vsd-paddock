@@ -1,0 +1,73 @@
+name: Build SimHub lap data plugin
+
+# Compila VsdLapDataLogger.dll (plugin SimHub per l'Analisi di Passo) su
+# un runner Windows ad ogni push su main che tocca simhub-plugin/ —
+# stesso identico schema di build-pitwall-bridge.yml e
+# build-companion.yml. Nessun pilota deve installare Visual Studio o
+# clonare il repo per ottenere il plugin aggiornato.
+#
+# Su un runner GitHub non esiste SIMHUB_INSTALL_PATH: il target
+# CopyPluginToSimHub nel .csproj ha già una Condition su quella variabile,
+# quindi si limita a non eseguire il passo di copia — nessun errore.
+#
+# Pubblica la DLL in DUE posti, stesso pattern degli altri due workflow:
+#  1. Artifact della run (richiede login GitHub, utile per staff/QA)
+#  2. GitHub Release pubblica a tag fisso "simhub-plugin-latest" (NESSUN
+#     login richiesto — questo è il link da dare ai piloti). Ogni push
+#     sovrascrive l'asset della stessa release, quindi il link resta
+#     sempre identico: non va ricondiviso ad ogni aggiornamento.
+#
+# Installazione lato pilota: scaricare VsdLapDataLogger.dll e copiarla in
+# "C:\Program Files (x86)\SimHub\" (SimHub chiuso), poi riavviare SimHub —
+# comparirà in Additional Plugins. Vedi simhub-plugin/README.md.
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'simhub-plugin/**'
+      - '.github/workflows/build-simhub-plugin.yml'
+  workflow_dispatch: {}
+
+jobs:
+  build-dll:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: simhub-plugin
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Build VsdLapDataLogger.dll (net48)
+        run: dotnet build -c Release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vsd-lap-data-logger-dll
+          path: simhub-plugin/bin/Release/net48/VsdLapDataLogger.dll
+          retention-days: 90
+
+      - name: Pubblica/aggiorna la Release pubblica (simhub-plugin-latest)
+        uses: ncipollo/release-action@v1
+        with:
+          tag: simhub-plugin-latest
+          commit: main
+          name: "SimHub lap data plugin — build automatica"
+          body: >
+            Build automatica dell'ultimo commit su simhub-plugin/. Scarica
+            VsdLapDataLogger.dll qui sotto — link stabile, nessun login
+            richiesto. Copiala in "C:\Program Files (x86)\SimHub\" (con
+            SimHub chiuso) e riavvia SimHub. Guida d'uso:
+            simhub-plugin/README.md.
+          artifacts: "simhub-plugin/bin/Release/net48/VsdLapDataLogger.dll"
+          allowUpdates: true
+          replacesArtifacts: true
+          makeLatest: false
+          token: ${{ secrets.GITHUB_TOKEN }}

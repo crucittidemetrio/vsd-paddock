@@ -49,6 +49,20 @@
 // se il CSV mostra ancora "" dopo il prossimo test, va controllato a
 // mano nell'editor formule di SimHub (drag&drop della property per
 // vedere la stringa $prop(...) esatta).
+//
+// Aggiornamento 13/09/2026 — settori + velocità (spunto: la sezione
+// "Statistiche" nativa di SimHub mostra S1/S2/S3 e velocità min/max/media
+// per giro; niente API per leggere quello storico da fuori, ma le stesse
+// proprietà LIVE che lo alimentano sono lette qui). Path CONFERMATI dal
+// vivo interrogando l'endpoint di debug locale di SimHub
+// (http://localhost:8888/api/GetGameData, GameName="LMU", 13/09/2026),
+// non dedotti: Sector1LastLapTime si è visto popolarsi correttamente
+// subito dopo il primo settore di un giro reale. Tutte e 4 sono property
+// CORE (stesso prefisso DataCorePlugin.GameData.NewData.* di Fuel/
+// CompletedLaps), non NeoRed — stessa alta confidenza.
+// SpeedKmh non ha un equivalente "min/max/avg per giro" nativo: lo
+// calcoliamo noi accumulando ad ogni tick (stesso pattern OR-accumulation
+// già usato per in_pits/yellow_flag), reset ad ogni giro completato.
 // ═══════════════════════════════════════════════════════════
 
 using System;
@@ -113,6 +127,14 @@ namespace VsdLapDataLogger
         public const string CompletedLaps = "DataCorePlugin.GameData.NewData.CompletedLaps"; // int
         public const string LastLapTime = "DataCorePlugin.GameData.NewData.LastLapTime";   // TimeSpan
 
+        // ── Confermate dal test reale del 13/09/2026 via /api/GetGameData ──
+        // (S1 osservato popolarsi correttamente dopo il primo settore di un giro
+        // vero; core property, stesso prefisso di Fuel/CompletedLaps sopra).
+        public const string Sector1LastLapTime = "DataCorePlugin.GameData.NewData.Sector1LastLapTime"; // TimeSpan
+        public const string Sector2LastLapTime = "DataCorePlugin.GameData.NewData.Sector2LastLapTime"; // TimeSpan
+        public const string Sector3LastLapTime = "DataCorePlugin.GameData.NewData.Sector3LastLapTime"; // TimeSpan
+        public const string SpeedKmh = "DataCorePlugin.GameData.NewData.SpeedKmh"; // double, km/h
+
         // "sim" NON viene più letto da una property SimHub (nessun risultato utile
         // cercando "game"/"name" nel browser proprietà, vedi verifica dal vivo del
         // 01/09/2026) — questo plugin è scritto solo per LMU (usa proprietà
@@ -125,7 +147,7 @@ namespace VsdLapDataLogger
     // "PluginNameVsdLapDataLoggerPlugin" / "PluginDescription_VsdLapDataLoggerPlugin")
     // — stesso pattern usato da qualsiasi plugin community, es. TruckSimulatorPlugin.
     [PluginName("VSD Lap Data Logger")]
-    [PluginDescription("Registra un CSV per giro (tempo, temperature, carburante, pit/yellow) per l'Analisi di Passo di vsd-paddock.")]
+    [PluginDescription("Registra un CSV per giro (tempo, settori, velocità min/max/media, temperature, carburante, pit/yellow) per l'Analisi di Passo di vsd-paddock.")]
     [PluginAuthor("VSD Paddock")]
     public class VsdLapDataLoggerPlugin : IPlugin, IDataPlugin
     {
@@ -136,6 +158,10 @@ namespace VsdLapDataLogger
         private int? _lastCompletedLaps;
         private bool _lapInPitsAccum;
         private bool _lapYellowAccum;
+        private double? _speedMinAccum;
+        private double? _speedMaxAccum;
+        private double _speedSumAccum;
+        private int _speedSampleCount;
 
         // ─── Lifecycle ───
 
@@ -151,9 +177,14 @@ namespace VsdLapDataLogger
                 "VSD Paddock", "LapData");
             Directory.CreateDirectory(folder);
 
+            _speedMinAccum = null;
+            _speedMaxAccum = null;
+            _speedSumAccum = 0;
+            _speedSampleCount = 0;
+
             var path = Path.Combine(folder, _sessionId + ".csv");
             _writer = new StreamWriter(path, append: false) { AutoFlush = true };
-            _writer.WriteLine("session_id,driver_name,sim,lap_number,lap_time_ms,in_pits,yellow_flag,track_temp_c,air_temp_c,fuel_l,timestamp_iso");
+            _writer.WriteLine("session_id,driver_name,sim,lap_number,lap_time_ms,sector1_ms,sector2_ms,sector3_ms,speed_min_kmh,speed_max_kmh,speed_avg_kmh,in_pits,yellow_flag,track_temp_c,air_temp_c,fuel_l,timestamp_iso");
         }
 
         public void End(PluginManager pluginManager)
@@ -177,6 +208,15 @@ namespace VsdLapDataLogger
 
             _lapInPitsAccum |= ReadBool(pluginManager, PropertyNames.IsInPit);
             _lapYellowAccum |= ReadBool(pluginManager, PropertyNames.FlagYellow);
+
+            var speed = ReadDouble(pluginManager, PropertyNames.SpeedKmh);
+            if (speed != null)
+            {
+                _speedMinAccum = _speedMinAccum == null ? speed.Value : Math.Min(_speedMinAccum.Value, speed.Value);
+                _speedMaxAccum = _speedMaxAccum == null ? speed.Value : Math.Max(_speedMaxAccum.Value, speed.Value);
+                _speedSumAccum += speed.Value;
+                _speedSampleCount++;
+            }
 
             var completedLapsRaw = ReadDouble(pluginManager, PropertyNames.CompletedLaps);
             if (completedLapsRaw == null) return;
@@ -209,6 +249,10 @@ namespace VsdLapDataLogger
             _lastCompletedLaps = completedLaps;
             _lapInPitsAccum = false;
             _lapYellowAccum = false;
+            _speedMinAccum = null;
+            _speedMaxAccum = null;
+            _speedSumAccum = 0;
+            _speedSampleCount = 0;
         }
 
         private void WriteLapRow(PluginManager pluginManager, int lapNumber, double lapTimeMs)
@@ -219,12 +263,32 @@ namespace VsdLapDataLogger
             var airTemp = ReadDoubleWithFallback(pluginManager, PropertyNames.AirTemperatureCore, PropertyNames.AirTemperatureNeoRed);
             var fuel = ReadDouble(pluginManager, PropertyNames.Fuel);
 
+            // Settori dell'ultimo giro completato (letti nello stesso istante di
+            // LastLapTime — al momento in cui CompletedLaps scatta, il giro
+            // appena chiuso ha già attraversato tutti e 3 i settori).
+            var sector1Ms = ReadTimeMs(pluginManager, PropertyNames.Sector1LastLapTime);
+            var sector2Ms = ReadTimeMs(pluginManager, PropertyNames.Sector2LastLapTime);
+            var sector3Ms = ReadTimeMs(pluginManager, PropertyNames.Sector3LastLapTime);
+
+            // Velocità min/max/media accumulate durante il giro appena chiuso
+            // (vedi accumulo in DataUpdate) — null/vuoto se per qualche motivo
+            // non abbiamo mai ricevuto un campione valido durante il giro.
+            var speedMin = _speedMinAccum;
+            var speedMax = _speedMaxAccum;
+            var speedAvg = _speedSampleCount > 0 ? (double?)(_speedSumAccum / _speedSampleCount) : null;
+
             var line = string.Join(",",
                 Csv(_sessionId),
                 Csv(driverName),
                 Csv(sim),
                 lapNumber.ToString(CultureInfo.InvariantCulture),
                 lapTimeMs.ToString(CultureInfo.InvariantCulture),
+                sector1Ms?.ToString(CultureInfo.InvariantCulture) ?? "",
+                sector2Ms?.ToString(CultureInfo.InvariantCulture) ?? "",
+                sector3Ms?.ToString(CultureInfo.InvariantCulture) ?? "",
+                speedMin?.ToString(CultureInfo.InvariantCulture) ?? "",
+                speedMax?.ToString(CultureInfo.InvariantCulture) ?? "",
+                speedAvg?.ToString(CultureInfo.InvariantCulture) ?? "",
                 _lapInPitsAccum ? "TRUE" : "FALSE",
                 _lapYellowAccum ? "TRUE" : "FALSE",
                 trackTemp?.ToString(CultureInfo.InvariantCulture) ?? "",
@@ -299,14 +363,20 @@ namespace VsdLapDataLogger
             }
         }
 
-        // LastLapTime è tipicamente un TimeSpan lato SimHub — proviamo
-        // prima il cast diretto, poi il fallback a double (millisecondi
-        // o secondi, dipende dal game reader: verificare in 0.3).
+        // LastLapTime (e i tre Sector*LastLapTime, stesso tipo lato SimHub)
+        // sono tipicamente un TimeSpan — proviamo prima il cast diretto, poi
+        // il fallback a double (millisecondi o secondi, dipende dal game
+        // reader: verificare in 0.3).
         private static double? ReadLapTimeMs(PluginManager pm)
+        {
+            return ReadTimeMs(pm, PropertyNames.LastLapTime);
+        }
+
+        private static double? ReadTimeMs(PluginManager pm, string propertyName)
         {
             try
             {
-                var raw = pm.GetPropertyValue(PropertyNames.LastLapTime);
+                var raw = pm.GetPropertyValue(propertyName);
                 if (raw == null) return null;
                 if (raw is TimeSpan ts) return ts.TotalMilliseconds;
                 return Convert.ToDouble(raw, CultureInfo.InvariantCulture);

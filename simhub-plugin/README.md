@@ -1,15 +1,50 @@
 # VSD Paddock — SimHub Lap Data Logger
 
 Plugin SimHub minimale: scrive una riga CSV per ogni giro completato in LMU
-(tempo sul giro, temperatura aria/asfalto, carburante residuo, flag
-in-pit/yellow accumulati durante il giro). Alimenta l'Analisi di Passo in
-vsd-paddock — upload manuale del CSV a fine sessione, stesso gesto già in
-uso per l'import risultati gara.
+(tempo sul giro, settori S1/S2/S3, velocità min/max/media, temperatura
+aria/asfalto, carburante residuo, flag in-pit/yellow accumulati durante il
+giro). Alimenta l'Analisi di Passo in vsd-paddock — upload manuale del CSV
+a fine sessione, stesso gesto già in uso per l'import risultati gara.
 
-**Nessuna parte di questo plugin è stata compilata o testata** — scritto in
-un ambiente Linux senza SimHub/Visual Studio disponibili. Prima di fidarti
-del codice, segui i passi sotto (sono lo STEP 0.3 dello spike, che tocca a
-te completare).
+## Download (piloti)
+
+Nessun account richiesto, link stabile (si aggiorna da solo ad ogni
+modifica del plugin):
+
+**https://github.com/crucittidemetrio/vsd-paddock/releases/download/simhub-plugin-latest/VsdLapDataLogger.dll**
+
+Installazione:
+
+1. Chiudi SimHub (icona in system tray → Esci, o Task Manager → `SimHubWPF.exe`)
+2. Copia `VsdLapDataLogger.dll` scaricata in `C:\Program Files (x86)\SimHub\`
+3. Riapri SimHub — il plugin compare in *Additional Plugins*
+
+Windows potrebbe mostrare "Windows ha protetto il PC" al primo avvio di
+SimHub dopo l'update — è normale per un file non firmato digitalmente,
+clicca "Ulteriori informazioni" → "Esegui comunque" (stesso discorso già
+fatto per companion/vsd-pitwall-bridge, vedi i rispettivi README).
+
+## Build (per chi modifica il plugin)
+
+Compilazione via `dotnet build`, nessun Visual Studio richiesto — vedi
+`VsdLapDataLogger.csproj` in questa cartella (stesso schema già usato con
+successo per VSD Pitwall Bridge):
+
+```powershell
+cd simhub-plugin
+dotnet build -c Release
+```
+
+Se sulla macchina è impostata la variabile d'ambiente `SIMHUB_INSTALL_PATH`
+(la imposta l'installer di SimHub), a fine build la DLL viene copiata
+automaticamente in `C:\Program Files (x86)\SimHub\` — chiudi SimHub prima
+di lanciare il build, altrimenti il file risulta bloccato e il passo di
+copia fallisce (la build della DLL in sé riesce comunque).
+
+Ogni push su `main` che tocca `simhub-plugin/` ricompila automaticamente
+la DLL su GitHub Actions (`.github/workflows/build-simhub-plugin.yml`) e
+aggiorna il link di download sopra — non serve ricondividerlo ai piloti ad
+ogni modifica.
 
 ## Perché un plugin su misura e non un progetto community
 
