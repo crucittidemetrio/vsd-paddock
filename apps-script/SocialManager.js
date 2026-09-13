@@ -501,13 +501,28 @@ function generateWithGemini_(prompt) {
 // DISCORD — numero membri reale via invito pubblico
 // ═══════════════════════════════════════════════════════════
 //
-// Nessun bot da creare, nessun token segreto: l'endpoint pubblico di
-// Discord /invites/{code}?with_counts=true restituisce il numero
-// approssimativo di membri e online per un server, a partire dal
-// codice di un invito permanente — non serve autenticazione.
-// Config: Script Property DISCORD_INVITE_CODE — accetta sia il solo
-// codice (es. "abcDEF12") sia l'URL completo (es. "discord.gg/abcDEF12"),
-// viene estratto l'ultimo segmento del path.
+// L'endpoint pubblico di Discord /invites/{code}?with_counts=true
+// restituisce il numero approssimativo di membri e online per un
+// server, a partire dal codice di un invito permanente — non serve
+// autenticazione bot per QUESTO endpoint. Config: Script Property
+// DISCORD_INVITE_CODE — accetta sia il solo codice (es. "abcDEF12")
+// sia l'URL completo (es. "discord.gg/abcDEF12"), viene estratto
+// l'ultimo segmento del path.
+//
+// La chiamata NON parte più direttamente da Apps Script: UrlFetchApp
+// verso questo endpoint viene bloccato dal WAF Cloudflare di Discord
+// con "error code: 1015" (You are being rate limited — risposta testo
+// semplice, non JSON, da cui il JSON.parse falliva con "Unexpected
+// token"), le IP condivise di Google Apps Script vengono penalizzate
+// in blocco indipendentemente dalla frequenza reale delle nostre
+// chiamate. Stesso identico problema già visto e risolto per l'invio
+// DM (vedi DiscordMessenger.js/discordSendDm_ e
+// api/discord-dm-relay.js) — soluzione identica: la chiamata Discord
+// vera parte da un relay Vercel (IP diverse), non da Apps Script.
+//
+// Script Properties richieste (in aggiunta a DISCORD_INVITE_CODE):
+//   DISCORD_INVITE_RELAY_URL — https://vsd-paddock.vercel.app/api/discord-invite-stats
+//   DISCORD_RELAY_SECRET     — stesso secret già usato dal relay DM
 
 /**
  * social.discord.stats — Membri reali del server Discord VSD.
@@ -518,7 +533,8 @@ function generateWithGemini_(prompt) {
 function handleSocialDiscordStats(payload, ctx) {
   if (!ctx || !ctx.isAdmin) return fail('Accesso riservato ad admin/team principal');
 
-  const raw = PropertiesService.getScriptProperties().getProperty('DISCORD_INVITE_CODE');
+  const props = PropertiesService.getScriptProperties();
+  const raw = props.getProperty('DISCORD_INVITE_CODE');
   if (!raw) {
     return fail(
       'Codice invito Discord non configurato. Aggiungi DISCORD_INVITE_CODE nelle ' +
@@ -527,30 +543,45 @@ function handleSocialDiscordStats(payload, ctx) {
       'Deve essere un invito permanente, non scaduto, del server VSD.'
     );
   }
+  const relayUrl = props.getProperty('DISCORD_INVITE_RELAY_URL');
+  const relaySecret = props.getProperty('DISCORD_RELAY_SECRET');
+  if (!relayUrl || !relaySecret) {
+    return fail(
+      'Relay statistiche Discord non configurato: aggiungi DISCORD_INVITE_RELAY_URL ' +
+      '(es. https://vsd-paddock.vercel.app/api/discord-invite-stats) e DISCORD_RELAY_SECRET ' +
+      '(stesso valore già usato dal relay DM) nelle Script Properties — vedi ' +
+      'api/discord-invite-stats.js.'
+    );
+  }
 
   const parts = String(raw).trim().replace(/\/+$/, '').split('/');
   const code = parts[parts.length - 1];
 
   try {
-    const response = UrlFetchApp.fetch(
-      `https://discord.com/api/v10/invites/${encodeURIComponent(code)}?with_counts=true`,
-      { method: 'get', muteHttpExceptions: true }
-    );
+    const response = UrlFetchApp.fetch(relayUrl, {
+      method: 'post',
+      contentType: 'application/json',
+      headers: { 'x-discord-relay-secret': relaySecret },
+      payload: JSON.stringify({ inviteCode: code }),
+      muteHttpExceptions: true,
+    });
     const status = response.getResponseCode();
-    const body = JSON.parse(response.getContentText());
+    if (status < 200 || status >= 300) {
+      return fail('Errore relay statistiche Discord: HTTP ' + status + ' — ' + response.getContentText().slice(0, 200));
+    }
 
-    if (status !== 200) {
-      const msg = (body && body.message) || ('HTTP ' + status);
-      return fail('Errore Discord API: ' + msg + ' — verifica che l\'invito sia valido e non scaduto.');
+    const body = JSON.parse(response.getContentText());
+    if (!body.ok) {
+      return fail('Errore Discord API (via relay): ' + (body.error || 'sconosciuto') + ' — verifica che l\'invito sia valido e non scaduto.');
     }
 
     return ok({
-      guild_name: (body.guild && body.guild.name) || null,
-      member_count: body.approximate_member_count != null ? body.approximate_member_count : null,
-      online_count: body.approximate_presence_count != null ? body.approximate_presence_count : null,
+      guild_name: body.guild_name || null,
+      member_count: body.member_count != null ? body.member_count : null,
+      online_count: body.online_count != null ? body.online_count : null,
     });
   } catch (e) {
-    return fail('Errore chiamata Discord: ' + e.message);
+    return fail('Errore chiamata relay Discord: ' + e.message);
   }
 }
 
