@@ -525,6 +525,23 @@ function generateWithGemini_(prompt) {
 //   DISCORD_RELAY_SECRET     — stesso secret già usato dal relay DM
 
 /**
+ * Setup one-shot: imposta DISCORD_INVITE_RELAY_URL. Il progetto ha più
+ * di 50 Script Properties — oltre quella soglia l'editor Apps Script
+ * mostra la lista in SOLA LETTURA (nessun modo di aggiungerne una nuova
+ * dalla UI, "Aggiungi proprietà script" non ha effetto), quindi va
+ * impostata via codice. Idempotente: se già presente con lo stesso
+ * valore non fa nulla di distruttivo, la sovrascrive e basta.
+ * Editor Apps Script → seleziona questa funzione → ▶ Esegui (una tantum).
+ */
+function setup_discordInviteRelayUrl() {
+  PropertiesService.getScriptProperties().setProperty(
+    'DISCORD_INVITE_RELAY_URL',
+    'https://vsd-paddock.vercel.app/api/discord-invite-stats'
+  );
+  Logger.log('✅ DISCORD_INVITE_RELAY_URL impostata su https://vsd-paddock.vercel.app/api/discord-invite-stats');
+}
+
+/**
  * social.discord.stats — Membri reali del server Discord VSD.
  * Non salva nulla: il frontend usa il risultato per precompilare il
  * campo "followers" di una rilevazione in SocialMetrics, che l'utente
