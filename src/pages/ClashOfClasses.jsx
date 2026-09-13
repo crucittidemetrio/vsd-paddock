@@ -99,6 +99,7 @@ export default function ClashOfClasses() {
         <div className={styles.heroActions}>
           <a href="#iscrizione" className={`${styles.btn} ${styles.btnPrimary}`}>Iscriviti</a>
           <a href="#classifiche" className={`${styles.btn} ${styles.btnSecondary}`}>Classifiche</a>
+          <a href="#segnalazioni" className={`${styles.btn} ${styles.btnSecondary}`}>Segnala un incidente</a>
           <a
             href="/clash-of-classes_regolamento.pdf"
             target="_blank"
@@ -261,16 +262,6 @@ export default function ClashOfClasses() {
         </div>
       </section>
 
-      {/* ════ SANZIONI ════ */}
-      <section className={styles.section}>
-        <div className={styles.sectionEyebrow}>Fair play</div>
-        <h2 className={styles.sectionTitle}>Sistema sanzionatorio</h2>
-        <p className={styles.leadText}>
-          Le penalità sono decise a insindacabile giudizio della Direzione Generale VSD, sulla
-          base delle segnalazioni ricevute tramite il form qui sotto entro 48h dalla gara.
-        </p>
-      </section>
-
       {/* ════ ISCRIZIONE ════ */}
       <RegistrationSection />
 
@@ -288,6 +279,7 @@ export default function ClashOfClasses() {
         </p>
         <div className={styles.ctaActions}>
           <a href="#iscrizione" className={`${styles.btn} ${styles.btnPrimary}`}>Iscriviti ora</a>
+          <a href="#segnalazioni" className={styles.btn}>Segnala un incidente</a>
           <a href={SOCIAL_LINKS.DISCORD} target="_blank" rel="noopener noreferrer" className={styles.btn}>Discord VSD</a>
           <a href={SOCIAL_LINKS.INSTAGRAM} target="_blank" rel="noopener noreferrer" className={styles.btn}>Instagram</a>
           <a href={SOCIAL_LINKS.FACEBOOK} target="_blank" rel="noopener noreferrer" className={styles.btn}>Facebook</a>
@@ -639,15 +631,30 @@ function IncidentReportSection() {
   return (
     <section id="segnalazioni" className={styles.section}>
       <div className={styles.sectionEyebrow}>Direzione Generale</div>
-      <h2 className={styles.sectionTitle}>Segnalazione incidenti</h2>
-      <p className={styles.leadText}>
-        Le segnalazioni vanno inoltrate entro 48 ore dal termine della gara. Le sanzioni sono a
-        pannaggio della Direzione Generale VSD e comunicate su Discord.
-      </p>
+      <h2 className={styles.sectionTitle}>Proteste</h2>
+      <div className={styles.protestBox}>
+        <div className={styles.protestRow}>
+          <span className={styles.protestIcon}>💬</span>
+          <span>Invia la segnalazione tramite il modulo qui sotto entro <strong>48 ore</strong> dal termine della gara</span>
+        </div>
+        <div className={styles.protestRow}>
+          <span className={styles.protestIcon}>🎬</span>
+          <span>Allega obbligatoriamente <strong>clip video</strong> (telemetria consigliata)</span>
+        </div>
+        <div className={styles.protestRow}>
+          <span className={styles.protestIcon}>⚖️</span>
+          <span>Le decisioni della Direzione Generale sono <strong>inappellabili</strong> e basate esclusivamente sui dati</span>
+        </div>
+        <div className={styles.protestRow}>
+          <span className={styles.protestIcon}>📋</span>
+          <span>L'iscrizione al campionato implica la piena accettazione del presente regolamento</span>
+        </div>
+      </div>
 
       <button
         type="button"
-        className={`${styles.btn} ${styles.btnSecondary}`}
+        className={`${styles.btn} ${styles.btnPrimary}`}
+        style={{ marginTop: 'var(--sp-4, 16px)' }}
         onClick={() => setOpen(v => !v)}
       >
         {open ? 'Chiudi il form' : 'Segnala un incidente'}

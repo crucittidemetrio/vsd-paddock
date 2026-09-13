@@ -147,6 +147,33 @@
 .cls_GTE { border-top: 3px solid #94a3b8; }
 .cls_GT3 { border-top: 3px solid var(--vsd-cyan); }
 
+/* ════ PROTESTE (formato uniforme a UE144) ════ */
+.protestBox {
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.protestRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border);
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+.protestRow:last-child { border-bottom: none; }
+.protestRow strong { color: var(--color-text); font-weight: var(--fw-semibold); }
+
+.protestIcon {
+  font-size: 18px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
 .classHeader { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
 .classIcon { font-size: 28px; }
 .classLabel { font-family: var(--font-display); font-size: 20px; font-weight: var(--fw-bold); color: var(--color-text); }
