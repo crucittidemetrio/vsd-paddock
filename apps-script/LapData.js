@@ -6,8 +6,9 @@
 // sessione, stesso gesto già in uso per raceResults.import.
 //
 // Schema CSV atteso (header, ordine libero — matchato per nome):
-//   session_id, driver_name, sim, lap_number, lap_time_ms, in_pits,
-//   yellow_flag, track_temp_c, air_temp_c, fuel_l, timestamp_iso
+//   session_id, driver_name, sim, lap_number, lap_time_ms, sector1_ms,
+//   sector2_ms, sector3_ms, speed_min_kmh, speed_max_kmh, speed_avg_kmh,
+//   in_pits, yellow_flag, track_temp_c, air_temp_c, fuel_l, timestamp_iso
 //
 // Niente colonna "valid"/LapStatus a 6 stati: la shared memory nativa
 // LMU non espone un'invalidazione giro per taglio pista (solo
@@ -15,11 +16,19 @@
 // quindi usiamo in_pits + yellow_flag, stessa convenzione già in
 // produzione in FuelLog (isCleanLap_) invece di un enum che non
 // potremmo popolare onestamente per LMU.
+//
+// Settori + velocità (13 set 2026 — spunto: sezione "Statistiche" nativa
+// di SimHub): sector1_ms/sector2_ms/sector3_ms e speed_min/max/avg_kmh
+// sono OPZIONALI in lettura — CSV più vecchi generati prima di questo
+// aggiornamento del plugin non le hanno, e i valori mancano (stringa
+// vuota) finché il pilota non ricompila il plugin. Import e lettura
+// gestiscono entrambi i casi senza errori (vedi importLapData_ sotto).
 // ═══════════════════════════════════════════════════════════
 
 const LAP_DATA_HEADERS = [
   'lap_id', 'session_id', 'driver_id', 'driver_name_external', 'is_vsd_driver',
-  'sim', 'lap_number', 'lap_time_ms', 'in_pits', 'yellow_flag',
+  'sim', 'lap_number', 'lap_time_ms', 'sector1_ms', 'sector2_ms', 'sector3_ms',
+  'speed_min_kmh', 'speed_max_kmh', 'speed_avg_kmh', 'in_pits', 'yellow_flag',
   'track_temp_c', 'air_temp_c', 'fuel_l', 'source_timestamp', 'imported_at',
 ];
 
@@ -202,6 +211,14 @@ function importLapData_(records, driverIdOverride) {
       sim: r.sim || '',
       lap_number: r.lap_number !== undefined && r.lap_number !== '' ? Number(r.lap_number) : '',
       lap_time_ms: r.lap_time_ms !== undefined && r.lap_time_ms !== '' ? Number(r.lap_time_ms) : '',
+      // Settori/velocità (13 set 2026): assenti nei CSV generati da versioni
+      // precedenti del plugin — restano stringa vuota, mai un errore.
+      sector1_ms: r.sector1_ms !== undefined && r.sector1_ms !== '' ? Number(r.sector1_ms) : '',
+      sector2_ms: r.sector2_ms !== undefined && r.sector2_ms !== '' ? Number(r.sector2_ms) : '',
+      sector3_ms: r.sector3_ms !== undefined && r.sector3_ms !== '' ? Number(r.sector3_ms) : '',
+      speed_min_kmh: r.speed_min_kmh !== undefined && r.speed_min_kmh !== '' ? Number(r.speed_min_kmh) : '',
+      speed_max_kmh: r.speed_max_kmh !== undefined && r.speed_max_kmh !== '' ? Number(r.speed_max_kmh) : '',
+      speed_avg_kmh: r.speed_avg_kmh !== undefined && r.speed_avg_kmh !== '' ? Number(r.speed_avg_kmh) : '',
       in_pits: String(r.in_pits || '').toUpperCase() === 'TRUE' ? 'TRUE' : 'FALSE',
       yellow_flag: String(r.yellow_flag || '').toUpperCase() === 'TRUE' ? 'TRUE' : 'FALSE',
       track_temp_c: r.track_temp_c !== undefined && r.track_temp_c !== '' ? Number(r.track_temp_c) : '',
@@ -312,6 +329,14 @@ function handleLapDataSession(payload, ctx) {
     driver_name_external: r.driver_name_external || '',
     lap_number: Number(r.lap_number) || 0,
     lap_time_ms: r.lap_time_ms !== '' ? Number(r.lap_time_ms) : null,
+    // Settori/velocità: null per righe importate prima dell'aggiornamento
+    // del plugin (colonne mancanti/vuote) — il frontend deve gestire null.
+    sector1_ms: r.sector1_ms !== undefined && r.sector1_ms !== '' ? Number(r.sector1_ms) : null,
+    sector2_ms: r.sector2_ms !== undefined && r.sector2_ms !== '' ? Number(r.sector2_ms) : null,
+    sector3_ms: r.sector3_ms !== undefined && r.sector3_ms !== '' ? Number(r.sector3_ms) : null,
+    speed_min_kmh: r.speed_min_kmh !== undefined && r.speed_min_kmh !== '' ? Number(r.speed_min_kmh) : null,
+    speed_max_kmh: r.speed_max_kmh !== undefined && r.speed_max_kmh !== '' ? Number(r.speed_max_kmh) : null,
+    speed_avg_kmh: r.speed_avg_kmh !== undefined && r.speed_avg_kmh !== '' ? Number(r.speed_avg_kmh) : null,
     in_pits: r.in_pits === true || r.in_pits === 'TRUE',
     yellow_flag: r.yellow_flag === true || r.yellow_flag === 'TRUE',
     track_temp_c: r.track_temp_c !== '' ? Number(r.track_temp_c) : null,

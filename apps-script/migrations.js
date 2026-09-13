@@ -276,6 +276,38 @@ function migrate_addWeatherColumnsToBestLaps() {
 }
 
 /**
+ * migrate_addSectorAndSpeedColumnsToLapData
+ * Aggiunge le colonne settori (sector1_ms/2/3) e velocità
+ * (speed_min/max/avg_kmh) al foglio LapData già esistente in produzione —
+ * setupLapDataTab() crea il tab solo se assente, quindi non retrofitta da
+ * sola le nuove colonne su uno già creato. Vedi commento header in
+ * LapData.js (13 set 2026) per il contesto: proprietà SimHub confermate
+ * via /api/GetGameData durante un giro reale in LMU.
+ */
+function migrate_addSectorAndSpeedColumnsToLapData() {
+  const newCols = ['sector1_ms', 'sector2_ms', 'sector3_ms', 'speed_min_kmh', 'speed_max_kmh', 'speed_avg_kmh'];
+
+  const sheet = getSheet(SHEETS.LAP_DATA);
+  if (!sheet) {
+    Logger.log('❌ Tab LapData non trovato, skip');
+    return;
+  }
+
+  const lastCol = sheet.getLastColumn();
+  const headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  const toAdd = newCols.filter(c => !headers.includes(c));
+
+  if (toAdd.length === 0) {
+    Logger.log('⏭️  LapData: colonne già presenti, skip');
+    return;
+  }
+
+  const startCol = lastCol + 1;
+  sheet.getRange(1, startCol, 1, toAdd.length).setValues([toAdd]);
+  Logger.log(`✅ LapData: aggiunte colonne ${toAdd.join(', ')} (da col #${startCol})`);
+}
+
+/**
  * migrate_addCarNumberToEnduranceStints
  * Aggiunge la colonna `car_number` al foglio EnduranceStints — permette a
  * più equipaggi VSD di condividere lo stesso race_id (es. due auto alla

@@ -39,6 +39,21 @@ function buildDriverSeries(laps, drivers, onlyClean) {
   return Object.values(byLap).sort((a, b) => a.lap_number - b.lap_number);
 }
 
+// Min di un campo su un set di giri, ignorando null/0 (0 = sentinel
+// "nessun dato ancora", stessa convenzione di lap_time_ms sopra).
+function minField(laps, field) {
+  const vals = laps.map((l) => l[field]).filter((v) => v != null && v > 0);
+  return vals.length ? Math.min(...vals) : null;
+}
+function maxField(laps, field) {
+  const vals = laps.map((l) => l[field]).filter((v) => v != null && v > 0);
+  return vals.length ? Math.max(...vals) : null;
+}
+function avgField(laps, field) {
+  const vals = laps.map((l) => l[field]).filter((v) => v != null && v > 0);
+  return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : null;
+}
+
 function buildDriverStats(laps, driver) {
   const driverLaps = laps.filter((l) => driverLabel(l) === driver);
   // Stessa esclusione del sentinel "nessun tempo" di buildDriverSeries sopra.
@@ -47,7 +62,25 @@ function buildDriverStats(laps, driver) {
   const best = times.length ? Math.min(...times) : null;
   const avg = times.length ? times.reduce((a, b) => a + b, 0) / times.length : null;
   const degradation = times.length >= 2 ? times[times.length - 1] - times[0] : null;
-  return { driver, lapCount: driverLaps.length, cleanCount: times.length, best, avg, degradation };
+
+  // Settori/velocità (13 set 2026): assenti per sessioni importate prima
+  // dell'aggiornamento del plugin SimHub — minField/maxField/avgField
+  // tornano null in quel caso, gestito a valle da fmtLapTime/fmtSpeed.
+  const bestS1 = minField(cleanLaps, 'sector1_ms');
+  const bestS2 = minField(cleanLaps, 'sector2_ms');
+  const bestS3 = minField(cleanLaps, 'sector3_ms');
+  const theoreticalBest = bestS1 != null && bestS2 != null && bestS3 != null ? bestS1 + bestS2 + bestS3 : null;
+  const avgSpeed = avgField(cleanLaps, 'speed_avg_kmh');
+  const topSpeed = maxField(cleanLaps, 'speed_max_kmh');
+
+  return {
+    driver, lapCount: driverLaps.length, cleanCount: times.length, best, avg, degradation,
+    bestS1, bestS2, bestS3, theoreticalBest, avgSpeed, topSpeed,
+  };
+}
+
+function fmtSpeed(kmh) {
+  return kmh == null ? '—' : `${Math.round(kmh)} km/h`;
 }
 
 export default function PaceAnalysis() {
@@ -92,8 +125,8 @@ export default function PaceAnalysis() {
         <div className={styles.eyebrow}>ANALISI</div>
         <h1 className={styles.title}>Analisi di Passo</h1>
         <p className={styles.sub}>
-          Dati per-giro importati da SimHub (tempo sul giro, temperature, carburante) — una
-          sessione alla volta, upload manuale a fine sessione dallo staff.
+          Dati per-giro importati da SimHub (tempo sul giro, settori, velocità, temperature,
+          carburante) — una sessione alla volta, upload manuale a fine sessione dallo staff.
         </p>
       </header>
 
@@ -193,6 +226,12 @@ export default function PaceAnalysis() {
                     <th>Miglior giro</th>
                     <th>Passo medio</th>
                     <th>Degrado</th>
+                    <th>S1</th>
+                    <th>S2</th>
+                    <th>S3</th>
+                    <th>Giro teorico</th>
+                    <th>Vel. media</th>
+                    <th>Vel. max</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -204,6 +243,12 @@ export default function PaceAnalysis() {
                       <td>{fmtLapTime(s.best)}</td>
                       <td>{fmtLapTime(s.avg)}</td>
                       <td>{s.degradation != null ? `${s.degradation >= 0 ? '+' : ''}${(s.degradation / 1000).toFixed(2)}s` : '—'}</td>
+                      <td>{fmtLapTime(s.bestS1)}</td>
+                      <td>{fmtLapTime(s.bestS2)}</td>
+                      <td>{fmtLapTime(s.bestS3)}</td>
+                      <td>{fmtLapTime(s.theoreticalBest)}</td>
+                      <td>{fmtSpeed(s.avgSpeed)}</td>
+                      <td>{fmtSpeed(s.topSpeed)}</td>
                     </tr>
                   ))}
                 </tbody>
