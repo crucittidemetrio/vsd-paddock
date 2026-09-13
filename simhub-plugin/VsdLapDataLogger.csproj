@@ -45,14 +45,31 @@
     build fallisce con un errore tipo "impossibile trovare SimHub.Plugins.dll"
     (percorso vuoto/sbagliato), la variabile non è impostata: ditelo e la
     sostituiamo con il percorso assoluto.
+
+    Su una macchina con SimHub installato (env var presente) si builda
+    sempre contro le DLL REALI dell'installazione locale — più aggiornate
+    di quelle vendorizzate sotto. Solo quando la env var è assente (es.
+    runner GitHub Actions, che non ha e non può avere SimHub installato)
+    si cade sulle copie in lib/ (13 set 2026 — vedi lib/README.md per la
+    provenienza e perché sono committate in un repo pubblico).
   -->
-  <ItemGroup>
+  <ItemGroup Condition="'$(SIMHUB_INSTALL_PATH)' != ''">
     <Reference Include="SimHub.Plugins">
       <HintPath>$(SIMHUB_INSTALL_PATH)SimHub.Plugins.dll</HintPath>
       <Private>False</Private>
     </Reference>
     <Reference Include="GameReaderCommon">
       <HintPath>$(SIMHUB_INSTALL_PATH)GameReaderCommon.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup Condition="'$(SIMHUB_INSTALL_PATH)' == ''">
+    <Reference Include="SimHub.Plugins">
+      <HintPath>lib\SimHub.Plugins.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="GameReaderCommon">
+      <HintPath>lib\GameReaderCommon.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>
