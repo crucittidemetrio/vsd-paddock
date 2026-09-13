@@ -61,6 +61,7 @@ export default function MyIncidentsPanel({ driverId }) {
               </div>
 
               <div className="mip-meta-row mip-meta-secondary">
+                {inc.championship && <span>{inc.championship}</span>}
                 {inc.track && <span>{inc.track}</span>}
                 {inc.lap && <span>giro {inc.lap}</span>}
                 {inc.race_date && <span>gara del {fmtDate(inc.race_date)}</span>}

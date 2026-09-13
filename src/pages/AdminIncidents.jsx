@@ -140,6 +140,7 @@ function IncidentCard({ incident: inc }) {
       </div>
 
       <div className={styles.cardHead}>
+        {inc.championship && <span className={styles.typeTag}>{inc.championship}</span>}
         {inc.track && <span className={styles.meta}>{inc.track}</span>}
         {inc.lap && <span className={styles.meta}>giro {inc.lap}</span>}
         {inc.time_in_race && <span className={styles.meta}>{inc.time_in_race}</span>}

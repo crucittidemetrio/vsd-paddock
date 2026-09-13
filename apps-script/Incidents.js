@@ -29,8 +29,13 @@
 //   7: Accaduto al minuto:secondo
 //   8: Tipologia dell'incidente
 //   9: Descrizione completa dell'evento
-//  10: Giudizio DG (verdetto scritto a mano dallo staff, testo libero)
-//  11: Eng (traduzione inglese del verdetto, se compilata)
+//  10: Campionato/Gara (aggiunta 13 set 2026 — domanda inserita in
+//      posizione 2 nel Form, ma Sheets accoda le nuove domande DOPO le
+//      colonne esistenti invece di reinserirle a metà: verificato dal
+//      vivo leggendo l'header reale della spreadsheet dopo la modifica,
+//      non assunto. Risposte precedenti a questa data: colonna vuota.)
+//  11: Giudizio DG (verdetto scritto a mano dallo staff, testo libero)
+//  12: Eng (traduzione inglese del verdetto, se compilata)
 //
 // Setup: setupIncidentResolutionsTab() — editor Apps Script → ▶ Esegui
 // (una tantum, idempotente).
@@ -53,8 +58,9 @@ const RECLAMO_COL = {
   TIME_IN_RACE: 7,
   INCIDENT_TYPE: 8,
   DESCRIPTION: 9,
-  VERDICT: 10,
-  VERDICT_EN: 11,
+  CHAMPIONSHIP: 10,
+  VERDICT: 11,
+  VERDICT_EN: 12,
 };
 
 const INCIDENT_RESOLUTION_HEADERS = [
@@ -176,6 +182,9 @@ function readReclamiRows_() {
       time_in_race: row[RECLAMO_COL.TIME_IN_RACE] || '',
       incident_type: row[RECLAMO_COL.INCIDENT_TYPE] || '',
       description: row[RECLAMO_COL.DESCRIPTION] || '',
+      // Aggiunta 13 set 2026 — assente/vuoto per segnalazioni precedenti
+      // a questa data (colonna introdotta dopo, non retroattiva).
+      championship: String(row[RECLAMO_COL.CHAMPIONSHIP] || '').trim(),
       verdict,
       verdict_en: String(row[RECLAMO_COL.VERDICT_EN] || '').trim(),
     });
