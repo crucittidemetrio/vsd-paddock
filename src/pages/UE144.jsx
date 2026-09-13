@@ -12,6 +12,13 @@ const UE144_CHAMPIONSHIP_ID = 'chmp-lmu-ultimate-endurance-144-2026';
 
 const SIMGRID_URL = 'https://www.thesimgrid.com/championships/26197';
 
+// Google Form pubblico "VSD - Modulo reclamo" (già in uso, vedi
+// apps-script/Incidents.js — questo NON è un nuovo modulo, solo il link
+// mancante sulla pagina UE144 verso quello esistente). Permesso Drive
+// confermato "anyone/reader/published" — link funzionante senza login
+// per chiunque lo apra, non solo per il proprietario.
+const PROTEST_FORM_URL = 'https://docs.google.com/forms/d/1sg6q4B0c96c1u2dfEJ_J9GD8VE6h8YG9xVwcI-s96qs/viewform';
+
 const CLASSES = [
   {
     id: 'hypercar',
@@ -339,6 +346,10 @@ export default function UE144() {
             <span>L'iscrizione al campionato implica la piena accettazione del presente regolamento</span>
           </div>
         </div>
+        <a href={PROTEST_FORM_URL} target="_blank" rel="noopener noreferrer"
+          className={`${styles.btn} ${styles.btnPrimary}`} style={{ marginTop: 'var(--sp-4, 16px)' }}>
+          Compila il Modulo reclamo
+        </a>
       </section>
 
       {/* ════ CTA ════ */}
