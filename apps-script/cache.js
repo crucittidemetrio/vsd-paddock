@@ -14,8 +14,14 @@
 //   - CHAMPIONSHIPS   TTL 3600s  (1h)
 //   - RACES           TTL 900s   (15 min)
 //
-// Sheet "dinamici" (mai cache-ati, sempre fresh):
+// Sheet "dinamici" (mai cache-ati come sheet grezzo, sempre fresh):
 //   - BEST_LAPS, RACE_RESULTS, RACE_REPORTS
+//
+// Eccezione (13 set 2026): l'OUTPUT CALCOLATO di handleLapsRaceLaps
+// (BestLaps.js) è cache-ato a parte con TTL 60s tramite le stesse
+// funzioni writeChunkedCache_/readChunkedCache_ di questo file — vedi
+// RACE_LAPS_CACHE_KEY in BestLaps.js. Lo sheet RACE_RESULTS grezzo
+// resta non cache-ato qui; solo il risultato derivato lo è.
 //
 // Invalidation: hook in tutti i handler che scrivono sui sheet
 // statici. Se una modifica manuale al sheet non innesca invalidation,

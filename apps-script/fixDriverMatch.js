@@ -110,5 +110,8 @@ function fixAllMisattributedDriverMatches() {
 
   Logger.log(`✅ Rimosse ${removed} righe RaceReports orfane.`);
   Logger.log('Fatto. Ricontrolla la pagina della gara interessata.');
+
+  invalidateRaceLapsCache_(); // vedi cache corta in BestLaps.js (laps.raceLaps)
+
   return { fixedResults: fixed, removedReports: removed };
 }

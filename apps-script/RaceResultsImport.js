@@ -599,6 +599,7 @@ function handleRaceResultsImport(payload, ctx) {
 
     try {
       const stats = importRaceResults_(jsonData, metadata);
+      invalidateRaceLapsCache_(); // vedi cache corta in BestLaps.js (laps.raceLaps)
 
       // Wave 9.13: Discord notifications post-import (iRacing)
       try {
@@ -635,6 +636,7 @@ function handleRaceResultsImport(payload, ctx) {
 
   try {
     const stats = importRaceResults_(jsonData, metadata);
+    invalidateRaceLapsCache_(); // vedi cache corta in BestLaps.js (laps.raceLaps)
 
     // Wave 9.13: Discord notifications post-import (LMU)
     try {
@@ -830,6 +832,8 @@ function admin_deleteRaceResults() {
     'Cancellate ' + rowsToDelete.length + ' righe RaceResults per race_id="' + TARGET_RACE_ID + '" (script manuale editor)',
     { deleted: rowsToDelete.length }
   );
+
+  invalidateRaceLapsCache_(); // vedi cache corta in BestLaps.js (laps.raceLaps)
 
   return { deleted: rowsToDelete.length, race_id: TARGET_RACE_ID };
 }

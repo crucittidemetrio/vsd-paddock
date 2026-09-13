@@ -391,6 +391,61 @@ function handleLapsRemove(payload, ctx) {
 // ═══════════════════════════════════════════════════════════
 // RACE LAPS — laps derivati da RaceResults
 // ═══════════════════════════════════════════════════════════
+//
+// CACHE TTL CORTA (aggiunta 13 set 2026 — audit rallentamento sito):
+// RACE_RESULTS è per design uno sheet "sempre fresh" (vedi header di
+// cache.js), ma con la stagione in corso è diventato il dominante
+// tempo di risposta di /laps (12-19s, letto per intero a OGNI
+// chiamata). Qui NON mettiamo in cache lo sheet grezzo (troppi punti
+// di scrittura da auditare, vedi 16 file che referenziano
+// SHEETS.RACE_RESULTS), ma il RISULTATO CALCOLATO di questa singola
+// funzione, con TTL breve (60s): accettiamo che un giro appena
+// importato possa restare invisibile per al massimo un minuto, in
+// cambio di un crollo del tempo di risposta per tutte le richieste
+// nel frattempo. Invalidato esplicitamente da invalidateRaceLapsCache_()
+// in ogni punto che scrive su RaceResults (vedi RaceResultsImport.js,
+// fixDriverMatch.js).
+// ═══════════════════════════════════════════════════════════
+
+const RACE_LAPS_CACHE_KEY = 'computed_raceLaps';
+const RACE_LAPS_CACHE_TTL = 60; // secondi
+
+function getCachedRaceLaps_() {
+  try {
+    const cached = readChunkedCache_(RACE_LAPS_CACHE_KEY);
+    if (cached !== null) return JSON.parse(cached);
+  } catch (e) {
+    Logger.log(`[RaceLaps cache READ err] ${e}`);
+  }
+  return null;
+}
+
+function cacheRaceLaps_(data) {
+  try {
+    writeChunkedCache_(RACE_LAPS_CACHE_KEY, JSON.stringify(data), RACE_LAPS_CACHE_TTL);
+  } catch (e) {
+    Logger.log(`[RaceLaps cache WRITE err] ${e}`);
+  }
+}
+
+/**
+ * Invalida la cache dei race-laps calcolati. Da chiamare DOPO ogni
+ * scrittura su RaceResults (import, cancellazione, fix manuali).
+ */
+function invalidateRaceLapsCache_() {
+  try {
+    const cache = CacheService.getScriptCache();
+    const metaRaw = cache.get(RACE_LAPS_CACHE_KEY + '_meta');
+    const keysToRemove = [RACE_LAPS_CACHE_KEY + '_meta'];
+    if (metaRaw) {
+      const chunkCount = Number(metaRaw) || 0;
+      for (let i = 0; i < chunkCount; i++) keysToRemove.push(RACE_LAPS_CACHE_KEY + '_c' + i);
+    }
+    cache.removeAll(keysToRemove);
+  } catch (e) {
+    Logger.log(`[RaceLaps cache INVALIDATE err] ${e}`);
+  }
+}
 
 /**
  * laps.raceLaps — Best lap derivati da RaceResults (gare e qualifying).
@@ -406,6 +461,9 @@ function handleLapsRemove(payload, ctx) {
  */
 function handleLapsRaceLaps(payload, ctx) {
   if (!ctx) return fail('Auth richiesto');
+
+  const cached = getCachedRaceLaps_();
+  if (cached !== null) return ok(cached);
 
   const results = sheetToObjects(SHEETS.RACE_RESULTS);
   const races = getCachedSheetData_(SHEETS.RACES, 900);
@@ -450,7 +508,9 @@ function handleLapsRaceLaps(payload, ctx) {
     })
     .sort((a, b) => a.lap_time_ms - b.lap_time_ms);
 
-  return ok({ laps, count: laps.length });
+  const result = { laps, count: laps.length };
+  cacheRaceLaps_(result);
+  return ok(result);
 }
 
 /**
