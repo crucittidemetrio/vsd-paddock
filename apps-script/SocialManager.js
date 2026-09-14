@@ -775,7 +775,6 @@ function handleSocialPlanDismissedList(payload, ctx) {
 
 const SOCIAL_DIGEST_PILLARS = [
   { id: 'anteprima', label: 'Anteprima gara', icon: '📣', offsetDays: -7 },
-  { id: 'live', label: 'Live/race day', icon: '🔴', offsetDays: 0 },
   { id: 'risultati', label: 'Risultati', icon: '🏆', offsetDays: 1 },
   { id: 'highlight', label: 'Highlight/Reel', icon: '🎬', offsetDays: 3 },
 ];

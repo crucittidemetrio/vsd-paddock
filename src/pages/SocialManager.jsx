@@ -55,10 +55,10 @@ const FACEBOOK_GROUP_URL = 'https://www.facebook.com/groups/38192830187030341';
 //   fb_group = Facebook gruppo "VSD — Sim Racing Italia"
 //   discord  = Discord team
 // L'iscrizioni/entry list (T-2gg) è stato RIMOSSO consapevolmente: risultava
-// ridondante rispetto all'anteprima nella pratica.
+// ridondante rispetto all'anteprima nella pratica. Live/race day rimosso
+// allo stesso modo: nella pratica non veniva mai presidiato durante la gara.
 const PILLARS = [
   { id: 'anteprima', label: 'Anteprima gara', icon: '📣', offsetDays: -7, channels: ['ig', 'fb', 'discord'] },
-  { id: 'live', label: 'Live/race day', icon: '🔴', offsetDays: 0, channels: ['discord'] },
   { id: 'risultati', label: 'Risultati', icon: '🏆', offsetDays: 1, channels: ['ig', 'fb', 'fb_group', 'discord'] },
   { id: 'highlight', label: 'Highlight/Reel', icon: '🎬', offsetDays: 3, channels: ['ig', 'fb', 'fb_group', 'discord'] },
 ];
@@ -846,7 +846,6 @@ function pillarTopic(race, pillarId, dateLabel) {
   const name = race.race_name || race.race_id;
   switch (pillarId) {
     case 'anteprima': return `Anteprima gara ${name} (${race.sim}), in programma ${dateLabel}`;
-    case 'live': return `Aggiornamento live durante ${name}`;
     case 'risultati': return `Risultati e podio di ${name}`;
     case 'highlight': return `Momento più bello di ${name} (sorpasso, incidente, onboard)`;
     case 'chiusura_campionato': return `Recap di chiusura campionato — ultima gara ${name}`;
@@ -1155,8 +1154,8 @@ function EditorialPlanView({ posts, onCreateFromSuggestion }) {
   // Mappa i canali del pilastro (ig/fb/fb_group/discord — vedi PILLARS più
   // sopra) alle piattaforme reali del post (PLATFORM_OPTIONS). Prima di
   // questo fix mancavano 'discord' e 'fb_group': un pilastro "solo
-  // discord" (es. Live/race day) finiva col fallback facebook+instagram
-  // sbagliato, e il gruppo FB non veniva mai proposto come piattaforma.
+  // discord" finiva col fallback facebook+instagram sbagliato, e il
+  // gruppo FB non veniva mai proposto come piattaforma.
   function handlePillarCreate(race, pillar) {
     const chanToPlat = { ig: 'instagram', fb: 'facebook', fb_group: 'facebook_group', discord: 'discord' };
     const platforms = (pillar.channels || []).map(c => chanToPlat[c]).filter(Boolean);
