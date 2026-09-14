@@ -22,6 +22,7 @@ import Avatar from '../components/shared/Avatar';
 import Sparkline from '../components/shared/Sparkline';
 import { SIM_LIST } from '../utils/constants';
 import { formatTrack, formatCar, formatGapPercent } from '../utils/format';
+import { normalizeLapTimeInput } from '../utils/lapTimeInput';
 import { resolvePhotoUrl } from '../utils/driverPhotos';
 import './BestLaps.css';
 import './Page.css';
@@ -478,8 +479,12 @@ function SubmitLapSection() {
 
     if (!form.track_id) return setError('Seleziona il tracciato');
     if (!form.car_id) return setError('Seleziona l\'auto');
-    if (!/^\d+:\d{1,2}\.\d{1,3}$/.test(form.lap_time_display.trim())) {
-      return setError('Tempo non valido. Formato atteso: M:SS.mmm (es. 1:30.333)');
+    // Accetta anche virgola come decimale e giri sotto il minuto senza
+    // prefisso ("45.234") — vedi normalizeLapTimeInput, introdotta dopo
+    // segnalazioni di invii rifiutati dai piloti per questi due formati.
+    const normalizedLapTime = normalizeLapTimeInput(form.lap_time_display);
+    if (!/^\d+:\d{1,2}\.\d{1,3}$/.test(normalizedLapTime)) {
+      return setError('Tempo non valido. Formato atteso: M:SS.mmm (es. 1:30.333 — vanno bene anche virgola e giri sotto il minuto senza minuti, es. 45.234)');
     }
     if (!file) return setError('Carica una foto che documenti il tempo — è obbligatoria per la validazione');
     if (form.air_temp_c !== '' && Number.isNaN(Number(form.air_temp_c))) {
@@ -501,7 +506,7 @@ function SubmitLapSection() {
         sim: form.sim,
         track_id: form.track_id,
         car_id: form.car_id,
-        lap_time_display: form.lap_time_display.trim(),
+        lap_time_display: normalizedLapTime,
         conditions: form.conditions,
         air_temp_c: form.air_temp_c !== '' ? Number(form.air_temp_c) : '',
         track_temp_c: form.track_temp_c !== '' ? Number(form.track_temp_c) : '',
@@ -577,10 +582,10 @@ function SubmitLapSection() {
 
             <div className="submit-lap-row">
               <div className="filter-group">
-                <label className="filter-label">Tempo (M:SS.mmm)</label>
+                <label className="filter-label">Tempo (M:SS.mmm, va bene anche la virgola)</label>
                 <input type="text" className="filter-select" value={form.lap_time_display}
                   onChange={e => update('lap_time_display', e.target.value)}
-                  placeholder="1:30.333" />
+                  placeholder="1:30.333 (sotto il minuto: 45.234)" />
               </div>
 
               <div className="filter-group">

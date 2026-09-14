@@ -81,15 +81,34 @@ function handleLapsLeaderboard(payload, ctx) {
 // ═══════════════════════════════════════════════════════════
 
 /**
+ * Normalizza un tempo giro digitato a mano nel formato canonico
+ * "M:SS.mmm", prima della validazione — 14 set 2026, dopo segnalazione
+ * di più piloti (e talvolta staff) con invii rifiutati: due varianti
+ * comunissime venivano scartate silenziosamente dalla regex rigida.
+ *   - virgola come separatore decimale (tastiera IT: "1:30,333")
+ *   - giro sotto il minuto scritto senza il prefisso minuti
+ *     ("45.234" invece di "0:45.234") — frequente su tracciati corti
+ * Il valore canonico M:SS.mmm resta l'unico salvato/mostrato: qui si
+ * ammorbidisce solo l'INPUT, non il formato di storage.
+ * @param {string} raw
+ * @returns {string}
+ */
+function normalizeLapTimeInput_(raw) {
+  let value = String(raw || '').trim().replace(',', '.');
+  if (/^\d{1,2}\.\d{1,3}$/.test(value)) value = '0:' + value;
+  return value;
+}
+
+/**
  * Parsa un tempo "M:SS.mmm" in millisecondi. Stessa regex/logica
  * dell'onEdit trigger in bestLapsAutoMs.js, replicata qui perché
  * quel trigger non è chiamabile programmaticamente.
  *
- * @param {string} display - es. "1:30.333"
+ * @param {string} display - es. "1:30.333" (anche "1:30,333" o "45.234", vedi normalizeLapTimeInput_)
  * @returns {number|null} ms oppure null se formato non valido
  */
 function parseLapTimeToMs_(display) {
-  const value = String(display || '').trim();
+  const value = normalizeLapTimeInput_(display);
   const match = value.match(/^(\d+):(\d{1,2})\.(\d{1,3})$/);
   if (!match) return null;
 

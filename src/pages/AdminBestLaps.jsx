@@ -14,6 +14,7 @@ import { useTracks, useCars } from '../hooks/useLookups';
 import { useDrivers } from '../hooks/useRoster';
 import { useAuth } from '../hooks/useAuth';
 import { SIM_LIST } from '../utils/constants';
+import { normalizeLapTimeInput } from '../utils/lapTimeInput';
 import styles from './AdminBestLaps.module.css';
 
 // Cancella la foto di prova da Vercel Blob dopo la decisione admin (subito
@@ -200,8 +201,10 @@ function ManualTab() {
     if (!form.car_id) e.car_id = 'Auto obbligatoria';
     if (!form.lap_time_display.trim()) {
       e.lap_time_display = 'Tempo obbligatorio';
-    } else if (!/^\d+:\d{1,2}\.\d{1,3}$/.test(form.lap_time_display.trim())) {
-      e.lap_time_display = 'Formato atteso: M:SS.mmm (es. 1:30.333)';
+    // Accetta anche virgola come decimale e giri sotto il minuto senza
+    // prefisso ("45.234") — vedi normalizeLapTimeInput.
+    } else if (!/^\d+:\d{1,2}\.\d{1,3}$/.test(normalizeLapTimeInput(form.lap_time_display))) {
+      e.lap_time_display = 'Formato atteso: M:SS.mmm (es. 1:30.333 — vanno bene anche virgola e giri sotto il minuto senza minuti, es. 45.234)';
     }
     if (form.setup_link && !/^https?:\/\//.test(form.setup_link)) {
       e.setup_link = 'URL deve iniziare con http(s)://';
@@ -225,7 +228,7 @@ function ManualTab() {
       sim: form.sim,
       track_id: form.track_id,
       car_id: form.car_id,
-      lap_time_display: form.lap_time_display.trim(),
+      lap_time_display: normalizeLapTimeInput(form.lap_time_display),
       set_date: form.set_date || '',
       conditions: form.conditions,
       air_temp_c: form.air_temp_c !== '' ? Number(form.air_temp_c) : '',
@@ -329,7 +332,7 @@ function ManualTab() {
 
             <div className={styles.row2}>
               <Field label="Tempo sul giro" error={errors.lap_time_display} required
-                hint="Formato M:SS.mmm — es. 1:30.333">
+                hint="Formato M:SS.mmm — es. 1:30.333 (va bene anche la virgola; sotto il minuto: 45.234)">
                 <input type="text" className={styles.input} value={form.lap_time_display}
                   onChange={e => update('lap_time_display', e.target.value)}
                   placeholder="1:30.333" />
