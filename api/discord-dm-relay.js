@@ -103,10 +103,10 @@ export default async function handler(request, response) {
 // sbagliata (permessi/privacy del pilota) quando la causa reale era
 // un'altra.
 async function safeErrorDetail_(res) {
-  let raw = '';
+  let raw;
   try {
     raw = await res.text();
-  } catch (e) {
+  } catch {
     return ' [impossibile leggere il body della risposta]';
   }
   try {
@@ -114,7 +114,7 @@ async function safeErrorDetail_(res) {
     if (body && (body.code !== undefined || body.message)) {
       return ' [discord ' + body.code + ': ' + body.message + ']';
     }
-  } catch (e) {
+  } catch {
     // non JSON — usiamo il testo grezzo qui sotto
   }
   return raw ? ' [raw: ' + raw.slice(0, 200) + ']' : ' [risposta vuota]';

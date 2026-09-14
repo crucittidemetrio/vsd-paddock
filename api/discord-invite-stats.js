@@ -59,7 +59,7 @@ export default async function handler(request, response) {
     let body = null;
     try {
       body = JSON.parse(raw);
-    } catch (e) {
+    } catch {
       // risposta non-JSON — tipicamente un blocco/rate-limit Cloudflare
     }
 
