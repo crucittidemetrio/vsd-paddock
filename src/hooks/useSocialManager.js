@@ -108,10 +108,23 @@ export function useSocialPlanDismissed() {
   });
 }
 
+// Accetta sia una stringa (race_id, whole-race — retrocompatibile con
+// le chiamate esistenti) sia un oggetto { race_id, pillar } per
+// archiviare/ripristinare una singola azione senza toccare il resto
+// della gara — vedi bottone "Nascondi solo questa azione" in
+// TimelineRow (SocialManager.jsx).
+function normalizeDismissArgs(args) {
+  if (typeof args === 'string') return { race_id: args, pillar: undefined };
+  return { race_id: args && args.race_id, pillar: args && args.pillar };
+}
+
 export function useDismissSocialPlan() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (race_id) => api.social.planDismiss(race_id),
+    mutationFn: (args) => {
+      const { race_id, pillar } = normalizeDismissArgs(args);
+      return api.social.planDismiss(race_id, pillar);
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['social', 'planDismissed'] }),
   });
 }
@@ -119,7 +132,10 @@ export function useDismissSocialPlan() {
 export function useUndismissSocialPlan() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (race_id) => api.social.planUndismiss(race_id),
+    mutationFn: (args) => {
+      const { race_id, pillar } = normalizeDismissArgs(args);
+      return api.social.planUndismiss(race_id, pillar);
+    },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['social', 'planDismissed'] }),
   });
 }

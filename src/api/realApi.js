@@ -1015,8 +1015,9 @@ async function socialMediaRemoveAdapter(payload, token) {
 }
 
 /**
- * Frontend: social.planDismiss(race_id)
- * Backend:  social.plan.dismiss({ race_id }) → { race_id, dismissed_by, dismissed_at, already }
+ * Frontend: social.planDismiss(race_id, pillar?)
+ * Backend:  social.plan.dismiss({ race_id, pillar? }) → { race_id, pillar, dismissed_by, dismissed_at, already }
+ * pillar omesso/vuoto = archivia tutta la gara; valorizzato = solo quella singola azione.
  */
 async function socialPlanDismissAdapter(payload, token) {
   const res = await postToBackend('social.plan.dismiss', payload || {}, token);
@@ -1025,8 +1026,8 @@ async function socialPlanDismissAdapter(payload, token) {
 }
 
 /**
- * Frontend: social.planUndismiss(race_id)
- * Backend:  social.plan.undismiss({ race_id }) → { race_id, undismissed }
+ * Frontend: social.planUndismiss(race_id, pillar?)
+ * Backend:  social.plan.undismiss({ race_id, pillar? }) → { race_id, pillar, undismissed }
  */
 async function socialPlanUndismissAdapter(payload, token) {
   const res = await postToBackend('social.plan.undismiss', payload || {}, token);
@@ -1035,7 +1036,7 @@ async function socialPlanUndismissAdapter(payload, token) {
 }
 
 /**
- * Frontend: social.planDismissedList() → array di { race_id, dismissed_by, dismissed_at }
+ * Frontend: social.planDismissedList() → array di { race_id, pillar, dismissed_by, dismissed_at }
  * Backend:  social.plan.dismissed.list({}) → { dismissed: [...], count }
  */
 async function socialPlanDismissedListAdapter(payload, token) {

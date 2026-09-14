@@ -191,8 +191,8 @@ export const api = {
     mediaList: (tag) => call('social.media.list', { tag }),
     mediaAdd: (payload) => call('social.media.add', payload),
     mediaRemove: (media_id) => call('social.media.remove', { media_id }),
-    planDismiss: (race_id) => call('social.plan.dismiss', { race_id }),
-    planUndismiss: (race_id) => call('social.plan.undismiss', { race_id }),
+    planDismiss: (race_id, pillar) => call('social.plan.dismiss', { race_id, pillar }),
+    planUndismiss: (race_id, pillar) => call('social.plan.undismiss', { race_id, pillar }),
     planDismissedList: () => call('social.plan.dismissed.list', {}),
   },
 

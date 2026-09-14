@@ -55,9 +55,19 @@ const SOCIAL_MEDIA_HEADERS = [
 // al giorno 10, la sezione sparisce comunque. Questo tab dà un
 // controllo manuale indipendente dalla finestra a tempo — un admin
 // archivia quando i post di chiusura sono davvero fatti, non quando
-// scade un timer. Chiave naturale race_id (una riga per gara al più).
+// scade un timer.
+//
+// Chiave race_id + pillar (aggiunta 14 set 2026): pillar vuoto ('')
+// significa "archivia tutta la gara" (comportamento originale, bottone
+// 🗑 su ogni riga della timeline); pillar valorizzato (es. 'anteprima')
+// significa "nascondi solo questa singola azione", lasciando intatte le
+// altre azioni della stessa gara — serve per far sparire un'azione in
+// ritardo ormai irrilevante (es. una gara saltata) senza archiviare
+// anche risultati/highlight che invece vanno ancora fatti. Righe vecchie
+// (prima di questa modifica) hanno pillar assente/vuoto in Sheet, quindi
+// continuano a valere come dismiss whole-race — retrocompatibile.
 const SOCIAL_PLAN_DISMISSED_HEADERS = [
-  'race_id', 'dismissed_by', 'dismissed_at',
+  'race_id', 'dismissed_by', 'dismissed_at', 'pillar',
 ];
 
 /**
@@ -691,31 +701,36 @@ function handleSocialMediaRemove(payload, ctx) {
 /**
  * social.plan.dismiss — Archivia una sezione del piano editoriale per
  * una gara, indipendentemente dalla finestra a tempo -10/+45 giorni
- * calcolata lato frontend. Idempotente: se race_id è già archiviato,
- * aggiorna solo dismissed_by/dismissed_at invece di duplicare la riga.
- * @param {Object} payload - { race_id }
+ * calcolata lato frontend. Idempotente: se race_id (+ pillar) è già
+ * archiviato, aggiorna solo dismissed_by/dismissed_at invece di
+ * duplicare la riga.
+ * @param {Object} payload - { race_id, pillar? } — pillar omesso o
+ *   vuoto archivia TUTTA la gara (comportamento originale); pillar
+ *   valorizzato (es. 'anteprima') nasconde solo quella singola azione,
+ *   lasciando visibili le altre della stessa gara.
  */
 function handleSocialPlanDismiss(payload, ctx) {
   if (!ctx || !ctx.isAdmin) return fail('Accesso riservato ad admin/team principal');
 
   const raceId = payload && String(payload.race_id || '').trim();
   if (!raceId) return fail('race_id obbligatorio');
+  const pillar = payload && String(payload.pillar || '').trim();
 
   const sheet = getSheet(SHEETS.SOCIAL_PLAN_DISMISSED);
   if (!sheet) return fail('Foglio SocialPlanDismissed non trovato — esegui setupSocialManagerTabs() prima');
 
   const data = sheet.getDataRange().getValues();
-  const rowIndex = data.findIndex((row, i) => i > 0 && row[0] === raceId);
+  const rowIndex = data.findIndex((row, i) => i > 0 && row[0] === raceId && String(row[3] || '') === pillar);
   const now = new Date().toISOString();
   const dismissedBy = ctx.driver_id || '';
 
   if (rowIndex !== -1) {
     sheet.getRange(rowIndex + 1, 2, 1, 2).setValues([[dismissedBy, now]]);
-    return ok({ race_id: raceId, dismissed_by: dismissedBy, dismissed_at: now, already: true });
+    return ok({ race_id: raceId, pillar, dismissed_by: dismissedBy, dismissed_at: now, already: true });
   }
 
-  sheet.appendRow([raceId, dismissedBy, now]);
-  return ok({ race_id: raceId, dismissed_by: dismissedBy, dismissed_at: now, already: false });
+  sheet.appendRow([raceId, dismissedBy, now, pillar]);
+  return ok({ race_id: raceId, pillar, dismissed_by: dismissedBy, dismissed_at: now, already: false });
 }
 
 /**
@@ -723,27 +738,30 @@ function handleSocialPlanDismiss(payload, ctx) {
  * errore. Rimuove semplicemente la riga da SocialPlanDismissed; se la
  * gara è ancora nella finestra -10/+45 giorni, il piano la rimostra
  * al prossimo refresh.
- * @param {Object} payload - { race_id }
+ * @param {Object} payload - { race_id, pillar? } — deve combaciare con
+ *   la coppia usata in social.plan.dismiss (pillar vuoto = whole-race).
  */
 function handleSocialPlanUndismiss(payload, ctx) {
   if (!ctx || !ctx.isAdmin) return fail('Accesso riservato ad admin/team principal');
 
   const raceId = payload && String(payload.race_id || '').trim();
   if (!raceId) return fail('race_id obbligatorio');
+  const pillar = payload && String(payload.pillar || '').trim();
 
   const sheet = getSheet(SHEETS.SOCIAL_PLAN_DISMISSED);
   if (!sheet) return fail('Foglio SocialPlanDismissed non trovato');
 
   const data = sheet.getDataRange().getValues();
-  const rowIndex = data.findIndex((row, i) => i > 0 && row[0] === raceId);
-  if (rowIndex === -1) return fail('race_id non risulta archiviato: ' + raceId);
+  const rowIndex = data.findIndex((row, i) => i > 0 && row[0] === raceId && String(row[3] || '') === pillar);
+  if (rowIndex === -1) return fail('Sezione non risulta archiviata: ' + raceId + (pillar ? ' / ' + pillar : ''));
 
   sheet.deleteRow(rowIndex + 1);
-  return ok({ race_id: raceId, undismissed: true });
+  return ok({ race_id: raceId, pillar, undismissed: true });
 }
 
 /**
- * social.plan.dismissed.list — Tutti i race_id attualmente archiviati,
+ * social.plan.dismissed.list — Tutte le righe attualmente archiviate
+ * (whole-race e singola azione, vedi commento su SOCIAL_PLAN_DISMISSED_HEADERS),
  * per far filtrare al frontend il piano editoriale lato client.
  */
 function handleSocialPlanDismissedList(payload, ctx) {

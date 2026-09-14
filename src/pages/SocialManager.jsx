@@ -853,13 +853,27 @@ function pillarTopic(race, pillarId, dateLabel) {
   }
 }
 
+// Risolve id pillar → label leggibile, per mostrare le righe di
+// dismiss a singola azione nella vista "Sezioni archiviate" (vedi
+// ArchivedPlanView). Copre sia i pillar gara (PILLARS + chiusura
+// campionato) sia quelli evergreen, così la lista resta corretta anche
+// se in futuro si aggiunge il dismiss per-azione anche lì.
+function pillarLabelById(pillarId) {
+  const all = [...PILLARS, CHAMPIONSHIP_CLOSING_PILLAR, ...EVERGREEN_PILLARS];
+  const match = all.find(p => p.id === pillarId);
+  return match ? `${match.icon} ${match.label}` : pillarId;
+}
+
 // Finestra di rilevanza: gare da 10 giorni fa a 45 giorni nel futuro —
 // abbastanza per coprire tutti i pilastri (T-7...T+3) di ogni round
 // senza riempire la vista con l'intera storia del team. Indipendente
 // da questa finestra, un admin può archiviare manualmente una sezione
 // (SocialPlanDismissed, per race_id) quando i post di chiusura sono
-// davvero fatti — vedi il bottone Archivia in EditorialPlanView.
-function useEditorialPlan(posts, dismissedRaceIds) {
+// davvero fatti — vedi il bottone Archivia in EditorialPlanView — oppure
+// nascondere una singola azione (race_id + pillar) senza toccare il
+// resto della gara — vedi il bottone "Nascondi solo questa azione" in
+// TimelineRow.
+function useEditorialPlan(posts, dismissedRaceIds, dismissedPillarKeys) {
   const racesQuery = useRaces();
   const races = racesQuery.data || [];
 
@@ -868,6 +882,7 @@ function useEditorialPlan(posts, dismissedRaceIds) {
     const windowStart = addDays(now, -10);
     const windowEnd = addDays(now, 45);
     const dismissed = dismissedRaceIds || new Set();
+    const dismissedPillars = dismissedPillarKeys || new Set();
 
     // Ultima gara di ogni campionato, calcolata su TUTTE le gare (non
     // solo quelle nella finestra) — altrimenti un campionato la cui
@@ -897,20 +912,26 @@ function useEditorialPlan(posts, dismissedRaceIds) {
           && lastRaceByChampionship[race.championship_id]
           && lastRaceByChampionship[race.championship_id].race_id === race.race_id;
         const pillarDefs = isChampionshipCloser ? [...PILLARS, CHAMPIONSHIP_CLOSING_PILLAR] : PILLARS;
-        const pillars = pillarDefs.map(pillar => {
-          const pillarDate = addDays(raceDate, pillar.offsetDays);
-          const dateStr = pillarDate.toISOString().slice(0, 10);
-          const match = posts.find(p => p.race_id === race.race_id && p.pillar === pillar.id);
-          return {
-            ...pillar,
-            date: dateStr,
-            dateLabel: fmtDate(dateStr),
-            post: match || null,
-          };
-        });
+        const pillars = pillarDefs
+          // Dismiss a singola azione (race_id + pillar, vedi bottone
+          // "Nascondi solo questa azione" in TimelineRow): a differenza
+          // di `dismissed` sopra, qui NON si tocca l'intera gara — solo
+          // il pilastro esplicitamente nascosto smette di comparire.
+          .filter(pillar => !dismissedPillars.has(`${race.race_id}::${pillar.id}`))
+          .map(pillar => {
+            const pillarDate = addDays(raceDate, pillar.offsetDays);
+            const dateStr = pillarDate.toISOString().slice(0, 10);
+            const match = posts.find(p => p.race_id === race.race_id && p.pillar === pillar.id);
+            return {
+              ...pillar,
+              date: dateStr,
+              dateLabel: fmtDate(dateStr),
+              post: match || null,
+            };
+          });
         return { race, pillars };
       });
-  }, [races, posts, dismissedRaceIds]);
+  }, [races, posts, dismissedRaceIds, dismissedPillarKeys]);
 
   return { plan, races, isLoading: racesQuery.isLoading, error: racesQuery.error };
 }
@@ -1131,24 +1152,41 @@ function StoryPlanView({ storyPlan, onCreate }) {
 function EditorialPlanView({ posts, onCreateFromSuggestion }) {
   const dismissedQuery = useSocialPlanDismissed();
   const dismissedRows = dismissedQuery.data || [];
+  // Due letture distinte della stessa tabella SocialPlanDismissed: righe
+  // senza pillar (o con pillar vuoto) sono dismiss whole-race, righe con
+  // pillar valorizzato sono dismiss di una singola azione — vedi commento
+  // su SOCIAL_PLAN_DISMISSED_HEADERS in apps-script/SocialManager.js.
   const dismissedRaceIds = useMemo(
-    () => new Set(dismissedRows.map(d => d.race_id)),
+    () => new Set(dismissedRows.filter(d => !d.pillar).map(d => d.race_id)),
+    [dismissedRows]
+  );
+  const dismissedPillarKeys = useMemo(
+    () => new Set(dismissedRows.filter(d => d.pillar).map(d => `${d.race_id}::${d.pillar}`)),
     [dismissedRows]
   );
   const dismissMutation = useDismissSocialPlan();
   const undismissMutation = useUndismissSocialPlan();
-  const { plan, races, isLoading: racesLoading, error: racesError } = useEditorialPlan(posts, dismissedRaceIds);
+  const { plan, races, isLoading: racesLoading, error: racesError } = useEditorialPlan(posts, dismissedRaceIds, dismissedPillarKeys);
   const buckets = useEditorialTimeline(plan);
   const evergreenPlan = useEvergreenPlan(posts);
 
   function handleArchive(race) {
     const label = race.race_name || race.race_id;
     if (!window.confirm(`Archiviare "${label}" dal piano editoriale? Puoi ripristinarla dalla sezione "Sezioni archiviate" qui sotto.`)) return;
-    dismissMutation.mutate(race.race_id);
+    dismissMutation.mutate({ race_id: race.race_id });
   }
 
-  function handleUndismiss(raceId) {
-    undismissMutation.mutate(raceId);
+  // Nasconde solo questa singola azione (es. "Anteprima" di una gara
+  // saltata), lasciando intatte le altre azioni della stessa gara —
+  // a differenza di handleArchive che archivia l'intera gara. Nessuna
+  // conferma: è a basso rischio e reversibile subito da "Sezioni
+  // archiviate" qui sotto.
+  function handleDismissAction(race, pillar) {
+    dismissMutation.mutate({ race_id: race.race_id, pillar: pillar.id });
+  }
+
+  function handleUndismiss(raceId, pillar) {
+    undismissMutation.mutate({ race_id: raceId, pillar });
   }
 
   // Mappa i canali del pilastro (ig/fb/fb_group/discord — vedi PILLARS più
@@ -1190,7 +1228,7 @@ function EditorialPlanView({ posts, onCreateFromSuggestion }) {
       <h2 className={styles.sectionTitle} style={{ margin: 0 }}>Piano editoriale</h2>
       <p className={styles.subtleHint}>
         Cosa postare, quando, e su quale canale. Ogni gara nella finestra ±45 giorni genera
-        automaticamente 4 azioni (anteprima, live, risultati, highlight) con i canali già assegnati:
+        automaticamente 3 azioni (anteprima, risultati, highlight) con i canali già assegnati:
         clicca "+ Crea bozza" per aprire il post già precompilato. Le azioni pubblicate spariscono
         dalla vista; quelle in ritardo di oltre 3 giorni si nascondono da sole per non generare
         rumore. L'ultima gara di ogni campionato ha un pilastro extra di chiusura. Sotto trovi
@@ -1204,10 +1242,10 @@ function EditorialPlanView({ posts, onCreateFromSuggestion }) {
         <div className={styles.empty}>Nessuna azione in coda. Torna a controllare più vicino alla prossima gara.</div>
       )}
 
-      <TimelineBucket title="In ritardo" items={buckets.late} tone="late" onCreate={handlePillarCreate} onArchive={handleArchive} dismissPending={dismissMutation.isPending} />
-      <TimelineBucket title="Questa settimana" items={buckets.thisWeek} tone="now" onCreate={handlePillarCreate} onArchive={handleArchive} dismissPending={dismissMutation.isPending} />
-      <TimelineBucket title="Prossima settimana" items={buckets.nextWeek} tone="soon" onCreate={handlePillarCreate} onArchive={handleArchive} dismissPending={dismissMutation.isPending} />
-      <TimelineBucket title="Più avanti" items={buckets.later} tone="later" collapsedByDefault onCreate={handlePillarCreate} onArchive={handleArchive} dismissPending={dismissMutation.isPending} />
+      <TimelineBucket title="In ritardo" items={buckets.late} tone="late" onCreate={handlePillarCreate} onArchive={handleArchive} onDismissAction={handleDismissAction} dismissPending={dismissMutation.isPending} />
+      <TimelineBucket title="Questa settimana" items={buckets.thisWeek} tone="now" onCreate={handlePillarCreate} onArchive={handleArchive} onDismissAction={handleDismissAction} dismissPending={dismissMutation.isPending} />
+      <TimelineBucket title="Prossima settimana" items={buckets.nextWeek} tone="soon" onCreate={handlePillarCreate} onArchive={handleArchive} onDismissAction={handleDismissAction} dismissPending={dismissMutation.isPending} />
+      <TimelineBucket title="Più avanti" items={buckets.later} tone="later" collapsedByDefault onCreate={handlePillarCreate} onArchive={handleArchive} onDismissAction={handleDismissAction} dismissPending={dismissMutation.isPending} />
 
       <EvergreenPlanView evergreenPlan={evergreenPlan} onCreate={handleEvergreenCreate} />
 
@@ -1224,7 +1262,7 @@ function EditorialPlanView({ posts, onCreateFromSuggestion }) {
 // Un raggruppamento della timeline (es. "Questa settimana"). Il "Più
 // avanti" può nascere già chiuso: chi apre il piano vuole vedere prima
 // quello che gli tocca oggi/domani, non le tre gare del mese prossimo.
-function TimelineBucket({ title, items, tone, collapsedByDefault, onCreate, onArchive, dismissPending }) {
+function TimelineBucket({ title, items, tone, collapsedByDefault, onCreate, onArchive, onDismissAction, dismissPending }) {
   const [collapsed, setCollapsed] = useState(!!collapsedByDefault);
   if (items.length === 0) return null;
   const toneClass = styles[`bucket_${tone}`] || '';
@@ -1250,6 +1288,7 @@ function TimelineBucket({ title, items, tone, collapsedByDefault, onCreate, onAr
               daysFromToday={daysFromToday}
               onCreate={onCreate}
               onArchive={onArchive}
+              onDismissAction={onDismissAction}
               dismissPending={dismissPending}
             />
           ))}
@@ -1261,7 +1300,7 @@ function TimelineBucket({ title, items, tone, collapsedByDefault, onCreate, onAr
 
 // Una singola azione della timeline: data, cosa (pilastro + gara), dove
 // (canali), stato (bozza/programmato/pubblicato o "+ Crea bozza").
-function TimelineRow({ race, pillar, daysFromToday, onCreate, onArchive, dismissPending }) {
+function TimelineRow({ race, pillar, daysFromToday, onCreate, onArchive, onDismissAction, dismissPending }) {
   const dayLabel = daysFromToday === 0
     ? 'oggi'
     : daysFromToday === 1
@@ -1307,6 +1346,15 @@ function TimelineRow({ race, pillar, daysFromToday, onCreate, onArchive, dismiss
         <button
           type="button"
           className={styles.btnMini}
+          title="Nascondi solo questa azione (le altre della gara restano visibili)"
+          onClick={() => onDismissAction(race, pillar)}
+          disabled={dismissPending}
+        >
+          ✕
+        </button>
+        <button
+          type="button"
+          className={styles.btnMini}
           title="Archivia tutte le azioni di questa gara"
           onClick={() => onArchive(race)}
           disabled={dismissPending}
@@ -1345,15 +1393,21 @@ function ArchivedPlanView({ dismissedRows, races, onUndismiss, isPending }) {
         </div>
         {dismissedRows.map(d => {
           const race = raceById[d.race_id];
+          const raceLabel = race ? race.race_name : d.race_id;
+          // Righe con pillar valorizzato sono dismiss di una singola
+          // azione (bottone ✕ in TimelineRow): mostrale come "Gara —
+          // Azione" per distinguerle da un'archiviazione whole-race
+          // (bottone 🗑), che mostra solo il nome della gara.
+          const label = d.pillar ? `${raceLabel} — ${pillarLabelById(d.pillar)}` : raceLabel;
           return (
-            <div key={d.race_id} className={styles.tableRow}>
-              <span>{race ? race.race_name : d.race_id}</span>
+            <div key={`${d.race_id}::${d.pillar || ''}`} className={styles.tableRow}>
+              <span>{label}</span>
               <span className={styles.cellTime}>{fmtDate(d.dismissed_at)}</span>
               <span>
                 <button
                   type="button"
                   className={styles.btnMini}
-                  onClick={() => onUndismiss(d.race_id)}
+                  onClick={() => onUndismiss(d.race_id, d.pillar || undefined)}
                   disabled={isPending}
                   title="Rimetti questa sezione nel piano editoriale"
                 >
