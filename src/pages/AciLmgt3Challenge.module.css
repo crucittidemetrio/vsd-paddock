@@ -261,6 +261,7 @@
 }
 
 .prequalCard {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -274,6 +275,67 @@
   color: inherit;
   transition: border-color var(--t-fast), transform var(--t-fast);
 }
+
+.prequalRemoveBtn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-dim);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 1;
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.prequalRemoveBtn:hover {
+  background: #e5484d;
+  border-color: #e5484d;
+  color: #fff;
+}
+
+.prequalAddForm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--color-border);
+}
+.prequalAddForm input {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--color-text);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 13px;
+}
+.prequalAddForm input:focus {
+  outline: none;
+  border-color: rgba(0, 212, 255, 0.5);
+  background: rgba(255, 255, 255, 0.06);
+}
+.prequalAddNameInput { width: 220px; }
+.prequalAddNumberInput { width: 90px; }
+.prequalStaffLabel {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-dim);
+  width: 100%;
+  margin-bottom: 2px;
+}
+.prequalAddError { color: #fca5a5; font-size: 12px; width: 100%; }
+.btnSmall { padding: 8px 16px; font-size: 11px; }
 
 a.prequalCard:hover {
   border-color: var(--vsd-cyan);

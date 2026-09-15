@@ -174,6 +174,14 @@ export const api = {
     remove: (interest_id) => call('interest.remove', { interest_id }),
   },
 
+  // Candidati in prequalifica — campionati esterni (ACI, ERA, ...).
+  // Elenco a sheet gestibile dallo staff, vedi PrequalCandidates.js.
+  prequal: {
+    list: (championship_key) => call('prequal.list', { championship_key }),
+    add: (payload) => call('prequal.add', payload),
+    remove: (candidate_id) => call('prequal.remove', { candidate_id }),
+  },
+
   // Compilatore messaggi Discord — staff (canale o DM)
   messenger: {
     send: (payload) => call('messenger.send', payload),

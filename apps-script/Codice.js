@@ -50,6 +50,7 @@ const SHEETS = {
   SKILL_INDEX_HISTORY: 'SkillIndexHistory',
   REPORT_REACTIONS: 'ReportReactions',
   CHAMPIONSHIP_INTEREST: 'ChampionshipInterest',
+  PREQUAL_CANDIDATES: 'PrequalCandidates',
   LAP_DATA: 'LapData',
   PITWALL_SESSIONS: 'PitwallSessions',
 };
@@ -262,6 +263,13 @@ const ACTIONS = {
   'interest.register': handleInterestRegister,
   'interest.update': handleInterestUpdate,
   'interest.remove': handleInterestRemove,
+
+  // Candidati in prequalifica — campionati esterni (ACI, ERA, ...) vedi
+  // PrequalCandidates.js. Elenco a sheet gestibile dallo staff senza
+  // redeploy (form + rimozione inline sulla pagina pubblica).
+  'prequal.list': handlePrequalList,
+  'prequal.add': handlePrequalAdd,
+  'prequal.remove': handlePrequalRemove,
 
   // Compilatore messaggi Discord — staff (canale o DM), vedi DiscordMessenger.js
   'messenger.send': handleMessengerSend,

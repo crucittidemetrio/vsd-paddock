@@ -300,6 +300,12 @@ export async function callApi(action, payload = {}) {
         return await interestUpdateAdapter(payload, token);
       case 'interest.remove':
         return await interestRemoveAdapter(payload, token);
+      case 'prequal.list':
+        return await prequalListAdapter(payload, token);
+      case 'prequal.add':
+        return await prequalAddAdapter(payload, token);
+      case 'prequal.remove':
+        return await prequalRemoveAdapter(payload, token);
       case 'messenger.send':
         return await messengerSendAdapter(payload, token);
       case 'social.posts.list':
@@ -890,6 +896,28 @@ async function interestUpdateAdapter(payload, token) {
 
 async function interestRemoveAdapter(payload, token) {
   const res = await postToBackend('interest.remove', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+/**
+ * Candidati in prequalifica — campionati esterni (ACI, ERA, ...).
+ * Adapter pass-through, stesso schema degli interest adapter sopra.
+ */
+async function prequalListAdapter(payload, token) {
+  const res = await postToBackend('prequal.list', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+async function prequalAddAdapter(payload, token) {
+  const res = await postToBackend('prequal.add', payload || {}, token);
+  if (!res.ok) return res;
+  return ok(res.data);
+}
+
+async function prequalRemoveAdapter(payload, token) {
+  const res = await postToBackend('prequal.remove', payload || {}, token);
   if (!res.ok) return res;
   return ok(res.data);
 }

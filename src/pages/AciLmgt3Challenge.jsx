@@ -4,6 +4,8 @@ import { useChampionshipStandings } from '../hooks/useChampionshipStandings';
 import { useDrivers } from '../hooks/useRoster';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { useSocialPosts } from '../hooks/useSocialManager';
+import { useAuth } from '../hooks/useAuth';
+import { usePrequalList, useAddPrequalCandidate, useRemovePrequalCandidate } from '../hooks/usePrequalCandidates';
 import { STORY_PILLAR_IDS, storyPillarLabel } from '../utils/storyPillars';
 import { SOCIAL_LINKS } from '../utils/constants';
 import Avatar from '../components/shared/Avatar';
@@ -33,22 +35,14 @@ const REGISTRATION_DEADLINE = '15 Settembre 2026';
 const PREQUALIFICHE_DATES = '17 e 20 Settembre 2026';
 
 // Piloti VSD sull'entry list pubblica di Apex (piloti-team-lmgt3-2026.html,
-// embed Canva), verificata il 22/08/2026: tutti ancora con stato
-// "IN VERIFICA", nessuno "ACCETTATA". Il campo è capped a 35 su un'entry
-// list di 54+ nomi, quindi decidono le prequalifiche del 17-20 settembre —
-// questi piloti ci provano, non sono ancora confermati. Il numero è quello
-// assegnato da Apex per questo campionato specifico (non il race_number
-// VSD). Da aggiornare a mano dopo le prequalifiche: chi passa va spostato
-// nella sezione "Piloti VSD in gara" come confermato, chi non passa va
-// tolto da qui.
-const PREQUALIFICHE_ENTRIES = [
-  { name: 'Silvio Tuveri', carNumber: 233 },
-  { name: 'Francesco Mastrangelo', carNumber: 223 },
-  { name: 'Simone Pelloni', carNumber: 333 },
-  { name: 'Simone Raparelli', carNumber: 83 },
-  { name: 'Simone Mazzola', carNumber: 61 },
-  { name: 'Davide Casesi', carNumber: 250 },
-];
+// embed Canva), stato "IN VERIFICA" — il campo è capped a 35 su un'entry
+// list di 54+ nomi, quindi decidono le prequalifiche del 17-20 settembre.
+// Elenco gestito a sheet (apps-script/PrequalCandidates.js, chiave
+// INTEREST_KEY) invece che hardcoded qui: lo staff aggiunge/rimuove i
+// nomi direttamente dalla sezione qui sotto (form + ✕ su ogni card),
+// senza bisogno di un edit di codice + redeploy — vedi PrequalificheSection.
+// Dopo le prequalifiche: chi passa va spostato a mano nella sezione
+// "Piloti VSD in gara" come confermato, chi non passa va rimosso da qui.
 
 // Organizzatore esterno abilitato ACI ESport che gestisce operativamente
 // la serie (iscrizioni, server, JSON risultati). Autorizzazione a citarlo
@@ -399,7 +393,13 @@ function firstNameLastInitial(fullName) {
 }
 
 function PrequalificheSection() {
+  const { isStaff } = useAuth();
   const { data: drivers } = useDrivers();
+  const { data, isLoading } = usePrequalList(INTEREST_KEY);
+  const addMutation = useAddPrequalCandidate(INTEREST_KEY);
+  const removeMutation = useRemovePrequalCandidate(INTEREST_KEY);
+
+  const candidates = data?.candidates || [];
 
   const driverByName = useMemo(() => {
     const m = {};
@@ -408,6 +408,31 @@ function PrequalificheSection() {
     });
     return m;
   }, [drivers]);
+
+  const [name, setName] = useState('');
+  const [carNumber, setCarNumber] = useState('');
+  const [formError, setFormError] = useState(null);
+
+  function handleAddSubmit(e) {
+    e.preventDefault();
+    setFormError(null);
+    if (!name.trim()) {
+      setFormError('Il nome è obbligatorio.');
+      return;
+    }
+    addMutation.mutate(
+      { name: name.trim(), car_number: carNumber.trim() },
+      {
+        onSuccess: () => { setName(''); setCarNumber(''); },
+        onError: (err) => setFormError(err.message),
+      }
+    );
+  }
+
+  function handleRemove(candidateId, candidateName) {
+    if (!window.confirm(`Rimuovere "${candidateName}" dai candidati in prequalifica?`)) return;
+    removeMutation.mutate(candidateId);
+  }
 
   return (
     <section className={styles.section}>
@@ -418,24 +443,73 @@ function PrequalificheSection() {
         prequalifiche. Questi sono i piloti VSD in corsa per un posto — stato "in verifica"
         sull'entry list ufficiale, non ancora un posto confermato.
       </p>
-      <div className={styles.prequalGrid}>
-        {PREQUALIFICHE_ENTRIES.map(entry => (
-          <PrequalCard
-            key={entry.name}
-            entry={entry}
-            driver={driverByName[firstNameLastInitial(entry.name)] || null}
+      {!isLoading && candidates.length > 0 && (
+        <div className={styles.prequalGrid}>
+          {candidates.map(entry => (
+            <PrequalCard
+              key={entry.candidate_id}
+              entry={entry}
+              driver={driverByName[firstNameLastInitial(entry.name)] || null}
+              isStaff={isStaff}
+              onRemove={handleRemove}
+              removePending={removeMutation.isPending}
+            />
+          ))}
+        </div>
+      )}
+      {!isLoading && candidates.length === 0 && (
+        <p className={styles.prequalIntro}>Nessun candidato segnalato ancora.</p>
+      )}
+
+      {isStaff && (
+        <form className={styles.prequalAddForm} onSubmit={handleAddSubmit}>
+          <span className={styles.prequalStaffLabel}>Staff: aggiungi candidato</span>
+          <input
+            type="text"
+            className={styles.prequalAddNameInput}
+            placeholder="Nome pilota"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            maxLength={80}
           />
-        ))}
-      </div>
+          <input
+            type="text"
+            className={styles.prequalAddNumberInput}
+            placeholder="Numero"
+            value={carNumber}
+            onChange={e => setCarNumber(e.target.value)}
+            maxLength={6}
+          />
+          <button
+            type="submit"
+            className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSmall}`}
+            disabled={addMutation.isPending}
+          >
+            {addMutation.isPending ? 'Aggiunta…' : '+ Aggiungi'}
+          </button>
+          {formError && <div className={styles.prequalAddError}>{formError}</div>}
+        </form>
+      )}
     </section>
   );
 }
 
-function PrequalCard({ entry, driver }) {
+function PrequalCard({ entry, driver, isStaff, onRemove, removePending }) {
   const photoUrl = useConsentedDriverPhoto(driver?.driver_id);
 
   const inner = (
     <>
+      {isStaff && (
+        <button
+          type="button"
+          className={styles.prequalRemoveBtn}
+          title="Rimuovi candidato"
+          disabled={removePending}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(entry.candidate_id, driver?.display_name || entry.name); }}
+        >
+          ✕
+        </button>
+      )}
       <Avatar
         name={driver?.display_name || entry.name}
         driverId={driver?.driver_id || entry.name}
@@ -443,7 +517,7 @@ function PrequalCard({ entry, driver }) {
         photoUrl={photoUrl}
       />
       <div className={styles.prequalName}>{driver?.display_name || entry.name}</div>
-      <div className={styles.prequalNumber}>#{entry.carNumber}</div>
+      <div className={styles.prequalNumber}>#{entry.car_number}</div>
       <span className={styles.prequalBadge}>In verifica</span>
     </>
   );
