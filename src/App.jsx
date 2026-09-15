@@ -68,6 +68,7 @@ const AdminClashResults = lazy(() => import('./pages/AdminClashResults'));
 const AciLmgt3Challenge = lazy(() => import('./pages/AciLmgt3Challenge'));
 const EraSeason3         = lazy(() => import('./pages/EraSeason3'));
 const AdminRosterPreview = lazy(() => import('./pages/AdminRosterPreview'));
+const AdminCalendarPreview = lazy(() => import('./pages/AdminCalendarPreview'));
 
 import './App.css';
 
@@ -304,6 +305,12 @@ export default function App() {
               <Route
                 path="/admin/roster-preview"
                 element={<AdminRoute><AdminRosterPreview /></AdminRoute>}
+              />
+              {/* Preview Calendario/TeamSessions su Supabase (#178/#242) — stesso
+                  isolamento della roster-preview qui sopra. */}
+              <Route
+                path="/admin/calendar-preview"
+                element={<AdminRoute><AdminCalendarPreview /></AdminRoute>}
               />
               <Route
                 path="/admin/incidents"
