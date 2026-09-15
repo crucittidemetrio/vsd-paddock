@@ -1,0 +1,234 @@
+.container {
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: var(--sp-6) var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.12em;
+  color: var(--vsd-orange);
+  text-transform: uppercase;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-bold);
+  color: var(--color-text);
+  margin: 0;
+}
+
+.sub {
+  color: var(--color-text-muted);
+  font-size: var(--fs-sm);
+  max-width: 68ch;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.card {
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.cardTitle {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--vsd-cyan);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0;
+}
+
+.sessionRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+
+.sessionInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+
+.sessionUser {
+  color: var(--color-text);
+  font-weight: var(--fw-medium);
+}
+
+.badgeOk {
+  background: rgba(52, 211, 153, 0.15);
+  color: var(--color-success);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  border-radius: var(--r-pill);
+  padding: 2px var(--sp-3);
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.emptyText {
+  color: var(--color-text-dim);
+  font-size: var(--fs-sm);
+  margin: 0;
+}
+
+.btnPrimary {
+  background: var(--vsd-cyan);
+  color: var(--vsd-bg);
+  border: none;
+  border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-4);
+  font-weight: var(--fw-semibold);
+  cursor: pointer;
+  transition: filter var(--t-fast);
+}
+
+.btnPrimary:hover {
+  filter: brightness(1.1);
+}
+
+.btnPrimary:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.btnSecondary {
+  background: transparent;
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-4);
+  cursor: pointer;
+}
+
+.btnSecondary:hover {
+  color: var(--color-text);
+  border-color: var(--color-text-muted);
+}
+
+.filterRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--color-text-muted);
+  font-size: var(--fs-sm);
+}
+
+.textInput {
+  background: var(--vsd-bg);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-3);
+  color: var(--color-text);
+  font-size: var(--fs-sm);
+}
+
+.textArea {
+  background: var(--vsd-bg);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--r-md);
+  padding: var(--sp-2) var(--sp-3);
+  color: var(--color-text);
+  font-size: var(--fs-sm);
+  min-height: 80px;
+  resize: vertical;
+  font-family: inherit;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  max-width: 480px;
+}
+
+.formLabel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  color: var(--color-text-muted);
+  font-size: var(--fs-sm);
+}
+
+.errorBox {
+  background: rgba(239, 51, 64, 0.1);
+  border: 1px solid rgba(239, 51, 64, 0.35);
+  color: var(--color-danger);
+  border-radius: var(--r-md);
+  padding: var(--sp-3);
+  font-size: var(--fs-sm);
+  font-family: var(--font-mono);
+}
+
+.resultMeta {
+  color: var(--color-text-dim);
+  font-size: var(--fs-xs);
+  margin: 0;
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+
+.table th {
+  text-align: left;
+  color: var(--color-text-dim);
+  font-weight: var(--fw-medium);
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--color-border);
+  text-transform: uppercase;
+  font-size: var(--fs-xs);
+  letter-spacing: 0.04em;
+}
+
+.table td {
+  padding: var(--sp-2) var(--sp-3);
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text);
+}
+
+.jsonBox {
+  background: var(--vsd-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-md);
+  padding: var(--sp-3);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--color-text-muted);
+  overflow-x: auto;
+  max-height: 320px;
+  overflow-y: auto;
+}

@@ -67,6 +67,7 @@ const ClashOfClasses = lazy(() => import('./pages/ClashOfClasses'));
 const AdminClashResults = lazy(() => import('./pages/AdminClashResults'));
 const AciLmgt3Challenge = lazy(() => import('./pages/AciLmgt3Challenge'));
 const EraSeason3         = lazy(() => import('./pages/EraSeason3'));
+const AdminRosterPreview = lazy(() => import('./pages/AdminRosterPreview'));
 
 import './App.css';
 
@@ -296,6 +297,13 @@ export default function App() {
               <Route
                 path="/admin/messenger"
                 element={<MessengerRoute><AdminMessenger /></MessengerRoute>}
+              />
+              {/* Test #177: valida il porting Roster su Supabase con dati reali,
+                  isolato dal sito pubblico (login Discord separato via Supabase Auth,
+                  Apps Script/Google Sheet Drivers restano l'unica fonte per il sito). */}
+              <Route
+                path="/admin/roster-preview"
+                element={<AdminRoute><AdminRosterPreview /></AdminRoute>}
               />
               <Route
                 path="/admin/incidents"
