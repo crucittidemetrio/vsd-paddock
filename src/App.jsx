@@ -69,6 +69,7 @@ const AciLmgt3Challenge = lazy(() => import('./pages/AciLmgt3Challenge'));
 const EraSeason3         = lazy(() => import('./pages/EraSeason3'));
 const AdminRosterPreview = lazy(() => import('./pages/AdminRosterPreview'));
 const AdminCalendarPreview = lazy(() => import('./pages/AdminCalendarPreview'));
+const AdminAuthPreview = lazy(() => import('./pages/AdminAuthPreview'));
 
 import './App.css';
 
@@ -311,6 +312,13 @@ export default function App() {
               <Route
                 path="/admin/calendar-preview"
                 element={<AdminRoute><AdminCalendarPreview /></AdminRoute>}
+              />
+              {/* Preview auth reale Discord OAuth via Supabase Auth SDK (#264/#327) —
+                  stesso isolamento delle preview sopra: sessione supabase-js separata,
+                  non collegata ad AuthContext reale. */}
+              <Route
+                path="/admin/auth-preview"
+                element={<AdminRoute><AdminAuthPreview /></AdminRoute>}
               />
               <Route
                 path="/admin/incidents"

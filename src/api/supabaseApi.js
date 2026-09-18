@@ -1,0 +1,368 @@
+import { getSupabaseSession } from './supabaseAuth';
+
+// ═══════════════════════════════════════════════════════════
+// VSD-Paddock — Transport layer Supabase (#264/#328)
+// ═══════════════════════════════════════════════════════════
+// Drop-in replacement di src/api/realApi.js: espone lo stesso
+// `callApi(action, payload)` usato da src/api/client.js, così che il
+// cutover — quando arriverà, un dominio alla volta (#329-340) — sia
+// solo un cambio dell'import in client.js, non una riscrittura.
+//
+// NON ancora collegato a client.js: costruito "spento" come da
+// approccio staged concordato con l'utente per #264.
+//
+// ─── Come è stato costruito (importante) ───
+// La prima versione di questo file si basava sulla tabella di
+// routing #326, costruita guardando gli SLUG delle Edge Function e
+// indovinando i nomi azione lato frontend per simmetria. Si è rivelato
+// un errore: confrontando riga per riga client.js (chi chiama) e
+// realApi.js (l'adapter Apps Script attuale, 1512 righe, letto per
+// intero) sono emerse discrepanze reali, es.:
+//   - il frontend chiama `laps.list/leaderboard/raceLaps/add/...`,
+//     MAI `bestLaps.*` (nome che avevo inventato dal nome dello slug
+//     Edge Function `best-laps-*`)
+//   - `pitwall.sessions`/`pitwall.session`, non `pitwall.sessions.list`/
+//     `pitwall.session.get`
+//   - `recap.mine`, non `season.recap`
+//   - il dominio Social Manager (#260) è raggiunto con prefisso
+//     `social.` (`social.posts.list` → il dispatcher si aspetta
+//     `posts.list`), MA i domini aggiunti allo stesso slug in fasi
+//     successive (#261/#262/#263: Race Reports, Reazioni, landing.data,
+//     Showcase, laps.raceLaps, laps.syncFromGarage61, lapSubmissions.*,
+//     pitwall.broadcastLive) sono chiamati SENZA prefisso, già identici
+//     al nome interno — stesso slug, due convenzioni diverse.
+//   - un'unica vera eccezione dentro il gruppo prefissato: il frontend
+//     chiama `social.plan.dismissed.list` ma il dispatcher si aspetta
+//     `plan.dismissedList` (camelCase) — nessuna regola di strip
+//     prefisso generica copre questo caso, serve un rename esplicito.
+// Il codice sotto è stato quindi riscritto leggendo DAVVERO ogni
+// adapter di realApi.js (per lo shape di richiesta/risposta) e il
+// sorgente deployato del dispatcher `social-manager`/slug
+// `endurance-auditions-get` (via get_edge_function, per i nomi azione
+// esatti) — non più per simmetria assunta. I domini NON ancora
+// verificati byte-per-byte contro il loro Edge Function reale (perché
+// non ancora letto in questa sessione) sono quelli dove realApi.js fa
+// puro pass-through (`return await postToBackend(...)` o `ok(res.data)`
+// senza unwrap) — per questi il rischio residuo è basso: se lo shape
+// non coincidesse, il fallimento sarebbe visibile e immediato alla
+// prima chiamata in Chrome durante il cutover di quel dominio
+// (#330-340), non un mismatch silenzioso.
+//
+// ─── Auth ───
+// Il token non viene più letto da localStorage (vecchio
+// 'vsd_paddock_token', gestito da AuthContext legacy) ma dalla
+// sessione Supabase reale via supabaseAuth.getSupabaseSession() —
+// sessione persistita da supabase-js (#327). Senza sessione, le
+// chiamate partono senza Authorization header: le Edge Function
+// pubbliche (Clash of Classes, ChampionshipInterest, Showcase,
+// PrequalCandidates) gestiscono già il caso anonimo via `team_slug`.
+// ═══════════════════════════════════════════════════════════
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const FUNCTIONS_BASE = SUPABASE_URL ? `${SUPABASE_URL}/functions/v1` : null;
+
+function ok(data) { return { ok: true, data }; }
+function fail(error) { return { ok: false, error }; }
+
+// ─── Dispatcher consolidati (#326) ───
+const ENDURANCE_READ_SLUG = 'endurance-auditions-list';
+const ENDURANCE_WRITE_SLUG = 'endurance-auditions-create';
+const SOCIAL_MANAGER_SLUG = 'endurance-auditions-get';
+
+const ENDURANCE_READ_INNER = new Set(['auditions.list', 'auditions.get', 'participants.list', 'stints.list']);
+
+// Azioni Social Manager originali (#260): il frontend le chiama con
+// prefisso `social.`, il dispatcher si aspetta il nome SENZA prefisso.
+// Un solo rename esplicito (dismissedList) non segue lo strip semplice.
+const SOCIAL_PREFIXED_RENAME = {
+  'plan.dismissed.list': 'plan.dismissedList',
+};
+
+// Azioni aggiunte allo stesso slug in #261/#262/#263: il frontend le
+// chiama SENZA prefisso, già uguali al nome interno del dispatcher.
+const SOCIAL_DIRECT_ACTIONS = new Set([
+  'reports.list', 'reports.recent', 'reports.update', 'reports.seedForRace',
+  'reportReactions.list', 'reportReactions.toggle',
+  'landing.data',
+  'showcase.summary', 'showcase.mediaKit',
+  'laps.raceLaps', 'laps.syncFromGarage61',
+  'lapSubmissions.submit', 'lapSubmissions.listMine', 'lapSubmissions.listPending',
+  'lapSubmissions.approve', 'lapSubmissions.reject', 'lapSubmissions.remove',
+  'pitwall.broadcastLive',
+]);
+
+/** Azioni note SENZA equivalente Supabase (gap #326). */
+const NO_BACKEND_STUBS = {
+  'presence.heartbeat': () => ok({ alive: true }),
+  'presence.online': () => ok({ online: [] }),
+};
+
+/** auth.* sostituito interamente da src/api/supabaseAuth.js (#327). */
+const AUTH_ACTIONS = new Set(['auth.verify', 'auth.discordStart', 'auth.discordCallback', 'auth.login']);
+
+// ─── Tabella di routing 1:1 (azione frontend → slug Edge Function) ───
+// Verificata contro client.js (chiamante reale) + realApi.js (adapter
+// reale) — vedi commento in testa al file per le correzioni rispetto
+// alla prima stesura di #326.
+const ROUTING = {
+  'roster.list': 'roster-list',
+  'roster.get': 'roster-get',
+  'roster.updateSelf': 'roster-update-self',
+
+  'teamSessions.list': 'team-sessions-list',
+  'teamSessions.create': 'team-sessions-create',
+  'teamSessions.update': 'team-sessions-update',
+  'teamSessions.remove': 'team-sessions-remove',
+  'sessionRsvp.list': 'session-rsvp-list',
+  'sessionRsvp.set': 'session-rsvp-set',
+
+  'lookups.cars': 'lookups-cars',
+  'lookups.tracks': 'lookups-tracks',
+
+  'laps.list': 'best-laps-list',
+  'laps.leaderboard': 'best-laps-leaderboard',
+  'laps.add': 'best-laps-add',
+  'laps.update': 'best-laps-update',
+  'laps.remove': 'best-laps-remove',
+  'records.team': 'records-team',
+  'pitwall.sessions': 'pitwall-sessions-list',
+  'pitwall.session': 'pitwall-session-get',
+  'pitwall.logSession': 'pitwall-log-session',
+
+  'races.list': 'races-list',
+  'races.upcoming': 'races-upcoming',
+  'races.get': 'races-get',
+  'races.add': 'races-add',
+  'races.update': 'races-update',
+  'races.remove': 'races-remove',
+  'races.updatePoster': 'races-update-poster',
+  'races.updateGallery': 'races-update-gallery',
+  'raceResults.list': 'race-results-list',
+  'raceResults.import': 'race-results-import',
+  'incidents.report': 'incidents-report',
+  'incidents.list': 'incidents-list',
+  'incidents.resolve': 'incidents-resolve',
+
+  'championships.list': 'championships-list',
+  'championships.add': 'championships-add',
+  'championships.update': 'championships-update',
+  'standings.byChampionship': 'standings-by-championship',
+  'standings.progression': 'standings-progression',
+  'standings.byDriver': 'standings-by-driver',
+  'championships.importStandings': 'championships-import-standings',
+  'championships.saveAdjustments': 'championships-save-adjustments',
+  'academy.ranking': 'academy-ranking',
+  'recap.mine': 'season-recap',
+  'skillIndex.list': 'skill-index-list',
+  'skillIndex.history': 'skill-index-history',
+  'skillIndex.snapshot': 'skill-index-snapshot',
+
+  'rsvp.list': 'rsvp-list',
+  'rsvp.set': 'rsvp-set',
+  'raceCrews.list': 'race-crews-list',
+  'raceCrews.add': 'race-crews-add',
+  'raceCrews.remove': 'race-crews-remove',
+  'training.insights': 'training-insights',
+  'clash.participants.list': 'clash-participants-list',
+  'clash.participants.register': 'clash-participants-register',
+  'clash.participants.add': 'clash-participants-add',
+  'clash.participants.update': 'clash-participants-update',
+  'clash.participants.remove': 'clash-participants-remove',
+  'clash.results.submitRound': 'clash-results-submit-round',
+  'clash.standings': 'clash-standings',
+  'clash.incidents.report': 'clash-incidents-report',
+  'clash.incidents.list': 'clash-incidents-list',
+
+  'interest.list': 'interest-list',
+  'interest.register': 'interest-register',
+  'interest.update': 'interest-update',
+  'interest.remove': 'interest-remove',
+  'prequal.list': 'prequal-list',
+  'prequal.add': 'prequal-add',
+  'prequal.remove': 'prequal-remove',
+  'candidates.list': 'candidates-list',
+  'candidates.add': 'candidates-add',
+  'candidates.update': 'candidates-update',
+  'candidates.remove': 'candidates-remove',
+  'sponsors.list': 'sponsors-list',
+  'sponsors.add': 'sponsors-add',
+  'sponsors.update': 'sponsors-update',
+  'sponsors.remove': 'sponsors-remove',
+
+  'treasury.list': 'treasury-list',
+  'treasury.add': 'treasury-add',
+  'treasury.update': 'treasury-update',
+  'treasury.remove': 'treasury-remove',
+  'consent.status': 'consent-status',
+  'consent.accept': 'consent-accept',
+  'consent.adminList': 'consent-admin-list',
+  'consent.socialFlags': 'consent-social-flags',
+  'auditLog.list': 'audit-log-list',
+  'push.subscribe': 'push-subscribe',
+  'push.unsubscribe': 'push-unsubscribe',
+  'devices.createToken': 'devices-create-token',
+
+  'fuel.logSample': 'fuel-log-sample',
+  'fuel.logLive': 'fuel-log-live',
+  'fuel.summary': 'fuel-summary',
+  'fuel.mySession': 'fuel-my-session',
+  'fuel.stints': 'fuel-stints',
+  'lapData.import': 'lap-data-import',
+  'lapData.sessions': 'lap-data-sessions',
+  'lapData.session': 'lap-data-session',
+};
+
+// ─── Unwrap: azioni dove realApi.js estrae UN campo da res.data
+// invece di restituire res.data così com'è. Verificato leggendo ogni
+// adapter corrispondente in realApi.js. Tutto ciò che NON è in questa
+// mappa è pass-through di res.data (comportamento di default sotto).
+const UNWRAP_KEY = {
+  'roster.get': 'driver',
+  'lookups.tracks': 'tracks',
+  'lookups.cars': 'cars',
+  'laps.leaderboard': 'laps',
+  'laps.raceLaps': 'laps',
+  'races.list': 'races',
+  'races.upcoming': 'races',
+  'races.get': 'race',
+  'endurance.auditions.list': 'auditions',
+  'endurance.auditions.get': 'audition',
+  'endurance.auditions.create': 'audition',
+  'endurance.auditions.update': 'audition',
+  'championships.list': 'championships',
+  'reports.list': 'reports',
+  'reports.recent': 'reports',
+  'reportReactions.list': 'reactions',
+  'teamSessions.list': 'sessions',
+};
+
+function applyUnwrap(action, res) {
+  if (!res.ok) return res;
+  const key = UNWRAP_KEY[action];
+  if (!key) return ok(res.data);
+  return ok(res.data ? res.data[key] : undefined);
+}
+
+// ─── roster.list: filtro client-side (status/role/sim), fedele a
+// rosterListAdapter in realApi.js — il backend restituisce sempre
+// active+inactive+eventuali removed, i filtri applicativi restano lato
+// client (stesso motivo del sorgente: nessun parametro server-side per
+// role/sim).
+function applyRosterListFilters(drivers, filters) {
+  let out = drivers || [];
+  if (filters.status && filters.status !== 'active') {
+    out = out.filter(d => d.status === filters.status);
+  }
+  if (filters.role) out = out.filter(d => d.role === filters.role);
+  if (filters.sim) out = out.filter(d => String(d.preferred_sims || '').includes(filters.sim));
+  return out;
+}
+
+// ─── laps.list: stesso principio, filtro+limit client-side fedele a
+// lapsListAdapter in realApi.js.
+function applyLapsListFilters(laps, filters, limit) {
+  let out = laps || [];
+  if (filters.sim) out = out.filter(l => l.sim === filters.sim);
+  if (filters.track_id) out = out.filter(l => l.track_id === filters.track_id);
+  if (filters.car_id) out = out.filter(l => l.car_id === filters.car_id);
+  if (filters.driver_id) out = out.filter(l => l.driver_id === filters.driver_id);
+  if (filters.verified_only) out = out.filter(l => !!l.verified_by);
+  if (limit) out = out.slice(0, limit);
+  return out;
+}
+
+function buildRequest(action, payload) {
+  if (action.startsWith('endurance.')) {
+    const inner = action.slice('endurance.'.length);
+    const slug = ENDURANCE_READ_INNER.has(inner) ? ENDURANCE_READ_SLUG : ENDURANCE_WRITE_SLUG;
+    return { slug, body: { action: inner, ...payload }, innerAction: inner };
+  }
+  if (action === 'messenger.send') {
+    return { slug: 'messenger-send', body: payload }; // payload usa già `mode`
+  }
+  if (action.startsWith('social.')) {
+    const inner = action.slice('social.'.length);
+    const renamed = SOCIAL_PREFIXED_RENAME[inner] || inner;
+    return { slug: SOCIAL_MANAGER_SLUG, body: { action: renamed, ...payload } };
+  }
+  if (SOCIAL_DIRECT_ACTIONS.has(action)) {
+    return { slug: SOCIAL_MANAGER_SLUG, body: { action, ...payload } };
+  }
+  if (ROUTING[action]) {
+    return { slug: ROUTING[action], body: payload };
+  }
+  return null;
+}
+
+async function callEdgeFunction(slug, body) {
+  if (!FUNCTIONS_BASE) return fail('VITE_SUPABASE_URL non configurato in .env.local');
+
+  const session = await getSupabaseSession();
+  const headers = { 'Content-Type': 'application/json' };
+  if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
+
+  let response;
+  try {
+    response = await fetch(`${FUNCTIONS_BASE}/${slug}`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(body || {}),
+    });
+  } catch (e) {
+    console.error('[supabaseApi] network error', slug, e);
+    return fail('Errore di rete: ' + (e.message || 'connessione fallita'));
+  }
+
+  let json;
+  try {
+    json = await response.json();
+  } catch (e) {
+    console.error('[supabaseApi] JSON parse error', slug, e);
+    return fail(`Risposta non valida dal server (HTTP ${response.status})`);
+  }
+
+  if (json?.ok === undefined) {
+    return fail(json?.error || `HTTP ${response.status}: ${response.statusText}`);
+  }
+  return json;
+}
+
+/** Stesso identico contratto di realApi.js:callApi(action, payload). */
+export async function callApi(action, payload = {}) {
+  if (AUTH_ACTIONS.has(action)) {
+    return fail(`Azione '${action}' non instradata: l'auth reale passa da src/api/supabaseAuth.js (#327), non da callApi.`);
+  }
+  if (NO_BACKEND_STUBS[action]) {
+    return NO_BACKEND_STUBS[action]();
+  }
+
+  try {
+    // ── Casi con logica request/response oltre il routing puro ──
+    if (action === 'roster.list') {
+      const filters = (payload && payload.filters) || {};
+      const res = await callEdgeFunction('roster-list', {
+        includeInactive: true,
+        includeRemoved: filters.includeRemoved === true,
+      });
+      if (!res.ok) return res;
+      return ok(applyRosterListFilters(res.data?.drivers, filters));
+    }
+
+    if (action === 'laps.list') {
+      const filters = (payload && payload.filters) || {};
+      const limit = payload && payload.limit;
+      const res = await callEdgeFunction('best-laps-list', {});
+      if (!res.ok) return res;
+      return ok(applyLapsListFilters(res.data?.laps, filters, limit));
+    }
+
+    const request = buildRequest(action, payload);
+    if (!request) return fail(`Action non instradata verso Supabase: ${action}`);
+
+    const res = await callEdgeFunction(request.slug, request.body);
+    return applyUnwrap(action, res);
+  } catch (e) {
+    console.error('[supabaseApi]', action, e);
+    return fail(e.message || 'Errore interno supabaseApi');
+  }
+}

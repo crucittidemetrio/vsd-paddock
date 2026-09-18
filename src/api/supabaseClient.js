@@ -1,0 +1,65 @@
+import { createClient } from '@supabase/supabase-js';
+
+// ═══════════════════════════════════════════════════════════
+// VSD-Paddock — Client Supabase condiviso (#264/#327)
+// ═══════════════════════════════════════════════════════════
+// Singolo client supabase-js per tutta l'app, usato sia dal nuovo
+// modulo auth (supabaseAuth.js) sia dal futuro transport layer
+// (supabaseApi.js, #328). A differenza delle pagine di preview
+// (AdminRosterPreview/AdminCalendarPreview, #177/#178), che facevano
+// fetch manuale + parsing dell'hash OAuth a mano perché il pacchetto
+// @supabase/supabase-js non era ancora una dipendenza del progetto,
+// qui si usa l'SDK ufficiale: gestisce da solo refresh token,
+// persistenza sessione, PKCE flow per l'OAuth Discord e (in #339) il
+// pattern accessToken per Realtime già validato in #263.
+//
+// NON ancora collegato a nessuna pagina reale del sito (client.js
+// continua a usare realApi.js/Apps Script) — costruito "spento" per
+// poi essere attivato un dominio alla volta, come da approccio
+// staged concordato con l'utente per #264.
+//
+// Config: stesse env var già in uso nelle pagine di preview
+// (VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY — quest'ultima è la
+// chiave anon/legacy JWT, non la nuova sb_publishable_..., per lo
+// stesso motivo documentato in #263: la chiave pubblicabile nuova
+// non funziona come apikey per i canali Realtime privati su questo
+// progetto).
+
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+export const supabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+
+let _client = null;
+
+/**
+ * Ritorna il client supabase-js condiviso (singleton, creato al primo
+ * uso). Ritorna null se le env var non sono configurate, cosa che
+ * capita ancora in ambienti dove il progetto Supabase parallelo non è
+ * stato configurato — i chiamanti devono gestire questo caso.
+ */
+export function getSupabaseClient() {
+  if (!supabaseConfigured) return null;
+  if (_client) return _client;
+  _client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+      // Persistenza sessione reale su localStorage (a differenza del
+      // sessionStorage usato nelle pagine di preview, pensate come
+      // sessioni di test usa-e-getta): un pilota che fa login sul
+      // sito reale deve restare loggato tra un tab e l'altro/riavvii
+      // browser, esattamente come oggi col token Apps Script.
+      persistSession: true,
+      autoRefreshToken: true,
+      // Discord OAuth via signInWithOAuth usa PKCE per default nelle
+      // versioni recenti di supabase-js: il redirect torna con
+      // ?code=... invece di #access_token=... nell'hash (quest'ultimo
+      // era il formato "implicit" letto a mano nelle pagine di
+      // preview). detectSessionInUrl=true (default) fa sì che il
+      // client scambi automaticamente il code per una sessione al
+      // primo getSession()/onAuthStateChange dopo il redirect, senza
+      // bisogno di parsing manuale.
+      detectSessionInUrl: true,
+    },
+  });
+  return _client;
+}
