@@ -271,13 +271,31 @@ function applyUnwrap(action, res) {
   return ok(res.data ? res.data[key] : undefined);
 }
 
+// ─── FIX #329 (trovato in validazione live, non a tavolino): schema
+// Postgres usa `preferred_sims`/`specialties` come `text[]` nativo,
+// deviazione deliberata e documentata in 001_foundation.sql ("era CSV
+// in una cella, qui array nativo"). Il frontend però — DriverCard.jsx
+// e DriverProfile.jsx, mai toccati finché roster.* parlava solo con
+// Apps Script — fa `(driver.preferred_sims || '').split(',')`,
+// aspettandosi la stringa CSV che Apps Script restituiva dal foglio.
+// Un array nativo mandato lì rompe con `TypeError: .split is not a
+// function` (confermato live: pagina /roster bianca, crash in
+// console). Fix nell'adapter, non nel frontend: si normalizza
+// array→CSV qui, esattamente il ruolo di supabaseApi.js (far
+// sembrare la risposta Supabase identica a quella di realApi.js).
+function normalizeRosterDriver(d) {
+  if (!d) return d;
+  const toCsv = v => Array.isArray(v) ? v.join(',') : v;
+  return { ...d, preferred_sims: toCsv(d.preferred_sims), specialties: toCsv(d.specialties) };
+}
+
 // ─── roster.list: filtro client-side (status/role/sim), fedele a
 // rosterListAdapter in realApi.js — il backend restituisce sempre
 // active+inactive+eventuali removed, i filtri applicativi restano lato
 // client (stesso motivo del sorgente: nessun parametro server-side per
 // role/sim).
 function applyRosterListFilters(drivers, filters) {
-  let out = drivers || [];
+  let out = (drivers || []).map(normalizeRosterDriver);
   if (filters.status && filters.status !== 'active') {
     out = out.filter(d => d.status === filters.status);
   }
@@ -395,7 +413,13 @@ export async function callApi(action, payload = {}) {
     if (!request) return fail(`Action non instradata verso Supabase: ${action}`);
 
     const res = await callEdgeFunction(request.slug, request.body, action);
-    return applyUnwrap(action, res);
+    const unwrapped = applyUnwrap(action, res);
+    // roster.get: stessa normalizzazione array→CSV di roster.list (vedi
+    // normalizeRosterDriver) — DriverProfile.jsx fa lo stesso .split(',').
+    if (action === 'roster.get' && unwrapped.ok) {
+      return ok(normalizeRosterDriver(unwrapped.data));
+    }
+    return unwrapped;
   } catch (e) {
     console.error('[supabaseApi]', action, e);
     return fail(e.message || 'Errore interno supabaseApi');
