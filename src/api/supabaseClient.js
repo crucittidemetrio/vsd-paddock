@@ -30,6 +30,19 @@ const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 export const supabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
+// Esportata per supabaseApi.js (#329): le Edge Function di questo
+// progetto sono deployate con verify_jwt=true (default piattaforma),
+// quindi rifiutano a livello di gateway — PRIMA che il codice della
+// funzione giri — qualsiasi richiesta senza un JWT valido in
+// Authorization. La sola anon key È comunque un JWT valido (firmato
+// col JWT secret del progetto), quindi va sempre inviata come
+// fallback quando non c'è una sessione utente reale — altrimenti
+// anche le azioni pensate per essere chiamabili anonimamente
+// (roster.list/get, showcase.*, ...) verrebbero rifiutate dal
+// gateway prima ancora di raggiungere la logica team_slug lato
+// funzione.
+export const supabaseAnonKey = SUPABASE_ANON_KEY;
+
 let _client = null;
 
 /**

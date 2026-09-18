@@ -3,8 +3,31 @@
 // Facciata pubblica usata dai componenti.
 // ===========================================
 
-import { callApi } from './realApi';
+import { callApi as callRealApi } from './realApi';
+import { callApi as callSupabaseApi } from './supabaseApi';
 import { STORAGE, TIERS } from '../utils/constants';
+
+// ═══════════════════════════════════════════════════════════
+// Cutover incrementale su Supabase (#264/#329)
+// ═══════════════════════════════════════════════════════════
+// Solo le azioni elencate qui passano dal nuovo transport layer
+// (supabaseApi.js, #328); tutto il resto continua a passare da
+// realApi.js/Apps Script, invariato. roster.updateSelf NON è incluso
+// deliberatamente: l'Edge Function roster-update-self richiede una
+// sessione Supabase reale (login Discord via Supabase, #327), che la
+// stragrande maggioranza degli utenti reali non ha ancora fatto — un
+// utente con solo la vecchia sessione Apps Script prenderebbe 401 e
+// il form di modifica profilo smetterebbe di funzionare. roster.list/
+// roster.get invece sono state riscritte in #329 per funzionare sia
+// con sessione Supabase reale sia anonimamente/con la vecchia
+// sessione (via team_slug lato Edge Function, vedi supabaseApi.js),
+// quindi nessuna regressione per chi non ha ancora rifatto login.
+const SUPABASE_MIGRATED_ACTIONS = new Set([
+  'roster.list',
+  'roster.get',
+  'showcase.summary',
+  'showcase.mediaKit',
+]);
 
 /**
  * Recupera il contesto auth corrente da localStorage.
@@ -45,8 +68,15 @@ function getAuthContext() {
  * I componenti useranno hooks React Query, che gestiscono error/loading.
  */
 async function call(action, payload = {}) {
+  if (SUPABASE_MIGRATED_ACTIONS.has(action)) {
+    const res = await callSupabaseApi(action, payload);
+    if (!res.ok) {
+      throw new Error(res.error || `API error: ${action}`);
+    }
+    return res.data;
+  }
   const ctx = getAuthContext();
-  const res = await callApi(action, payload, ctx);
+  const res = await callRealApi(action, payload, ctx);
   if (!res.ok) {
     throw new Error(res.error || `API error: ${action}`);
   }

@@ -1,4 +1,5 @@
 import { getSupabaseSession } from './supabaseAuth';
+import { supabaseAnonKey } from './supabaseClient';
 
 // ═══════════════════════════════════════════════════════════
 // VSD-Paddock — Transport layer Supabase (#264/#328)
@@ -53,9 +54,36 @@ import { getSupabaseSession } from './supabaseAuth';
 // 'vsd_paddock_token', gestito da AuthContext legacy) ma dalla
 // sessione Supabase reale via supabaseAuth.getSupabaseSession() —
 // sessione persistita da supabase-js (#327). Senza sessione, le
-// chiamate partono senza Authorization header: le Edge Function
-// pubbliche (Clash of Classes, ChampionshipInterest, Showcase,
-// PrequalCandidates) gestiscono già il caso anonimo via `team_slug`.
+// Edge Function pubbliche (Clash of Classes, ChampionshipInterest,
+// Showcase, PrequalCandidates, e ora Roster — vedi sotto) gestiscono
+// il caso anonimo via `team_slug`.
+//
+// FIX #329 (importante, trovato in validazione): con sessione
+// assente NON si può semplicemente omettere Authorization. Tutte le
+// Edge Function di questo progetto sono deployate con
+// verify_jwt=true (default piattaforma Supabase): senza un JWT
+// valido in Authorization, la richiesta viene rifiutata dal GATEWAY
+// prima ancora che il codice della funzione (incluso il ramo
+// team_slug) venga eseguito. La anon key stessa È un JWT valido,
+// quindi va sempre inviata come fallback — vedi supabaseClient.js.
+//
+// ─── team_slug per azioni pubbliche (#329) ───
+// roster.list/roster.get NON sono azioni realmente pubbliche lato
+// RLS (drivers/drivers_public non concedono nulla ad anon — verrebbe
+// comunque zero righe anche con l'anon key, per design deliberato
+// dell'hardening #177), ma /roster è oggi una rotta pubblica sul
+// sito reale: un visitatore anonimo la vede senza login. Le Edge
+// Function roster-list/roster-get sono state riscritte in #329 con
+// lo stesso pattern service-role+team_slug già usato per Clash of
+// Classes/ChampionshipInterest/Showcase (bypassano RLS, risolvono il
+// team dalla sessione se presente, altrimenti da `team_slug`). Come
+// showcase.summary/mediaKit (già pubbliche dal design originale in
+// #261), queste azioni ricevono `team_slug` di default quando non
+// c'è sessione. Progetto a singolo team oggi: hardcoded a 'vsd' —
+// da rivedere se/quando #181 (billing multi-team) onboarda un
+// secondo team reale.
+const DEFAULT_TEAM_SLUG = 'vsd';
+const ANON_TEAM_SLUG_ACTIONS = new Set(['roster.list', 'roster.get', 'showcase.summary', 'showcase.mediaKit']);
 // ═══════════════════════════════════════════════════════════
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -294,19 +322,26 @@ function buildRequest(action, payload) {
   return null;
 }
 
-async function callEdgeFunction(slug, body) {
+async function callEdgeFunction(slug, body, action) {
   if (!FUNCTIONS_BASE) return fail('VITE_SUPABASE_URL non configurato in .env.local');
 
   const session = await getSupabaseSession();
   const headers = { 'Content-Type': 'application/json' };
-  if (session?.access_token) headers.Authorization = `Bearer ${session.access_token}`;
+  // Sempre un JWT valido in Authorization — vedi nota in testa al file
+  // (verify_jwt=true a livello di piattaforma su ogni Edge Function).
+  headers.Authorization = `Bearer ${session?.access_token || supabaseAnonKey}`;
+
+  let finalBody = body || {};
+  if (!session?.access_token && action && ANON_TEAM_SLUG_ACTIONS.has(action) && !finalBody.team_slug) {
+    finalBody = { ...finalBody, team_slug: DEFAULT_TEAM_SLUG };
+  }
 
   let response;
   try {
     response = await fetch(`${FUNCTIONS_BASE}/${slug}`, {
       method: 'POST',
       headers,
-      body: JSON.stringify(body || {}),
+      body: JSON.stringify(finalBody),
     });
   } catch (e) {
     console.error('[supabaseApi] network error', slug, e);
@@ -343,7 +378,7 @@ export async function callApi(action, payload = {}) {
       const res = await callEdgeFunction('roster-list', {
         includeInactive: true,
         includeRemoved: filters.includeRemoved === true,
-      });
+      }, action);
       if (!res.ok) return res;
       return ok(applyRosterListFilters(res.data?.drivers, filters));
     }
@@ -359,7 +394,7 @@ export async function callApi(action, payload = {}) {
     const request = buildRequest(action, payload);
     if (!request) return fail(`Action non instradata verso Supabase: ${action}`);
 
-    const res = await callEdgeFunction(request.slug, request.body);
+    const res = await callEdgeFunction(request.slug, request.body, action);
     return applyUnwrap(action, res);
   } catch (e) {
     console.error('[supabaseApi]', action, e);
