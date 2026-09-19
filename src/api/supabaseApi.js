@@ -117,6 +117,10 @@ const SOCIAL_DIRECT_ACTIONS = new Set([
   'lapSubmissions.submit', 'lapSubmissions.listMine', 'lapSubmissions.listPending',
   'lapSubmissions.approve', 'lapSubmissions.reject', 'lapSubmissions.remove',
   'pitwall.broadcastLive',
+  // Roster Admin (NUOVA, 19/09/2026): stesso slug consolidato, vedi
+  // header di cloud/functions/social-manager/index.ts per il perché
+  // (piano free fermo a 100/100 Edge Function).
+  'roster.adminUpdate', 'roster.deletionCandidates', 'roster.adminDelete',
 ]);
 
 /** Azioni note SENZA equivalente Supabase (gap #326). */

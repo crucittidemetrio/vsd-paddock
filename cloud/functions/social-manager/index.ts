@@ -100,6 +100,23 @@
 //     `ws://localhost:8090/ws/` del bridge C#, limitato al solo PC
 //     locale — il cambio lato bridge/frontend che consuma davvero
 //     questo canale resta scope di #264 (rewire frontend reale).
+//
+// Azione Roster Admin (NUOVA, 19/09/2026) — stesso slug:
+//   roster.adminUpdate                    → staff-o-admin scrive
+//     status/removed_at/race_number di un altro driver del team;
+//     `role` SOLO admin. Nessun equivalente in apps-script/Roster.js
+//     (là si editava a mano il Google Sheet). Chiude il gap per cui,
+//     dopo il cutover #329, il Roster leggeva da Supabase ma nulla vi
+//     scriveva status/role — vedi commento inline all'azione per
+//     dettagli.
+//   roster.deletionCandidates / roster.adminDelete → SOLO admin.
+//     Hard-delete di ex piloti (removed_at valorizzato) che non hanno
+//     MAI generato dati reali in nessuna delle ~20 tabelle collegate a
+//     drivers.id (best_laps, race_results, race_reports, RSVP, Clash,
+//     Endurance, fuel, lap_data, incident*, skill_index_history...).
+//     Richiesto da Demetrio per ripulire piloti "fantasma" mai attivi.
+//     adminDelete ri-verifica sempre lato server, mai fidandosi della
+//     candidate list letta in precedenza dal client.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -437,6 +454,57 @@ async function broadcastRealtime(topic: string, event: string, payload: unknown)
   }
 }
 
+// ─── Roster Admin: ricerca contributi per l'hard-delete piloti (NUOVO, 19/09/2026) ───
+// "Contributo" = qualunque riga driver-specifica che rappresenterebbe
+// una perdita di dati storici reali (partecipazioni, tempi, segnalazioni,
+// RSVP, ecc.) se il driver venisse cancellato — NON le colonne "attore"
+// puramente amministrative (verified_by/created_by/updated_by/...), che
+// restano SET NULL senza perdita di informazione utile all'utente.
+// Import fedele della foreign-key map reale (information_schema, verificata
+// il 19/09/2026): alcune di queste colonne sono ON DELETE CASCADE (la riga
+// sparirebbe con lui, es. best_laps), altre SET NULL (la riga
+// resterebbe ma orfana, es. race_results) — in ENTRAMBI i casi vogliamo
+// bloccare la cancellazione se il driver ha mai generato quella riga.
+const ROSTER_CONTRIBUTION_TABLES: Array<{ table: string; column: string }> = [
+  { table: 'best_laps', column: 'driver_id' },
+  { table: 'best_lap_submissions', column: 'driver_id' },
+  { table: 'race_results', column: 'driver_id' },
+  { table: 'race_reports', column: 'driver_id' },
+  { table: 'race_rsvps', column: 'driver_id' },
+  { table: 'race_crews', column: 'driver_id' },
+  { table: 'clash_participants', column: 'driver_id' },
+  { table: 'clash_results', column: 'driver_id' },
+  { table: 'championship_interest', column: 'driver_id' },
+  { table: 'endurance_participants', column: 'driver_id' },
+  { table: 'endurance_stints', column: 'driver_id' },
+  { table: 'fuel_log', column: 'driver_id' },
+  { table: 'fuel_live_pings', column: 'driver_id' },
+  { table: 'incident_reports', column: 'reporter_driver_id' },
+  { table: 'incident_reports', column: 'against_driver_id' },
+  { table: 'incident_resolutions', column: 'penalized_driver_id' },
+  { table: 'lap_data', column: 'driver_id' },
+  { table: 'pitwall_sessions', column: 'driver_id' },
+  { table: 'report_reactions', column: 'driver_id' },
+  { table: 'session_rsvps', column: 'driver_id' },
+  { table: 'skill_index_history', column: 'driver_id' },
+];
+
+async function findDriverIdsWithContributions(serviceClient: any, driverIds: string[]): Promise<Map<string, string[]>> {
+  const found = new Map<string, string[]>();
+  if (driverIds.length === 0) return found;
+  await Promise.all(ROSTER_CONTRIBUTION_TABLES.map(async ({ table, column }) => {
+    const { data } = await serviceClient.from(table).select(column).in(column, driverIds);
+    (data || []).forEach((row: any) => {
+      const id = row[column];
+      if (!id) return;
+      const list = found.get(id) || [];
+      if (!list.includes(table)) list.push(table);
+      found.set(id, list);
+    });
+  }));
+  return found;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -455,7 +523,7 @@ Deno.serve(async (req: Request) => {
       if (user) {
         const { data: meRow } = await supabase
           .from('drivers')
-          .select('id, team_id, role, display_name')
+          .select('id, team_id, role, display_name, driver_code')
           .eq('auth_user_id', user.id)
           .maybeSingle();
         me = meRow || null;
@@ -477,6 +545,158 @@ Deno.serve(async (req: Request) => {
     function requireStaffOrAdmin(): Response | null {
       if (!me || (me.role !== 'admin' && me.role !== 'staff')) return json({ ok: false, error: 'Operazione riservata a staff/admin' }, me ? 403 : 401);
       return null;
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // ROSTER ADMIN (NUOVA, 19/09/2026) — gap chiuso su segnalazione di
+    // Demetrio: nessuna funzione scriveva status/role/removed_at di un
+    // driver su Supabase. Dopo il cutover #329 il Roster pubblico legge
+    // da Supabase, ma l'unico modo per "cambiare stato" a un pilota era
+    // modificare il vecchio Google Sheet — non più sincronizzato in
+    // tempo reale col sito. Aggiunta qui (non come funzione standalone)
+    // per lo stesso motivo di deviazione architetturale spiegato in
+    // cima al file: piano free fermo a 100/100 Edge Function.
+    //
+    // role modificabile SOLO da admin (uno staff non può promuoversi/
+    // promuovere altri a staff/admin né retrocedere un admin).
+    // status/removed_at/race_number: staff o admin.
+    // driver_id nel payload è il driver_code (VSD00X), mai l'uuid
+    // interno — stesso contratto uniforme del resto del progetto.
+    // L'account di sistema (is_system_account) non è mai modificabile.
+    // ═══════════════════════════════════════════════════════
+
+    if (action === 'roster.adminUpdate') {
+      const denied = requireStaffOrAdmin(); if (denied) return denied;
+
+      const targetDriverCode = payload?.driver_id ? String(payload.driver_id).trim() : '';
+      if (!targetDriverCode) return json({ ok: false, error: 'driver_id (driver_code) obbligatorio' }, 400);
+
+      const rosterServiceClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+      const { data: target, error: targetErr } = await rosterServiceClient
+        .from('drivers')
+        .select('id, is_system_account')
+        .eq('team_id', teamId)
+        .eq('driver_code', targetDriverCode)
+        .maybeSingle();
+      if (targetErr) return json({ ok: false, error: targetErr.message }, 400);
+      if (!target) return json({ ok: false, error: 'Driver non trovato nel team: ' + targetDriverCode }, 404);
+      if (target.is_system_account) return json({ ok: false, error: 'Account di sistema non modificabile' }, 400);
+
+      const VALID_STATUS = ['active', 'trial', 'inactive'];
+      const VALID_ROLE = ['driver', 'staff', 'admin'];
+      const updates: Record<string, unknown> = {};
+
+      if ('status' in payload) {
+        const status = String(payload.status);
+        if (!VALID_STATUS.includes(status)) {
+          return json({ ok: false, error: 'status non valido. Ammessi: ' + VALID_STATUS.join(', ') }, 400);
+        }
+        updates.status = status;
+      }
+
+      if ('role' in payload) {
+        if (me.role !== 'admin') return json({ ok: false, error: 'Solo un admin può modificare il ruolo' }, 403);
+        const role = String(payload.role);
+        if (!VALID_ROLE.includes(role)) {
+          return json({ ok: false, error: 'role non valido. Ammessi: ' + VALID_ROLE.join(', ') }, 400);
+        }
+        updates.role = role;
+      }
+
+      if ('removed_at' in payload) {
+        const value = payload.removed_at;
+        if (value === null) {
+          updates.removed_at = null;
+        } else {
+          const d = new Date(String(value));
+          if (isNaN(d.getTime())) return json({ ok: false, error: 'removed_at non valido (attesa data ISO o null)' }, 400);
+          updates.removed_at = d.toISOString();
+        }
+      }
+
+      if ('race_number' in payload) {
+        const value = payload.race_number;
+        updates.race_number = value === null || value === '' ? null : Number(value);
+      }
+
+      if (Object.keys(updates).length === 0) {
+        return json({ ok: false, error: 'Nessun campo valido da aggiornare' }, 400);
+      }
+
+      updates.updated_at = new Date().toISOString();
+
+      const { data, error } = await rosterServiceClient
+        .from('drivers')
+        .update(updates)
+        .eq('id', target.id)
+        .select()
+        .maybeSingle();
+
+      if (error) return json({ ok: false, error: error.message }, 400);
+      if (!data) return json({ ok: false, error: 'Aggiornamento non riuscito' }, 500);
+
+      const driver = { ...data, driver_id: data.driver_code, is_ex_vsd: !!data.removed_at };
+      return json({ ok: true, data: { driver } });
+    }
+
+    // roster.deletionCandidates / roster.adminDelete (NUOVO, 19/09/2026,
+    // richiesto da Demetrio): hard-delete di ex piloti VSD che non hanno
+    // mai generato dati reali (partecipazioni, tempi, segnalazioni...).
+    // SOLO admin (più sensibile di adminUpdate: irreversibile). La
+    // candidate list è solo informativa — adminDelete RI-verifica sempre
+    // lato server prima di cancellare, non si fida mai della lista letta
+    // dal client in una chiamata precedente.
+    if (action === 'roster.deletionCandidates') {
+      const denied = requireAdmin(); if (denied) return denied;
+      const rosterServiceClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+      const { data: exDrivers, error: exErr } = await rosterServiceClient
+        .from('drivers')
+        .select('id, driver_code, display_name, removed_at, join_date')
+        .eq('team_id', teamId)
+        .eq('is_system_account', false)
+        .not('removed_at', 'is', null);
+      if (exErr) return json({ ok: false, error: exErr.message }, 400);
+
+      const ids = (exDrivers || []).map((d: any) => d.id);
+      const contributions = await findDriverIdsWithContributions(rosterServiceClient, ids);
+
+      const candidates = (exDrivers || [])
+        .filter((d: any) => !contributions.has(d.id))
+        .map((d: any) => ({ driver_id: d.driver_code, display_name: d.display_name, removed_at: d.removed_at, join_date: d.join_date }));
+
+      return json({ ok: true, data: { candidates, count: candidates.length } });
+    }
+
+    if (action === 'roster.adminDelete') {
+      const denied = requireAdmin(); if (denied) return denied;
+      const targetDriverCode = payload?.driver_id ? String(payload.driver_id).trim() : '';
+      if (!targetDriverCode) return json({ ok: false, error: 'driver_id (driver_code) obbligatorio' }, 400);
+
+      const rosterServiceClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+      const { data: target, error: targetErr } = await rosterServiceClient
+        .from('drivers')
+        .select('id, is_system_account, removed_at')
+        .eq('team_id', teamId)
+        .eq('driver_code', targetDriverCode)
+        .maybeSingle();
+      if (targetErr) return json({ ok: false, error: targetErr.message }, 400);
+      if (!target) return json({ ok: false, error: 'Driver non trovato nel team: ' + targetDriverCode }, 404);
+      if (target.is_system_account) return json({ ok: false, error: 'Account di sistema non eliminabile' }, 400);
+      if (!target.removed_at) return json({ ok: false, error: 'Solo un ex pilota (rimosso) può essere eliminato definitivamente' }, 400);
+
+      const contributions = await findDriverIdsWithContributions(rosterServiceClient, [target.id]);
+      const blockedBy = contributions.get(target.id);
+      if (blockedBy && blockedBy.length > 0) {
+        return json({ ok: false, error: 'Non eliminabile: ha dati in ' + blockedBy.join(', ') }, 400);
+      }
+
+      const { error: delErr } = await rosterServiceClient.from('drivers').delete().eq('id', target.id);
+      if (delErr) return json({ ok: false, error: delErr.message }, 400);
+
+      return json({ ok: true, data: { deleted: true, driver_id: targetDriverCode } });
     }
 
     // ═══════════════════════════════════════════════════════
@@ -1237,22 +1457,27 @@ Deno.serve(async (req: Request) => {
         // notifica non bloccante, fedele al sorgente
       }
 
-      return json({ ok: true, data: { submission_id: data.submission_id, submission: data } });
+      const submission = { ...data, driver_id: me.driver_code };
+      return json({ ok: true, data: { submission_id: data.submission_id, submission } });
     }
 
     if (action === 'lapSubmissions.listMine') {
       const denied = requireAuth(); if (denied) return denied;
       const { data, error } = await supabase.from('best_lap_submissions').select('*').eq('team_id', teamId).eq('driver_id', me.id);
       if (error) return json({ ok: false, error: error.message }, 400);
-      const submissions = (data || []).sort((a: any, b: any) => String(b.submitted_at).localeCompare(String(a.submitted_at)));
+      const submissions = (data || [])
+        .map((s: any) => ({ ...s, driver_id: me.driver_code }))
+        .sort((a: any, b: any) => String(b.submitted_at).localeCompare(String(a.submitted_at)));
       return json({ ok: true, data: { submissions } });
     }
 
     if (action === 'lapSubmissions.listPending') {
       const denied = requireAdmin(); if (denied) return denied;
-      const { data, error } = await supabase.from('best_lap_submissions').select('*').eq('team_id', teamId).eq('status', 'pending');
+      const { data, error } = await supabase.from('best_lap_submissions').select('*, drivers(driver_code)').eq('team_id', teamId).eq('status', 'pending');
       if (error) return json({ ok: false, error: error.message }, 400);
-      const submissions = (data || []).sort((a: any, b: any) => String(a.submitted_at).localeCompare(String(b.submitted_at)));
+      const submissions = (data || [])
+        .map((s: any) => { const { drivers, ...rest } = s; return { ...rest, driver_id: drivers?.driver_code ?? s.driver_id }; })
+        .sort((a: any, b: any) => String(a.submitted_at).localeCompare(String(b.submitted_at)));
       return json({ ok: true, data: { submissions } });
     }
 

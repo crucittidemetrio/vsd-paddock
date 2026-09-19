@@ -21,6 +21,7 @@ import TrackPhotoBackdrop from '../components/shared/TrackPhotoBackdrop';
 import CompanionTokenPanel from '../components/profile/CompanionTokenPanel';
 import PushNotificationsPanel from '../components/profile/PushNotificationsPanel';
 import EditProfilePanel from '../components/profile/EditProfilePanel';
+import AdminDriverPanel from '../components/profile/AdminDriverPanel';
 import MyIncidentsPanel from '../components/profile/MyIncidentsPanel';
 import { ROLES } from '../utils/constants';
 import { formatTrack, formatCar, formatDate } from '../utils/format';
@@ -374,6 +375,7 @@ export default function DriverProfile() {
       </div>
 
       {isOwnProfile && <EditProfilePanel driver={driver} />}
+      <AdminDriverPanel driver={driver} />
       {isOwnProfile && <PushNotificationsPanel />}
       {isOwnProfile && <CompanionTokenPanel />}
       {isOwnProfile && <MyIncidentsPanel driverId={driverId} />}

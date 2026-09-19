@@ -48,6 +48,14 @@ const SUPABASE_MIGRATED_ACTIONS = new Set([
   'teamSessions.remove',
   'sessionRsvp.list',
   'sessionRsvp.set',
+  // Roster Admin (NUOVA, 19/09/2026): scrittura status/role/removed_at
+  // + hard-delete ex piloti senza contributi — vedi
+  // cloud/functions/social-manager/index.ts per i dettagli. Richiede
+  // sessione Supabase reale (staff/admin) — nessun fallback anonimo,
+  // stesso principio di teamSessions.*/sessionRsvp.* sopra.
+  'roster.adminUpdate',
+  'roster.deletionCandidates',
+  'roster.adminDelete',
 ]);
 
 /**
@@ -120,6 +128,16 @@ export const api = {
     list: (filters = {}) => call('roster.list', { filters }),
     get: (driver_id) => call('roster.get', { driver_id }),
     updateSelf: (payload) => call('roster.updateSelf', payload),
+    // Roster Admin (NUOVA, 19/09/2026) — staff/admin: status/removed_at/
+    // race_number (role solo admin). Vedi client.js header + Edge
+    // Function per dettagli permessi.
+    adminUpdate: (payload) => call('roster.adminUpdate', payload),
+    // SOLO admin: lista ex piloti VSD senza alcun dato reale collegato
+    // (candidati sicuri per hard-delete).
+    deletionCandidates: () => call('roster.deletionCandidates', {}),
+    // SOLO admin: cancellazione definitiva — irreversibile. Il backend
+    // ri-verifica sempre i contributi lato server prima di eseguire.
+    adminDelete: (driver_id) => call('roster.adminDelete', { driver_id }),
   },
 
   presence: {
