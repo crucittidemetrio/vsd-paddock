@@ -283,10 +283,34 @@ function applyUnwrap(action, res) {
 // console). Fix nell'adapter, non nel frontend: si normalizza
 // array→CSV qui, esattamente il ruolo di supabaseApi.js (far
 // sembrare la risposta Supabase identica a quella di realApi.js).
+// ─── FIX #330 (trovato validando Best Laps dopo il cutover Roster,
+// non da analisi statica): lo schema Postgres usa `driver_code` come
+// colonna per il codice pilota (VSD005, ...) — `id` è l'UUID interno,
+// mai esposto come identificatore lato frontend prima d'ora. TUTTO il
+// resto del sito (43 file, verificato via grep: DriverCard.jsx,
+// Roster.jsx, useBestLaps.js/driverStatus.js, Standings, Training,
+// RaceCrews, StintPlanner, ...) si aspetta invece `driver.driver_id`
+// come nome campo — è il contratto usato da sempre da realApi.js
+// (roster.get({driver_id}), laps[].driver_id, ecc.). Senza questo
+// alias, `driver.driver_id` è `undefined` per ogni pilota restituito
+// da Supabase: rompe silenziosamente qualunque incrocio client-side
+// tra roster e altri dati chiave-per-driver_id (case scoperto in
+// produzione: useTeamLeaderboard/activeDriverIdSet in useBestLaps.js
+// costruisce un Set con un solo `undefined`, quindi NESSUN giro
+// supera più il filtro "pilota attivo" → Best Laps/Muro dei Record
+// mostrano "Nessun record" per qualunque combinazione di filtri,
+// anche con dati presenti). Fix nell'adapter, stesso principio della
+// normalizzazione CSV sotto: si aggiunge l'alias, non si tocca nessuno
+// dei 43 file consumer.
 function normalizeRosterDriver(d) {
   if (!d) return d;
   const toCsv = v => Array.isArray(v) ? v.join(',') : v;
-  return { ...d, preferred_sims: toCsv(d.preferred_sims), specialties: toCsv(d.specialties) };
+  return {
+    ...d,
+    driver_id: d.driver_id || d.driver_code,
+    preferred_sims: toCsv(d.preferred_sims),
+    specialties: toCsv(d.specialties),
+  };
 }
 
 // ─── roster.list: filtro client-side (status/role/sim), fedele a

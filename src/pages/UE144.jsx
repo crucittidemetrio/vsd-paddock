@@ -325,7 +325,7 @@ export default function UE144() {
       <StandingsSection />
 
       {/* ════ PROTESTE ════ */}
-      <section className={styles.section}>
+      <section id="proteste" className={styles.section}>
         <div className={styles.sectionEyebrow}>Direzione Gara</div>
         <h2 className={styles.sectionTitle}>Proteste</h2>
         <div className={styles.protestBox}>

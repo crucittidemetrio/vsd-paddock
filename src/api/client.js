@@ -22,11 +22,32 @@ import { STORAGE, TIERS } from '../utils/constants';
 // con sessione Supabase reale sia anonimamente/con la vecchia
 // sessione (via team_slug lato Edge Function, vedi supabaseApi.js),
 // quindi nessuna regressione per chi non ha ancora rifatto login.
+//
+// #330 — teamSessions.*/sessionRsvp.*: gap noto e ACCETTATO
+// (deciso con l'utente, non un bug silenzioso). A differenza di
+// Roster, le Edge Function team-sessions-*/session-rsvp-* richiedono
+// TUTTE una sessione Supabase reale, senza alcun fallback team_slug —
+// letto in tutti e 6 i sorgenti deployati, coerente col comportamento
+// reale voluto ("visibile a chiunque sia loggato nel team", mai
+// pubblico). Chi è ancora loggato solo con la vecchia sessione Apps
+// Script (praticamente tutti i piloti reali oggi, tranne l'account
+// admin già validato in #327) riceverà un 401 silenzioso dalla query
+// react-query — niente crash, ma /calendar smette di mostrare le
+// sessioni team finché il pilota non rifà il login Discord via
+// Supabase. Considerato un gap a basso impatto visivo e accettato
+// per procedere nel piano staged; da richiudere naturalmente quando
+// il resto del sito (e quindi il login) passerà tutto su Supabase.
 const SUPABASE_MIGRATED_ACTIONS = new Set([
   'roster.list',
   'roster.get',
   'showcase.summary',
   'showcase.mediaKit',
+  'teamSessions.list',
+  'teamSessions.create',
+  'teamSessions.update',
+  'teamSessions.remove',
+  'sessionRsvp.list',
+  'sessionRsvp.set',
 ]);
 
 /**

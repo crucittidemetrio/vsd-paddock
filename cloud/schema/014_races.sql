@@ -1,0 +1,15 @@
+-- ═══════════════════════════════════════════════════════════
+-- FILE SUPERATO — non applicato.
+-- ═══════════════════════════════════════════════════════════
+-- Questa bozza è stata scritta prima di scoprire che il progetto
+-- Supabase conteneva già una tabella `races` orfana (schema demo non
+-- tracciato: pilots/seasons/races/race_results/penalties). La vera
+-- migrazione applicata al numero 014 è la pulizia di quello schema
+-- orfano — vedi `014_drop_orphan_demo_schema.sql`. Il dominio Races
+-- reale (porting di apps-script/Races.js) è in `015_races.sql`.
+--
+-- Contenuto lasciato vuoto di proposito per evitare che chiunque lo
+-- applichi per errore. Non c'è modo di eliminare questo file dalla
+-- sessione corrente (bash non raggiungibile) — da rimuovere a mano
+-- alla prima occasione.
+-- ═══════════════════════════════════════════════════════════
