@@ -7,6 +7,18 @@
 //   - sempre livello PUBLIC, anche per staff/admin (il dettaglio privato
 //     sta in roster-get)
 //
+// FIX (19/09/2026, segnalato da Demetrio): il campo esposto qui era
+// `is_ex_driver`, ma TUTTO il frontend (Roster.jsx, DriverCard.jsx,
+// TeamRecords.jsx, Compare.jsx, DriverProfile.jsx, Landing.jsx,
+// LapsDrilldown.jsx, BestLaps.jsx, Calendar.jsx, driverStatus.js,
+// RaceResultsSection.jsx — praticamente ogni consumer) si aspetta
+// `is_ex_vsd` (nome ereditato da Apps Script). Essendo sempre
+// undefined, Roster.jsx metteva TUTTI i piloti (inclusi i veri
+// ex-VSD rimossi) dentro activeDrivers invece che exDrivers: la
+// sezione "Ex Piloti" risultava sempre vuota/nascosta e il conteggio
+// "piloti totali" li includeva. Stesso principio delle fix driver_id
+// #329/#330/#331: alias nella risposta, MAI il frontend.
+//
 // REVISIONE #329 (cutover Pubblico+Roster, sessione 18/09/2026): la
 // versione originale richiedeva SEMPRE `Authorization` (401 se
 // assente) e si appoggiava a RLS+security_invoker sulla vista
@@ -96,7 +108,7 @@ Deno.serve(async (req: Request) => {
       .eq('is_system_account', false);
     if (error) return json({ ok: false, error: error.message }, 400);
 
-    const filtered = (data ?? []).map((d: any) => ({ ...d, is_ex_driver: !!d.removed_at })).filter((d: any) => {
+    const filtered = (data ?? []).map((d: any) => ({ ...d, is_ex_vsd: !!d.removed_at })).filter((d: any) => {
       if (d.removed_at) return includeRemoved;
       if (includeInactive || includeRemoved) return true;
       return d.status === 'active';
