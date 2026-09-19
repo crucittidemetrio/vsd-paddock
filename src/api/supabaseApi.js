@@ -121,6 +121,9 @@ const SOCIAL_DIRECT_ACTIONS = new Set([
   // header di cloud/functions/social-manager/index.ts per il perché
   // (piano free fermo a 100/100 Edge Function).
   'roster.adminUpdate', 'roster.deletionCandidates', 'roster.adminDelete',
+  // Aggiungi pilota (NUOVA, 19/09/2026): vedi header di
+  // cloud/functions/social-manager/index.ts per il perché stesso slug.
+  'roster.availableSlots', 'roster.adminCreate',
 ]);
 
 /** Azioni note SENZA equivalente Supabase (gap #326). */

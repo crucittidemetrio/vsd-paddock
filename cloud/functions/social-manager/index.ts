@@ -117,6 +117,18 @@
 //     Richiesto da Demetrio per ripulire piloti "fantasma" mai attivi.
 //     adminDelete ri-verifica sempre lato server, mai fidandosi della
 //     candidate list letta in precedenza dal client.
+//   roster.availableSlots / roster.adminCreate (NUOVE, 19/09/2026) →
+//     staff-o-admin. Gap: dopo aver chiuso update/delete non esisteva
+//     ALCUN modo di aggiungere un pilota nuovo dal sito — il trigger
+//     link_driver_on_signup (005_link_discord_signup.sql) collega
+//     apposta un login Discord solo a un driver GIÀ esistente, non ne
+//     crea mai uno. availableSlots calcola il prossimo driver_code
+//     libero (riusando i buchi lasciati da un hard-delete, es. VSD001/
+//     VSD025) e i race_number già assegnati nel team. adminCreate crea
+//     la riga: driver_code auto-assegnato se omesso, race_number
+//     validato contro duplicati, role forzato a 'driver' se il
+//     chiamante non è admin (uno staff non può auto-promuoversi
+//     creando un admin fittizio).
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -697,6 +709,134 @@ Deno.serve(async (req: Request) => {
       if (delErr) return json({ ok: false, error: delErr.message }, 400);
 
       return json({ ok: true, data: { deleted: true, driver_id: targetDriverCode } });
+    }
+
+    // roster.availableSlots / roster.adminCreate (NUOVE, 19/09/2026,
+    // richiesto da Demetrio dopo aver notato che non c'era alcun modo
+    // di aggiungere un pilota nuovo dal sito). Formato driver_code
+    // atteso: VSDnnn — un driver_code che non rispetta il formato
+    // viene semplicemente ignorato nel calcolo dei buchi/prossimo
+    // libero (non blocca nulla, permette comunque team con codici
+    // diversi in futuro).
+    function computeNextDriverCode(codes: string[]): { next: string; free: string[] } {
+      const used = new Set<number>();
+      codes.forEach(c => {
+        const m = /^VSD(\d+)$/.exec(String(c || '').trim());
+        if (m) used.add(parseInt(m[1], 10));
+      });
+      const max = used.size ? Math.max(...used) : 0;
+      const free: string[] = [];
+      for (let i = 1; i <= max; i++) {
+        if (!used.has(i)) free.push('VSD' + String(i).padStart(3, '0'));
+      }
+      const next = free[0] || ('VSD' + String(max + 1).padStart(3, '0'));
+      return { next, free };
+    }
+
+    if (action === 'roster.availableSlots') {
+      const denied = requireStaffOrAdmin(); if (denied) return denied;
+      const rosterServiceClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+      const { data: all, error } = await rosterServiceClient
+        .from('drivers')
+        .select('driver_code, race_number')
+        .eq('team_id', teamId);
+      if (error) return json({ ok: false, error: error.message }, 400);
+
+      const { next: nextDriverCode, free: freeDriverCodes } = computeNextDriverCode((all || []).map((d: any) => d.driver_code));
+
+      const usedRaceNumbers = (all || [])
+        .map((d: any) => Number(d.race_number))
+        .filter((n: number) => !isNaN(n))
+        .sort((a: number, b: number) => a - b);
+
+      const usedRaceSet = new Set(usedRaceNumbers);
+      const freeRaceNumbersSample: number[] = [];
+      for (let n = 1; n <= 99 && freeRaceNumbersSample.length < 20; n++) {
+        if (!usedRaceSet.has(n)) freeRaceNumbersSample.push(n);
+      }
+
+      return json({ ok: true, data: {
+        next_driver_code: nextDriverCode,
+        free_driver_codes: freeDriverCodes,
+        used_race_numbers: usedRaceNumbers,
+        free_race_numbers_sample: freeRaceNumbersSample,
+      } });
+    }
+
+    if (action === 'roster.adminCreate') {
+      const denied = requireStaffOrAdmin(); if (denied) return denied;
+
+      const displayName = String(payload?.display_name || '').trim();
+      if (!displayName) return json({ ok: false, error: 'display_name obbligatorio' }, 400);
+
+      const rosterServiceClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+      const { data: allCodes, error: codesErr } = await rosterServiceClient
+        .from('drivers')
+        .select('driver_code')
+        .eq('team_id', teamId);
+      if (codesErr) return json({ ok: false, error: codesErr.message }, 400);
+
+      let driverCode = payload?.driver_id ? String(payload.driver_id).trim().toUpperCase() : '';
+      if (driverCode) {
+        const collision = (allCodes || []).some((d: any) => String(d.driver_code).toUpperCase() === driverCode);
+        if (collision) return json({ ok: false, error: 'driver_code già in uso: ' + driverCode }, 400);
+      } else {
+        driverCode = computeNextDriverCode((allCodes || []).map((d: any) => d.driver_code)).next;
+      }
+
+      let raceNumber: number | null = null;
+      if ('race_number' in payload && payload.race_number !== null && payload.race_number !== '') {
+        raceNumber = Number(payload.race_number);
+        if (isNaN(raceNumber)) return json({ ok: false, error: 'race_number non valido' }, 400);
+        const { data: dup } = await rosterServiceClient
+          .from('drivers')
+          .select('id, display_name')
+          .eq('team_id', teamId)
+          .eq('race_number', String(raceNumber))
+          .maybeSingle();
+        if (dup) return json({ ok: false, error: 'Numero gara ' + raceNumber + ' già assegnato a ' + dup.display_name }, 400);
+      }
+
+      const VALID_ROLE = ['driver', 'staff', 'admin'];
+      let role = 'driver';
+      if (payload?.role) {
+        if (me.role !== 'admin') return json({ ok: false, error: 'Solo un admin può impostare un ruolo diverso da pilota' }, 403);
+        role = String(payload.role);
+        if (!VALID_ROLE.includes(role)) return json({ ok: false, error: 'role non valido. Ammessi: ' + VALID_ROLE.join(', ') }, 400);
+      }
+
+      const VALID_STATUS = ['active', 'trial', 'inactive'];
+      const status = payload?.status ? String(payload.status) : 'trial';
+      if (!VALID_STATUS.includes(status)) return json({ ok: false, error: 'status non valido. Ammessi: ' + VALID_STATUS.join(', ') }, 400);
+
+      const insertRow: Record<string, unknown> = {
+        team_id: teamId,
+        driver_code: driverCode,
+        display_name: displayName,
+        role,
+        status,
+        race_number: raceNumber === null ? null : raceNumber,
+        join_date: payload?.join_date ? String(payload.join_date) : new Date().toISOString().slice(0, 10),
+        nationality: payload?.nationality ? String(payload.nationality) : null,
+        preferred_sims: Array.isArray(payload?.preferred_sims) ? payload.preferred_sims : null,
+        discord_id: payload?.discord_id ? String(payload.discord_id).trim() : null,
+        real_name: payload?.real_name ? String(payload.real_name).trim() : null,
+        roster_track: payload?.roster_track ? String(payload.roster_track) : null,
+      };
+
+      const { data, error } = await rosterServiceClient
+        .from('drivers')
+        .insert(insertRow)
+        .select()
+        .maybeSingle();
+
+      if (error) return json({ ok: false, error: error.message }, 400);
+      if (!data) return json({ ok: false, error: 'Creazione non riuscita' }, 500);
+
+      const driver = { ...data, driver_id: data.driver_code, is_ex_vsd: !!data.removed_at };
+      return json({ ok: true, data: { driver } });
     }
 
     // ═══════════════════════════════════════════════════════

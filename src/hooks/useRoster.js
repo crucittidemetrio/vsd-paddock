@@ -81,3 +81,35 @@ export function useAdminDeleteDriver() {
     },
   });
 }
+
+/**
+ * useAvailableSlots — staff/admin: prossimo driver_code libero
+ * (riusa i buchi lasciati da un hard-delete) + race_number già
+ * assegnati nel team, per pre-compilare/validare il form "Aggiungi
+ * pilota" (NUOVO, 19/09/2026). enabled controllato dal chiamante:
+ * ha senso solo quando il form è effettivamente aperto.
+ */
+export function useAvailableSlots(enabled) {
+  return useQuery({
+    queryKey: ['roster', 'availableSlots'],
+    queryFn: () => api.roster.availableSlots(),
+    enabled: !!enabled,
+  });
+}
+
+/**
+ * useAdminCreateDriver — staff/admin: crea un nuovo pilota. Chiude il
+ * gap per cui non esisteva alcun modo di aggiungere un driver dal
+ * sito (login Discord collega solo un driver GIÀ esistente, non ne
+ * crea mai uno — vedi 005_link_discord_signup.sql).
+ */
+export function useAdminCreateDriver() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload) => api.roster.adminCreate(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['drivers'] });
+      qc.invalidateQueries({ queryKey: ['roster', 'availableSlots'] });
+    },
+  });
+}

@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useDrivers } from '../hooks/useRoster';
 import { usePresenceOnline } from '../hooks/usePresence';
 import DriverCard from '../components/shared/DriverCard';
+import AddDriverPanel from '../components/profile/AddDriverPanel';
 import { SIM_LIST, DRIVER_STATUS } from '../utils/constants';
 import './Roster.css';
 import './Page.css';
@@ -62,6 +63,8 @@ export default function Roster() {
           {counts.trial > 0 && ` · ${counts.trial} in prova`}
         </p>
       </div>
+
+      <AddDriverPanel />
 
       <div className="roster-filters">
         <div className="filter-group">

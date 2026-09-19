@@ -56,6 +56,8 @@ const SUPABASE_MIGRATED_ACTIONS = new Set([
   'roster.adminUpdate',
   'roster.deletionCandidates',
   'roster.adminDelete',
+  'roster.availableSlots',
+  'roster.adminCreate',
 ]);
 
 /**
@@ -138,6 +140,11 @@ export const api = {
     // SOLO admin: cancellazione definitiva — irreversibile. Il backend
     // ri-verifica sempre i contributi lato server prima di eseguire.
     adminDelete: (driver_id) => call('roster.adminDelete', { driver_id }),
+    // Aggiungi pilota (NUOVA, 19/09/2026) — staff/admin: driver_code e
+    // race_number liberi (per pre-compilare il form) + creazione vera
+    // e propria. Vedi roster.availableSlots/adminCreate nel backend.
+    availableSlots: () => call('roster.availableSlots', {}),
+    adminCreate: (payload) => call('roster.adminCreate', payload),
   },
 
   presence: {
