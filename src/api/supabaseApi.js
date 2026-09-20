@@ -143,6 +143,14 @@ const LEGACY_TOKEN_FALLBACK_ACTIONS = new Set([
   'lapSubmissions.submit', 'lapSubmissions.listMine',
   'reports.list', 'reports.recent', 'reportReactions.list', 'reportReactions.toggle',
   'landing.data', 'laps.raceLaps',
+  // #359 (20/09/2026): stesso gap trovato validando il fix sopra —
+  // l'INTERO dominio Best Laps/Academy/Records/Training non aveva mai
+  // ricevuto il fallback legacy token (mai incluso nel giro di #331
+  // originale). Qualsiasi pilota reale (solo token legacy, mai una
+  // sessione Supabase vera) riceveva "Auth richiesto" aprendo Best
+  // Laps, Muro dei Record, Academy o Training Insights.
+  'laps.list', 'laps.leaderboard', 'laps.update', 'laps.remove',
+  'records.team', 'academy.ranking', 'training.insights',
 ]);
 const LEGACY_TOKEN_STORAGE_KEY = 'vsd_paddock_token';
 // ═══════════════════════════════════════════════════════════
