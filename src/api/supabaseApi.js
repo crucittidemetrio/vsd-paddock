@@ -129,6 +129,20 @@ const LEGACY_TOKEN_FALLBACK_ACTIONS = new Set([
   'sponsors.list', 'sponsors.add', 'sponsors.update', 'sponsors.remove',
   'treasury.list', 'treasury.add', 'treasury.update', 'treasury.remove',
   'consent.status', 'consent.accept', 'consent.adminList',
+  // #331 FIX REGRESSIONE (20/09/2026): stessa causa radice di #334,
+  // trovata sul dispatcher condiviso `social-manager` (slug
+  // `endurance-auditions-get`, vedi header di
+  // cloud/functions/social-manager/index.ts) — segnalata dall'utente:
+  // "Casesi non riesce comunque ad inviare il proprio Best Laps con
+  // errore Auth richiesto". Stesso fallback aggiunto lato Edge
+  // Function; qui solo le azioni self-service (auth: qualsiasi pilota
+  // nel sorgente) — quelle admin-only dello stesso dispatcher
+  // (Social Manager, lapSubmissions.listPending/approve/reject/remove,
+  // reports.update/seedForRace) restano fuori per ora: nessun caso
+  // reale segnalato per un admin/staff senza sessione Supabase.
+  'lapSubmissions.submit', 'lapSubmissions.listMine',
+  'reports.list', 'reports.recent', 'reportReactions.list', 'reportReactions.toggle',
+  'landing.data', 'laps.raceLaps',
 ]);
 const LEGACY_TOKEN_STORAGE_KEY = 'vsd_paddock_token';
 // ═══════════════════════════════════════════════════════════
