@@ -250,6 +250,15 @@
   letter-spacing: 0.08em;
   border-bottom: 1px solid var(--color-border-strong);
 }
+/* FIX 21/09/2026: .standingsTable thead th (0,1,2) batteva .num (0,1,0)
+   su text-align — le intestazioni numeriche (Punti/Gare/W/P/Best/DNF)
+   restavano allineate a sinistra come le altre, mentre le celle dati
+   con la stessa classe .num erano allineate a destra (nessun conflitto
+   di specificità su tbody td). Selettore dedicato per pareggiare la
+   specificità e allineare header e valori. */
+.standingsTable thead th.num {
+  text-align: right;
+}
 .standingsTable tbody td {
   padding: var(--sp-3) var(--sp-4);
   border-bottom: 1px solid var(--color-border);
