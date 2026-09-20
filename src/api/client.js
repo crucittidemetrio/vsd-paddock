@@ -145,6 +145,38 @@ const SUPABASE_MIGRATED_ACTIONS = new Set([
   'skillIndex.list',
   'skillIndex.history',
   'recap.mine',
+
+  // #333 — Clash of Classes. clash.participants.list/register/
+  // clash.standings/clash.incidents.report sono pubbliche (community
+  // non tesserata, cap. 2.2 regolamento) — anon+team_slug via
+  // supabaseApi.js (ANON_TEAM_SLUG_ACTIONS), stesso pattern di
+  // roster.list/showcase.*. Le altre 5 azioni (add/update/remove
+  // partecipanti, submitRound, incidents.list) sono staff/admin,
+  // richiedono sessione Supabase reale — stesso gap accettato di
+  // #330-332.
+  //
+  // FIX driver_id→driver_code applicato prima del cutover (stesso
+  // principio #329-332) a clash-participants-list/register/add/
+  // update e clash-standings. Bug più profondo trovato e corretto in
+  // clash-participants-add e clash-results-submit-round: il payload
+  // `driver_id` è sempre driver_code nel contratto pubblico (fedele
+  // al sorgente legacy e al placeholder "driver_id VSD (opz.)" nel
+  // form staff), ma le colonne `clash_participants.driver_id`/
+  // `clash_results.driver_id` sono tipizzate `uuid` in Postgres
+  // (upgrade deliberato da testo libero a FK vera, #278) — senza
+  // risoluzione, digitare un driver_code falliva l'insert con un
+  // errore Postgres di tipo (non un mismatch silenzioso come negli
+  // altri domini). Ora risolto driver_code→uuid scoped al team prima
+  // di ogni insert, con errore chiaro se il codice non esiste.
+  'clash.participants.list',
+  'clash.participants.register',
+  'clash.participants.add',
+  'clash.participants.update',
+  'clash.participants.remove',
+  'clash.standings',
+  'clash.results.submitRound',
+  'clash.incidents.report',
+  'clash.incidents.list',
 ]);
 
 /**

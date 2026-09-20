@@ -83,7 +83,19 @@ import { supabaseAnonKey } from './supabaseClient';
 // da rivedere se/quando #181 (billing multi-team) onboarda un
 // secondo team reale.
 const DEFAULT_TEAM_SLUG = 'vsd';
-const ANON_TEAM_SLUG_ACTIONS = new Set(['roster.list', 'roster.get', 'showcase.summary', 'showcase.mediaKit']);
+const ANON_TEAM_SLUG_ACTIONS = new Set([
+  'roster.list', 'roster.get', 'showcase.summary', 'showcase.mediaKit',
+  // #333 — Clash of Classes: clash.participants.list/register,
+  // clash.standings e clash.incidents.report sono pubbliche per
+  // design fin dal sorgente originale (community non tesserata può
+  // iscriversi/segnalare senza login, cap. 2.2 regolamento) — le
+  // Edge Function le gestiscono già con lo stesso pattern service-
+  // role+team_slug di roster.*/showcase.*, mancava solo l'iniezione
+  // automatica di team_slug qui lato client per il visitatore
+  // anonimo (senza, ClashOfClasses.jsx avrebbe fallito con "team_slug
+  // obbligatorio" per ogni chiamata non autenticata).
+  'clash.participants.list', 'clash.participants.register', 'clash.standings', 'clash.incidents.report',
+]);
 // ═══════════════════════════════════════════════════════════
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
