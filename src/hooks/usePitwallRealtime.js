@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { getSupabaseClient } from '../api/supabaseClient';
+import { getPitwallRealtimeClient } from '../api/supabaseClient';
 import { getSupabaseSession, resolveDriverAndTier } from '../api/supabaseAuth';
 
 /**
@@ -29,13 +29,17 @@ export function usePitwallRealtime() {
 
   useEffect(() => {
     let cancelled = false;
-    const supabase = getSupabaseClient();
-    if (!supabase) {
-      setStatus('disconnected');
-      return undefined;
-    }
+    // Client DEDICATO al Realtime (getPitwallRealtimeClient), separato dal
+    // client condiviso che gestisce login/sessione/REST — vedi il commento
+    // in supabaseClient.js sul perché (regressione reale evitata: mai
+    // configurare `accessToken` sul client condiviso).
+    const supabase = getPitwallRealtimeClient();
 
     async function connect() {
+      if (!supabase) {
+        setStatus('disconnected');
+        return;
+      }
       const session = await getSupabaseSession();
       const { driver } = await resolveDriverAndTier(session);
       if (cancelled) return;
@@ -75,7 +79,7 @@ export function usePitwallRealtime() {
     return () => {
       cancelled = true;
       if (channelRef.current) {
-        getSupabaseClient()?.removeChannel(channelRef.current);
+        getPitwallRealtimeClient()?.removeChannel(channelRef.current);
         channelRef.current = null;
       }
     };

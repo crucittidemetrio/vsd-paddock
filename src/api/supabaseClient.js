@@ -10,8 +10,9 @@ import { createClient } from '@supabase/supabase-js';
 // fetch manuale + parsing dell'hash OAuth a mano perché il pacchetto
 // @supabase/supabase-js non era ancora una dipendenza del progetto,
 // qui si usa l'SDK ufficiale: gestisce da solo refresh token,
-// persistenza sessione, PKCE flow per l'OAuth Discord e (in #339) il
-// pattern accessToken per Realtime già validato in #263.
+// persistenza sessione, PKCE flow per l'OAuth Discord. Il pattern
+// accessToken per Realtime (#263/#339) vive su un client SEPARATO più
+// sotto (getPitwallRealtimeClient) — vedi il commento lì per il perché.
 //
 // NON ancora collegato a nessuna pagina reale del sito (client.js
 // continua a usare realApi.js/Apps Script) — costruito "spento" per
@@ -73,23 +74,44 @@ export function getSupabaseClient() {
       // bisogno di parsing manuale.
       detectSessionInUrl: true,
     },
-    // accessToken (#339): pattern validato in #263 per i canali Realtime
-    // privati (pitwall:{team_id}). Un client creato con la sola anon
-    // key e poi corretto a parte via realtime.setAuth(token) si
-    // disconnette pochi istanti dopo la subscribe — il client tenta un
-    // resync interno del token realtime leggendo la sessione dal
-    // proprio GoTrueClient, sovrascrivendo quello iniettato a mano.
-    // Passare questa funzione a createClient è invece l'API supportata
-    // da Supabase per questo caso: viene interrogata ad ogni bisogno
-    // (incluso il refresh token realtime), sempre in sync con la
-    // sessione vera del client stesso. Riferisce `_client` (assegnato
-    // subito sotto, prima che qualunque subscribe reale possa
-    // scattare) invece di `supabase`, che qui non esiste ancora.
+  });
+  return _client;
+}
+
+let _realtimeClient = null;
+
+/**
+ * FIX #339 (regressione reale in produzione, 20/09/2026, segnalata da
+ * Demetrio — roster.list rotto per TUTTI: "Supabase Client is configured
+ * with the accessToken option, accessing supabase.auth.getSession is not
+ * possible"): l'opzione `accessToken` su createClient mette l'intero
+ * client in modalità "third-party auth" — supabase-js DISABILITA
+ * esplicitamente auth.getSession()/getUser()/ecc su QUEL client, anche
+ * per l'uso normale (REST/RPC), non solo per Realtime. Averla messa sul
+ * client CONDIVISO (getSupabaseClient(), sopra) rompeva ogni chiamata
+ * che passava da getSupabaseSession()/resolveDriverAndTier — cioè quasi
+ * tutto il sito, non solo /pitwall-live.
+ *
+ * Fix: un SECONDO client, dedicato solo ai canali Realtime privati
+ * (pitwall:{team_id}, #263), con `accessToken` configurato SOLO qui.
+ * Nessun codice chiama mai .auth.* su questo client (niente sessione
+ * propria, mai un signIn), quindi il vincolo di cui sopra non morde:
+ * accessToken legge il token dal client CONDIVISO (la sessione vera,
+ * gestita normalmente lì) ad ogni richiesta di Supabase — pattern
+ * "third-party auth" applicato correttamente, isolato dal resto
+ * dell'app invece che applicato al client che tutti usano.
+ */
+export function getPitwallRealtimeClient() {
+  if (!supabaseConfigured) return null;
+  if (_realtimeClient) return _realtimeClient;
+  _realtimeClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     accessToken: async () => {
-      if (!_client) return null;
-      const { data } = await _client.auth.getSession();
+      const shared = getSupabaseClient();
+      if (!shared) return SUPABASE_ANON_KEY;
+      const { data } = await shared.auth.getSession();
       return data.session?.access_token ?? SUPABASE_ANON_KEY;
     },
   });
-  return _client;
+  return _realtimeClient;
 }
