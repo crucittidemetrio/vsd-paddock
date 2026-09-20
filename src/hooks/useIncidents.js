@@ -43,6 +43,23 @@ export function useMyIncidents(driverId) {
   });
 }
 
+/**
+ * useReportIncident — invia una segnalazione tramite il form nativo
+ * (#351, sostituisce il vecchio Google Form esterno). Pubblica: nessuna
+ * sessione richiesta (community-wide, come il Form che sostituisce —
+ * l'iniezione automatica di team_slug per i chiamanti anonimi è gestita
+ * da supabaseApi.js).
+ */
+export function useReportIncident() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload) => api.incidents.report(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['incidents', 'list'] });
+    },
+  });
+}
+
 export function useResolveIncident() {
   const qc = useQueryClient();
   return useMutation({

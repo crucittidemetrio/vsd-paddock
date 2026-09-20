@@ -95,6 +95,10 @@ const ANON_TEAM_SLUG_ACTIONS = new Set([
   // anonimo (senza, ClashOfClasses.jsx avrebbe fallito con "team_slug
   // obbligatorio" per ogni chiamata non autenticata).
   'clash.participants.list', 'clash.participants.register', 'clash.standings', 'clash.incidents.report',
+  // #351 — Incidents: form nativo pubblico che sostituisce il vecchio
+  // Google Form esterno. Community-wide come il Form (UE144 è una lega
+  // multi-team, non solo VSD) — stesso pattern anon+team_slug.
+  'incidents.report',
 ]);
 // ═══════════════════════════════════════════════════════════
 

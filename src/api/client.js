@@ -98,18 +98,19 @@ const SUPABASE_MIGRATED_ACTIONS = new Set([
   // questo gruppo richiedono sessione Supabase reale (nessun fallback
   // anonimo/team_slug), verificato leggendo ogni sorgente deployato.
   //
-  // incidents.list/resolve NON sono incluse deliberatamente: durante
-  // l'audit di questo dominio è emerso che il sistema legacy reale
-  // (apps-script/Incidents.js) legge le segnalazioni LIVE da un Google
-  // Form esterno separato (RECLAMI_SPREADSHEET_ID), unito a un tab
-  // IncidentResolutions via complaint_key — un'architettura
-  // completamente diversa da incident_reports/incident_resolutions su
-  // Postgres (nomi campo diversi: report_id vs complaint_key,
-  // track_id vs track, ecc. — mancano persino timestamp/reporter_sim/
-  // reporter_discord/verdict che AdminIncidents.jsx usa direttamente).
-  // Le Edge Function incidents-* attuali non sono un porting fedele,
-  // sono un dominio diverso da riprogettare. incidents.* resta quindi
-  // su Apps Script fino a una decisione dedicata (vedi task #351).
+  // #351 — Incidents: dominio riprogettato con un form nativo in-app al
+  // posto del vecchio Google Form esterno (decisione esplicita di
+  // Demetrio, non un porting fedele). incident_reports/incident_resolutions
+  // riallineate: reporter_driver_id ora nullable (segnalazioni community,
+  // non solo roster VSD), aggiunte reporter_sim/reporter_discord/against.
+  // incidents.report è pubblica (community-wide, come lo era il Form —
+  // UE144 è una lega multi-team) via anon+team_slug in supabaseApi.js.
+  // incidents.list/resolve richiedono sessione reale (stesso gap
+  // accettato di #330-333). Fix driver_id→driver_code applicato in
+  // incidents-list (v3) su reporter_driver_id/against_driver_id/
+  // resolved_by/penalized_driver_id e in incidents-resolve (v2) che
+  // risolve driver_code→uuid prima di scrivere penalized_driver_id —
+  // stesso bug-pattern trovato in #333, qui prevenuto fin dal disegno.
   //
   // Dati storici: races/race_results/championships sono stati
   // migrati da Apps Script a Supabase in questo stesso giro (#349) —
@@ -145,6 +146,9 @@ const SUPABASE_MIGRATED_ACTIONS = new Set([
   'skillIndex.list',
   'skillIndex.history',
   'recap.mine',
+  'incidents.list',
+  'incidents.report',
+  'incidents.resolve',
 
   // #333 — Clash of Classes. clash.participants.list/register/
   // clash.standings/clash.incidents.report sono pubbliche (community
@@ -465,6 +469,7 @@ export const api = {
 
   incidents: {
     list: (params = {}) => call('incidents.list', params),
+    report: (payload) => call('incidents.report', payload),
     resolve: (payload) => call('incidents.resolve', payload),
   },
 

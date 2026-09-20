@@ -6,18 +6,18 @@ import { usePageMeta } from '../hooks/usePageMeta';
 import { SOCIAL_LINKS } from '../utils/constants';
 import Avatar from '../components/shared/Avatar';
 import { useConsentedDriverPhoto } from '../hooks/useConsent';
+import IncidentReportSection from '../components/shared/IncidentReportSection';
 import styles from './UE144.module.css';
 
 const UE144_CHAMPIONSHIP_ID = 'chmp-lmu-ultimate-endurance-144-2026';
 
 const SIMGRID_URL = 'https://www.thesimgrid.com/championships/26197';
 
-// Google Form pubblico "VSD - Modulo reclamo" (già in uso, vedi
-// apps-script/Incidents.js — questo NON è un nuovo modulo, solo il link
-// mancante sulla pagina UE144 verso quello esistente). Permesso Drive
-// confermato "anyone/reader/published" — link funzionante senza login
-// per chiunque lo apra, non solo per il proprietario.
-const PROTEST_FORM_URL = 'https://docs.google.com/forms/d/1sg6q4B0c96c1u2dfEJ_J9GD8VE6h8YG9xVwcI-s96qs/viewform';
+// #351: il vecchio Google Form esterno ("VSD - Modulo reclamo",
+// apps-script/Incidents.js) è stato sostituito da un form nativo in-app
+// (IncidentReportSection) — decisione esplicita di Demetrio, non un
+// porting fedele. Il link esterno resta qui solo come riferimento
+// storico, non più usato nel rendering.
 
 const CLASSES = [
   {
@@ -325,32 +325,7 @@ export default function UE144() {
       <StandingsSection />
 
       {/* ════ PROTESTE ════ */}
-      <section id="proteste" className={styles.section}>
-        <div className={styles.sectionEyebrow}>Direzione Gara</div>
-        <h2 className={styles.sectionTitle}>Proteste</h2>
-        <div className={styles.protestBox}>
-          <div className={styles.protestRow}>
-            <span className={styles.protestIcon}>💬</span>
-            <span>Invia la protesta nel canale Discord dedicato entro <strong>48 ore</strong> dal termine della sessione</span>
-          </div>
-          <div className={styles.protestRow}>
-            <span className={styles.protestIcon}>🎬</span>
-            <span>Allega obbligatoriamente <strong>clip video</strong> (telemetria consigliata)</span>
-          </div>
-          <div className={styles.protestRow}>
-            <span className={styles.protestIcon}>⚖️</span>
-            <span>Le decisioni dello staff sono <strong>inappellabili</strong> e basate esclusivamente sui dati</span>
-          </div>
-          <div className={styles.protestRow}>
-            <span className={styles.protestIcon}>📋</span>
-            <span>L'iscrizione al campionato implica la piena accettazione del presente regolamento</span>
-          </div>
-        </div>
-        <a href={PROTEST_FORM_URL} target="_blank" rel="noopener noreferrer"
-          className={`${styles.btn} ${styles.btnPrimary}`} style={{ marginTop: 'var(--sp-4, 16px)' }}>
-          Compila il Modulo reclamo
-        </a>
-      </section>
+      <IncidentReportSection anchorId="proteste" championship="UE144" />
 
       {/* ════ CTA ════ */}
       <section className={styles.cta}>
