@@ -365,6 +365,51 @@ const SUPABASE_MIGRATED_ACTIONS = new Set([
   'endurance.stints.generate',
   'endurance.stints.validateCoverage',
   'endurance.stints.confirmPlan',
+
+  // #338 — Cutover Social Manager/Race Reports/Reazioni/landing.data/
+  // Showcase (resto). Dispatcher consolidato endurance-auditions-get
+  // (stesso slug riusato di #259/#331, vedi header di
+  // cloud/functions/social-manager/index.ts). Social Manager (SOLO
+  // admin) richiede sempre sessione Supabase reale — stesso GAP NOTO
+  // e ACCETTATO di #330-337. reports.list/recent, reportReactions.*,
+  // landing.data richiedono qualsiasi pilota autenticato (fallback
+  // legacy token già presente lato Edge Function da #331, quindi
+  // NESSUN gap qui: funzionano anche per chi è loggato solo con la
+  // vecchia sessione Apps Script). showcase.summary/showcase.mediaKit
+  // erano già in questo Set da una fase precedente (pubblici, nessuna
+  // auth).
+  //
+  // SEI bug driver_id→driver_code trovati e corretti PRIMA di questo
+  // cutover (stesso pattern di #329/#331/#333/#334/#335/#336/#337),
+  // due dei quali in azioni GIÀ LIVE (computeRaceLaps che alimenta
+  // laps.raceLaps, e showcase.summary/showcase.mediaKit): vedi FIX
+  // #338 nei commenti di cloud/functions/social-manager/index.ts per
+  // il dettaglio di ciascuno (reports.list/recent, il filtro
+  // payload.driver_id in reports.list, reportReactions.list,
+  // landing.data incluso l'alias driver_id mancante sull'array
+  // drivers, computeRaceLaps condiviso con laps.raceLaps, e
+  // topDrivers/latestBestLap in showcase.summary/mediaKit — questi
+  // ultimi rompevano silenziosamente "Piloti in evidenza" sul Media
+  // Kit pubblico, mai notato prima).
+  'social.posts.list',
+  'social.posts.create',
+  'social.posts.update',
+  'social.posts.remove',
+  'social.metrics.list',
+  'social.metrics.add',
+  'social.generateText',
+  'social.discord.stats',
+  'social.media.list',
+  'social.media.add',
+  'social.media.remove',
+  'social.plan.dismiss',
+  'social.plan.undismiss',
+  'social.plan.dismissed.list',
+  'reports.list',
+  'reports.recent',
+  'reportReactions.list',
+  'reportReactions.toggle',
+  'landing.data',
 ]);
 
 /**

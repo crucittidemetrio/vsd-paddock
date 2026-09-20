@@ -172,6 +172,35 @@ async function resolveLegacyDriver(serviceClient: any, legacyToken: string | und
   }
 }
 
+// FIX #338 (20/09/2026, trovato PRIMA del cutover frontend leggendo il
+// codice, stesso pattern driver_id-come-uuid già risolto in #329/#331/
+// #333/#334/#335/#336/#337): race_reports.driver_id, report_reactions.
+// driver_id e race_results.driver_id sono tutte colonne uuid reali (FK
+// su drivers.id), ma tutto il frontend che le consuma (Reports.jsx:
+// driverMap[r.driver_id]/reactionsByReport, Landing.jsx: driverMap[lap.
+// driver_id]/driverMap[r.driver_id]/driverMap[rr.driver_id], DriverProfile.
+// jsx: useReports({driver_id: driverId}) dove driverId è il driver_code
+// di route) si aspetta driver_code (contratto pubblico identico a
+// roster.list().driver_id). Senza risoluzione, ogni lookup fallisce
+// sempre — niente crash, ma nome/avatar/link pilota spariscono
+// silenziosamente da Race Reports, Reazioni e dal feed attività in home.
+// Risolto con le due helper batch seguenti, riusate ovunque in questo
+// file per reports.list/recent, reportReactions.list e landing.data.
+async function resolveDriverIdsToCodes(supabase: any, teamId: string, ids: string[]): Promise<Record<string, string>> {
+  const unique = Array.from(new Set(ids.filter(Boolean)));
+  if (unique.length === 0) return {};
+  const { data } = await supabase.from('drivers').select('id, driver_code').eq('team_id', teamId).in('id', unique);
+  const map: Record<string, string> = {};
+  (data ?? []).forEach((d: any) => { map[d.id] = d.driver_code; });
+  return map;
+}
+
+async function resolveDriverCodeToId(supabase: any, teamId: string, driverCode: string): Promise<string | null> {
+  if (!driverCode) return null;
+  const { data } = await supabase.from('drivers').select('id').eq('team_id', teamId).eq('driver_code', driverCode).maybeSingle();
+  return data ? data.id : null;
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -301,15 +330,26 @@ async function computeRaceLaps(supabase: any, teamId: string) {
   (races || []).forEach((r: any) => { if (r.race_id) raceNameMap[r.race_id] = r.race_name; });
   const carMatchMap = buildCarNameMap(cars || []);
 
-  const laps = (results || [])
-    .filter((r: any) => r.is_vsd_driver === true && Number(r.best_lap_ms) > 0)
+  // FIX #338: race_results.driver_id è uuid — questa funzione alimenta sia
+  // `laps.raceLaps` (già migrata su Supabase, GIÀ LIVE da #331/#262) sia
+  // `landing.data` qui sotto. useBestLaps.js unisce l'output di
+  // laps.raceLaps con laps.list (quest'ultima già risolta a driver_code
+  // dal fix #331 in best-laps-list/index.ts) in un'unica lista `all`
+  // ordinata per tempo — con driver_id disomogenei (driver_code per i
+  // giri manuali, uuid grezzo per quelli race-derivati), ogni filtro/
+  // lookup per driver_id sui giri da gara falliva silenziosamente su
+  // Best Laps/Muro dei Record. Risolto qui una volta sola, a monte.
+  const qualifyingResults = (results || []).filter((r: any) => r.is_vsd_driver === true && Number(r.best_lap_ms) > 0);
+  const driverCodeMap = await resolveDriverIdsToCodes(supabase, teamId, qualifyingResults.map((r: any) => r.driver_id));
+
+  const laps = qualifyingResults
     .map((r: any) => {
       const lapMs = Number(r.best_lap_ms);
       const externalName = r.car_external_name ? String(r.car_external_name).trim() : '';
       const carId = externalName ? (carMatchMap[externalName.toLowerCase()] || '') : '';
       return {
         lap_id: `RACELAP-${r.result_id}`,
-        driver_id: r.driver_id,
+        driver_id: driverCodeMap[r.driver_id] || r.driver_id,
         sim: r.sim,
         track_id: r.track_id,
         car_id: carId,
@@ -1219,11 +1259,21 @@ Deno.serve(async (req: Request) => {
       const denied = requireAuth(); if (denied) return denied;
       let q = supabase.from('race_reports').select('*').eq('team_id', teamId);
       if (payload?.race_id) q = q.eq('race_id', payload.race_id);
-      if (payload?.driver_id) q = q.eq('driver_id', payload.driver_id);
+      // FIX #338: payload.driver_id è il driver_code (DriverProfile.jsx
+      // chiama useReports({driver_id: driverId}) col driverId di route,
+      // sempre driver_code) — risolto a uuid prima del filtro, altrimenti
+      // zero risultati sempre per lo storico report sul profilo pilota.
+      if (payload?.driver_id) {
+        const filterDriverId = await resolveDriverCodeToId(supabase, teamId, String(payload.driver_id).trim());
+        if (!filterDriverId) return json({ ok: true, data: { reports: [], count: 0 } });
+        q = q.eq('driver_id', filterDriverId);
+      }
       const { data, error } = await q;
       if (error) return json({ ok: false, error: error.message }, 400);
-      const reports = (data || []).sort((a: any, b: any) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      const driverCodeMap = await resolveDriverIdsToCodes(supabase, teamId, (data ?? []).map((r: any) => r.driver_id));
+      const reports = (data || [])
+        .map((r: any) => ({ ...r, driver_id: driverCodeMap[r.driver_id] || r.driver_id }))
+        .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       return json({ ok: true, data: { reports, count: reports.length } });
     }
 
@@ -1232,8 +1282,10 @@ Deno.serve(async (req: Request) => {
       const limit = Number(payload?.limit) || 5;
       const { data, error } = await supabase.from('race_reports').select('*').eq('team_id', teamId);
       if (error) return json({ ok: false, error: error.message }, 400);
-      const sorted = (data || []).sort((a: any, b: any) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      const driverCodeMap = await resolveDriverIdsToCodes(supabase, teamId, (data ?? []).map((r: any) => r.driver_id));
+      const sorted = (data || [])
+        .map((r: any) => ({ ...r, driver_id: driverCodeMap[r.driver_id] || r.driver_id }))
+        .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       const top = sorted.slice(0, limit);
       return json({ ok: true, data: { reports: top, count: top.length } });
     }
@@ -1305,7 +1357,14 @@ Deno.serve(async (req: Request) => {
       const denied = requireAuth(); if (denied) return denied;
       const { data, error } = await supabase.from('report_reactions').select('*').eq('team_id', teamId);
       if (error) return json({ ok: false, error: error.message }, 400);
-      return json({ ok: true, data: { reactions: data || [], count: (data || []).length } });
+      // FIX #338: reactionsByReport in Reports.jsx confronta r.driver_id
+      // con myDriver?.driver_id (driver_code) per evidenziare la propria
+      // reazione — senza risoluzione, r.driver_id resta l'uuid interno e
+      // il confronto fallisce sempre (nessuna reazione propria mai
+      // evidenziata, anche subito dopo averla appena inviata).
+      const driverCodeMap = await resolveDriverIdsToCodes(supabase, teamId, (data ?? []).map((r: any) => r.driver_id));
+      const reactions = (data || []).map((r: any) => ({ ...r, driver_id: driverCodeMap[r.driver_id] || r.driver_id }));
+      return json({ ok: true, data: { reactions, count: reactions.length } });
     }
 
     if (action === 'reportReactions.toggle') {
@@ -1369,8 +1428,45 @@ Deno.serve(async (req: Request) => {
 
       const raceLapsResult = await computeRaceLaps(supabase, teamId);
 
-      const allReports = reportsRes.data || [];
-      const myReports = allReports.filter((r: any) => r.driver_id === me.id);
+      // FIX #338: manual_laps/all_reports/my_race_results/team_race_results
+      // arrivano da best_laps/race_reports/race_results, tutte con driver_id
+      // uuid reale — Landing.jsx (pagina HOME) costruisce driverMap[d.driver_id]
+      // da useDrivers() (chiave driver_code) e fa driverMap[lap.driver_id]/
+      // driverMap[r.driver_id]/driverMap[rr.driver_id] per ogni voce del feed
+      // attività: senza risoluzione, ogni voce del feed (giri, report, risultati)
+      // perde silenziosamente nome/avatar/link pilota (guardia `{d && (...)}`,
+      // niente crash, ma la home mostra il feed "vuoto" di persone). Risolto
+      // con un'unica risoluzione batch su tutti gli uuid coinvolti, PRIMA di
+      // costruire myReports (che confronta contro me.id, quindi resta sugli
+      // uuid grezzi — corretto, va confrontato prima della conversione).
+      const allReportsRaw = reportsRes.data || [];
+      const myReportsRaw = allReportsRaw.filter((r: any) => r.driver_id === me.id);
+      const manualLapsRaw = manualLapsRes.data || [];
+      const myResultsRaw = myResultsRes.data || [];
+      const teamResultsRaw = teamResultsRes.data || [];
+
+      const allDriverIds = [
+        ...allReportsRaw.map((r: any) => r.driver_id),
+        ...manualLapsRaw.map((l: any) => l.driver_id),
+        ...myResultsRaw.map((rr: any) => rr.driver_id),
+        ...teamResultsRaw.map((rr: any) => rr.driver_id),
+      ];
+      const driverCodeMap = await resolveDriverIdsToCodes(supabase, teamId, allDriverIds);
+      const withDriverCode = (rows: any[]) => rows.map((r: any) => ({ ...r, driver_id: driverCodeMap[r.driver_id] || r.driver_id }));
+
+      const allReports = withDriverCode(allReportsRaw);
+      const myReports = withDriverCode(myReportsRaw);
+      const manualLaps = withDriverCode(manualLapsRaw);
+      // FIX #338: la tabella drivers non ha mai avuto una colonna
+      // `driver_id` (solo `id` uuid e `driver_code`, vedi 001_foundation.
+      // sql) — Landing.jsx costruisce driverMap[d.driver_id] da questo
+      // stesso array `drivers` qui sotto: senza l'alias, ogni entry
+      // finiva sotto la chiave `undefined` (l'ultimo pilota iterato
+      // sovrascriveva tutti i precedenti), corrompendo driverMap per
+      // l'intera home. Stesso alias già usato da roster.list/get
+      // (normalizeRosterDriver in supabaseApi.js), applicato qui perché
+      // landing.data fa una query drivers indipendente, non passa da lì.
+      const driversWithCode = (driversRes.data || []).map((d: any) => ({ ...d, driver_id: d.driver_code }));
 
       function sortResults(rows: any[], limit: number) {
         const sorted = [...rows].sort((a, b) => String(b.set_date || '').localeCompare(String(a.set_date || '')));
@@ -1382,15 +1478,15 @@ Deno.serve(async (req: Request) => {
         data: {
           all_races: allRacesRes.data || [],
           upcoming_races: upcomingRes.data || [],
-          manual_laps: manualLapsRes.data || [],
+          manual_laps: manualLaps,
           race_laps: raceLapsResult.laps,
           all_reports: allReports,
           my_reports: myReports,
-          drivers: driversRes.data || [],
+          drivers: driversWithCode,
           tracks: tracksRes.data || [],
           cars: carsRes.data || [],
-          my_race_results: sortResults(myResultsRes.data || [], 200),
-          team_race_results: sortResults(teamResultsRes.data || [], 20),
+          my_race_results: withDriverCode(sortResults(myResultsRaw, 200)),
+          team_race_results: withDriverCode(sortResults(teamResultsRaw, 20)),
         },
       });
     }
@@ -1503,11 +1599,22 @@ Deno.serve(async (req: Request) => {
 
         const allVerifiedLaps = [...verifiedManualLaps, ...raceLaps];
 
+        // FIX #338 (trovato PRIMA del cutover, mai esposto a utenti reali —
+        // showcase.summary/mediaKit erano già live dal design originale
+        // #261, ma questo bug c'era da allora): la tabella `drivers` non ha
+        // MAI avuto una colonna `driver_id` (solo `id` uuid e `driver_code`
+        // testo — vedi 001_foundation.sql), quindi `d.driver_id` qui sotto
+        // era sempre `undefined` per ogni pilota. Risultato: ogni card
+        // pilota su MediaKit.jsx/JoinUs.jsx aveva link/avatar rotti
+        // (driver_id undefined) e podi sempre a 0 (podiumByDriver, chiave
+        // uuid reale da r.driver_id, mai trovata con una chiave undefined)
+        // — su MediaKit, dove topDrivers viene filtrato per podiums>0,
+        // l'intera sezione "Piloti in evidenza" spariva sempre.
         const podiumByDriver: Record<string, number> = {};
         podiums.forEach((r: any) => { podiumByDriver[r.driver_id] = (podiumByDriver[r.driver_id] || 0) + 1; });
 
         const topDrivers = activeDrivers
-          .map((d: any) => ({ driver_id: d.driver_id, display_name: d.display_name, avatar_url: d.avatar_url || null, podiums: podiumByDriver[d.driver_id] || 0 }))
+          .map((d: any) => ({ driver_id: d.driver_code, display_name: d.display_name, avatar_url: d.avatar_url || null, podiums: podiumByDriver[d.id] || 0 }))
           .sort((a: any, b: any) => b.podiums - a.podiums)
           .slice(0, 5);
 
@@ -1531,7 +1638,14 @@ Deno.serve(async (req: Request) => {
         let latestBestLap = null;
         if (recentLaps.length > 0) {
           const l = recentLaps[0];
-          const driver = drivers.find((d: any) => d.driver_id === l.driver_id);
+          // FIX #338: `l.driver_id` qui è sempre l'uuid grezzo di
+          // best_laps.driver_id/race_results.driver_id (verifiedManualLaps/
+          // raceLaps sono array locali interni a questo handler, mai
+          // esposti al frontend così come sono — solo usati per calcolare
+          // l'ultimo giro). Confrontare contro `d.driver_id` (sempre
+          // undefined, vedi nota sopra) falliva sempre; ora confrontiamo
+          // contro `d.id` (uuid), coerente con entrambe le sorgenti.
+          const driver = drivers.find((d: any) => d.id === l.driver_id);
           latestBestLap = {
             driver_name: driver ? driver.display_name : l.driver_id,
             lap_time_display: l.lap_time_display, lap_time_ms: l.lap_time_ms, sim: l.sim,
@@ -1580,13 +1694,17 @@ Deno.serve(async (req: Request) => {
       });
       const social = Object.values(latestByPlatform).map((m: any) => ({ platform: m.platform, followers: Number(m.followers) || 0, recorded_date: m.recorded_date }));
 
+      // FIX #338: stesso bug di showcase.summary sopra (d.driver_id non
+      // esiste sulla tabella drivers, sempre undefined) — qui era ancora
+      // più visibile perché topDrivers è filtrato per podiums>0: la
+      // sezione "Piloti in evidenza" del Media Kit spariva sempre.
       const podiumByDriver: Record<string, number> = {};
       const winByDriver: Record<string, number> = {};
       podiums.forEach((r: any) => { podiumByDriver[r.driver_id] = (podiumByDriver[r.driver_id] || 0) + 1; });
       wins.forEach((r: any) => { winByDriver[r.driver_id] = (winByDriver[r.driver_id] || 0) + 1; });
 
       const topDrivers = activeDrivers
-        .map((d: any) => ({ driver_id: d.driver_id, display_name: d.display_name, podiums: podiumByDriver[d.driver_id] || 0, wins: winByDriver[d.driver_id] || 0 }))
+        .map((d: any) => ({ driver_id: d.driver_code, display_name: d.display_name, podiums: podiumByDriver[d.id] || 0, wins: winByDriver[d.id] || 0 }))
         .filter((d: any) => d.podiums > 0)
         .sort((a: any, b: any) => b.podiums - a.podiums || b.wins - a.wins)
         .slice(0, 6);
