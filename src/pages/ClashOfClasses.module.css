@@ -421,6 +421,13 @@
 }
 .standingsTable td { padding: 10px 12px; border-bottom: 1px solid var(--color-border); color: var(--color-text); }
 .stNum { text-align: right; font-family: var(--font-mono); }
+/* FIX 21/09/2026: stesso bug di specificità di ChampionshipDetail —
+   `.standingsTable th` (0,1,1) batteva `.stNum` (0,1,0) su text-align,
+   quindi le intestazioni Pts/Gare/W/Podi/Best restavano a sinistra
+   mentre i valori sotto erano a destra. */
+.standingsTable th.stNum {
+  text-align: right;
+}
 .stColPos { width: 36px; }
 .stPosBadge {
   display: inline-flex;
