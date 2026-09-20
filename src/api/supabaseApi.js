@@ -105,6 +105,13 @@ const ANON_TEAM_SLUG_ACTIONS = new Set([
   // pubblico nel sorgente) e consent.socialFlags (serve al Roster
   // pubblico per decidere se mostrare la foto vera di un pilota).
   'interest.list', 'interest.register', 'prequal.list', 'consent.socialFlags',
+  // #337 — Endurance: /endurance e /endurance/:auditionId sono pagine
+  // pubbliche (Endurance.jsx/EnduranceDetail.jsx, nessun gate auth nel
+  // routing) e chiamano auditions.list/get/participants.list senza mai
+  // passare team_slug — la Edge Function già supporta l'accesso anonimo
+  // via team_slug (resolvePublicTeam, stesso helper di Clash/Interest),
+  // mancava solo l'iniezione automatica qui lato client.
+  'endurance.auditions.list', 'endurance.auditions.get', 'endurance.participants.list',
 ]);
 
 // #334 FIX REGRESSIONE (19/09-20/09/2026): consent.accept spostato su
@@ -161,6 +168,18 @@ const LEGACY_TOKEN_FALLBACK_ACTIONS = new Set([
   // di #358/#359 (qui scrive, non solo legge) ed è stato aggiunto
   // anche a SUPABASE_MIGRATED_ACTIONS in client.js.
   'roster.updateSelf',
+  // #337 (20/09/2026): stesso gap trovato PRIMA del cutover — RaceDetail.jsx
+  // (pagina pubblica /race/:raceId) chiama endurance.stints.list per ogni
+  // gara endurance incondizionatamente, e handleStintsList richiede sempre
+  // una sessione reale (nessun fallback team_slug per design, a differenza
+  // di auditions/participants). Senza questo fallback, ogni pilota con solo
+  // il token legacy avrebbe visto silenziosamente zero stint in StintTimeline
+  // sulla pagina gara — stesso pattern esatto di #358/#359. Fix gemello
+  // applicato lato Edge Function (resolveLegacyDriver in endurance-read/
+  // index.ts, v4). Le azioni di scrittura (participants.add/stints.*)
+  // restano fuori: sono admin/staff-only e Demetrio (unico admin reale)
+  // ha già una sessione Supabase vera.
+  'endurance.stints.list',
 ]);
 const LEGACY_TOKEN_STORAGE_KEY = 'vsd_paddock_token';
 // ═══════════════════════════════════════════════════════════

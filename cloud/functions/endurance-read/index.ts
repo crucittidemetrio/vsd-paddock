@@ -41,6 +41,38 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// Fallback token legacy (FIX #337, 20/09/2026 — stesso pattern di
+// #331/#358/#359, vedi nota completa in cloud/functions/best-laps-list/
+// index.ts): nessun pilota reale ha una sessione Supabase reale, solo il
+// token legacy Discord OAuth via Apps Script. Necessario qui perché
+// RaceDetail.jsx (pagina PUBBLICA /race/:raceId) chiama stints.list per
+// ogni gara endurance incondizionatamente — senza fallback, ogni pilota
+// avrebbe visto silenziosamente zero stint sulla pagina gara.
+const LEGACY_API_URL = 'https://script.google.com/macros/s/AKfycbyMXxEjZfm5EIsGUnKxpwtBtoeR4hwMG7Pl8ZESF8yG569SS0aIdsWqyu9PdBgR14vLiA/exec';
+
+async function resolveLegacyDriver(serviceClient: any, legacyToken: string | undefined) {
+  if (!legacyToken) return null;
+  try {
+    const r = await fetch(LEGACY_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'auth.verify', token: legacyToken, payload: {} }),
+    });
+    const j = await r.json();
+    const driverCode = j?.ok && j.data?.valid ? j.data?.driver?.driver_id : null;
+    if (!driverCode) return null;
+    const { data: d } = await serviceClient
+      .from('drivers')
+      .select('id, team_id, role, display_name, driver_code')
+      .eq('driver_code', driverCode)
+      .maybeSingle();
+    if (!d) return null;
+    return { ...d, role: j.data.driver.role || d.role };
+  } catch {
+    return null;
+  }
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -164,27 +196,58 @@ async function handleParticipantsList(serviceClient: any, authHeader: string | n
   const { data, error } = await query;
   if (error) return json({ ok: false, error: error.message }, 400);
 
-  return json({ ok: true, data: data ?? [] });
+  // FIX #337 (20/09/2026, trovato PRIMA del cutover frontend, mai esposto a
+  // utenti reali): driver_id qui era l'uuid interno Postgres (drivers.id),
+  // invece del driver_code (contratto pubblico, vedi FIX #330 e i fix
+  // analoghi in #329/#331/#333/#334/#335/#336). AdminEnduranceForm.jsx e
+  // EnduranceDetail.jsx costruiscono `rosterById`/`driverMap` chiave
+  // driver_code (da roster.list()) e fanno `driverMap[p.driver_id]` — con
+  // l'uuid grezzo il lookup fallisce SEMPRE, mostrando un uuid al posto
+  // del nome pilota (e un link /roster/:driverId rotto in EnduranceDetail).
+  // Risolto: risoluzione batch uuid → driver_code.
+  const driverIds = Array.from(new Set((data ?? []).map((r: any) => r.driver_id).filter(Boolean)));
+  let driverCodeMap: Record<string, string> = {};
+  if (driverIds.length > 0) {
+    const { data: drivers } = await serviceClient.from('drivers').select('id, driver_code').in('id', driverIds);
+    (drivers ?? []).forEach((d: any) => { driverCodeMap[d.id] = d.driver_code; });
+  }
+  const out = (data ?? []).map((r: any) => ({ ...r, driver_id: driverCodeMap[r.driver_id] || r.driver_id }));
+
+  return json({ ok: true, data: out });
 }
 
 async function handleStintsList(authHeader: string | null, payload: any) {
-  if (!authHeader) return json({ ok: false, error: 'Auth richiesto' }, 401);
+  // FIX #337: sessione Supabase reale O fallback token legacy — vedi
+  // commento in testa al file.
+  let me: any = null;
+  let supabase: any = null;
 
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_ANON_KEY')!,
-    { global: { headers: { Authorization: authHeader } } },
-  );
+  if (authHeader) {
+    supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: meRow } = await supabase
+        .from('drivers')
+        .select('team_id')
+        .eq('auth_user_id', user.id)
+        .maybeSingle();
+      me = meRow || null;
+    }
+  }
 
-  const { data: { user }, error: userErr } = await supabase.auth.getUser();
-  if (userErr || !user) return json({ ok: false, error: 'Auth richiesto' }, 401);
+  if (!me) {
+    const legacyServiceClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const legacyMe = await resolveLegacyDriver(legacyServiceClient, payload?.legacy_token);
+    if (legacyMe) {
+      me = legacyMe;
+      supabase = legacyServiceClient;
+    }
+  }
 
-  const { data: me, error: meErr } = await supabase
-    .from('drivers')
-    .select('team_id')
-    .eq('auth_user_id', user.id)
-    .maybeSingle();
-  if (meErr) return json({ ok: false, error: meErr.message }, 400);
   if (!me) return json({ ok: false, error: 'Auth richiesto' }, 401);
 
   const raceId = payload?.race_id ? String(payload.race_id).trim() : '';
@@ -199,7 +262,21 @@ async function handleStintsList(authHeader: string | null, payload: any) {
     .order('stint_order', { ascending: true });
   if (error) return json({ ok: false, error: error.message }, 400);
 
-  return json({ ok: true, data: { stints: stints ?? [], count: (stints ?? []).length } });
+  // FIX #337: stesso bug di handleParticipantsList qui sopra — driver_id
+  // era l'uuid grezzo di endurance_stints.driver_id. AdminRaceStints.jsx,
+  // StintPlanner.jsx, RaceDetail.jsx/StintTimeline.jsx e SwapPilotModal.jsx
+  // fanno tutti `driverById[s.driver_id]` chiave driver_code — con l'uuid
+  // il lookup fallisce e la UI mostra l'uuid al posto del nome pilota in
+  // ogni vista stint (planner, timeline pubblica, pannello admin).
+  const stintDriverIds = Array.from(new Set((stints ?? []).map((s: any) => s.driver_id).filter(Boolean)));
+  let stintDriverCodeMap: Record<string, string> = {};
+  if (stintDriverIds.length > 0) {
+    const { data: drivers } = await supabase.from('drivers').select('id, driver_code').in('id', stintDriverIds);
+    (drivers ?? []).forEach((d: any) => { stintDriverCodeMap[d.id] = d.driver_code; });
+  }
+  const outStints = (stints ?? []).map((s: any) => ({ ...s, driver_id: stintDriverCodeMap[s.driver_id] || s.driver_id }));
+
+  return json({ ok: true, data: { stints: outStints, count: outStints.length } });
 }
 
 Deno.serve(async (req: Request) => {

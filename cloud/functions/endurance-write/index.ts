@@ -39,6 +39,41 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
+// FIX #337 (20/09/2026, trovato PRIMA del cutover frontend, mai esposto a
+// utenti reali): stesso pattern driver_id-come-driver_code già risolto nei
+// domini precedenti (#329, #331, #333, #334, #335, #336). Qui il bug è
+// PARTICOLARMENTE grave perché driver_id è una colonna uuid reale con FK
+// verso drivers (vedi 026_endurance.sql) — scrivere un driver_code (es.
+// "VSD005", inviato dal frontend via roster.list().driver_id, stesso
+// contratto ovunque) in una colonna uuid non fallisce silenziosamente:
+// Postgres rifiuta con "invalid input syntax for type uuid". Senza questo
+// fix, participants.add/stints.add/stints.confirmPlan sarebbero stati
+// rotti al 100% al primo utilizzo reale dopo il cutover. Risolto ovunque
+// tramite le tre helper seguenti (batch dove possibile).
+async function resolveDriverCodeToId(supabase: any, teamId: string, driverCode: string): Promise<string | null> {
+  if (!driverCode) return null;
+  const { data } = await supabase.from('drivers').select('id').eq('team_id', teamId).eq('driver_code', driverCode).maybeSingle();
+  return data ? data.id : null;
+}
+
+async function resolveDriverCodesToIds(supabase: any, teamId: string, codes: string[]): Promise<Record<string, string>> {
+  const unique = Array.from(new Set(codes.filter(Boolean)));
+  if (unique.length === 0) return {};
+  const { data } = await supabase.from('drivers').select('id, driver_code').eq('team_id', teamId).in('driver_code', unique);
+  const map: Record<string, string> = {};
+  (data ?? []).forEach((d: any) => { map[d.driver_code] = d.id; });
+  return map;
+}
+
+async function resolveDriverIdsToCodes(supabase: any, teamId: string, ids: string[]): Promise<Record<string, string>> {
+  const unique = Array.from(new Set(ids.filter(Boolean)));
+  if (unique.length === 0) return {};
+  const { data } = await supabase.from('drivers').select('id, driver_code').eq('team_id', teamId).in('id', unique);
+  const map: Record<string, string> = {};
+  (data ?? []).forEach((d: any) => { map[d.id] = d.driver_code; });
+  return map;
+}
+
 // ─── Auditions: costanti/helper ───
 const PILOT_CLASSES = ['Hypercar', 'LMP2', 'GT3', 'Open'];
 const WEATHER = ['asciutto', 'dinamico', 'bagnato'];
@@ -226,12 +261,12 @@ async function handleParticipantsAdd(supabase: any, me: any, payload: any) {
   if (me.role !== 'admin') return json({ ok: false, error: 'admin role required' }, 403);
 
   const auditionId = String(payload?.audition_id || '').trim();
-  const driverId = String(payload?.driver_id || '').trim();
+  const driverCode = String(payload?.driver_id || '').trim();
   const status = String(payload?.status || 'registered').trim();
   const notes = String(payload?.notes || '');
 
   if (!auditionId) return json({ ok: false, error: 'audition_id required' }, 400);
-  if (!driverId) return json({ ok: false, error: 'driver_id required' }, 400);
+  if (!driverCode) return json({ ok: false, error: 'driver_id required' }, 400);
   if (EP_STATUSES.indexOf(status) === -1) {
     return json({ ok: false, error: 'invalid status. allowed: ' + EP_STATUSES.join(', ') }, 400);
   }
@@ -244,13 +279,11 @@ async function handleParticipantsAdd(supabase: any, me: any, payload: any) {
     .maybeSingle();
   if (!audition) return json({ ok: false, error: 'audition ' + auditionId + ' not found' }, 404);
 
-  const { data: driver } = await supabase
-    .from('drivers')
-    .select('id')
-    .eq('team_id', me.team_id)
-    .eq('id', driverId)
-    .maybeSingle();
-  if (!driver) return json({ ok: false, error: 'driver ' + driverId + ' not found' }, 404);
+  // FIX #337: driver_id in ingresso è il driver_code (contratto pubblico,
+  // da roster.list()) — risolto a uuid scoped al team PRIMA di qualunque
+  // query/scrittura sulla colonna uuid endurance_participants.driver_id.
+  const driverId = await resolveDriverCodeToId(supabase, me.team_id, driverCode);
+  if (!driverId) return json({ ok: false, error: 'driver ' + driverCode + ' not found' }, 404);
 
   const { data: existing } = await supabase
     .from('endurance_participants')
@@ -259,7 +292,7 @@ async function handleParticipantsAdd(supabase: any, me: any, payload: any) {
     .eq('audition_id', auditionId)
     .eq('driver_id', driverId)
     .maybeSingle();
-  if (existing) return json({ ok: false, error: 'driver ' + driverId + ' already in audition ' + auditionId }, 400);
+  if (existing) return json({ ok: false, error: 'driver ' + driverCode + ' already in audition ' + auditionId }, 400);
 
   const participationId = 'part_' + crypto.randomUUID().replace(/-/g, '').substring(0, 8);
   const now = new Date().toISOString();
@@ -280,7 +313,8 @@ async function handleParticipantsAdd(supabase: any, me: any, payload: any) {
     .maybeSingle();
   if (error) return json({ ok: false, error: error.message }, 400);
 
-  return json({ ok: true, data });
+  // FIX #337: driver_id in uscita torna ad essere il driver_code.
+  return json({ ok: true, data: { ...data, driver_id: driverCode } });
 }
 
 async function handleParticipantsUpdate(supabase: any, me: any, payload: any) {
@@ -315,7 +349,15 @@ async function handleParticipantsUpdate(supabase: any, me: any, payload: any) {
     .maybeSingle();
   if (updateErr) return json({ ok: false, error: updateErr.message }, 400);
 
-  return json({ ok: true, data: updated });
+  // FIX #337: driver_id in uscita torna ad essere il driver_code (questo
+  // handler non lo modifica mai — vedi EP update fields sopra — ma il
+  // valore letto dal DB resta l'uuid interno finché non lo risolviamo).
+  let outDriverCode = updated?.driver_id;
+  if (updated?.driver_id) {
+    const map = await resolveDriverIdsToCodes(supabase, me.team_id, [updated.driver_id]);
+    outDriverCode = map[updated.driver_id] || updated.driver_id;
+  }
+  return json({ ok: true, data: { ...updated, driver_id: outDriverCode } });
 }
 
 async function handleParticipantsRemove(supabase: any, me: any, payload: any) {
@@ -481,6 +523,14 @@ async function handleStintsAdd(supabase: any, me: any, payload: any) {
   const carNumber = String(payload.car_number).trim();
   const desiredOrder = Number(payload.stint_order) || 1;
 
+  // FIX #337: driver_id in ingresso è il driver_code — risolto a uuid
+  // scoped al team PRIMA della insert sulla colonna uuid
+  // endurance_stints.driver_id (altrimenti Postgres rifiuta con
+  // "invalid input syntax for type uuid").
+  const driverCode = String(payload.driver_id).trim();
+  const driverId = await resolveDriverCodeToId(supabase, me.team_id, driverCode);
+  if (!driverId) return json({ ok: false, error: 'driver ' + driverCode + ' not found' }, 404);
+
   await shiftStintsOrder(supabase, me.team_id, raceId, carNumber, desiredOrder, 1);
 
   const stintId = 'stint_' + crypto.randomUUID().replace(/-/g, '').substring(0, 8);
@@ -491,7 +541,7 @@ async function handleStintsAdd(supabase: any, me: any, payload: any) {
     team_id: me.team_id,
     race_id: raceId,
     car_number: carNumber,
-    driver_id: payload.driver_id,
+    driver_id: driverId,
     stint_order: desiredOrder,
     planned_start_time: payload.planned_start_time || null,
     planned_end_time: payload.planned_end_time || null,
@@ -514,7 +564,8 @@ async function handleStintsAdd(supabase: any, me: any, payload: any) {
   const { data: created, error } = await supabase.from('endurance_stints').insert(newRow).select().maybeSingle();
   if (error) return json({ ok: false, error: error.message }, 400);
 
-  return json({ ok: true, data: { stint: created } });
+  // FIX #337: driver_id in uscita torna ad essere il driver_code.
+  return json({ ok: true, data: { stint: { ...created, driver_id: driverCode } } });
 }
 
 async function handleStintsUpdate(supabase: any, me: any, payload: any) {
@@ -564,7 +615,23 @@ async function handleStintsUpdate(supabase: any, me: any, payload: any) {
   }
 
   const updates: any = { updated_at: new Date().toISOString() };
+
+  // FIX #337: driver_id (se presente nel payload, es. sostituzione pilota
+  // da SwapPilotModal.jsx) è il driver_code — risolto a uuid scoped al
+  // team PRIMA della update. Gestito fuori dal forEach sottostante perché
+  // richiede una query async (resolveDriverCodeToId), a differenza degli
+  // altri campi STINT_ALLOWED_FIELDS che sono assegnati direttamente.
+  let outputDriverCode: string | undefined;
+  if (payload.driver_id !== undefined) {
+    const driverCode = String(payload.driver_id).trim();
+    const resolvedId = await resolveDriverCodeToId(supabase, me.team_id, driverCode);
+    if (!resolvedId) return json({ ok: false, error: 'driver ' + driverCode + ' not found' }, 404);
+    updates.driver_id = resolvedId;
+    outputDriverCode = driverCode;
+  }
+
   STINT_ALLOWED_FIELDS.forEach((f) => {
+    if (f === 'driver_id') return; // FIX #337: gestito sopra (resolve async)
     if (payload[f] !== undefined) {
       updates[f] = f === 'pit_stop_at_end' ? (payload[f] === true || payload[f] === 'TRUE') : payload[f];
     }
@@ -579,7 +646,14 @@ async function handleStintsUpdate(supabase: any, me: any, payload: any) {
     .maybeSingle();
   if (updateErr) return json({ ok: false, error: updateErr.message }, 400);
 
-  return json({ ok: true, data: { stint: updated } });
+  // FIX #337: driver_id in uscita → driver_code (risolto sopra se
+  // modificato in questa call, altrimenti risolto ora dal valore letto).
+  let outDriverCode = outputDriverCode;
+  if (!outDriverCode && updated?.driver_id) {
+    const map = await resolveDriverIdsToCodes(supabase, me.team_id, [updated.driver_id]);
+    outDriverCode = map[updated.driver_id] || updated.driver_id;
+  }
+  return json({ ok: true, data: { stint: { ...updated, driver_id: outDriverCode } } });
 }
 
 async function handleStintsRemove(supabase: any, me: any, payload: any) {
@@ -613,6 +687,11 @@ async function handleStintsRemove(supabase: any, me: any, payload: any) {
   return json({ ok: true, data: { removed: stintId } });
 }
 
+// Nota (#337): funzione pura, nessun accesso DB — driver_ids in ingresso
+// (driver_code, da roster.list()) è semplicemente riecheggiato in uscita
+// come stints[].driver_id. Nessun fix necessario: il contratto è coerente
+// (driver_code in, driver_code out), consumato solo da stints.confirmPlan
+// più sotto, che risolve driver_code→uuid al momento della scrittura.
 async function handleStintsGenerate(me: any, payload: any) {
   if (me.role !== 'admin') return json({ ok: false, error: 'Permessi insufficienti' }, 403);
 
@@ -688,7 +767,16 @@ async function handleStintsValidateCoverage(supabase: any, me: any, payload: any
   const { data: stintsData, error } = await query;
   if (error) return json({ ok: false, error: error.message }, 400);
 
-  const stints = (stintsData ?? []).slice().sort((a: any, b: any) => Number(a.stint_order) - Number(b.stint_order));
+  // FIX #337: driver_id uuid → driver_code PRIMA di passare gli stint a
+  // validateFairShare() — altrimenti i messaggi di sbilanciamento
+  // embeddano un uuid grezzo (es. "guida X min") invece del driver_code
+  // nel badge di validazione mostrato in StintPlanner.jsx.
+  const coverageDriverIds = (stintsData ?? []).map((s: any) => s.driver_id).filter(Boolean);
+  const coverageDriverCodeMap = await resolveDriverIdsToCodes(supabase, me.team_id, coverageDriverIds);
+  const stints = (stintsData ?? [])
+    .map((s: any) => ({ ...s, driver_id: coverageDriverCodeMap[s.driver_id] || s.driver_id }))
+    .slice()
+    .sort((a: any, b: any) => Number(a.stint_order) - Number(b.stint_order));
 
   if (stints.length === 0) {
     return json({
@@ -782,6 +870,17 @@ async function handleStintsConfirmPlan(supabase: any, me: any, payload: any) {
     }
   }
 
+  // FIX #337: driver_id di ogni stint è il driver_code (proviene da
+  // stints.generate, che a sua volta riecheggia i driver_ids in ingresso
+  // mai convertiti) — risolti in batch a uuid scoped al team PRIMA della
+  // insert sulla colonna uuid endurance_stints.driver_id.
+  const driverCodesInPlan = stints.map((s: any) => String(s.driver_id).trim());
+  const driverIdMapForPlan = await resolveDriverCodesToIds(supabase, me.team_id, driverCodesInPlan);
+  const unknownDriverCodes = Array.from(new Set(driverCodesInPlan.filter((c: string) => !driverIdMapForPlan[c])));
+  if (unknownDriverCodes.length > 0) {
+    return json({ ok: false, error: 'driver_id sconosciuti: ' + unknownDriverCodes.join(', ') }, 400);
+  }
+
   const { data: existingStints, error: existingErr } = await supabase
     .from('endurance_stints')
     .select('stint_id')
@@ -808,7 +907,7 @@ async function handleStintsConfirmPlan(supabase: any, me: any, payload: any) {
     race_id,
     car_number: carNumber,
     stint_order: s.stint_order,
-    driver_id: s.driver_id,
+    driver_id: driverIdMapForPlan[String(s.driver_id).trim()],
     planned_start_time: s.planned_start_time || null,
     planned_end_time: s.planned_end_time || null,
     planned_duration_min: s.planned_duration_min !== undefined ? s.planned_duration_min : null,

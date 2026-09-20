@@ -312,6 +312,59 @@ const SUPABASE_MIGRATED_ACTIONS = new Set([
   'lapData.import',
   'lapData.sessions',
   'lapData.session',
+
+  // #337 — Endurance (Auditions + Participants + Stints). Edge Functions
+  // consolidate deployate in #303 (dispatcher endurance-read/endurance-write,
+  // dovuto al tetto di 100 Edge Function del piano free — vedi commenti in
+  // cloud/functions/endurance-read|write/index.ts). Routing già completo in
+  // supabaseApi.js (#326): endurance.auditions.list/get + participants.list +
+  // stints.list → ENDURANCE_READ_SLUG, le altre 11 azioni → ENDURANCE_WRITE_SLUG.
+  // Auth: auditions.list/get + participants.list pubblici (team_slug o
+  // sessione), isStaff reale per masking/draft; stints.list richiede sempre
+  // sessione reale (nessun fallback team_slug, fedele al sorgente); tutte le
+  // 11 azioni di scrittura richiedono sessione reale + ruolo admin/staff.
+  //
+  // QUATTRO bug driver_id→driver_code trovati e corretti PRIMA di questo
+  // cutover (mai esposti a utenti reali), stesso pattern di
+  // #329/#331/#333/#334/#335/#336 — qui però driver_id è una vera colonna
+  // uuid con FK su drivers (non un campo libero), quindi il bug non è
+  // "silenzioso": scrivere un driver_code come "VSD005" in una colonna uuid
+  // fa fallire la query Postgres con "invalid input syntax for type uuid".
+  // Senza questi fix, participants.add/stints.add/stints.confirmPlan
+  // sarebbero stati rotti al 100% al primo utilizzo reale. Risolto in
+  // entrambi i dispatcher: (1) handleParticipantsList/handleStintsList (read)
+  // restituivano driver_id come uuid grezzo — AdminEnduranceForm.jsx,
+  // EnduranceDetail.jsx, AdminRaceStints.jsx, StintPlanner.jsx, RaceDetail.jsx/
+  // StintTimeline.jsx e SwapPilotModal.jsx costruiscono tutti una roster map
+  // chiave driver_code e fanno `driverById[x.driver_id]` — con l'uuid il
+  // lookup falliva sempre, mostrando un uuid al posto del nome pilota (e un
+  // link /roster/:driverId rotto); risolto con risoluzione batch uuid→driver_code
+  // in uscita; (2) handleParticipantsAdd/handleStintsAdd/handleStintsUpdate/
+  // handleStintsConfirmPlan (write) ricevevano driver_id come driver_code dal
+  // frontend ma lo scrivevano/interrogavano direttamente contro la colonna
+  // uuid — risolto risolvendo driver_code→uuid PRIMA di ogni query/scrittura,
+  // e ri-convertendo a driver_code nella risposta; (3) handleStintsValidateCoverage
+  // leggeva driver_id uuid dal DB e lo passava a validateFairShare(), che lo
+  // embedda nel testo del messaggio di sbilanciamento mostrato in
+  // StintPlanner.jsx — risolto risolvendo uuid→driver_code prima della
+  // validazione. handleStintsGenerate è una funzione pura (nessun accesso DB)
+  // che riecheggia semplicemente i driver_ids in ingresso — nessun fix
+  // necessario, contratto già coerente (driver_code in, driver_code out).
+  'endurance.auditions.list',
+  'endurance.auditions.get',
+  'endurance.auditions.create',
+  'endurance.auditions.update',
+  'endurance.participants.list',
+  'endurance.participants.add',
+  'endurance.participants.update',
+  'endurance.participants.remove',
+  'endurance.stints.list',
+  'endurance.stints.add',
+  'endurance.stints.update',
+  'endurance.stints.remove',
+  'endurance.stints.generate',
+  'endurance.stints.validateCoverage',
+  'endurance.stints.confirmPlan',
 ]);
 
 /**
