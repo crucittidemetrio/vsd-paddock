@@ -92,6 +92,59 @@ const SUPABASE_MIGRATED_ACTIONS = new Set([
   'academy.ranking',
   'records.team',
   'training.insights',
+
+  // #332 — Races/RaceResults/Championships/Standings/SkillIndex/SeasonRecap.
+  // Stesso GAP NOTO e ACCETTATO di #330/#331: tutte le Edge Function di
+  // questo gruppo richiedono sessione Supabase reale (nessun fallback
+  // anonimo/team_slug), verificato leggendo ogni sorgente deployato.
+  //
+  // incidents.list/resolve NON sono incluse deliberatamente: durante
+  // l'audit di questo dominio è emerso che il sistema legacy reale
+  // (apps-script/Incidents.js) legge le segnalazioni LIVE da un Google
+  // Form esterno separato (RECLAMI_SPREADSHEET_ID), unito a un tab
+  // IncidentResolutions via complaint_key — un'architettura
+  // completamente diversa da incident_reports/incident_resolutions su
+  // Postgres (nomi campo diversi: report_id vs complaint_key,
+  // track_id vs track, ecc. — mancano persino timestamp/reporter_sim/
+  // reporter_discord/verdict che AdminIncidents.jsx usa direttamente).
+  // Le Edge Function incidents-* attuali non sono un porting fedele,
+  // sono un dominio diverso da riprogettare. incidents.* resta quindi
+  // su Apps Script fino a una decisione dedicata (vedi task #351).
+  //
+  // Dati storici: races/race_results/championships sono stati
+  // migrati da Apps Script a Supabase in questo stesso giro (#349) —
+  // 49 gare, 1479 risultati, 9 campionati. incidents/skill_index_history
+  // restano vuote: 0 incidenti mai formalizzati anche lato legacy,
+  // skill_index_history è uno snapshot on-demand senza equivalente
+  // storico da migrare (il sorgente calcola sempre live da race_results).
+  //
+  // Fix driver_id→driver_code applicato e redeployato prima di questo
+  // cutover su race-results-list, standings-by-championship,
+  // standings-by-driver, standings-progression, skill-index-list,
+  // skill-index-history (season-recap non necessita fix: opera solo
+  // su me.id, mai su un driver_id esterno). Gap chiuso in races-list/
+  // races-upcoming: championship_name ora popolato via lookup su
+  // championships (era sempre null, dominio non ancora portato quando
+  // scritte in Fase 1).
+  'races.list',
+  'races.upcoming',
+  'races.get',
+  'races.updatePoster',
+  'races.updateGallery',
+  'races.add',
+  'races.update',
+  'races.remove',
+  'raceResults.list',
+  'raceResults.import',
+  'championships.list',
+  'championships.importStandings',
+  'championships.saveAdjustments',
+  'standings.byChampionship',
+  'standings.byDriver',
+  'standings.progression',
+  'skillIndex.list',
+  'skillIndex.history',
+  'recap.mine',
 ]);
 
 /**
