@@ -106,6 +106,31 @@ const ANON_TEAM_SLUG_ACTIONS = new Set([
   // pubblico per decidere se mostrare la foto vera di un pilota).
   'interest.list', 'interest.register', 'prequal.list', 'consent.socialFlags',
 ]);
+
+// #334 FIX REGRESSIONE (19/09-20/09/2026): consent.accept spostato su
+// Supabase richiedeva una sessione Supabase reale per risolvere il
+// driver chiamante. Nessun pilota reale (tranne l'account admin di
+// test) ha mai ottenuto una sessione Supabase — l'UNICO login reale è
+// Discord OAuth legacy via Apps Script (vedi Login.jsx/AuthContext.jsx),
+// che produce solo `localStorage.vsd_paddock_token`. Bug reale
+// riportato dall'utente: "Adone ha compilato il consenso ma non viene
+// registrato" — causa: 401 silenzioso su consent-accept per qualunque
+// pilota che non fosse Demetrio.
+// Fix approvato dall'utente (opzione "Fallback token legacy"): le 19
+// Edge Function sottostanti sono state ridistribuite con un fallback
+// che, in assenza di un Authorization Supabase valido, verifica
+// `payload.legacy_token` contro `auth.verify` su Apps Script (stesso
+// meccanismo già usato in api/media-upload.js). Questo Set dice al
+// client QUANDO iniettare quel token nel body — vedi callEdgeFunction.
+const LEGACY_TOKEN_FALLBACK_ACTIONS = new Set([
+  'interest.update', 'interest.remove',
+  'prequal.add', 'prequal.remove',
+  'candidates.list', 'candidates.add', 'candidates.update', 'candidates.remove',
+  'sponsors.list', 'sponsors.add', 'sponsors.update', 'sponsors.remove',
+  'treasury.list', 'treasury.add', 'treasury.update', 'treasury.remove',
+  'consent.status', 'consent.accept', 'consent.adminList',
+]);
+const LEGACY_TOKEN_STORAGE_KEY = 'vsd_paddock_token';
 // ═══════════════════════════════════════════════════════════
 
 const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
@@ -405,6 +430,12 @@ async function callEdgeFunction(slug, body, action) {
   let finalBody = body || {};
   if (!session?.access_token && action && ANON_TEAM_SLUG_ACTIONS.has(action) && !finalBody.team_slug) {
     finalBody = { ...finalBody, team_slug: DEFAULT_TEAM_SLUG };
+  }
+  // #334 fix regressione consenso/treasury/candidates/sponsors/prequal:
+  // vedi nota su LEGACY_TOKEN_FALLBACK_ACTIONS in testa al file.
+  if (!session?.access_token && action && LEGACY_TOKEN_FALLBACK_ACTIONS.has(action) && !finalBody.legacy_token) {
+    const legacyToken = typeof localStorage !== 'undefined' ? localStorage.getItem(LEGACY_TOKEN_STORAGE_KEY) : null;
+    if (legacyToken) finalBody = { ...finalBody, legacy_token: legacyToken };
   }
 
   let response;
