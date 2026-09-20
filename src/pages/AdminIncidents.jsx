@@ -70,7 +70,14 @@ export default function AdminIncidents() {
             <div className={styles.empty}>Nessuna segnalazione in questa vista.</div>
           )}
           {incidents.map(inc => (
-            <IncidentCard key={inc.complaint_key} incident={inc} />
+            // Chiave include resolved_at: IncidentCard tiene lo stato del
+            // form in useState(inc.xxx), inizializzato solo al mount. Senza
+            // questo, dopo un salvataggio riuscito React non rimonta il
+            // componente (stessa complaint_key) e il form torna a mostrare
+            // valori vuoti anche se il backend ha salvato correttamente
+            // (bug pre-esistente, mai emerso prima perché incidents.resolve
+            // non era mai stato collegato a dati reali — vedi #351/#352).
+            <IncidentCard key={inc.complaint_key + ':' + (inc.resolved_at || '')} incident={inc} />
           ))}
         </div>
       )}

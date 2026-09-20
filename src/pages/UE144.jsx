@@ -325,7 +325,7 @@ export default function UE144() {
       <StandingsSection />
 
       {/* ════ PROTESTE ════ */}
-      <IncidentReportSection anchorId="proteste" championship="UE144" />
+      <IncidentReportSection anchorId="proteste" championship={UE144_CHAMPIONSHIP_ID} />
 
       {/* ════ CTA ════ */}
       <section className={styles.cta}>
