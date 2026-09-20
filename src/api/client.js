@@ -410,6 +410,20 @@ const SUPABASE_MIGRATED_ACTIONS = new Set([
   'reportReactions.list',
   'reportReactions.toggle',
   'landing.data',
+
+  // #339 — Cutover Pit Wall (parte storico/sessioni registrate).
+  // pitwall.sessions/pitwall.session leggono pitwall_sessions (già
+  // popolata dal bridge C# via pitwall.logSession, Edge Function
+  // standalone separata, non ancora in questo Set — v. nota in
+  // supabaseApi.js: resta bridge-only, mai chiamata dal frontend
+  // pilota). Bug driver_id→driver_code trovato e corretto PRIMA di
+  // questo cutover in pitwall-session-get v2 (mai esposto finora:
+  // PitWall.jsx usa driver_id solo come React key, mai visualizzato).
+  // La parte "live" (classifica in tempo reale) resta sul WebSocket
+  // locale invariato — vedi nuova pagina /pitwall-live per il canale
+  // Supabase Realtime (pitwall.broadcastLive, già deployato da #263).
+  'pitwall.sessions',
+  'pitwall.session',
 ]);
 
 /**

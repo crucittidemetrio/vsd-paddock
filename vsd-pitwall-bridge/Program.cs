@@ -12,7 +12,19 @@ public class Program
     private const string WsPrefix = "http://localhost:8090/ws/";
     private const int PollIntervalMs = 200; // ~5Hz, in linea con il refresh dello Scoring buffer
 
+    // #340 — throttle broadcast cloud (pitwall.broadcastLive, #263),
+    // volutamente più basso dei 200ms del WebSocket locale: quest'ultimo è
+    // l'HUD di chi guida (serve reattivo), il canale cloud è per un
+    // pannello di controllo a distanza su /pitwall-live (#339) dove 1Hz è
+    // già ampiamente leggibile. Tiene sotto controllo sia il traffico verso
+    // Supabase Realtime sia il conteggio invocazioni Edge Function (piano
+    // free, stesso motivo per cui il progetto usa dispatcher consolidati).
+    private const int CloudBroadcastIntervalMs = 1000;
+
     private static readonly ConcurrentDictionary<Guid, WebSocket> Clients = new();
+    private static DateTime _lastCloudBroadcastUtc = DateTime.MinValue;
+    private static bool _cloudBroadcastInFlight = false;
+    private static bool? _lastCloudBroadcastOk = null; // null = mai tentato, per loggare solo sui cambi di stato
 
     // ── Diagnostica settori mancanti (temporanea, vedi LogSectorAnomalies) ──
     private static StreamWriter? _diagWriter;
@@ -145,6 +157,7 @@ public class Program
 
                 var payload = BuildPayload(scoring, telemetry);
                 await BroadcastAsync(payload);
+                MaybeBroadcastToCloud(http, cfg, payload); // fire-and-forget, throttle interno
             }
 
             await Task.Delay(PollIntervalMs);
@@ -411,6 +424,79 @@ public class Program
             {
                 Clients.TryRemove(id, out _);
             }
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // #340 — Relay live verso il canale Supabase Realtime pitwall:{team_id}
+    // (pitwall.broadcastLive, infrastruttura backend chiusa in #263),
+    // consumato dalla nuova pagina /pitwall-live (#339). Non sostituisce
+    // BroadcastAsync sopra (WebSocket locale, invariato) — si aggiunge,
+    // throttled a CloudBroadcastIntervalMs, per chi non è al PC del
+    // bridge. Fire-and-forget rispetto al loop di polling: non deve mai
+    // rallentare l'aggiornamento locale a 5Hz per una latenza di rete.
+    // Riusa lo stesso Token della registrazione sessione (cfg.Token,
+    // companion) come legacy_token: è già un token staff/admin verificato
+    // via auth.verify (stesso gate richiesto lato server da
+    // pitwall.broadcastLive), nessuna configurazione aggiuntiva da
+    // chiedere all'utente.
+    // ------------------------------------------------------------------
+    private static void MaybeBroadcastToCloud(HttpClient http, PitwallConfig cfg, object payload)
+    {
+        if (string.IsNullOrWhiteSpace(cfg.Token)) return; // nessun token: niente da provare
+        var now = DateTime.UtcNow;
+        if (_cloudBroadcastInFlight) return; // richiesta precedente ancora in corso, salta questo tick
+        if ((now - _lastCloudBroadcastUtc).TotalMilliseconds < CloudBroadcastIntervalMs) return;
+
+        _lastCloudBroadcastUtc = now;
+        _cloudBroadcastInFlight = true;
+        _ = SendCloudBroadcastAsync(http, cfg, payload);
+    }
+
+    private static async Task SendCloudBroadcastAsync(HttpClient http, PitwallConfig cfg, object payload)
+    {
+        try
+        {
+            var body = JsonSerializer.Serialize(new
+            {
+                action = "pitwall.broadcastLive",
+                legacy_token = cfg.Token,
+                payload = new { data = payload },
+            });
+
+            using var content = new StringContent(body, Encoding.UTF8, "application/json");
+            using var request = new HttpRequestMessage(HttpMethod.Post, cfg.SupabaseUrl) { Content = content };
+            // Il gateway Supabase richiede SEMPRE un JWT valido in Authorization
+            // (verify_jwt=true di piattaforma), anche quando l'identità vera
+            // arriva poi via legacy_token nel body — vedi nota in PitwallConfig.cs.
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", cfg.SupabaseKey);
+
+            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5)); // breve: se lento, meglio saltare il prossimo tick che accodarsi
+            var response = await http.SendAsync(request, cts.Token);
+            var ok = response.IsSuccessStatusCode;
+
+            if (ok != _lastCloudBroadcastOk)
+            {
+                _lastCloudBroadcastOk = ok;
+                if (ok) Console.WriteLine("Pit Wall Live (cloud): connesso, broadcast attivo su Supabase Realtime.");
+                else
+                {
+                    var errText = await response.Content.ReadAsStringAsync();
+                    Console.WriteLine($"Pit Wall Live (cloud): il backend ha rifiutato il broadcast ({(int)response.StatusCode}): {errText}");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            if (_lastCloudBroadcastOk != false)
+            {
+                _lastCloudBroadcastOk = false;
+                Console.WriteLine($"Pit Wall Live (cloud): impossibile raggiungere il backend ({ex.Message}) — continuo a riprovare, la vista locale non è affetta.");
+            }
+        }
+        finally
+        {
+            _cloudBroadcastInFlight = false;
         }
     }
 

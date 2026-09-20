@@ -58,6 +58,7 @@ const PILOT_ITEMS = [
   { to: '/team-sessions', label: 'Sessioni team', icon: '◔' },
   { to: '/pace-analysis', label: 'Analisi di Passo', icon: '⏱' },
   { to: '/pitwall', label: 'Pit Wall', icon: '◉' },
+  { to: '/pitwall-live', label: 'Pit Wall Live (remoto)', icon: '◈' },
   { to: '/consenso', label: 'Il mio consenso', icon: '✎' },
 ];
 

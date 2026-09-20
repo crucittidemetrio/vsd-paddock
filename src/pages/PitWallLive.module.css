@@ -1,0 +1,290 @@
+/* Mobile-first di proposito (#339): a differenza di PitWall.module.css
+   (tabella larga, pensata per un monitor da bordo pista), questa pagina è
+   per chi guarda dal telefono da remoto — layout a card impilate in
+   colonna singola, che restano leggibili senza scroll orizzontale a
+   qualunque larghezza. Nessun breakpoint "desktop": le card semplicemente
+   restano strette anche su schermi larghi, va bene così per questo uso. */
+
+.pageWrap {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 20px 14px 72px;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.header {
+  margin-bottom: 2px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: #00d4ff;
+  text-transform: uppercase;
+}
+
+.title {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  margin: 6px 0 10px;
+  color: #fff;
+  text-transform: uppercase;
+}
+
+.sub {
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.inlineLink {
+  color: #00d4ff;
+  text-decoration: none;
+}
+
+.inlineLink:hover {
+  text-decoration: underline;
+}
+
+.panelTitle {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #7a8aa8;
+  margin-bottom: 8px;
+}
+
+.hint {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.4);
+  font-style: italic;
+  padding: 4px 2px;
+}
+
+.statusBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  font-family: 'Inter', sans-serif;
+  border: 1px solid rgba(245, 166, 35, 0.3);
+  background: rgba(245, 166, 35, 0.08);
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.statusBanner[data-status='disconnected'] {
+  border-color: rgba(245, 79, 79, 0.35);
+  background: rgba(245, 79, 79, 0.08);
+}
+
+.statusDot {
+  flex: none;
+  margin-top: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f5a623;
+  animation: pulse 1.4s ease-in-out infinite;
+}
+
+.statusDot[data-status='disconnected'] {
+  background: #f54f4f;
+  animation: none;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+.panel {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.sessionGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.sessionItem {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 84px;
+}
+
+.sessionLabel {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #7a8aa8;
+}
+
+.sessionValue {
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 17px;
+  font-weight: 600;
+  color: #e8eaf6;
+}
+
+.flagGreen { color: #4ade80; }
+.flagYellow { color: #f5a623; }
+
+.selectorRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.selectorLabel {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #7a8aa8;
+}
+
+.select {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  border-radius: 6px;
+  color: #e8eaf6;
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  color-scheme: dark;
+}
+
+.select option {
+  background: #0a0e1a;
+  color: #e8eaf6;
+}
+
+.cardList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.cardInPits {
+  background: rgba(245, 166, 35, 0.05);
+}
+
+.cardYellow {
+  box-shadow: inset 3px 0 0 0 #f5a623;
+}
+
+.cardPlace {
+  flex: none;
+  width: 28px;
+  text-align: center;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #00d4ff;
+}
+
+.cardMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cardDriverRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.cardDriver {
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #e8eaf6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardVehicle {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardTimes {
+  flex: none;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cardGap {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 700;
+  color: #e8eaf6;
+}
+
+.cardBest {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.pitBadge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #f5a623;
+  border: 1px solid rgba(245, 166, 35, 0.4);
+  border-radius: 4px;
+  padding: 1px 4px;
+  flex: none;
+}
+
+.finishTag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: #4ade80;
+  letter-spacing: 0.5px;
+  flex: none;
+}

@@ -73,6 +73,23 @@ export function getSupabaseClient() {
       // bisogno di parsing manuale.
       detectSessionInUrl: true,
     },
+    // accessToken (#339): pattern validato in #263 per i canali Realtime
+    // privati (pitwall:{team_id}). Un client creato con la sola anon
+    // key e poi corretto a parte via realtime.setAuth(token) si
+    // disconnette pochi istanti dopo la subscribe — il client tenta un
+    // resync interno del token realtime leggendo la sessione dal
+    // proprio GoTrueClient, sovrascrivendo quello iniettato a mano.
+    // Passare questa funzione a createClient è invece l'API supportata
+    // da Supabase per questo caso: viene interrogata ad ogni bisogno
+    // (incluso il refresh token realtime), sempre in sync con la
+    // sessione vera del client stesso. Riferisce `_client` (assegnato
+    // subito sotto, prima che qualunque subscribe reale possa
+    // scattare) invece di `supabase`, che qui non esiste ancora.
+    accessToken: async () => {
+      if (!_client) return null;
+      const { data } = await _client.auth.getSession();
+      return data.session?.access_token ?? SUPABASE_ANON_KEY;
+    },
   });
   return _client;
 }

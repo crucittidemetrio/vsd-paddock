@@ -17,8 +17,24 @@ public sealed class PitwallConfig
     // client diversi che ci parlano con lo stesso contratto {action, token, payload}.
     private const string DefaultApiUrl = "https://script.google.com/macros/s/AKfycbyMXxEjZfm5EIsGUnKxpwtBtoeR4hwMG7Pl8ZESF8yG569SS0aIdsWqyu9PdBgR14vLiA/exec";
 
+    // #340 — endpoint Supabase per il relay Realtime (pitwall.broadcastLive,
+    // #263), dispatcher consolidato "social-manager" sotto lo slug riusato
+    // endurance-auditions-get (stesso principio di #259/#331/#338: tetto di
+    // 100 Edge Function sul piano free). NON configurabile dall'utente (a
+    // differenza di ApiUrl/Token, che restano l'unica cosa chiesta al primo
+    // avvio): è un endpoint di piattaforma, non qualcosa che cambia da
+    // installazione a installazione. Il gateway Supabase richiede SEMPRE un
+    // JWT valido in Authorization anche per un'azione poi risolta via
+    // legacy_token (stesso fix #329 già documentato in supabaseApi.js) — la
+    // anon key qui sotto è pubblica per design (va nel bundle JS del sito),
+    // non un segreto da proteggere.
+    private const string SupabaseFunctionsUrl = "https://cjbwhrrtxhckbkyxfdgm.supabase.co/functions/v1/endurance-auditions-get";
+    private const string SupabaseAnonKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNqYndocnJ0eGhja2JreXhmZGdtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYyMzQwODAsImV4cCI6MjA5MTgxMDA4MH0.FTSyp1cdsndqZ20hyZqdcaTIx8NrYskEJeeY1ft25sA";
+
     public string ApiUrl { get; init; } = DefaultApiUrl;
     public string Token { get; init; } = "";
+    public string SupabaseUrl { get; init; } = SupabaseFunctionsUrl;
+    public string SupabaseKey { get; init; } = SupabaseAnonKey;
 
     private static string ConfigPath()
     {
