@@ -367,6 +367,26 @@ const UNWRAP_KEY = {
   'reports.recent': 'reports',
   'reportReactions.list': 'reactions',
   'teamSessions.list': 'sessions',
+  // FIX #338 (trovato in validazione live via Chrome, non a tavolino,
+  // subito dopo il deploy: pagina /admin/social-manager con schermo
+  // bianco e "TypeError: e.forEach is not a function" in console):
+  // SocialManager.jsx fa `const posts = postsQuery.data || []` /
+  // `const metrics = metricsQuery.data || []` aspettandosi un ARRAY
+  // diretto (stesso contratto di roster.list/races.list sopra), ma
+  // senza voce qui applyUnwrap faceva pass-through dell'intero oggetto
+  // `{ posts: [...], count }` / `{ metrics: [...], count }` restituito
+  // dal dispatcher — ogni `.forEach`/`.filter`/`.map` su quell'oggetto
+  // falliva. Verificato contro i rispettivi adapter in realApi.js
+  // (socialPostsListAdapter → res.data.posts, socialMetricsListAdapter
+  // → res.data.metrics, socialMediaListAdapter → res.data.media,
+  // socialPlanDismissedListAdapter → res.data.dismissed) — le altre
+  // azioni social.* (create/update/remove/add/generateText/
+  // discord.stats/plan.dismiss/undismiss) restano pass-through
+  // dell'intero res.data, fedeli ai rispettivi adapter.
+  'social.posts.list': 'posts',
+  'social.metrics.list': 'metrics',
+  'social.media.list': 'media',
+  'social.plan.dismissed.list': 'dismissed',
 };
 
 function applyUnwrap(action, res) {
