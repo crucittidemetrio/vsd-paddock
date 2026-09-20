@@ -457,11 +457,18 @@ public class Program
     {
         try
         {
+            // FIX (trovato in test live, 20/09/2026): il dispatcher consolidato
+            // legge l'intero body come "payload" interno e si aspetta i campi
+            // (action, legacy_token, data, ...) tutti a livello ROOT — non
+            // annidati sotto una chiave "payload" separata (quel nome è usato
+            // qui lato client solo per il parametro C#, non per la request).
+            // Prima versione mandava {action, legacy_token, payload:{data}},
+            // rifiutata con 400 "data obbligatorio (payload telemetria)".
             var body = JsonSerializer.Serialize(new
             {
                 action = "pitwall.broadcastLive",
                 legacy_token = cfg.Token,
-                payload = new { data = payload },
+                data = payload,
             });
 
             using var content = new StringContent(body, Encoding.UTF8, "application/json");
