@@ -271,6 +271,47 @@ const SUPABASE_MIGRATED_ACTIONS = new Set([
   'auditLog.list',
   'push.subscribe',
   'push.unsubscribe',
+
+  // #336 — Fuel/Energy/Devices/LapData. Edge Functions già scritte e
+  // deployate in #295/#299 (mai collegate al frontend fino ad ora).
+  // Routing table già completa in supabaseApi.js (#326). Verificato
+  // codice sorgente delle 9 Edge Function prima del cutover: le 5
+  // fuel-*/devices-create-token hanno un doppio percorso di auth
+  // (sessione Supabase reale O device token HMAC stateless dal
+  // companion app — verify_jwt=false a livello deployment, la vera
+  // auth è nel codice), le 3 lapData.* richiedono sempre una sessione
+  // Supabase reale (nessun fallback) — stesso GAP NOTO E ACCETTATO di
+  // #330-335 per queste ultime.
+  //
+  // TRE bug driver_id→driver_code trovati e corretti PRIMA di questo
+  // cutover (mai esposti a utenti reali), stesso pattern di
+  // #331/#333/#334/#335: (1) lap-data-session v2 restituiva l'uuid
+  // interno come driver_id — PaceAnalysis.jsx lo usa come ETICHETTA
+  // PRIMARIA della legenda del grafico passo (`lap.driver_id ||
+  // lap.driver_name_external`), quindi ogni pilota VSD riconosciuto
+  // avrebbe mostrato un uuid grezzo al posto del nome, sempre (non un
+  // caso limite) — risolto con driver_code + driver_name risolti in
+  // batch, PaceAnalysis.jsx aggiornato per preferire driver_name; (2)
+  // lap-data-import v2: payload.driver_id_override arriva come
+  // driver_code dal select di AdminImportLapData.jsx, ma veniva
+  // confrontato con la colonna uuid `drivers.id` — avrebbe fallito
+  // silenziosamente o causato un errore Postgres invalid-uuid
+  // all'insert; risolto risolvendo driver_code→uuid prima dell'uso;
+  // (3) fuel-stints v2: stint.driver_id era l'uuid grezzo, usato come
+  // fallback display in FuelPanel.jsx quando driver_name manca —
+  // corretto per coerenza (bug non bloccante, come in audit-log-list).
+  // fuel-log-sample/fuel-log-live/fuel-summary/fuel-my-session/
+  // lap-data-sessions non espongono mai driver_id come stringa
+  // identificabile in risposta — nessun fix necessario lì.
+  'devices.createToken',
+  'fuel.logSample',
+  'fuel.logLive',
+  'fuel.summary',
+  'fuel.mySession',
+  'fuel.stints',
+  'lapData.import',
+  'lapData.sessions',
+  'lapData.session',
 ]);
 
 /**

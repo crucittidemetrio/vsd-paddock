@@ -9,7 +9,10 @@ import styles from './PaceAnalysis.module.css';
 const DRIVER_COLORS = ['#00d4ff', '#f5a623', '#4ade80', '#f54f4f', '#a78bfa', '#f472b6'];
 
 function driverLabel(lap) {
-  return lap.driver_id || lap.driver_name_external || 'Sconosciuto';
+  // FIX #336: preferire driver_name (risolto lato Edge Function da
+  // lap-data-session) — driver_id qui è ora il driver_code ("VSD005"),
+  // usato solo come fallback se il nome non è disponibile.
+  return lap.driver_name || lap.driver_id || lap.driver_name_external || 'Sconosciuto';
 }
 
 function fmtLapTime(ms) {
