@@ -22,6 +22,11 @@
 // nota rispetto al sistema reale finché non si decide come/se
 // riprodurle su questo stack (probabile Supabase Webhook o trigger
 // separato, non logica da duplicare qui).
+//
+// FIX #331: risposta allineata allo stesso contratto di
+// team-sessions-list — session_id alias di id, created_by come
+// driver_code (qui sempre = il chiamante stesso, già noto come
+// `me.driver_code`, niente join necessario).
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -70,7 +75,7 @@ Deno.serve(async (req: Request) => {
     // driver_id + team_id + role del chiamante — mai fidarsi del payload.
     const { data: me, error: meErr } = await supabase
       .from('drivers')
-      .select('id, team_id, role')
+      .select('id, team_id, role, driver_code')
       .eq('auth_user_id', user.id)
       .maybeSingle();
     if (meErr) return json({ ok: false, error: meErr.message }, 400);
@@ -99,7 +104,9 @@ Deno.serve(async (req: Request) => {
     const { data, error } = await supabase.from('team_sessions').insert(insertRow).select().maybeSingle();
     if (error) return json({ ok: false, error: error.message }, 400);
 
-    return json({ ok: true, data: { session: data } });
+    const session = data ? { ...data, session_id: data.id, created_by: me.driver_code } : data;
+
+    return json({ ok: true, data: { session } });
   } catch (e) {
     return json({ ok: false, error: String(e) }, 500);
   }

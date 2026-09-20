@@ -17,6 +17,11 @@
 // endpoint" piuttosto che esporre un uuid grezzo da passare a mano.
 // Il controllo nuovo-record + notifica restano fuori scope (vedi
 // best-laps-add).
+//
+// FIX #331: la riga tornata da .select() include comunque driver_id
+// grezzo (uuid) perché non è un campo modificato ma fa parte della
+// riga intera restituita — alias a driver_code via join, stesso
+// principio di best-laps-list.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -120,13 +125,16 @@ Deno.serve(async (req: Request) => {
       .from('best_laps')
       .update(updates)
       .eq('id', lapId)
-      .select()
+      .select('*, drivers(driver_code)')
       .maybeSingle();
 
     if (error) return json({ ok: false, error: error.message }, 400);
     if (!data) return json({ ok: false, error: 'Lap non trovato: ' + lapId }, 404);
 
-    return json({ ok: true, data: { lap: data } });
+    const { drivers, driver_id, ...rest } = data as any;
+    const lap = { ...rest, driver_id: drivers?.driver_code ?? driver_id };
+
+    return json({ ok: true, data: { lap } });
   } catch (e) {
     return json({ ok: false, error: String(e) }, 500);
   }

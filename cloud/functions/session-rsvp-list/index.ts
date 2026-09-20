@@ -10,6 +10,20 @@
 // Team scoping via RLS "session_rsvps: il team legge tutte le
 // risposte" (008, join su team_sessions.team_id) — qui il filtro
 // applicativo è solo session_id, come nel sistema reale.
+//
+// FIX #331 (trovato validando Best Laps, poi verificato qui prima di
+// procedere): session_rsvps.driver_id in Postgres è lo UUID interno
+// (FK verso drivers.id) — MAI il codice pilota ("VSD005") che tutto
+// il frontend (EntityRSVP.jsx: `rsvps.find(r => r.driver_id ===
+// currentDriverId)`, join id→nome via roster) si aspetta sotto quel
+// nome, per coerenza col contratto ereditato da Apps Script. Senza
+// join, ogni riga tornava con driver_id=UUID: il confronto con
+// currentDriverId ("VSD005") falliva sempre, quindi né il
+// riconoscimento "la tua risposta" né il join coi nomi funzionavano
+// più — bug silenzioso (nessun errore in console, solo dati poco
+// significativi), stesso pattern del bug driver_id in roster (#329)
+// ma qui sull'intero schema, non solo su drivers. Fix: join su
+// drivers e si restituisce driver_code sotto la chiave driver_id.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -43,10 +57,21 @@ Deno.serve(async (req: Request) => {
     const sessionId = String(payload?.session_id || '').trim();
     if (!sessionId) return json({ ok: false, error: 'session_id obbligatorio' }, 400);
 
-    const { data, error } = await supabase.from('session_rsvps').select('*').eq('session_id', sessionId);
+    const { data, error } = await supabase
+      .from('session_rsvps')
+      .select('status, note, responded_at, session_id, drivers(driver_code)')
+      .eq('session_id', sessionId);
     if (error) return json({ ok: false, error: error.message }, 400);
 
-    return json({ ok: true, data: { rsvps: data ?? [], count: (data ?? []).length } });
+    const rsvps = (data ?? []).map((r: any) => ({
+      session_id: r.session_id,
+      driver_id: r.drivers?.driver_code ?? null,
+      status: r.status,
+      note: r.note,
+      responded_at: r.responded_at,
+    }));
+
+    return json({ ok: true, data: { rsvps, count: rsvps.length } });
   } catch (e) {
     return json({ ok: false, error: String(e) }, 500);
   }

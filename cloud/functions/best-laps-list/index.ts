@@ -7,6 +7,13 @@
 //   - nessun filtro applicativo: il frontend filtra in memoria
 //
 // Team scoping via RLS "best_laps: il team legge tutti i tempi" (009).
+//
+// FIX #331 (stesso pattern di #329/#330): best_laps.driver_id in
+// Postgres è lo UUID interno (FK drivers.id), ma tutto il frontend
+// (useBestLaps.js: activeDriverIdSet(...).has(l.driver_id), filtro per
+// filters.driver_id, AdminBestLaps.jsx: driversById[lap.driver_id])
+// si aspetta il codice pilota (VSD005) sotto quel nome — join su
+// drivers, driver_code esposto come driver_id.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -38,12 +45,17 @@ Deno.serve(async (req: Request) => {
 
     const { data, error } = await supabase
       .from('best_laps')
-      .select('*')
+      .select('*, drivers(driver_code)')
       .order('lap_time_ms', { ascending: true });
 
     if (error) return json({ ok: false, error: error.message }, 400);
 
-    return json({ ok: true, data: { laps: data ?? [], count: (data ?? []).length } });
+    const laps = (data ?? []).map((l: any) => {
+      const { drivers, ...rest } = l;
+      return { ...rest, driver_id: drivers?.driver_code ?? l.driver_id };
+    });
+
+    return json({ ok: true, data: { laps, count: laps.length } });
   } catch (e) {
     return json({ ok: false, error: String(e) }, 500);
   }

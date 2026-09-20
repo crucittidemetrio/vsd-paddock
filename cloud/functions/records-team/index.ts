@@ -18,6 +18,12 @@
 // hardcoded; qui si usa drivers.is_system_account (flag esplicito
 // già presente dallo schema fondamenta, 001) — stesso principio già
 // applicato dal commento originale su quella colonna.
+//
+// FIX #331 (stesso pattern di #329/#330): best_laps.driver_id è lo
+// UUID interno, ma il frontend (TeamRecords.jsx e qualsiasi consumer
+// futuro) si aspetta il codice pilota sotto quel nome — driverMap è
+// già una select('*') su drivers, quindi driver_code è già
+// disponibile senza query aggiuntive.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -119,7 +125,7 @@ Deno.serve(async (req: Request) => {
           sim: l.sim,
           track_id: l.track_id,
           race_class: entry.race_class,
-          driver_id: l.driver_id,
+          driver_id: (d && d.driver_code) || l.driver_id,
           display_name: (d && d.display_name) || l.driver_id,
           lap_time_ms: Number(l.lap_time_ms),
           lap_time_display: l.lap_time_display || '',

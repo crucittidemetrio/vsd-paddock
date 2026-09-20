@@ -13,6 +13,11 @@
 // Postgres/PostgREST non esprime comodamente "keep min row per
 // gruppo" in una singola select senza una funzione ad hoc — stesso
 // approccio del sistema reale (fatto in JS dopo il filtro, non SQL).
+//
+// FIX #331 (stesso pattern di best-laps-list): driver_id esposto come
+// driver_code via join su drivers — il raggruppamento "un lap per
+// driver" resta sull'id interno (chiave stabile), l'alias si applica
+// solo all'output finale.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -50,7 +55,7 @@ Deno.serve(async (req: Request) => {
     if (!sim) return json({ ok: false, error: 'sim mancante' }, 400);
     if (!trackId) return json({ ok: false, error: 'track_id mancante' }, 400);
 
-    let query = supabase.from('best_laps').select('*').eq('sim', sim).eq('track_id', trackId);
+    let query = supabase.from('best_laps').select('*, drivers(driver_code)').eq('sim', sim).eq('track_id', trackId);
     if (carId) query = query.eq('car_id', carId);
 
     const { data, error } = await query;
@@ -64,9 +69,12 @@ Deno.serve(async (req: Request) => {
       }
     });
 
-    const laps = Object.values(byDriver).sort(
-      (a: any, b: any) => Number(a.lap_time_ms) - Number(b.lap_time_ms),
-    );
+    const laps = Object.values(byDriver)
+      .map((l: any) => {
+        const { drivers, ...rest } = l;
+        return { ...rest, driver_id: drivers?.driver_code ?? l.driver_id };
+      })
+      .sort((a: any, b: any) => Number(a.lap_time_ms) - Number(b.lap_time_ms));
 
     return json({ ok: true, data: { laps, count: laps.length } });
   } catch (e) {

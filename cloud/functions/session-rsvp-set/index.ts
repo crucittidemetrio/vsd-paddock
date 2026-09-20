@@ -13,6 +13,13 @@
 // definito in 008 — niente più il loop manuale "cerca riga esistente,
 // altrimenti appendRow" del sistema reale: qui è un singolo
 // .upsert(..., { onConflict: 'session_id,driver_id' }) atomico.
+//
+// FIX #331: la riga si salva con driver_id = UUID interno (corretto,
+// è la FK reale verso drivers.id) ma la risposta al frontend deve
+// esporre lo stesso contratto driver_id=driver_code usato ovunque
+// (vedi session-rsvp-list) — per coerenza, anche se oggi nessun
+// consumer legge il valore di ritorno di questa mutation (solo
+// invalidateQueries).
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -54,7 +61,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: me, error: meErr } = await supabase
       .from('drivers')
-      .select('id')
+      .select('id, driver_code')
       .eq('auth_user_id', user.id)
       .maybeSingle();
     if (meErr) return json({ ok: false, error: meErr.message }, 400);
@@ -77,7 +84,9 @@ Deno.serve(async (req: Request) => {
 
     if (error) return json({ ok: false, error: error.message }, 400);
 
-    return json({ ok: true, data: { rsvp: data } });
+    const rsvp = data ? { ...data, driver_id: me.driver_code } : data;
+
+    return json({ ok: true, data: { rsvp } });
   } catch (e) {
     return json({ ok: false, error: String(e) }, 500);
   }

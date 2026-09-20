@@ -6,12 +6,22 @@
 //   - visibile a CHIUNQUE sia loggato nel team, non solo staff —
 //     il team deve sapere quando sono gli allenamenti.
 //
-// Qui "team scoping" non è un filtro applicativo: la RLS
-// "team_sessions: il team legge tutte le sessioni" (008) filtra già
-// per team_id = current_driver_team_id(), quindi un select * senza
-// filtri restituisce esattamente e solo le sessioni del team del
-// chiamante — stesso principio già usato in roster-list con
-// drivers_public.
+// FIX #331 (trovato validando #330 prima di proseguire, non da
+// analisi statica): la PK Postgres si chiama `id`, ma TUTTO il
+// frontend (Calendar.jsx: `race_id: s.session_id`; AdminTeamSessions.jsx:
+// `key={s.session_id}`, `handleRemove(s.session_id, ...)`) legge
+// `session_id` — il nome usato da sempre da Apps Script (dove la riga
+// del foglio esponeva quel campo). Senza questo alias, `s.session_id`
+// era `undefined` per ogni sessione: il pannello RSVP in Calendar.jsx
+// riceveva `sessionId=undefined` e ogni tentativo di conferma presenza
+// falliva con "session_id obbligatorio" (session-rsvp-set lo valida
+// per primo) — bug silenzioso lato UI, visibile solo provando a
+// rispondere. Stesso principio del fix driver_id in roster (#329) e
+// session_rsvps (#331): si alias nell'output, mai nello schema.
+// `created_by` è lo UUID interno (FK drivers.id) ma AdminTeamSessions.jsx
+// lo confronta con `driver.driver_id` (il codice, es. VSD005) per
+// decidere se mostrare il tasto elimina al pilota che ha creato la
+// sessione — stesso fix, join su drivers.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -21,6 +31,11 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
+
+function toSession(t: any) {
+  const { id, created_by, drivers, ...rest } = t;
+  return { ...rest, session_id: id, created_by: drivers?.driver_code ?? null };
+}
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -43,12 +58,12 @@ Deno.serve(async (req: Request) => {
 
     const { data, error } = await supabase
       .from('team_sessions')
-      .select('*')
+      .select('*, drivers(driver_code)')
       .order('datetime_start', { ascending: true });
-
     if (error) return json({ ok: false, error: error.message }, 400);
 
-    return json({ ok: true, data: { sessions: data ?? [], count: (data ?? []).length } });
+    const sessions = (data ?? []).map(toSession);
+    return json({ ok: true, data: { sessions, count: sessions.length } });
   } catch (e) {
     return json({ ok: false, error: String(e) }, 500);
   }

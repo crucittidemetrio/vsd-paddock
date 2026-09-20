@@ -21,6 +21,12 @@
 // attivo (is_system_account=false, removed_at null, status='active'),
 // qualsiasi session_type. Notifica non bloccante (try/catch), postata
 // sul webhook principale (DISCORD_WEBHOOK_URL), non su quello admin.
+//
+// FIX #331: la riga si salva con driver_id = uuid interno (corretto,
+// FK reale) ma la risposta al frontend deve esporre driver_code sotto
+// quella chiave — payload.driver_id è già il driver_code validato
+// contro il team del chiamante poco sopra, quindi si riusa direttamente
+// senza una query aggiuntiva.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -208,7 +214,9 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    return json({ ok: true, data: { lap: data } });
+    const lap = data ? { ...data, driver_id: String(payload.driver_id) } : data;
+
+    return json({ ok: true, data: { lap } });
   } catch (e) {
     return json({ ok: false, error: String(e) }, 500);
   }

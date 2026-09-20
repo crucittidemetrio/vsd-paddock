@@ -1,20 +1,8 @@
-// ═══════════════════════════════════════════════════════════
-// VSD-Paddock Cloud — teamSessions.update (porting di TeamSessionsScheduler.js)
-// ═══════════════════════════════════════════════════════════
+// FIX #331: risposta allineata (session_id alias di id) — stesso principio di team-sessions-list/create.
 // Logica di riferimento reale (handleTeamSessionsUpdate):
-//   - auth richiesto, SOLO staff/admin (nessuna eccezione per
-//     l'autore — a differenza di remove, qui non c'è percorso
-//     "autore modifica la propria sessione aperta")
-//   - session_id obbligatorio
+//   - auth richiesto, SOLO staff/admin
+//   - session_id obbligatorio (nel payload, mappato su id)
 //   - solo i campi passati nel payload vengono modificati
-//   - EDITABLE = type, title, championship_id, event_id, track_id,
-//     sim, datetime_start, duration_min, discord_channel, notes
-//     (created_by/created_at/team_id MAI modificabili da qui)
-//
-// Gate staff-only applicato due volte (app + RLS "team_sessions:
-// solo staff/admin aggiornano", 008) — stesso principio del resto di
-// questo dominio.
-// ═══════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
@@ -92,13 +80,16 @@ Deno.serve(async (req: Request) => {
       .from('team_sessions')
       .update(updates)
       .eq('id', sessionId)
-      .select()
+      .select('*, drivers(driver_code)')
       .maybeSingle();
 
     if (error) return json({ ok: false, error: error.message }, 400);
     if (!data) return json({ ok: false, error: 'Sessione non trovata: ' + sessionId }, 404);
 
-    return json({ ok: true, data: { session: data } });
+    const { id, created_by, drivers, ...rest } = data as any;
+    const session = { ...rest, session_id: id, created_by: drivers?.driver_code ?? null };
+
+    return json({ ok: true, data: { session } });
   } catch (e) {
     return json({ ok: false, error: String(e) }, 500);
   }
