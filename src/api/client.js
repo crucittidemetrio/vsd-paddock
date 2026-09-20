@@ -247,6 +247,30 @@ const SUPABASE_MIGRATED_ACTIONS = new Set([
   'consent.accept',
   'consent.adminList',
   'consent.socialFlags',
+
+  // #335 — Messenger/AuditLog/Push. Edge Functions già scritte e
+  // deployate in #290 (messenger-send, audit-log-list, push-subscribe,
+  // push-unsubscribe), mai collegate al frontend fino ad ora. Routing
+  // table già completa in supabaseApi.js (#326). Verificato codice
+  // sorgente dei 4 Edge Function prima del cutover: tutte richiedono
+  // sessione Supabase reale (nessun fallback anonimo/team_slug) —
+  // stesso GAP NOTO e ACCETTATO di #330-334: chi è ancora loggato solo
+  // con la vecchia sessione Apps Script riceverà 401 finché non rifà
+  // il login Discord via Supabase.
+  //
+  // Bug driver_id→driver_code trovato e corretto PRIMA di questo
+  // cutover (mai esposto a utenti reali) in messenger-send v2: il ramo
+  // DM risolveva i destinatari con `.in('id', payload.driver_ids)`, ma
+  // AdminMessenger.jsx invia driver_code ("VSD005", da roster.list()),
+  // mai l'uuid interno — stesso pattern trovato in #331/#333/#334.
+  // Corretto anche audit-log-list v2 (driver_id nella risposta era
+  // l'uuid grezzo invece di driver_code — usato oggi solo come
+  // fallback di visualizzazione in AdminAuditLog.jsx, quindi non
+  // bloccante, ma corretto per coerenza col resto del progetto).
+  'messenger.send',
+  'auditLog.list',
+  'push.subscribe',
+  'push.unsubscribe',
 ]);
 
 /**

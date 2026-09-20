@@ -1220,7 +1220,18 @@ function garage61TestSync() {
  * all'admin UI /admin/sync-garage61).
  */
 function garage61RunSync() {
-  garage61SyncLaps_({ writeToSheet: true });
+  // SOSPESO il 20/09/2026 su richiesta di Demetrio ("sospendilo, non eliminarlo").
+  // Motivo: gap #361 — questo sync scrive SOLO nel Google Sheet legacy, mai
+  // in Supabase, causando drift silenzioso (vedi cloud/README.md, sezione
+  // "Gap #361"). Il trigger time-driven resta installato e continua a
+  // girare ogni 4h (Triggers.js), ma esce subito senza toccare nulla.
+  // Il sync manuale dal sito (laps.syncFromGarage61, già su Supabase) NON
+  // è toccato da questa sospensione e resta pienamente funzionante.
+  // Per riattivare: rimuovi il blocco "return" qui sotto.
+  Logger.log('[garage61RunSync] SOSPESO (vedi commento nel codice) — nessuna scrittura eseguita.');
+  return;
+
+  garage61SyncLaps_({ writeToSheet: true }); // eslint-disable-line no-unreachable
 }
 
 // ═══════════════════════════════════════════════════════════
