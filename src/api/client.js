@@ -58,6 +58,40 @@ const SUPABASE_MIGRATED_ACTIONS = new Set([
   'roster.adminDelete',
   'roster.availableSlots',
   'roster.adminCreate',
+
+  // #331 — Best Laps/Academy/Records/Training/Submissions/Garage61.
+  // GAP NOTO e ACCETTATO, stesso principio di #330 (teamSessions/
+  // sessionRsvp sopra): tutte le Edge Function di questo gruppo
+  // richiedono SEMPRE una sessione Supabase reale (Authorization
+  // Bearer con JWT utente valido via supabase.auth.getUser()),
+  // verificato leggendo i 7 sorgenti deployati (best-laps-list/
+  // leaderboard/add/update, records-team, training-insights,
+  // academy-ranking) — nessun fallback team_slug/anon come per
+  // Roster. Un pilota ancora loggato solo con la vecchia sessione
+  // Apps Script riceverà 401 silenzioso da react-query finché non
+  // rifà il login Discord via Supabase: Best Laps/Academy/Records/
+  // Training smetteranno di mostrare dati per lui, niente crash.
+  // Fix driver_id→driver_code (uuid interno → codice pilota
+  // leggibile, contratto atteso da tutto il frontend) già applicato
+  // e redeployato lato Edge Function prima di questo cutover — vedi
+  // FIX #331 nei commenti di ciascun index.ts in cloud/functions/ e
+  // nel dispatcher endurance-auditions-get (lapSubmissions.*).
+  'laps.list',
+  'laps.leaderboard',
+  'laps.raceLaps',
+  'laps.syncFromGarage61',
+  'laps.add',
+  'laps.update',
+  'laps.remove',
+  'lapSubmissions.submit',
+  'lapSubmissions.listMine',
+  'lapSubmissions.listPending',
+  'lapSubmissions.approve',
+  'lapSubmissions.reject',
+  'lapSubmissions.remove',
+  'academy.ranking',
+  'records.team',
+  'training.insights',
 ]);
 
 /**
