@@ -133,6 +133,45 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// Fallback token legacy (#331 fix, 20/09/2026, segnalato da Demetrio:
+// "Casesi non riesce comunque ad inviare il proprio Best Laps con
+// errore Auth richiesto") — stessa causa radice già trovata e risolta
+// per #334 (vedi cloud/README.md): nessun pilota reale ha mai ottenuto
+// una sessione Supabase reale, l'unico login è Discord OAuth legacy
+// via Apps Script. Questo dispatcher risolveva `me` SOLO da
+// auth.getUser() (righe originarie 524-543): per chiunque tranne
+// l'admin di test, `me` restava sempre null → requireAuth()/
+// requireStaffOrAdmin() rispondevano 401 "Auth richiesto" su OGNI
+// azione non-pubblica servita da questo slug (Best Lap Submissions,
+// Race Reports, Reazioni, landing.data, laps.raceLaps — non solo
+// lapSubmissions.submit, dove è stato notato per primo). Fix: stesso
+// pattern di verifica payload.legacy_token contro auth.verify su Apps
+// Script già usato nelle 19 Edge Function di #334.
+const LEGACY_API_URL = 'https://script.google.com/macros/s/AKfycbyMXxEjZfm5EIsGUnKxpwtBtoeR4hwMG7Pl8ZESF8yG569SS0aIdsWqyu9PdBgR14vLiA/exec';
+
+async function resolveLegacyDriver(serviceClient: any, legacyToken: string | undefined) {
+  if (!legacyToken) return null;
+  try {
+    const r = await fetch(LEGACY_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'auth.verify', token: legacyToken, payload: {} }),
+    });
+    const j = await r.json();
+    const driverCode = j?.ok && j.data?.valid ? j.data?.driver?.driver_id : null;
+    if (!driverCode) return null;
+    const { data: d } = await serviceClient
+      .from('drivers')
+      .select('id, team_id, role, display_name, driver_code')
+      .eq('driver_code', driverCode)
+      .maybeSingle();
+    if (!d) return null;
+    return { ...d, role: j.data.driver.role || d.role };
+  } catch {
+    return null;
+  }
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -521,6 +560,9 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
+    const payload = await req.json().catch(() => ({}));
+    const action = String(payload?.action || '').trim();
+
     const authHeader = req.headers.get('Authorization');
     let supabase: any = null;
     let me: any = null;
@@ -542,8 +584,24 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    const payload = await req.json().catch(() => ({}));
-    const action = String(payload?.action || '').trim();
+    // Fallback token legacy (#331 fix, vedi nota completa in testa al
+    // file): nessuna sessione Supabase reale trovata sopra (il caso
+    // normale per ogni pilota reale) — prova a risolvere il driver da
+    // payload.legacy_token. Se risolto, il client passa a service-role
+    // (RLS bypassata, come per le 19 Edge Function di #334) perché un
+    // client anon+JWT non porta alcun auth.uid() valido su cui la RLS
+    // possa far leva; lo scoping per team/driver resta comunque
+    // applicato esplicitamente in ogni singolo handler più sotto,
+    // esattamente come prima con la sessione reale.
+    if (!me) {
+      const legacyServiceClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+      const legacyMe = await resolveLegacyDriver(legacyServiceClient, payload?.legacy_token);
+      if (legacyMe) {
+        me = legacyMe;
+        supabase = legacyServiceClient;
+      }
+    }
+
     const teamId = me ? me.team_id : null;
 
     function requireAdmin(): Response | null {
