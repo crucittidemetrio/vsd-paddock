@@ -1613,7 +1613,7 @@ Deno.serve(async (req: Request) => {
 
     if (action === 'lapSubmissions.listPending') {
       const denied = requireAdmin(); if (denied) return denied;
-      const { data, error } = await supabase.from('best_lap_submissions').select('*, drivers(driver_code)').eq('team_id', teamId).eq('status', 'pending');
+      const { data, error } = await supabase.from('best_lap_submissions').select('*, drivers!best_lap_submissions_driver_id_fkey(driver_code)').eq('team_id', teamId).eq('status', 'pending');
       if (error) return json({ ok: false, error: error.message }, 400);
       const submissions = (data || [])
         .map((s: any) => { const { drivers, ...rest } = s; return { ...rest, driver_id: drivers?.driver_code ?? s.driver_id }; })

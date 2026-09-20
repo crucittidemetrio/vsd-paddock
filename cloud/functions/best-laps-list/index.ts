@@ -45,7 +45,7 @@ Deno.serve(async (req: Request) => {
 
     const { data, error } = await supabase
       .from('best_laps')
-      .select('*, drivers(driver_code)')
+      .select('*, drivers!best_laps_driver_id_fkey(driver_code)')
       .order('lap_time_ms', { ascending: true });
 
     if (error) return json({ ok: false, error: error.message }, 400);

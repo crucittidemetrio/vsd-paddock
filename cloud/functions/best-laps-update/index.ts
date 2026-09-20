@@ -125,7 +125,7 @@ Deno.serve(async (req: Request) => {
       .from('best_laps')
       .update(updates)
       .eq('id', lapId)
-      .select('*, drivers(driver_code)')
+      .select('*, drivers!best_laps_driver_id_fkey(driver_code)')
       .maybeSingle();
 
     if (error) return json({ ok: false, error: error.message }, 400);

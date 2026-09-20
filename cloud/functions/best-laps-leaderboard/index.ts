@@ -55,7 +55,7 @@ Deno.serve(async (req: Request) => {
     if (!sim) return json({ ok: false, error: 'sim mancante' }, 400);
     if (!trackId) return json({ ok: false, error: 'track_id mancante' }, 400);
 
-    let query = supabase.from('best_laps').select('*, drivers(driver_code)').eq('sim', sim).eq('track_id', trackId);
+    let query = supabase.from('best_laps').select('*, drivers!best_laps_driver_id_fkey(driver_code)').eq('sim', sim).eq('track_id', trackId);
     if (carId) query = query.eq('car_id', carId);
 
     const { data, error } = await query;
