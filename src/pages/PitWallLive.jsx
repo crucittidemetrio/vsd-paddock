@@ -37,6 +37,26 @@ function fmtGap(v) {
   return '—';
 }
 
+function fmtInterval(v) {
+  if (v.place === 1) return '—';
+  if (v.timeBehindNext > 0) return `+${v.timeBehindNext.toFixed(1)}s`;
+  return '—';
+}
+
+// Stessa stima di PitWall.jsx (S3 non è un campo diretto del gioco, si
+// ricava per differenza dal giro migliore) — vedi commento lì sul perché.
+function estimatedSector3(v) {
+  if (v.bestLapTime == null || v.bestLapTime <= 0) return null;
+  if (v.bestLapSector1 == null || v.bestLapSector1 <= 0) return null;
+  if (v.bestLapSector2 == null || v.bestLapSector2 <= 0) return null;
+  return v.bestLapTime - v.bestLapSector1 - v.bestLapSector2;
+}
+
+function fmtSector(seconds) {
+  if (seconds == null || seconds <= 0) return '—';
+  return seconds.toFixed(3);
+}
+
 export default function PitWallLive() {
   usePageMeta({
     title: 'Pit Wall Live — Virtual Sim Driver',
@@ -56,6 +76,17 @@ export default function PitWallLive() {
     const base = classFilter ? vehicles.filter((v) => v.vClass === classFilter) : vehicles;
     return [...base].sort((a, b) => (a.place || 999) - (b.place || 999));
   }, [vehicles, classFilter]);
+
+  // Record di sessione (tra le vetture visibili col filtro classe corrente)
+  // per il viola/verde sui settori — stessa convenzione di PitWall.jsx.
+  const sessionBestS1 = useMemo(() => {
+    const vals = rows.map((v) => v.bestLapSector1).filter((t) => t != null && t > 0);
+    return vals.length ? Math.min(...vals) : null;
+  }, [rows]);
+  const sessionBestS2 = useMemo(() => {
+    const vals = rows.map((v) => v.bestLapSector2).filter((t) => t != null && t > 0);
+    return vals.length ? Math.min(...vals) : null;
+  }, [rows]);
 
   return (
     <div className={styles.pageWrap}>
@@ -93,7 +124,7 @@ export default function PitWallLive() {
             )}
             <div className={styles.cardList}>
               {rows.map((v) => (
-                <VehicleCard key={v.id} v={v} />
+                <VehicleCard key={v.id} v={v} sessionBestS1={sessionBestS1} sessionBestS2={sessionBestS2} />
               ))}
               {rows.length === 0 && <div className={styles.hint}>Nessuna vettura in classifica.</div>}
             </div>
@@ -108,22 +139,56 @@ export default function PitWallLive() {
   );
 }
 
-function VehicleCard({ v }) {
+function VehicleCard({ v, sessionBestS1, sessionBestS2 }) {
+  const s3 = estimatedSector3(v);
+  const s1Class = sectorTone(v.bestLapSector1, sessionBestS1);
+  const s2Class = sectorTone(v.bestLapSector2, sessionBestS2);
+
   return (
     <div className={[styles.card, v.inPits && styles.cardInPits, v.underYellow && styles.cardYellow].filter(Boolean).join(' ')}>
-      <div className={styles.cardPlace}>{v.place}</div>
-      <div className={styles.cardMain}>
-        <div className={styles.cardDriverRow}>
-          <span className={styles.cardDriver}>{v.driver || '—'}</span>
-          {FINISH_LABELS[v.finishStatus] && <span className={styles.finishTag}>{FINISH_LABELS[v.finishStatus]}</span>}
-          {v.inPits && <span className={styles.pitBadge}>BOX</span>}
+      <div className={styles.cardTop}>
+        <div className={styles.cardPlace}>{v.place}</div>
+        <div className={styles.cardMain}>
+          <div className={styles.cardDriverRow}>
+            <span className={styles.cardDriver}>{v.driver || '—'}</span>
+            {FINISH_LABELS[v.finishStatus] && <span className={styles.finishTag}>{FINISH_LABELS[v.finishStatus]}</span>}
+            {v.inPits && <span className={styles.pitBadge}>BOX</span>}
+          </div>
+          <div className={styles.cardVehicle} title={v.vehicle || undefined}>{v.vehicle || '—'} {v.vClass ? `· ${v.vClass}` : ''}</div>
         </div>
-        <div className={styles.cardVehicle} title={v.vehicle || undefined}>{v.vehicle || '—'} {v.vClass ? `· ${v.vClass}` : ''}</div>
+        <div className={styles.cardTimes}>
+          <div className={styles.cardGap}>{fmtGap(v)}</div>
+          <div className={styles.cardBest}>{fmtLapTime(v.bestLapTime)}</div>
+        </div>
       </div>
-      <div className={styles.cardTimes}>
-        <div className={styles.cardGap}>{fmtGap(v)}</div>
-        <div className={styles.cardBest}>{fmtLapTime(v.bestLapTime)}</div>
+
+      <div className={styles.cardStats}>
+        <Stat label="Giri" value={v.laps ?? '—'} />
+        <Stat label="Int." value={fmtInterval(v)} />
+        <Stat label="S1" value={fmtSector(v.bestLapSector1)} tone={s1Class} />
+        <Stat label="S2" value={fmtSector(v.bestLapSector2)} tone={s2Class} />
+        <Stat label="S3*" value={s3 != null && s3 > 0 ? s3.toFixed(3) : '—'} />
+        <Stat label="Ultimo" value={fmtLapTime(v.lastLapTime)} />
+        {v.numPenalties > 0 && <Stat label="Pen." value={v.numPenalties} tone={styles.statWarn} />}
       </div>
+    </div>
+  );
+}
+
+// Viola = record assoluto di sessione (tra le vetture visibili), verde =
+// il pilota ha comunque un tempo valido ma non il migliore — stessa
+// convenzione a due colori di PitWall.jsx.
+function sectorTone(value, sessionBest, stylesRef = styles) {
+  if (value == null || value <= 0) return undefined;
+  if (sessionBest != null && value <= sessionBest + 0.0005) return stylesRef.statPurple;
+  return stylesRef.statGreen;
+}
+
+function Stat({ label, value, tone }) {
+  return (
+    <div className={styles.stat}>
+      <span className={styles.statLabel}>{label}</span>
+      <span className={[styles.statValue, tone].filter(Boolean).join(' ')}>{value}</span>
     </div>
   );
 }

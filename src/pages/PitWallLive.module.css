@@ -189,12 +189,18 @@
 
 .card {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 8px;
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 8px;
   padding: 10px 12px;
+}
+
+.cardTop {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .cardInPits {
@@ -288,3 +294,42 @@
   letter-spacing: 0.5px;
   flex: none;
 }
+
+/* Riga statistiche estesa sotto ogni card (#339 follow-up: la prima
+   versione mostrava solo posizione/gap/miglior giro — mancavano giri,
+   settori, ultimo giro, intervallo, penalità già presenti nel payload del
+   bridge ma mai renderizzati qui). Wrap libero: su schermi stretti va su
+   più righe, va bene per una vista mobile-first. */
+.cardStats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 14px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 36px;
+}
+
+.statLabel {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #7a8aa8;
+}
+
+.statValue {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.statPurple { color: #c084fc; }
+.statGreen { color: #4ade80; }
+.statWarn { color: #f5a623; }
