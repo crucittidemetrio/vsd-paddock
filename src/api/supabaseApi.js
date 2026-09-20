@@ -99,6 +99,12 @@ const ANON_TEAM_SLUG_ACTIONS = new Set([
   // Google Form esterno. Community-wide come il Form (UE144 è una lega
   // multi-team, non solo VSD) — stesso pattern anon+team_slug.
   'incidents.report',
+  // #334 — pubbliche per design nel sorgente legacy (verificato negli
+  // index.ts deployati): interest.list/register (community-wide, come
+  // clash.participants.*), prequal.list (nessuna distinzione staff/
+  // pubblico nel sorgente) e consent.socialFlags (serve al Roster
+  // pubblico per decidere se mostrare la foto vera di un pilota).
+  'interest.list', 'interest.register', 'prequal.list', 'consent.socialFlags',
 ]);
 // ═══════════════════════════════════════════════════════════
 

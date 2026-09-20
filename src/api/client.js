@@ -181,6 +181,61 @@ const SUPABASE_MIGRATED_ACTIONS = new Set([
   'clash.results.submitRound',
   'clash.incidents.report',
   'clash.incidents.list',
+
+  // #334 — Interest/Prequal/Candidates/Sponsors/Treasury/Consent.
+  // Edge Functions già scritte e deployate in #283-286 (mai collegate
+  // al frontend fino ad ora). Routing table già completa in
+  // supabaseApi.js (#326). Verificato codice sorgente di tutte le 22
+  // Edge Function prima del cutover:
+  // - interest.list, interest.register, prequal.list,
+  //   consent.socialFlags → pubbliche per design (stesso pattern
+  //   anon+team_slug di roster.*/clash.*), aggiunte anche a
+  //   ANON_TEAM_SLUG_ACTIONS in supabaseApi.js.
+  // - interest.update → richiede login ma NON staff (aggiorna solo la
+  //   riga del proprio driver_id) — nessun fallback team_slug.
+  // - Tutte le altre (interest.remove, prequal.add/remove,
+  //   candidates.*, sponsors.*, treasury.*, consent.status/accept/
+  //   adminList) richiedono sessione Supabase reale (staff/admin o
+  //   driver loggato) — stesso GAP NOTO e ACCETTATO di #330-333: chi è
+  //   ancora loggato solo con la vecchia sessione Apps Script riceverà
+  //   401 finché non rifà il login Discord via Supabase.
+  //
+  // Migrazione dati storici (pre-cutover, stesso principio #333/#349):
+  // trovati e migrati 18 movimenti Treasury reali (saldo 174,15€
+  // verificato identico al legacy), 12 consensi privacy reali (nessun
+  // minorenne), 9 registrazioni ChampionshipInterest reali (2 su
+  // aci-lmgt3-challenge-2026, 7 su era-season-3) e 4 PrequalCandidates
+  // reali — Candidates e Sponsors erano già vuoti su entrambi i lati,
+  // nessuna migrazione necessaria lì.
+  //
+  // Bug driver_id→driver_code trovato e corretto PRIMA di questo
+  // cutover (mai esposto a utenti reali) in consent-social-flags v2
+  // (il più grave: rompeva silenziosamente resolvePhotoUrl in quasi
+  // ogni pagina del sito), consent-admin-list v2, interest-list v2 e
+  // interest-register v2 — vedi commenti nei rispettivi index.ts.
+  'interest.list',
+  'interest.register',
+  'interest.update',
+  'interest.remove',
+  'prequal.list',
+  'prequal.add',
+  'prequal.remove',
+  'candidates.list',
+  'candidates.add',
+  'candidates.update',
+  'candidates.remove',
+  'sponsors.list',
+  'sponsors.add',
+  'sponsors.update',
+  'sponsors.remove',
+  'treasury.list',
+  'treasury.add',
+  'treasury.update',
+  'treasury.remove',
+  'consent.status',
+  'consent.accept',
+  'consent.adminList',
+  'consent.socialFlags',
 ]);
 
 /**
