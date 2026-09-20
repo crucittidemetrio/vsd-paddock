@@ -12,16 +12,23 @@ import { STORAGE, TIERS } from '../utils/constants';
 // ═══════════════════════════════════════════════════════════
 // Solo le azioni elencate qui passano dal nuovo transport layer
 // (supabaseApi.js, #328); tutto il resto continua a passare da
-// realApi.js/Apps Script, invariato. roster.updateSelf NON è incluso
-// deliberatamente: l'Edge Function roster-update-self richiede una
-// sessione Supabase reale (login Discord via Supabase, #327), che la
-// stragrande maggioranza degli utenti reali non ha ancora fatto — un
-// utente con solo la vecchia sessione Apps Script prenderebbe 401 e
-// il form di modifica profilo smetterebbe di funzionare. roster.list/
-// roster.get invece sono state riscritte in #329 per funzionare sia
-// con sessione Supabase reale sia anonimamente/con la vecchia
-// sessione (via team_slug lato Edge Function, vedi supabaseApi.js),
-// quindi nessuna regressione per chi non ha ancora rifatto login.
+// realApi.js/Apps Script, invariato.
+//
+// FIX #360 (20/09/2026): roster.updateSelf era stato ESCLUSO qui
+// deliberatamente fin da #329, perché l'Edge Function richiedeva
+// sempre una sessione Supabase reale che la maggior parte dei piloti
+// non ha ancora. Ma questo significava che il salvataggio "Modifica
+// profilo" andava SEMPRE al vecchio backend Apps Script (mai a
+// Supabase), mentre roster.get/roster.list (che mostrano il profilo)
+// leggono da Supabase fin da #329 — ogni modifica di bio/instagram/
+// facebook/roster_track fatta da un pilota reale spariva nel nulla
+// agli occhi del sito, silenziosamente, dal giorno del cutover
+// Roster. Segnalato da Demetrio ("ho cambiato da Roster Competitivo
+// a Roster Amatoriale ma non lo cambia"). Risolto applicando a
+// roster-update-self lo stesso resolveLegacyDriver già usato in
+// #358/#359 (fallback token legacy quando non c'è sessione Supabase
+// reale) — ora incluso qui sotto, con lo stesso fallback lato
+// supabaseApi.js (LEGACY_TOKEN_FALLBACK_ACTIONS).
 //
 // #330 — teamSessions.*/sessionRsvp.*: gap noto e ACCETTATO
 // (deciso con l'utente, non un bug silenzioso). A differenza di
@@ -40,6 +47,10 @@ import { STORAGE, TIERS } from '../utils/constants';
 const SUPABASE_MIGRATED_ACTIONS = new Set([
   'roster.list',
   'roster.get',
+  // FIX #360 (20/09/2026): vedi commento in testa al file — fallback
+  // legacy token aggiunto a roster-update-self, stesso schema di
+  // roster.list/roster.get sopra.
+  'roster.updateSelf',
   'showcase.summary',
   'showcase.mediaKit',
   'teamSessions.list',

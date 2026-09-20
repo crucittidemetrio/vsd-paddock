@@ -151,6 +151,16 @@ const LEGACY_TOKEN_FALLBACK_ACTIONS = new Set([
   // Laps, Muro dei Record, Academy o Training Insights.
   'laps.list', 'laps.leaderboard', 'laps.update', 'laps.remove',
   'records.team', 'academy.ranking', 'training.insights',
+  // #360 (20/09/2026): roster.updateSelf era ESCLUSO da
+  // SUPABASE_MIGRATED_ACTIONS in client.js fin da #329 proprio perché
+  // non aveva questo fallback — il salvataggio "Modifica profilo"
+  // andava sempre al vecchio backend Apps Script, invisibile per
+  // roster.get/list (che leggono da Supabase). Segnalato da Demetrio:
+  // "ho cambiato da Roster Competitivo a Roster Amatoriale ma non lo
+  // cambia". Ora roster-update-self ha lo stesso resolveLegacyDriver
+  // di #358/#359 (qui scrive, non solo legge) ed è stato aggiunto
+  // anche a SUPABASE_MIGRATED_ACTIONS in client.js.
+  'roster.updateSelf',
 ]);
 const LEGACY_TOKEN_STORAGE_KEY = 'vsd_paddock_token';
 // ═══════════════════════════════════════════════════════════
