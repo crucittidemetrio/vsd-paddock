@@ -216,9 +216,16 @@ function ReportCard({ report, drivers }) {
 }
 
 function GallerySection({ race, isStaff, onUpdated }) {
-  const urls = (race.gallery_urls || '')
-    .split(',')
-    .map(u => u.trim())
+  // FIX #363 (20/09/2026, trovato durante validazione live #337 su RACE014):
+  // gallery_urls in Postgres è un text[] reale (colonna array, vedi schema
+  // races), e il client Supabase lo consegna già come array JS — non più
+  // come stringa CSV del vecchio Apps Script. (race.gallery_urls || '')
+  // valutava [] come truthy e chiamava .split su un array, mandando in crash
+  // l'intera pagina /race/:raceId per qualunque gara (anche con galleria
+  // vuota). Gestiamo entrambe le forme per compatibilità.
+  const rawGallery = race.gallery_urls;
+  const urls = (Array.isArray(rawGallery) ? rawGallery : String(rawGallery || '').split(','))
+    .map(u => (u || '').trim())
     .filter(Boolean);
 
   const [editing, setEditing] = useState(false);
