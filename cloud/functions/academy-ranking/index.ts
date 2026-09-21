@@ -20,6 +20,20 @@
 // paceRanking: classifica "passo puro" (gap % medio dal giro veloce
 // di gruppo), scollegata da PM/PP/badge.
 //
+// eloRanking / safetyRanking (#371, 21/09/2026): letti da
+// driver_elo_ratings/driver_safety_ranks (stato corrente, mantenuto da
+// elo.backfill #369 + recomputeEloSafetyForSim in race-results-import
+// #370) — NON ricalcolati qui, sola lettura. Esposti come liste
+// indipendenti ordinate, stesso principio già usato per paceRanking
+// sopra (scollegate da PM/PP/badge, non embeddate dentro `ranking`).
+// DECISIONE presa qui: la nota in 031_elo_safety_rank.sql ipotizzava
+// di sostituire PP con Safety Rank dentro il calcolo di VR — scelta
+// scartata per ora: VR/PM/PP restano invariati (nessuna rottura del
+// comportamento esistente/ordinamento già visibile agli utenti), Elo e
+// Safety Rank sono aggiunte pure, non sostituzioni. Se Demetrio vorrà
+// davvero fondere Safety Rank dentro VR sarà una modifica esplicita e
+// separata, non nascosta in questo endpoint di lettura.
+//
 // DIFFERENZA dal sorgente: "VSD001" hardcoded → drivers.is_system_account
 // (stesso principio già applicato in records-team/roster-list qui in
 // cloud/). isCurrentTesserato_ replica lo stesso filtro (active,
@@ -258,6 +272,48 @@ Deno.serve(async (req: Request) => {
     if (resoErr) return json({ ok: false, error: resoErr.message }, 400);
     const ppByDriver = computePenaltyPoints(resolutions ?? [], sim);
 
+    // #371: stato corrente Elo + Safety Rank, sola lettura (vedi nota
+    // in testa al file).
+    const { data: eloRows, error: eloErr } = await supabase
+      .from('driver_elo_ratings')
+      .select('driver_id, rating, races')
+      .eq('team_id', me.team_id)
+      .eq('sim', sim);
+    if (eloErr) return json({ ok: false, error: eloErr.message }, 400);
+    const eloByDriver: Record<string, { rating: number; races: number }> = {};
+    (eloRows ?? []).forEach((r: any) => { eloByDriver[r.driver_id] = { rating: Number(r.rating), races: r.races }; });
+
+    const { data: safetyRows, error: safetyErr } = await supabase
+      .from('driver_safety_ranks')
+      .select('driver_id, rating, races')
+      .eq('team_id', me.team_id)
+      .eq('sim', sim);
+    if (safetyErr) return json({ ok: false, error: safetyErr.message }, 400);
+    const safetyByDriver: Record<string, { rating: number; races: number }> = {};
+    (safetyRows ?? []).forEach((r: any) => { safetyByDriver[r.driver_id] = { rating: Number(r.rating), races: r.races }; });
+
+    const eloRanking = Object.keys(eloByDriver)
+      .filter(isCurrentTesserato)
+      .map((driverId) => ({
+        driver_id: driverCode(driverId),
+        display_name: driverMap[driverId]?.display_name || driverId,
+        avatar_url: driverMap[driverId]?.avatar_url || '',
+        elo: Math.round(eloByDriver[driverId].rating),
+        races: eloByDriver[driverId].races,
+      }))
+      .sort((a, b) => b.elo - a.elo);
+
+    const safetyRanking = Object.keys(safetyByDriver)
+      .filter(isCurrentTesserato)
+      .map((driverId) => ({
+        driver_id: driverCode(driverId),
+        display_name: driverMap[driverId]?.display_name || driverId,
+        avatar_url: driverMap[driverId]?.avatar_url || '',
+        safety_rank: Math.round(safetyByDriver[driverId].rating * 10) / 10,
+        races: safetyByDriver[driverId].races,
+      }))
+      .sort((a, b) => b.safety_rank - a.safety_rank);
+
     const paceRanking = Object.keys(paceByDriver)
       .filter(isCurrentTesserato)
       .filter((driverId) => paceByDriver[driverId].races >= ACADEMY_PACE_MIN_RACES)
@@ -296,7 +352,10 @@ Deno.serve(async (req: Request) => {
 
     return json({
       ok: true,
-      data: { sim, ranking, count: ranking.length, paceRanking, paceRankingMinRaces: ACADEMY_PACE_MIN_RACES },
+      data: {
+        sim, ranking, count: ranking.length, paceRanking, paceRankingMinRaces: ACADEMY_PACE_MIN_RACES,
+        eloRanking, safetyRanking,
+      },
     });
   } catch (e) {
     return json({ ok: false, error: String(e) }, 500);
