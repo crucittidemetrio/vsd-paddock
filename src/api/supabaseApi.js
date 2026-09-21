@@ -194,6 +194,35 @@ const LEGACY_TOKEN_FALLBACK_ACTIONS = new Set([
   // restano fuori: sono admin/staff-only e Demetrio (unico admin reale)
   // ha già una sessione Supabase vera.
   'endurance.stints.list',
+  // #376 (21/09/2026): PREMESSA ERRATA scoperta e corretta — ogni azione
+  // admin/staff-only di #331/#335/#337/ecc. sopra è stata deliberatamente
+  // esclusa da questo fallback assumendo "Demetrio, l'unico admin reale,
+  // ha già una sessione Supabase vera". Falso: verificato via localStorage
+  // del browser di Demetrio (nessuna chiave sb-*) che anche l'admin opera
+  // SOLO col token legacy, esattamente come ogni pilota — l'header
+  // "ADMIN" mostrato in UI viene dal ruolo risolto via legacy_token
+  // (drivers.role in Supabase, non da un JWT Supabase reale). Risultato:
+  // qualunque azione admin/staff-only su questo stesso dispatcher
+  // condiviso (slug endurance-auditions-get) falliva con "Operazione
+  // riservata a staff/admin" — segnalato da Demetrio: "Avvia Sync
+  // Garage61" (laps.syncFromGarage61) e, in generale, "per parecchie
+  // cose". Il fallback lato Edge Function è già universale (righe 636-643
+  // di social-manager/index.ts, non gated per singola azione) — serviva
+  // solo l'iniezione qui, stesso principio di #375. Estese TUTTE le
+  // azioni admin/staff-only di questo dispatcher effettivamente
+  // migrate/usate dal frontend (verificate contro SUPABASE_MIGRATED_ACTIONS
+  // in client.js): Roster admin, Garage61 sync, lapSubmissions review,
+  // e l'intero Social Manager admin (posts/metrics/generateText/media/plan).
+  'roster.adminUpdate', 'roster.deletionCandidates', 'roster.adminDelete',
+  'roster.availableSlots', 'roster.adminCreate',
+  'laps.syncFromGarage61',
+  'lapSubmissions.listPending', 'lapSubmissions.approve',
+  'lapSubmissions.reject', 'lapSubmissions.remove',
+  'social.posts.list', 'social.posts.create', 'social.posts.update', 'social.posts.remove',
+  'social.metrics.list', 'social.metrics.add',
+  'social.generateText',
+  'social.media.list', 'social.media.add', 'social.media.remove',
+  'social.plan.dismiss', 'social.plan.undismiss', 'social.plan.dismissed.list',
 ]);
 const LEGACY_TOKEN_STORAGE_KEY = 'vsd_paddock_token';
 // ═══════════════════════════════════════════════════════════
