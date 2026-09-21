@@ -168,6 +168,20 @@ const LEGACY_TOKEN_FALLBACK_ACTIONS = new Set([
   // di #358/#359 (qui scrive, non solo legge) ed è stato aggiunto
   // anche a SUPABASE_MIGRATED_ACTIONS in client.js.
   'roster.updateSelf',
+  // #375 (21/09/2026): stesso gap, trovato diagnosticando "sistema non
+  // più utilizzabile da notebook" segnalato da Demetrio. races.list/
+  // races.upcoming/raceResults.list/incidents.list/auditLog.list/
+  // championships.list/recap.mine non avevano mai ricevuto il fallback
+  // legacy (auditLog.list era stato deliberatamente escluso in #335,
+  // "nessun caso reale segnalato" — caso reale ora emerso). Il fix
+  // gemello lato Edge Function (resolveLegacyDriver) è già deployato su
+  // tutte e 7 le funzioni. Le azioni Social Manager admin-only
+  // (social.posts.list/social.metrics.list/social.generateText/
+  // social.discord.stats) risultavano invece già supportate lato
+  // dispatcher endurance-auditions-get — mancava solo l'iniezione qui.
+  'races.list', 'races.upcoming', 'raceResults.list', 'incidents.list',
+  'auditLog.list', 'championships.list', 'recap.mine',
+  'social.posts.list', 'social.metrics.list', 'social.generateText', 'social.discord.stats',
   // #337 (20/09/2026): stesso gap trovato PRIMA del cutover — RaceDetail.jsx
   // (pagina pubblica /race/:raceId) chiama endurance.stints.list per ogni
   // gara endurance incondizionatamente, e handleStintsList richiede sempre

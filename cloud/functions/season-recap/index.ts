@@ -1,18 +1,27 @@
 // ═══════════════════════════════════════════════════════════
-// VSD-Paddock Cloud — races.upcoming (porting di apps-script/Races.js)
+// VSD-Paddock Cloud — recap.mine (porting fedele di
+// apps-script/SeasonRecap.js, handleSeasonRecap)
 // ═══════════════════════════════════════════════════════════
-// Logica di riferimento reale (handleRacesUpcoming):
-//   - auth richiesto
-//   - status === 'scheduled' AND date > now, ordinate ASC, top 3
+// Riepilogo stagionale PERSONALE del pilota loggato, calcolato a
+// runtime da race_results — nessuna tabella dedicata. Solo il
+// proprio recap (mai quello di un altro pilota, stesso scope
+// ridotto Fase 1 del sorgente). Confine stagione: stesso criterio
+// del sorgente (SEASON_2026_START, 1 gennaio 2026, riuso dello
+// stesso concetto già in uso altrove). Cross-sim per i conteggi
+// (gare/podi/DNF) — legittimo qui, a differenza del VR, perché sono
+// solo conteggi personali. Solo session_type === 'race'.
 //
-// championship_name: sempre null qui, stesso motivo di races-list
-// (Championships non ancora portato, vedi #252).
+// FIX 21/09/2026 (segnalato da Demetrio, "sistema non più utilizzabile
+// da notebook"): aggiunto fallback token legacy, stesso pattern
+// #331/#358/#359 — mai incluso qui perché il file non era mai stato
+// sincronizzato in git (gap di drift, stesso pattern di audit-log-list
+// in #335). Senza sessione Supabase reale la pagina Season Recap
+// mostrava "Auth richiesto" con 401 silenzioso per qualunque pilota
+// con solo il token legacy.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// Fallback token legacy (stesso pattern #331/#358/#359, esteso il
-// 21/09/2026 — vedi nota completa in races-list/index.ts).
 const LEGACY_API_URL = 'https://script.google.com/macros/s/AKfycbyMXxEjZfm5EIsGUnKxpwtBtoeR4hwMG7Pl8ZESF8yG569SS0aIdsWqyu9PdBgR14vLiA/exec';
 
 async function resolveLegacyDriver(serviceClient: any, legacyToken: string | undefined) {
@@ -43,6 +52,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
+
+const RECAP_SEASON_START = '2026-01-01';
 
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -81,22 +92,53 @@ Deno.serve(async (req: Request) => {
 
     if (!me) return json({ ok: false, error: 'Auth richiesto' }, 401);
 
-    const nowIso = new Date().toISOString();
-
-    const { data, error } = await supabase
-      .from('races')
-      .select('*')
+    const { data: allResults, error: resErr } = await supabase
+      .from('race_results')
+      .select('race_id, sim, track_id, car_class, finish_position, best_lap_ms, best_lap_display, dnf, set_date')
       .eq('team_id', me.team_id)
-      .eq('status', 'scheduled')
-      .gt('date', nowIso)
-      .order('date', { ascending: true })
-      .limit(3);
+      .eq('driver_id', me.id)
+      .eq('session_type', 'race')
+      .gte('set_date', RECAP_SEASON_START);
+    if (resErr) return json({ ok: false, error: resErr.message }, 400);
+    const results = allResults ?? [];
 
-    if (error) return json({ ok: false, error: error.message }, 400);
+    const races = results.length;
+    const podiums = results.filter((r: any) => { const pos = Number(r.finish_position); return pos >= 1 && pos <= 3; }).length;
+    const dnfs = results.filter((r: any) => !!r.dnf).length;
 
-    const races = (data ?? []).map((r: any) => ({ ...r, championship_name: null }));
+    let bestFinish: any = null;
+    results.forEach((r: any) => {
+      const pos = Number(r.finish_position);
+      if (!pos || pos < 1) return;
+      if (!bestFinish || pos < bestFinish.position) {
+        bestFinish = { position: pos, race_id: r.race_id, track_id: r.track_id || '', sim: r.sim || '', car_class: r.car_class || '' };
+      }
+    });
 
-    return json({ ok: true, data: { races, count: races.length } });
+    let bestLap: any = null;
+    results.forEach((r: any) => {
+      const ms = Number(r.best_lap_ms);
+      if (!ms || ms <= 0) return;
+      if (!bestLap || ms < bestLap.ms) {
+        bestLap = { ms, display: r.best_lap_display || '', race_id: r.race_id, track_id: r.track_id || '', sim: r.sim || '' };
+      }
+    });
+
+    const trackCounts: Record<string, number> = {};
+    results.forEach((r: any) => { if (!r.track_id) return; trackCounts[r.track_id] = (trackCounts[r.track_id] || 0) + 1; });
+    let mostRacedTrack: any = null;
+    Object.keys(trackCounts).forEach((trackId) => {
+      if (!mostRacedTrack || trackCounts[trackId] > mostRacedTrack.count) mostRacedTrack = { track_id: trackId, count: trackCounts[trackId] };
+    });
+
+    const simCounts: Record<string, number> = {};
+    results.forEach((r: any) => { if (!r.sim) return; simCounts[r.sim] = (simCounts[r.sim] || 0) + 1; });
+    const bySim = Object.keys(simCounts).map((sim) => ({ sim, races: simCounts[sim] })).sort((a, b) => b.races - a.races);
+
+    return json({
+      ok: true,
+      data: { season_start: RECAP_SEASON_START, races, podiums, dnfs, bestFinish, bestLap, mostRacedTrack, bySim },
+    });
   } catch (e) {
     return json({ ok: false, error: String(e) }, 500);
   }

@@ -20,6 +20,36 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// Fallback token legacy (stesso pattern #331/#358/#359, esteso il
+// 21/09/2026 — vedi nota completa in races-list/index.ts). Nota #335
+// originariamente escludeva questo dominio dal fallback ("nessun caso
+// reale segnalato per un admin/staff senza sessione Supabase") — caso
+// reale ora emerso (Demetrio da notebook), fallback aggiunto.
+const LEGACY_API_URL = 'https://script.google.com/macros/s/AKfycbyMXxEjZfm5EIsGUnKxpwtBtoeR4hwMG7Pl8ZESF8yG569SS0aIdsWqyu9PdBgR14vLiA/exec';
+
+async function resolveLegacyDriver(serviceClient: any, legacyToken: string | undefined) {
+  if (!legacyToken) return null;
+  try {
+    const r = await fetch(LEGACY_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'auth.verify', token: legacyToken, payload: {} }),
+    });
+    const j = await r.json();
+    const driverCode = j?.ok && j.data?.valid ? j.data?.driver?.driver_id : null;
+    if (!driverCode) return null;
+    const { data: d } = await serviceClient
+      .from('drivers')
+      .select('id, team_id, role, display_name, driver_code')
+      .eq('driver_code', driverCode)
+      .maybeSingle();
+    if (!d) return null;
+    return { ...d, role: j.data.driver.role || d.role };
+  } catch {
+    return null;
+  }
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -30,29 +60,41 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
+    const payload = await req.json().catch(() => ({}));
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) return json({ ok: false, error: 'Forbidden: solo staff/admin' }, 401);
+    let supabase: any = null;
+    let me: any = null;
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } },
-    );
-
-    const { data: { user }, error: userErr } = await supabase.auth.getUser();
-    if (userErr || !user) return json({ ok: false, error: 'Forbidden: solo staff/admin' }, 401);
-
-    const { data: me, error: meErr } = await supabase
-      .from('drivers')
-      .select('team_id, role')
-      .eq('auth_user_id', user.id)
-      .maybeSingle();
-    if (meErr) return json({ ok: false, error: meErr.message }, 400);
-    if (!me || (me.role !== 'staff' && me.role !== 'admin')) {
-      return json({ ok: false, error: 'Forbidden: solo staff/admin' }, 403);
+    if (authHeader) {
+      supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } },
+      );
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: meRow } = await supabase
+          .from('drivers')
+          .select('id, team_id, role, display_name, driver_code')
+          .eq('auth_user_id', user.id)
+          .maybeSingle();
+        me = meRow || null;
+      }
     }
 
-    const payload = await req.json().catch(() => ({}));
+    if (!me) {
+      const legacyServiceClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+      const legacyMe = await resolveLegacyDriver(legacyServiceClient, payload?.legacy_token);
+      if (legacyMe) {
+        me = legacyMe;
+        supabase = legacyServiceClient;
+      }
+    }
+
+    if (!me || (me.role !== 'staff' && me.role !== 'admin')) {
+      return json({ ok: false, error: 'Forbidden: solo staff/admin' }, me ? 403 : 401);
+    }
+
     const limit = Math.min(Math.max(Number(payload?.limit) || 100, 1), 500);
     const offset = Math.max(Number(payload?.offset) || 0, 0);
 
