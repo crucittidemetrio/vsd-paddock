@@ -600,9 +600,20 @@ export async function callApi(action, payload = {}) {
     }
 
     if (action === 'laps.list') {
+      // #378 (21/09/2026): bug trovato validando #376 — a differenza di
+      // roster.list qui sopra, questa chiamata NON passava `action` come
+      // terzo argomento a callEdgeFunction. Il fallback legacy_token
+      // (LEGACY_TOKEN_FALLBACK_ACTIONS, #359 include già 'laps.list') non
+      // scattava mai: la condizione in callEdgeFunction è
+      // `action && LEGACY_TOKEN_FALLBACK_ACTIONS.has(action)`, e con
+      // `action` undefined restava sempre false. Risultato: tab "Best Laps
+      // — Gestione → Inserimento manuale" mostrava sempre "Errore: Auth
+      // richiesto" (401 da best-laps-list) per qualunque pilota/admin con
+      // solo token legacy — cioè chiunque (vedi #376). Fix: passare
+      // `action`, esattamente come fa roster.list poche righe sopra.
       const filters = (payload && payload.filters) || {};
       const limit = payload && payload.limit;
-      const res = await callEdgeFunction('best-laps-list', {});
+      const res = await callEdgeFunction('best-laps-list', {}, action);
       if (!res.ok) return res;
       return ok(applyLapsListFilters(res.data?.laps, filters, limit));
     }
