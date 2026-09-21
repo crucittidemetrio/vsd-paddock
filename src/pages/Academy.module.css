@@ -404,6 +404,26 @@
   overflow: hidden;
 }
 
+.safetyValue {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 15px;
+  color: inherit;
+}
+
+.safetyLabel {
+  font-family: 'Inter', sans-serif;
+  font-size: 10px;
+  color: inherit;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.safetyClean { color: #4ade80; }
+.safetyRegular { color: #00d4ff; }
+.safetyWatch { color: #ffbf3f; }
+.safetyRisk { color: #f87171; }
+
 .bestLapTrack {
   font-family: 'JetBrains Mono', monospace;
   font-size: 10px;

@@ -46,6 +46,19 @@ export default function Academy() {
   const ranking = rankingQuery.data?.ranking || [];
   const paceRanking = rankingQuery.data?.paceRanking || [];
   const paceMinRaces = rankingQuery.data?.paceRankingMinRaces ?? 3;
+  // #372: Elo (forza relativa) + Safety Rank (pulizia di guida) — vedi
+  // cloud/functions/academy-ranking/index.ts (#371) per il calcolo,
+  // già mantenuto aggiornato da elo.backfill (#369) e da ogni import
+  // risultati (#370). Liste indipendenti, non toccano VR/PM/PP/badge.
+  const eloRanking = rankingQuery.data?.eloRanking || [];
+  const safetyRanking = rankingQuery.data?.safetyRanking || [];
+
+  function safetyBand(rating) {
+    if (rating >= 90) return { label: 'Pulito', cls: styles.safetyClean };
+    if (rating >= 70) return { label: 'Regolare', cls: styles.safetyRegular };
+    if (rating >= 40) return { label: 'Da monitorare', cls: styles.safetyWatch };
+    return { label: 'A rischio', cls: styles.safetyRisk };
+  }
 
   return (
     <div className={styles.container}>
@@ -265,6 +278,92 @@ export default function Academy() {
                 <span className={styles.races}>{r.races}</span>
               </div>
             ))}
+          </div>
+        </>
+      )}
+
+      {eloRanking.length > 0 && (
+        <>
+          <div className={styles.paceHeader}>
+            <div className={styles.eyebrow}>FORZA RELATIVA</div>
+            <h2 className={styles.paceTitle}>Classifica Elo</h2>
+            <p className={styles.sub}>
+              Non misura solo il piazzamento: confronta ogni pilota con TUTTI gli
+              avversari battuti o da cui è stato battuto in ogni gara, pesando la
+              differenza per quanto erano già forti. Un P5 in un campo di piloti forti
+              vale più di un P5 in un campo debole. Parte da 1500, sale o scende ad ogni
+              gara in base al risultato atteso vs quello reale.
+            </p>
+          </div>
+
+          <div className={styles.table}>
+            <div className={styles.tableHeaderRow}>
+              <span>#</span>
+              <span>Pilota</span>
+              <span>Elo</span>
+              <span>Gare</span>
+            </div>
+            {eloRanking.map((r, idx) => (
+              <div key={r.driver_id} className={styles.tableRow}>
+                <span className={idx < 3 ? styles.rankTop3 : styles.rank}>{idx + 1}</span>
+                <span className={styles.driverCell}>
+                  {r.avatar_url ? (
+                    <img className={styles.avatar} src={r.avatar_url} alt="" />
+                  ) : (
+                    <span className={styles.avatarFallback}>{initials(r.display_name)}</span>
+                  )}
+                  <span className={styles.driverName}>{r.display_name}</span>
+                </span>
+                <span className={styles.vr}>{r.elo}</span>
+                <span className={styles.races}>{r.races}</span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {safetyRanking.length > 0 && (
+        <>
+          <div className={styles.paceHeader}>
+            <div className={styles.eyebrow}>PULIZIA DI GUIDA</div>
+            <h2 className={styles.paceTitle}>Safety Rank</h2>
+            <p className={styles.sub}>
+              Scala 0-100, parte da 100. Ogni gara pulita completata vale +1 (fino al
+              tetto di 100); ogni incidente chiuso dallo staff con una penalità lo
+              abbassa (da −2 per un warning a −25 per una squalifica). Non è
+              retroattivo sugli incidenti chiusi prima dell'introduzione di questo
+              campo.
+            </p>
+          </div>
+
+          <div className={styles.table}>
+            <div className={styles.tableHeaderRow}>
+              <span>#</span>
+              <span>Pilota</span>
+              <span>Safety</span>
+              <span>Gare</span>
+            </div>
+            {safetyRanking.map((r, idx) => {
+              const band = safetyBand(r.safety_rank);
+              return (
+                <div key={r.driver_id} className={styles.tableRow}>
+                  <span className={idx < 3 ? styles.rankTop3 : styles.rank}>{idx + 1}</span>
+                  <span className={styles.driverCell}>
+                    {r.avatar_url ? (
+                      <img className={styles.avatar} src={r.avatar_url} alt="" />
+                    ) : (
+                      <span className={styles.avatarFallback}>{initials(r.display_name)}</span>
+                    )}
+                    <span className={styles.driverName}>{r.display_name}</span>
+                  </span>
+                  <span className={`${styles.vrCell} ${band.cls}`}>
+                    <span className={styles.safetyValue}>{r.safety_rank}</span>
+                    <span className={styles.safetyLabel}>{band.label}</span>
+                  </span>
+                  <span className={styles.races}>{r.races}</span>
+                </div>
+              );
+            })}
           </div>
         </>
       )}
