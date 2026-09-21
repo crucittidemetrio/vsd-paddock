@@ -40,11 +40,261 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// Fallback token legacy (#370 fix, 21/09/2026 — stesso gap di
+// #358/#359/#375/#378: nessun pilota reale, incluso l'unico admin
+// reale, ha mai ottenuto una sessione Supabase vera — solo il token
+// legacy Discord OAuth via Apps Script. Questa funzione richiedeva
+// SEMPRE `req.headers.get('Authorization')` + `auth.getUser()` validi,
+// senza alcun fallback: raceResults.import era di fatto irraggiungibile
+// da chiunque, scoperto qui mentre si agganciava il ricalcolo Elo/
+// Safety Rank (#370) — senza un import funzionante l'aggancio non è
+// mai testabile né utilizzabile. Stesso pattern resolveLegacyDriver
+// già usato in best-laps-list/social-manager/ecc.
+const LEGACY_API_URL = 'https://script.google.com/macros/s/AKfycbyMXxEjZfm5EIsGUnKxpwtBtoeR4hwMG7Pl8ZESF8yG569SS0aIdsWqyu9PdBgR14vLiA/exec';
+
+async function resolveLegacyDriver(serviceClient: any, legacyToken: string | undefined) {
+  if (!legacyToken) return null;
+  try {
+    const r = await fetch(LEGACY_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'auth.verify', token: legacyToken, payload: {} }),
+    });
+    const j = await r.json();
+    const driverCode = j?.ok && j.data?.valid ? j.data?.driver?.driver_id : null;
+    if (!driverCode) return null;
+    const { data: d } = await serviceClient
+      .from('drivers')
+      .select('id, team_id, role, display_name, driver_code')
+      .eq('driver_code', driverCode)
+      .maybeSingle();
+    if (!d) return null;
+    return { ...d, role: j.data.driver.role || d.role };
+  } catch {
+    return null;
+  }
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
+
+// ─── Elo + Safety Rank (#370) — aggiornamento dopo ogni import di una
+// sessione 'race'. Duplicazione dell'algoritmo di elo.backfill
+// (cloud/functions/social-manager/index.ts, #369) — stessa
+// duplicazione già praticata nel repo per logica condivisa tra slug
+// diversi (addBestLapWithRecordCheck in best-laps-add/social-manager,
+// resolveDriver nelle fuel-*).
+//
+// DECISIONE: non un vero incremento "solo il delta di questa gara",
+// ma un ribackfill COMPLETO scoped al solo sim della gara appena
+// importata (non team-wide). Motivo: l'ordine cronologico di import
+// non è garantito (una gara vecchia può essere importata in ritardo,
+// o ri-importata dopo una correzione) — rigiocare tutto lo storico di
+// quel sim è l'unico modo per restare sempre corretti, esattamente
+// come il backfill stesso è pensato per essere idempotente/
+// rilanciabile. Costo trascurabile alla scala di questo team (decine
+// di gare per sim). Chiamato in modo non bloccante (try/catch, mai
+// propagato al chiamante), stesso principio di seedRaceReportsForRace
+// qui sotto.
+//
+// Usa un client service-role dedicato (non il client JWT dell'utente
+// autenticato `supabase`): le tabelle driver_elo_*/driver_safety_*
+// (031_elo_safety_rank.sql) concedono a `authenticated` solo
+// select/insert/update, MAI delete — né a livello di GRANT né di
+// policy RLS — perché il ribackfill deve poter cancellare e
+// ricostruire da zero. Stesso pattern già usato per elo.backfill.
+const ELO_K_FACTOR = (racesBefore: number) => (racesBefore < 10 ? 40 : racesBefore < 30 ? 24 : 16);
+const SAFETY_PENALTY: Record<string, number> = {
+  'warning': -2,
+  'penalità lieve': -4,
+  'penalità media': -8,
+  'penalità pesante': -15,
+  'squalifica': -25,
+};
+const SAFETY_REASON: Record<string, string> = {
+  'warning': 'warning',
+  'penalità lieve': 'lieve',
+  'penalità media': 'media',
+  'penalità pesante': 'pesante',
+  'squalifica': 'squalifica',
+};
+
+async function recomputeEloSafetyForSim(teamId: string, sim: string) {
+  const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+  for (const table of ['driver_elo_history', 'driver_elo_ratings', 'driver_safety_rank_history', 'driver_safety_ranks']) {
+    const { error } = await db.from(table).delete().eq('team_id', teamId).eq('sim', sim);
+    if (error) throw new Error(`${table}: ${error.message}`);
+  }
+
+  const { data: results, error: resErr } = await db
+    .from('race_results')
+    .select('race_id, sim, car_class, driver_id, finish_position, total_laps, set_date, imported_at')
+    .eq('team_id', teamId)
+    .eq('sim', sim)
+    .eq('session_type', 'race')
+    .not('driver_id', 'is', null)
+    .not('dns', 'eq', true);
+  if (resErr) throw new Error(resErr.message);
+
+  const { data: resolutions, error: resoErr } = await db
+    .from('incident_resolutions')
+    .select('id, sim, penalized_driver_id, penalty_type, resolved_at')
+    .eq('team_id', teamId)
+    .eq('sim', sim)
+    .not('penalized_driver_id', 'is', null)
+    .not('resolved_at', 'is', null);
+  if (resoErr) throw new Error(resoErr.message);
+
+  const raceGroups: Record<string, any[]> = {};
+  (results ?? []).forEach((r: any) => {
+    const key = [r.sim, r.race_id || 'no-race-id', r.car_class].join('|');
+    if (!raceGroups[key]) raceGroups[key] = [];
+    raceGroups[key].push(r);
+  });
+
+  function groupTimestamp(group: any[]): number {
+    const dates = group.map((r) => (r.set_date ? new Date(r.set_date).getTime() : new Date(r.imported_at).getTime()));
+    return Math.min(...dates);
+  }
+
+  const sortedGroupKeys = Object.keys(raceGroups)
+    .filter((k) => raceGroups[k].length >= 2)
+    .sort((a, b) => groupTimestamp(raceGroups[a]) - groupTimestamp(raceGroups[b]));
+
+  const eloState: Record<string, { rating: number; races: number }> = {};
+  const eloHistoryRows: any[] = [];
+
+  sortedGroupKeys.forEach((key) => {
+    const group = raceGroups[key];
+    const groupSim = group[0].sim;
+    const carClass = group[0].car_class;
+    const raceId = group[0].race_id;
+
+    const withPosition = group.filter((r: any) => r.finish_position != null);
+    if (withPosition.length < 2) return;
+
+    const stateKey = (driverId: string) => `${driverId}|${groupSim}`;
+    withPosition.forEach((r: any) => {
+      if (!eloState[stateKey(r.driver_id)]) eloState[stateKey(r.driver_id)] = { rating: 1500, races: 0 };
+    });
+
+    const preRaceRating: Record<string, number> = {};
+    withPosition.forEach((r: any) => { preRaceRating[r.driver_id] = eloState[stateKey(r.driver_id)].rating; });
+
+    withPosition.forEach((r: any) => {
+      const myRating = preRaceRating[r.driver_id];
+      const myPos = Number(r.finish_position);
+      const opponents = withPosition.filter((o: any) => o.driver_id !== r.driver_id);
+      if (opponents.length === 0) return;
+
+      let expectedSum = 0;
+      let actualSum = 0;
+      opponents.forEach((o: any) => {
+        const oppRating = preRaceRating[o.driver_id];
+        const expected = 1 / (1 + Math.pow(10, (oppRating - myRating) / 400));
+        const oppPos = Number(o.finish_position);
+        const actual = myPos < oppPos ? 1 : myPos > oppPos ? 0 : 0.5;
+        expectedSum += expected;
+        actualSum += actual;
+      });
+
+      const racesBefore = eloState[stateKey(r.driver_id)].races;
+      const k = ELO_K_FACTOR(racesBefore);
+      const delta = k * ((actualSum - expectedSum) / opponents.length);
+      const ratingBefore = myRating;
+      const ratingAfter = ratingBefore + delta;
+
+      eloState[stateKey(r.driver_id)] = { rating: ratingAfter, races: racesBefore + 1 };
+
+      eloHistoryRows.push({
+        team_id: teamId,
+        driver_id: r.driver_id,
+        sim: groupSim,
+        race_id: raceId,
+        car_class: carClass,
+        rating_before: Math.round(ratingBefore * 100) / 100,
+        rating_after: Math.round(ratingAfter * 100) / 100,
+        delta: Math.round(delta * 100) / 100,
+        k_factor: k,
+        opponents_count: opponents.length,
+      });
+    });
+  });
+
+  type SafetyEvent = { driverId: string; sim: string; ts: number; kind: 'race' | 'penalty'; raceId?: string; resolutionId?: string; penaltyType?: string };
+  const events: SafetyEvent[] = [];
+
+  (results ?? []).forEach((r: any) => {
+    const ts = r.set_date ? new Date(r.set_date).getTime() : new Date(r.imported_at).getTime();
+    events.push({ driverId: r.driver_id, sim: r.sim, ts, kind: 'race', raceId: r.race_id });
+  });
+  (resolutions ?? []).forEach((res: any) => {
+    if (!SAFETY_PENALTY[res.penalty_type]) return;
+    events.push({
+      driverId: res.penalized_driver_id, sim: res.sim, ts: new Date(res.resolved_at).getTime(),
+      kind: 'penalty', resolutionId: res.id, penaltyType: res.penalty_type,
+    });
+  });
+  events.sort((a, b) => a.ts - b.ts);
+
+  const safetyState: Record<string, { rating: number; races: number }> = {};
+  const safetyHistoryRows: any[] = [];
+
+  events.forEach((ev) => {
+    const key = `${ev.driverId}|${ev.sim}`;
+    if (!safetyState[key]) safetyState[key] = { rating: 100, races: 0 };
+    const before = safetyState[key].rating;
+
+    let after = before;
+    let reason: string;
+    if (ev.kind === 'race') {
+      after = Math.min(100, before + 1);
+      reason = 'clean_race';
+      safetyState[key].races += 1;
+    } else {
+      after = Math.max(0, before + SAFETY_PENALTY[ev.penaltyType!]);
+      reason = SAFETY_REASON[ev.penaltyType!];
+    }
+
+    safetyState[key].rating = after;
+    safetyHistoryRows.push({
+      team_id: teamId,
+      driver_id: ev.driverId,
+      sim: ev.sim,
+      race_id: ev.kind === 'race' ? ev.raceId : null,
+      incident_resolution_id: ev.kind === 'penalty' ? ev.resolutionId : null,
+      rating_before: Math.round(before * 100) / 100,
+      rating_after: Math.round(after * 100) / 100,
+      delta: Math.round((after - before) * 100) / 100,
+      reason,
+    });
+  });
+
+  async function bulkInsert(table: string, rows: any[], chunkSize = 500) {
+    for (let i = 0; i < rows.length; i += chunkSize) {
+      const { error } = await db.from(table).insert(rows.slice(i, i + chunkSize));
+      if (error) throw new Error(`${table}: ${error.message}`);
+    }
+  }
+
+  const eloRatingRows = Object.keys(eloState).map((key) => {
+    const [driver_id, rsim] = key.split('|');
+    return { team_id: teamId, driver_id, sim: rsim, rating: Math.round(eloState[key].rating * 100) / 100, races: eloState[key].races };
+  });
+  const safetyRatingRows = Object.keys(safetyState).map((key) => {
+    const [driver_id, rsim] = key.split('|');
+    return { team_id: teamId, driver_id, sim: rsim, rating: safetyState[key].rating, races: safetyState[key].races };
+  });
+
+  await bulkInsert('driver_elo_history', eloHistoryRows);
+  await bulkInsert('driver_elo_ratings', eloRatingRows);
+  await bulkInsert('driver_safety_rank_history', safetyHistoryRows);
+  await bulkInsert('driver_safety_ranks', safetyRatingRows);
+}
 
 function msToLapDisplay(ms: number | null | undefined): string {
   if (ms == null || isNaN(ms as number)) return '';
@@ -154,21 +404,6 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) return json({ ok: false, error: 'Auth richiesto' }, 401);
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } },
-    );
-
-    const {
-      data: { user },
-      error: userErr,
-    } = await supabase.auth.getUser();
-    if (userErr || !user) return json({ ok: false, error: 'Auth richiesto' }, 401);
-
     const payload = await req.json().catch(() => ({}));
     if (!payload?.race_id) return json({ ok: false, error: 'race_id mancante' }, 400);
     if (!payload?.json_data) return json({ ok: false, error: 'json_data mancante' }, 400);
@@ -179,13 +414,42 @@ Deno.serve(async (req: Request) => {
       catch (e) { return json({ ok: false, error: 'JSON non valido: ' + String(e) }, 400); }
     }
 
-    const { data: me, error: meErr } = await supabase
-      .from('drivers')
-      .select('id, team_id, role')
-      .eq('auth_user_id', user.id)
-      .maybeSingle();
-    if (meErr) return json({ ok: false, error: meErr.message }, 400);
-    if (!me) return json({ ok: false, error: 'Driver non collegato a questo account' }, 404);
+    const authHeader = req.headers.get('Authorization');
+    let supabase: any = null;
+    let me: any = null;
+
+    if (authHeader) {
+      supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } },
+      );
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: meRow } = await supabase
+          .from('drivers')
+          .select('id, team_id, role')
+          .eq('auth_user_id', user.id)
+          .maybeSingle();
+        me = meRow || null;
+      }
+    }
+
+    // Fallback token legacy (#370 fix) — vedi nota completa in testa al
+    // file. Se risolto, `supabase` passa a service-role (RLS bypassata,
+    // come nelle altre 20+ Edge Function con lo stesso fallback): lo
+    // scoping per team resta comunque applicato esplicitamente in ogni
+    // query sottostante via `.eq('team_id', me.team_id)`, invariato.
+    if (!me) {
+      const legacyServiceClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+      const legacyMe = await resolveLegacyDriver(legacyServiceClient, payload?.legacy_token);
+      if (legacyMe) {
+        me = legacyMe;
+        supabase = legacyServiceClient;
+      }
+    }
+
+    if (!me) return json({ ok: false, error: 'Auth richiesto' }, 401);
     if (me.role !== 'staff' && me.role !== 'admin') {
       return json({ ok: false, error: 'Forbidden: solo staff può importare risultati' }, 403);
     }
@@ -406,6 +670,7 @@ Deno.serve(async (req: Request) => {
 
         if (sessionType === 'race') {
           await seedRaceReportsForRace(race.race_id);
+          try { await recomputeEloSafetyForSim(me!.team_id, 'IRC'); } catch (_e) { /* #370: non bloccante, come seedRaceReportsForRace */ }
         }
       }
 
@@ -431,6 +696,7 @@ Deno.serve(async (req: Request) => {
 
     if (meta.session_type === 'race') {
       await seedRaceReportsForRace(meta.race_id);
+      try { await recomputeEloSafetyForSim(me.team_id, meta.sim); } catch (_e) { /* #370: non bloccante, come seedRaceReportsForRace */ }
     }
 
     return json({ ok: true, data: stats });

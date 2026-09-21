@@ -223,6 +223,14 @@ const LEGACY_TOKEN_FALLBACK_ACTIONS = new Set([
   'social.generateText',
   'social.media.list', 'social.media.add', 'social.media.remove',
   'social.plan.dismiss', 'social.plan.undismiss', 'social.plan.dismissed.list',
+  // #370 (21/09/2026): stesso gap, trovato mentre si agganciava il
+  // ricalcolo Elo/Safety Rank a raceResults.import — l'Edge Function
+  // race-results-import richiedeva SEMPRE una sessione Supabase reale
+  // (nessun resolveLegacyDriver), quindi era irraggiungibile per
+  // chiunque, incluso l'unico admin reale. Fix gemello lato Edge
+  // Function applicato (resolveLegacyDriver aggiunto a
+  // race-results-import/index.ts, v8) — serviva solo l'iniezione qui.
+  'raceResults.import',
 ]);
 const LEGACY_TOKEN_STORAGE_KEY = 'vsd_paddock_token';
 // ═══════════════════════════════════════════════════════════

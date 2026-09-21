@@ -212,6 +212,27 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const PADDOCK_URL = 'https://vsd-paddock.vercel.app';
 const REPORT_REACTION_EMOJI = ['🔥', '👏', '😂', '💀', '😬'];
 
+// ─── Elo + Safety Rank (#369) — vedi commento completo nel blocco
+// `elo.backfill` più sotto e in cloud/schema/031_elo_safety_rank.sql.
+// Accorpato qui (non funzione standalone) per lo stesso motivo di
+// deviazione architetturale spiegato in cima al file: piano free
+// fermo a 100/100 Edge Function.
+const ELO_K_FACTOR = (racesBefore: number) => (racesBefore < 10 ? 40 : racesBefore < 30 ? 24 : 16);
+const SAFETY_PENALTY: Record<string, number> = {
+  'warning': -2,
+  'penalità lieve': -4,
+  'penalità media': -8,
+  'penalità pesante': -15,
+  'squalifica': -25,
+};
+const SAFETY_REASON: Record<string, string> = {
+  'warning': 'warning',
+  'penalità lieve': 'lieve',
+  'penalità media': 'media',
+  'penalità pesante': 'pesante',
+  'squalifica': 'squalifica',
+};
+
 const SOCIAL_AI_SYSTEM_PROMPT =
   'Sei il copywriter social di Virtual Sim-Driver (VSD), team italiano di ' +
   'sim racing endurance su Le Mans Ultimate, iRacing e Assetto Corsa Evo. ' +
@@ -2076,6 +2097,236 @@ Deno.serve(async (req: Request) => {
         return json({ ok: false, error: String((e as Error).message || e) }, 502);
       }
       return json({ ok: true, data: { topic, event: eventName } });
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // ELO + SAFETY RANK — BACKFILL STORICO (#369) — staff/admin.
+    // Accorpato qui invece che come funzione standalone `elo-safety-
+    // backfill`: il progetto era già a 100/100 Edge Function sul piano
+    // free (deploy della funzione dedicata rifiutato con
+    // PaymentRequiredException), stesso motivo di deviazione già
+    // documentato in cima al file per Roster admin/Garage61/ecc.
+    //
+    // One-shot/rilanciabile: rigioca in ordine cronologico tutti i
+    // race_results (session_type='race') e incident_resolutions
+    // risolte per (ri)costruire da zero driver_elo_ratings/
+    // driver_elo_history e driver_safety_ranks/
+    // driver_safety_rank_history. Vedi commento di contesto completo
+    // in cloud/schema/031_elo_safety_rank.sql.
+    //
+    // Idempotente: cancella prima le righe del team (+ sim se passato)
+    // in tutte e 4 le tabelle, poi ricostruisce. Safe da rilanciare
+    // quante volte serve (bug nel calcolo, nuova gara storica scoperta
+    // tardi).
+    //
+    // Elo: gruppo di confronto = (race_id, car_class) — stessa unità
+    // class-relative di PM in academy-ranking. K-factor per il pilota
+    // dipende da QUANTE gare ha già fatto in quel sim PRIMA di questa
+    // (40 prime 10, 24 dalle 11 alle 30, 16 dopo). DNS escluso, DNF
+    // incluso (posizione relativa comunque significativa).
+    //
+    // Safety Rank: due flussi di eventi indipendenti, fusi per
+    // timestamp e processati in ordine per (driver, sim): ogni riga
+    // race_results (session_type='race') = +1 gara pulita
+    // (timestamp=set_date); ogni incident_resolutions con penalty_type
+    // noto E resolved_at valorizzato = decremento (timestamp=
+    // resolved_at). NOTA ONESTA: incident_resolutions non ha una FK
+    // verso race_id nello schema esistente — limite preesistente del
+    // dominio Incidents, non introdotto qui.
+    // ═══════════════════════════════════════════════════════
+
+    if (action === 'elo.backfill') {
+      const denied = requireStaffOrAdmin(); if (denied) return denied;
+
+      const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+      const simFilter: string | null = payload?.sim ? String(payload.sim) : null;
+
+      for (const table of ['driver_elo_history', 'driver_elo_ratings', 'driver_safety_rank_history', 'driver_safety_ranks']) {
+        let del = db.from(table).delete().eq('team_id', teamId);
+        if (simFilter) del = del.eq('sim', simFilter);
+        const { error } = await del;
+        if (error) return json({ ok: false, error: `Pulizia ${table}: ${error.message}` }, 400);
+      }
+
+      let resultsQuery = db
+        .from('race_results')
+        .select('race_id, sim, car_class, driver_id, finish_position, total_laps, set_date, imported_at')
+        .eq('team_id', teamId)
+        .eq('session_type', 'race')
+        .not('driver_id', 'is', null)
+        .not('dns', 'eq', true);
+      if (simFilter) resultsQuery = resultsQuery.eq('sim', simFilter);
+      const { data: results, error: resErr } = await resultsQuery;
+      if (resErr) return json({ ok: false, error: resErr.message }, 400);
+
+      let resoQuery = db
+        .from('incident_resolutions')
+        .select('id, sim, penalized_driver_id, penalty_type, resolved_at')
+        .eq('team_id', teamId)
+        .not('penalized_driver_id', 'is', null)
+        .not('resolved_at', 'is', null);
+      if (simFilter) resoQuery = resoQuery.eq('sim', simFilter);
+      const { data: resolutions, error: resoErr } = await resoQuery;
+      if (resoErr) return json({ ok: false, error: resoErr.message }, 400);
+
+      const raceGroups: Record<string, any[]> = {};
+      (results ?? []).forEach((r: any) => {
+        const key = [r.sim, r.race_id || 'no-race-id', r.car_class].join('|');
+        if (!raceGroups[key]) raceGroups[key] = [];
+        raceGroups[key].push(r);
+      });
+
+      function groupTimestamp(group: any[]): number {
+        const dates = group.map((r) => (r.set_date ? new Date(r.set_date).getTime() : new Date(r.imported_at).getTime()));
+        return Math.min(...dates);
+      }
+
+      const sortedGroupKeys = Object.keys(raceGroups)
+        .filter((k) => raceGroups[k].length >= 2)
+        .sort((a, b) => groupTimestamp(raceGroups[a]) - groupTimestamp(raceGroups[b]));
+
+      const eloState: Record<string, { rating: number; races: number }> = {};
+      const eloHistoryRows: any[] = [];
+
+      sortedGroupKeys.forEach((key) => {
+        const group = raceGroups[key];
+        const sim = group[0].sim;
+        const carClass = group[0].car_class;
+        const raceId = group[0].race_id;
+
+        const withPosition = group.filter((r: any) => r.finish_position != null);
+        if (withPosition.length < 2) return;
+
+        const stateKey = (driverId: string) => `${driverId}|${sim}`;
+        withPosition.forEach((r: any) => {
+          if (!eloState[stateKey(r.driver_id)]) eloState[stateKey(r.driver_id)] = { rating: 1500, races: 0 };
+        });
+
+        const preRaceRating: Record<string, number> = {};
+        withPosition.forEach((r: any) => { preRaceRating[r.driver_id] = eloState[stateKey(r.driver_id)].rating; });
+
+        withPosition.forEach((r: any) => {
+          const myRating = preRaceRating[r.driver_id];
+          const myPos = Number(r.finish_position);
+          const opponents = withPosition.filter((o: any) => o.driver_id !== r.driver_id);
+          if (opponents.length === 0) return;
+
+          let expectedSum = 0;
+          let actualSum = 0;
+          opponents.forEach((o: any) => {
+            const oppRating = preRaceRating[o.driver_id];
+            const expected = 1 / (1 + Math.pow(10, (oppRating - myRating) / 400));
+            const oppPos = Number(o.finish_position);
+            const actual = myPos < oppPos ? 1 : myPos > oppPos ? 0 : 0.5;
+            expectedSum += expected;
+            actualSum += actual;
+          });
+
+          const racesBefore = eloState[stateKey(r.driver_id)].races;
+          const k = ELO_K_FACTOR(racesBefore);
+          const delta = k * ((actualSum - expectedSum) / opponents.length);
+          const ratingBefore = myRating;
+          const ratingAfter = ratingBefore + delta;
+
+          eloState[stateKey(r.driver_id)] = { rating: ratingAfter, races: racesBefore + 1 };
+
+          eloHistoryRows.push({
+            team_id: teamId,
+            driver_id: r.driver_id,
+            sim,
+            race_id: raceId,
+            car_class: carClass,
+            rating_before: Math.round(ratingBefore * 100) / 100,
+            rating_after: Math.round(ratingAfter * 100) / 100,
+            delta: Math.round(delta * 100) / 100,
+            k_factor: k,
+            opponents_count: opponents.length,
+          });
+        });
+      });
+
+      type SafetyEvent = { driverId: string; sim: string; ts: number; kind: 'race' | 'penalty'; raceId?: string; resolutionId?: string; penaltyType?: string };
+      const events: SafetyEvent[] = [];
+
+      (results ?? []).forEach((r: any) => {
+        const ts = r.set_date ? new Date(r.set_date).getTime() : new Date(r.imported_at).getTime();
+        events.push({ driverId: r.driver_id, sim: r.sim, ts, kind: 'race', raceId: r.race_id });
+      });
+      (resolutions ?? []).forEach((res: any) => {
+        if (!SAFETY_PENALTY[res.penalty_type]) return;
+        events.push({
+          driverId: res.penalized_driver_id, sim: res.sim, ts: new Date(res.resolved_at).getTime(),
+          kind: 'penalty', resolutionId: res.id, penaltyType: res.penalty_type,
+        });
+      });
+      events.sort((a, b) => a.ts - b.ts);
+
+      const safetyState: Record<string, { rating: number; races: number }> = {};
+      const safetyHistoryRows: any[] = [];
+
+      events.forEach((ev) => {
+        const key = `${ev.driverId}|${ev.sim}`;
+        if (!safetyState[key]) safetyState[key] = { rating: 100, races: 0 };
+        const before = safetyState[key].rating;
+
+        let after = before;
+        let reason: string;
+        if (ev.kind === 'race') {
+          after = Math.min(100, before + 1);
+          reason = 'clean_race';
+          safetyState[key].races += 1;
+        } else {
+          after = Math.max(0, before + SAFETY_PENALTY[ev.penaltyType!]);
+          reason = SAFETY_REASON[ev.penaltyType!];
+        }
+
+        safetyState[key].rating = after;
+        safetyHistoryRows.push({
+          team_id: teamId,
+          driver_id: ev.driverId,
+          sim: ev.sim,
+          race_id: ev.kind === 'race' ? ev.raceId : null,
+          incident_resolution_id: ev.kind === 'penalty' ? ev.resolutionId : null,
+          rating_before: Math.round(before * 100) / 100,
+          rating_after: Math.round(after * 100) / 100,
+          delta: Math.round((after - before) * 100) / 100,
+          reason,
+        });
+      });
+
+      async function bulkInsert(table: string, rows: any[], chunkSize = 500) {
+        for (let i = 0; i < rows.length; i += chunkSize) {
+          const { error } = await db.from(table).insert(rows.slice(i, i + chunkSize));
+          if (error) throw new Error(`${table}: ${error.message}`);
+        }
+      }
+
+      const eloRatingRows = Object.keys(eloState).map((key) => {
+        const [driver_id, sim] = key.split('|');
+        return { team_id: teamId, driver_id, sim, rating: Math.round(eloState[key].rating * 100) / 100, races: eloState[key].races };
+      });
+      const safetyRatingRows = Object.keys(safetyState).map((key) => {
+        const [driver_id, sim] = key.split('|');
+        return { team_id: teamId, driver_id, sim, rating: safetyState[key].rating, races: safetyState[key].races };
+      });
+
+      try {
+        await bulkInsert('driver_elo_history', eloHistoryRows);
+        await bulkInsert('driver_elo_ratings', eloRatingRows);
+        await bulkInsert('driver_safety_rank_history', safetyHistoryRows);
+        await bulkInsert('driver_safety_ranks', safetyRatingRows);
+      } catch (e) {
+        return json({ ok: false, error: String(e) }, 400);
+      }
+
+      return json({
+        ok: true,
+        data: {
+          sims_processed: [...new Set([...eloRatingRows.map((r) => r.sim), ...safetyRatingRows.map((r) => r.sim)])],
+          elo: { drivers: eloRatingRows.length, race_groups: sortedGroupKeys.length, history_rows: eloHistoryRows.length },
+          safety: { drivers: safetyRatingRows.length, events: safetyHistoryRows.length },
+        },
+      });
     }
 
     return json({ ok: false, error: 'action non valida: ' + action }, 400);
