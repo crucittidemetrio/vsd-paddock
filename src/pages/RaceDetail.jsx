@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
 import StintTimeline from '../components/race/StintTimeline';
@@ -17,6 +17,7 @@ import { formatTrackInfo, formatCarInfo } from '../utils/format';
 import { trackAccentColor } from '../utils/trackAccent';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { normalizeImageUrl } from '../utils/driveUrl';
+import { useBlobUpload } from '../hooks/useBlobUpload';
 import RaceResultsSection from '../components/race/RaceResultsSection';
 import TrackKerbBackdrop from '../components/shared/TrackKerbBackdrop';
 import './Page.css';
@@ -234,6 +235,27 @@ function GallerySection({ race, isStaff, onUpdated }) {
   const [error, setError] = useState(null);
   const [lightbox, setLightbox] = useState(null);
 
+  // #380 (21/09/2026): prima solo incolla-URL (Drive/Discord/Imgur) —
+  // Demetrio ha chiesto un vero upload. Stesso pattern Vercel Blob già
+  // in produzione per il Media Gallery del Social Manager. La textarea
+  // resta: dopo l'upload l'URL risultante viene semplicemente aggiunto
+  // lì, così restano modificabili/rimovibili prima di Salva.
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef(null);
+  const { uploadFiles, uploading, progress, error: uploadError } = useBlobUpload();
+
+  async function handleUpload(fileList) {
+    try {
+      const results = await uploadFiles(fileList);
+      if (results.length === 0) return;
+      setText(t => [t, ...results.map(r => r.url)].filter(Boolean).join('\n'));
+    } catch {
+      // errore già in uploadError, mostrato sotto
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  }
+
   async function handleSave() {
     setSaving(true);
     setError(null);
@@ -264,6 +286,25 @@ function GallerySection({ race, isStaff, onUpdated }) {
 
       {editing ? (
         <div className="rd-gallery-editor">
+          <div
+            className={`rd-gallery-dropzone${dragOver ? ' rd-gallery-dropzone-active' : ''}`}
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={(e) => { e.preventDefault(); setDragOver(false); handleUpload(e.dataTransfer.files); }}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              multiple
+              style={{ display: 'none' }}
+              onChange={(e) => handleUpload(e.target.files)}
+            />
+            {uploading
+              ? <span className="rd-gallery-dropzone-progress">{progress || 'Caricamento…'}</span>
+              : <span>📤 Trascina qui le foto o clicca per scegliere un file</span>}
+          </div>
           <textarea
             className="rd-gallery-textarea"
             value={text}
@@ -279,7 +320,7 @@ function GallerySection({ race, isStaff, onUpdated }) {
               Annulla
             </button>
           </div>
-          {error && <div className="rd-gallery-error">{error}</div>}
+          {(error || uploadError) && <div className="rd-gallery-error">{error || uploadError}</div>}
         </div>
       ) : urls.length > 0 ? (
         <div className="rd-gallery-grid">

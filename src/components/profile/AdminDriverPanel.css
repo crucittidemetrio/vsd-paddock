@@ -102,6 +102,85 @@
   font-size: 0.85rem;
 }
 
+/* #381: upload avatar (staff/admin only, stesso pattern Vercel Blob
+   già in produzione per Social Manager e galleria foto Gare #380) */
+.adp-avatar-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.adp-avatar-preview {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(154, 168, 199, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.adp-avatar-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.adp-avatar-placeholder {
+  color: #9aa8c7;
+  font-size: 1.2rem;
+}
+
+.adp-avatar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.adp-avatar-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.adp-avatar-upload-btn {
+  padding: 6px 14px;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.35);
+  border-radius: 6px;
+  color: #fbbf24;
+  font-family: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.adp-avatar-upload-btn:hover {
+  background: rgba(251, 191, 36, 0.2);
+}
+
+.adp-avatar-remove-btn {
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px solid rgba(154, 168, 199, 0.3);
+  border-radius: 6px;
+  color: #9aa8c7;
+  font-family: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.adp-avatar-remove-btn:hover {
+  border-color: rgba(245, 79, 79, 0.4);
+  color: #f54f4f;
+}
+
 .adp-actions {
   display: flex;
   gap: 8px;

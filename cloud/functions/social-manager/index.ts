@@ -751,6 +751,26 @@ Deno.serve(async (req: Request) => {
         updates.race_number = value === null || value === '' ? null : Number(value);
       }
 
+      // #381 (21/09/2026, richiesto da Demetrio): prima l'unico modo di
+      // impostare avatar_url era un edit diretto su Supabase — nessun
+      // canale nell'interfaccia. Scelta esplicita già in
+      // 002_roster_policies.sql: l'avatar resta gestito dallo STAFF, mai
+      // self-service (EditProfilePanel.jsx non lo tocca) — coerente qui:
+      // stesso gate requireStaffOrAdmin() di status/removed_at/race_number,
+      // non promosso al livello "solo admin" di role.
+      if ('avatar_url' in payload) {
+        const value = payload.avatar_url;
+        if (value === null || value === '') {
+          updates.avatar_url = null;
+        } else {
+          const url = String(value).trim();
+          if (!/^https:\/\//.test(url)) {
+            return json({ ok: false, error: 'avatar_url deve essere un URL https valido' }, 400);
+          }
+          updates.avatar_url = url;
+        }
+      }
+
       if (Object.keys(updates).length === 0) {
         return json({ ok: false, error: 'Nessun campo valido da aggiornare' }, 400);
       }

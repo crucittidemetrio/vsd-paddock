@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useAdminUpdateDriver, useAdminDeleteDriver } from '../../hooks/useRoster';
+import { useBlobUpload } from '../../hooks/useBlobUpload';
 import { ROLES, DRIVER_STATUS } from '../../utils/constants';
 import './AdminDriverPanel.css';
 
@@ -19,6 +20,14 @@ import './AdminDriverPanel.css';
  * ex-VSD (removed_at valorizzato) — il backend ri-verifica sempre i
  * contributi reali prima di cancellare, questo pannello non si fida
  * di alcun controllo lato client.
+ *
+ * Avatar (#381, 21/09/2026, richiesto da Demetrio): prima l'UNICO modo
+ * di impostare avatar_url era un edit diretto su Supabase — nessuna UI.
+ * Scelta esplicita già in 002_roster_policies.sql/EditProfilePanel.jsx:
+ * l'avatar resta gestito dallo STAFF, mai self-service — coerente qui,
+ * upload disponibile solo in questo pannello (staff/admin), mai in
+ * EditProfilePanel. Stesso pattern Vercel Blob già in produzione per
+ * Social Manager e galleria foto Gare (#380), via useBlobUpload.
  */
 export default function AdminDriverPanel({ driver }) {
   const { isStaff, isAdmin } = useAuth();
@@ -26,10 +35,13 @@ export default function AdminDriverPanel({ driver }) {
   const [status, setStatus] = useState(driver?.status || DRIVER_STATUS.ACTIVE);
   const [isExVsd, setIsExVsd] = useState(!!(driver?.is_ex_vsd || driver?.removed_at));
   const [role, setRole] = useState(driver?.role || ROLES.DRIVER);
+  const [avatarUrl, setAvatarUrl] = useState(driver?.avatar_url || null);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const avatarInputRef = useRef(null);
 
   const { mutate: save, isPending, error, isSuccess } = useAdminUpdateDriver();
   const { mutate: doDelete, isPending: isDeleting, error: deleteError } = useAdminDeleteDriver();
+  const { uploadFiles, uploading, progress, error: uploadError, setError: setUploadError } = useBlobUpload();
 
   if (!isStaff && !isAdmin) return null;
   if (driver?.is_system_account) return null;
@@ -38,8 +50,22 @@ export default function AdminDriverPanel({ driver }) {
     setStatus(driver?.status || DRIVER_STATUS.ACTIVE);
     setIsExVsd(!!(driver?.is_ex_vsd || driver?.removed_at));
     setRole(driver?.role || ROLES.DRIVER);
+    setAvatarUrl(driver?.avatar_url || null);
     setConfirmDelete(false);
+    setUploadError(null);
     setOpen(true);
+  }
+
+  async function handleAvatarChange(e) {
+    const files = e.target.files;
+    try {
+      const results = await uploadFiles(files);
+      if (results.length > 0) setAvatarUrl(results[0].url);
+    } catch {
+      // errore già in uploadError, mostrato sotto
+    } finally {
+      if (avatarInputRef.current) avatarInputRef.current.value = '';
+    }
   }
 
   function handleSubmit(e) {
@@ -50,6 +76,7 @@ export default function AdminDriverPanel({ driver }) {
       removed_at: isExVsd ? (driver?.removed_at || new Date().toISOString()) : null,
     };
     if (isAdmin && role !== driver?.role) payload.role = role;
+    if (avatarUrl !== (driver?.avatar_url || null)) payload.avatar_url = avatarUrl;
     save(payload, { onSuccess: () => setOpen(false) });
   }
 
@@ -78,6 +105,41 @@ export default function AdminDriverPanel({ driver }) {
       </div>
 
       <form onSubmit={handleSubmit} className="adp-form">
+        <div className="adp-field">
+          <label className="adp-label">Foto profilo</label>
+          <div className="adp-avatar-row">
+            <div className="adp-avatar-preview">
+              {avatarUrl
+                ? <img src={avatarUrl} alt="" className="adp-avatar-img" />
+                : <span className="adp-avatar-placeholder">?</span>}
+            </div>
+            <div className="adp-avatar-actions">
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={handleAvatarChange}
+                disabled={uploading}
+                className="adp-avatar-input"
+                id="adp-avatar-input"
+              />
+              <label htmlFor="adp-avatar-input" className="adp-avatar-upload-btn">
+                {uploading ? (progress || 'Caricamento…') : avatarUrl ? 'Cambia foto' : 'Carica foto'}
+              </label>
+              {avatarUrl && !uploading && (
+                <button
+                  type="button"
+                  className="adp-avatar-remove-btn"
+                  onClick={() => setAvatarUrl(null)}
+                >
+                  Rimuovi
+                </button>
+              )}
+            </div>
+          </div>
+          {uploadError && <div className="adp-error">{uploadError}</div>}
+        </div>
+
         <div className="adp-field">
           <label className="adp-label" htmlFor="adp-status">Status</label>
           <select

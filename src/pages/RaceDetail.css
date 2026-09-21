@@ -515,6 +515,36 @@
   font-size: 0.8rem;
 }
 
+/* #380: dropzone upload diretto (stesso pattern del Media Gallery Social
+   Manager) — affiancata alla textarea, che resta per incollare link
+   esterni (Drive/Discord/Imgur) già ospitati altrove. */
+.rd-gallery-dropzone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 16px;
+  border: 1.5px dashed rgba(106, 166, 255, 0.3);
+  border-radius: 8px;
+  background: rgba(106, 166, 255, 0.04);
+  color: #8fb8ff;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.rd-gallery-dropzone:hover {
+  border-color: #6aa6ff;
+  background: rgba(106, 166, 255, 0.08);
+}
+.rd-gallery-dropzone-active {
+  border-color: #6aa6ff;
+  background: rgba(106, 166, 255, 0.12);
+}
+.rd-gallery-dropzone-progress {
+  color: #6aa6ff;
+  font-weight: 600;
+}
+
 .rd-lightbox {
   position: fixed;
   inset: 0;
