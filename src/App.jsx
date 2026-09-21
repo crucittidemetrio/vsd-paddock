@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
+import UpdateBanner from './components/shared/UpdateBanner';
 import AppShell from './components/layout/AppShell';
 import AdminRoute from './components/layout/AdminRoute';
 import MessengerRoute from './components/layout/MessengerRoute';
@@ -94,7 +95,12 @@ function PageLoader() {
 
 export default function App() {
   return (
-    <AuthProvider>
+    <>
+      {/* #377: fuori da AuthProvider/Routes di proposito — deve restare
+          visibile su OGNI pagina, incluse quelle standalone e in caso
+          di errore auth. Vedi useServiceWorkerUpdate.js. */}
+      <UpdateBanner />
+      <AuthProvider>
       <BrowserRouter>
         <Suspense fallback={<PageLoader />}>
           <Routes>
@@ -350,7 +356,8 @@ export default function App() {
           </Routes>
         </Suspense>
       </BrowserRouter>
-    </AuthProvider>
+      </AuthProvider>
+    </>
   );
 }
 
