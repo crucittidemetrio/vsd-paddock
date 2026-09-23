@@ -231,6 +231,16 @@ const LEGACY_TOKEN_FALLBACK_ACTIONS = new Set([
   // Function applicato (resolveLegacyDriver aggiunto a
   // race-results-import/index.ts, v8) — serviva solo l'iniezione qui.
   'raceResults.import',
+  // #326→cutover (23/09/2026, richiesto da Demetrio): lookups.tracks/
+  // lookups.cars erano rimaste l'unico dominio mai aggiunto a
+  // SUPABASE_MIGRATED_ACTIONS (vedi client.js) — causa diretta del bug
+  // "tracciati LMU aggiunti su Supabase ma invisibili sul sito"
+  // (23/09/2026). Fallback gemello lato Edge Function già deployato
+  // (resolveLegacyDriver in lookups-tracks/lookups-cars, v7) prima di
+  // attivare il cutover: nessun pilota reale ha mai una sessione
+  // Supabase vera né mai avrà un account Supabase separato — è sempre
+  // lo stesso login Discord di sempre.
+  'lookups.tracks', 'lookups.cars',
 ]);
 const LEGACY_TOKEN_STORAGE_KEY = 'vsd_paddock_token';
 // ═══════════════════════════════════════════════════════════

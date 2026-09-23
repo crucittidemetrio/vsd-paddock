@@ -59,6 +59,19 @@ const SUPABASE_MIGRATED_ACTIONS = new Set([
   'teamSessions.remove',
   'sessionRsvp.list',
   'sessionRsvp.set',
+
+  // Lookups: catalogo Tracciati/Vetture (23/09/2026, richiesto da
+  // Demetrio). Unico dominio rimasto sul vecchio backend: schema +
+  // Edge Function (lookups-tracks/lookups-cars) erano già pronti da
+  // #179 ma mai collegati qui — causa diretta del bug "tracciati LMU
+  // aggiunti su Supabase ma invisibili sul sito" (23/09/2026). Fallback
+  // legacy token aggiunto a entrambe le Edge Function (stesso pattern
+  // di roster.list/laps.list sopra) prima di questo cutover, cosí
+  // nessun pilota deve rifare login: nessuno ha né avrà mai un account
+  // Supabase separato, resta sempre lo stesso login Discord di sempre.
+  'lookups.tracks',
+  'lookups.cars',
+
   // Roster Admin (NUOVA, 19/09/2026): scrittura status/role/removed_at
   // + hard-delete ex piloti senza contributi — vedi
   // cloud/functions/social-manager/index.ts per i dettagli. Richiede
