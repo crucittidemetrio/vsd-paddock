@@ -241,6 +241,13 @@ const LEGACY_TOKEN_FALLBACK_ACTIONS = new Set([
   // Supabase vera né mai avrà un account Supabase separato — è sempre
   // lo stesso login Discord di sempre.
   'lookups.tracks', 'lookups.cars',
+
+  // RaceRSVP/RaceCrews (23/09/2026 — vedi nota gemella in client.js
+  // SUPABASE_MIGRATED_ACTIONS): fallback lato Edge Function già
+  // deployato (resolveLegacyDriver in rsvp-list/rsvp-set/
+  // race-crews-list/race-crews-add/race-crews-remove, v7) prima di
+  // questo cutover.
+  'rsvp.list', 'rsvp.set', 'raceCrews.list', 'raceCrews.add', 'raceCrews.remove',
 ]);
 const LEGACY_TOKEN_STORAGE_KEY = 'vsd_paddock_token';
 // ═══════════════════════════════════════════════════════════

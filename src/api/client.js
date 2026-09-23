@@ -72,6 +72,20 @@ const SUPABASE_MIGRATED_ACTIONS = new Set([
   'lookups.tracks',
   'lookups.cars',
 
+  // RaceRSVP/RaceCrews (23/09/2026 — dominio #253, mai rifinito dopo
+  // il porting iniziale: scoperto durante l'audit generale "verifica
+  // cosa è necessario migrare ancora" richiesto da Demetrio). Le 5
+  // Edge Function esistevano da #253 ma senza fallback token legacy
+  // (401 per ogni pilota reale) né risoluzione driver_id→driver_code
+  // (stesso bug già fixato in ~7 altri domini) — corretto ora in
+  // rsvp-list/rsvp-set/race-crews-list/race-crews-add/race-crews-remove
+  // prima di questo cutover.
+  'rsvp.list',
+  'rsvp.set',
+  'raceCrews.list',
+  'raceCrews.add',
+  'raceCrews.remove',
+
   // Roster Admin (NUOVA, 19/09/2026): scrittura status/role/removed_at
   // + hard-delete ex piloti senza contributi — vedi
   // cloud/functions/social-manager/index.ts per i dettagli. Richiede
