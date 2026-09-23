@@ -1,14 +1,25 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRaces } from '../hooks/useRaces';
 import { useUpdateRacePoster } from '../hooks/useUpdateRacePoster';
+import { useBlobUpload } from '../hooks/useBlobUpload';
 import { normalizeImageUrl } from '../utils/driveUrl';
 import styles from './AdminPosters.module.css';
 
+// #384 (23/09/2026, richiesto da Demetrio durante l'audit "verifica cosa
+// è necessario migrare ancora... compreso aggiungere foto direttamente
+// dalla UI"): questa pagina era rimasta incolla-URL puro (Drive/Imgur)
+// mentre Gare-gallery (#380) e Roster-avatar (#381) avevano già l'upload
+// reale via useBlobUpload. Aggiunto lo stesso pattern qui, mantenendo il
+// campo URL come alternativa per chi preferisce ancora linkare un'immagine
+// già ospitata altrove.
 export default function AdminPosters() {
   const { data: races, isLoading } = useRaces();
   const updateMutation = useUpdateRacePoster();
+  const { uploadFiles, uploading, error: uploadError, setError: setUploadError } = useBlobUpload();
   const [editing, setEditing] = useState({});
   const [savedFor, setSavedFor] = useState(null);
+  const [uploadingFor, setUploadingFor] = useState(null);
+  const fileInputRef = useRef(null);
 
   function startEdit(race) {
     setEditing({ ...editing, [race.race_id]: race.poster_url || '' });
@@ -34,6 +45,31 @@ export default function AdminPosters() {
     }
   }
 
+  function triggerUpload(raceId) {
+    setUploadingFor(raceId);
+    setUploadError(null);
+    fileInputRef.current?.click();
+  }
+
+  async function handleFileChange(e) {
+    const raceId = uploadingFor;
+    const files = e.target.files;
+    e.target.value = '';
+    if (!raceId || !files || files.length === 0) return;
+    try {
+      const results = await uploadFiles(files);
+      if (results.length === 0) return;
+      await updateMutation.mutateAsync({ race_id: raceId, poster_url: results[0].url });
+      setSavedFor(raceId);
+      setTimeout(() => setSavedFor(null), 2500);
+      cancelEdit(raceId);
+    } catch {
+      // errore mostrato sotto (upload o salvataggio)
+    } finally {
+      setUploadingFor(null);
+    }
+  }
+
   if (isLoading) return <div className={styles.page}>Caricamento gare…</div>;
 
   const sorted = [...(races || [])].sort((a, b) => {
@@ -52,10 +88,19 @@ export default function AdminPosters() {
       <header className={styles.header}>
         <h1>Race Posters</h1>
         <p className={styles.subtitle}>
-          URL delle locandine per ogni gara. Carica le immagini su Google Drive (con
-          condivisione pubblica) o Imgur, poi incolla qui l'URL diretto all'immagine.
+          Locandine per ogni gara. Usa "Carica foto" per un upload diretto, oppure
+          "Incolla URL" se l'immagine è già ospitata altrove (Drive con condivisione
+          pubblica, Imgur, ecc.).
         </p>
       </header>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp,image/gif"
+        style={{ display: 'none' }}
+        onChange={handleFileChange}
+      />
 
       <div className={styles.statsBar}>
         <div className={styles.stat}>
@@ -155,14 +200,25 @@ export default function AdminPosters() {
                     <button
                       type="button"
                       className={styles.btnEdit}
+                      onClick={() => triggerUpload(race.race_id)}
+                      disabled={uploading && uploadingFor === race.race_id}
+                    >
+                      {uploading && uploadingFor === race.race_id ? 'Carico…' : 'Carica foto'}
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.btnEdit}
                       onClick={() => startEdit(race)}
                     >
-                      {hasPoster ? 'Modifica' : 'Imposta'}
+                      {hasPoster ? 'Modifica URL' : 'Incolla URL'}
                     </button>
                   </div>
                 )}
 
                 {isSaved && <div className={styles.success}>✅ Salvato</div>}
+                {uploadError && uploadingFor === null && (
+                  <div className={styles.error} style={{ marginTop: '0.3rem' }}>❌ {uploadError}</div>
+                )}
               </div>
             </li>
           );
