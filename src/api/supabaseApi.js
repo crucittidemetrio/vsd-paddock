@@ -248,6 +248,18 @@ const LEGACY_TOKEN_FALLBACK_ACTIONS = new Set([
   // race-crews-list/race-crews-add/race-crews-remove, v7) prima di
   // questo cutover.
   'rsvp.list', 'rsvp.set', 'raceCrews.list', 'raceCrews.add', 'raceCrews.remove',
+
+  // races.get (23/09/2026 — trovato validando live via Chrome dopo il
+  // push di Demetrio, richiesto esplicitamente da "adesso puoi
+  // verificare"): era rimasta l'UNICA azione del dominio Races esclusa
+  // dal fix #375 (races.list/races.upcoming ecc. già coperte) — ogni
+  // pagina /race/:id del sito andava in "Gara non trovata" per
+  // QUALSIASI utente reale (incluso Demetrio: nessuna sessione Supabase
+  // vera nemmeno per lui, vedi #376). Il frontend interpretava il 401
+  // "Auth richiesto" della Edge Function come gara inesistente. Fix
+  // gemello lato Edge Function già deployato (resolveLegacyDriver in
+  // races-get/index.ts, v8).
+  'races.get',
 ]);
 const LEGACY_TOKEN_STORAGE_KEY = 'vsd_paddock_token';
 // ═══════════════════════════════════════════════════════════
