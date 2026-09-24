@@ -36,3 +36,5 @@ companion/build/
 companion/*.spec
 simhub-plugin/bin/
 simhub-plugin/obj/
+supabase/.temp/
+discord-command.json

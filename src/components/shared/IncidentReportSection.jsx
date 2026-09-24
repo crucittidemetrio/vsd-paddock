@@ -86,13 +86,19 @@ export default function IncidentReportSection({
   const racesQuery = useRaces();
   // Campionati: solo per mode='auto' (il selettore "ambito"='campionato'
   // deve popolare la select) — nessuna chiamata extra per gli altri mode,
-  // dove championship arriva già fissato via prop. Filtrato a status
-  // 'active': non ha senso poter segnalare un incidente su un campionato
-  // (stagione intera) già concluso o non ancora aperto — richiesta
-  // esplicita di Demetrio (#408 follow-up, 25/09/2026).
-  const championshipsQuery = useChampionships({ status: 'active', enabled: isAuto });
+  // dove championship arriva già fissato via prop. Niente filtro status
+  // lato server: nella pratica un campionato in corso resta 'upcoming'
+  // finché lo staff non lo marca 'active' a mano, quindi richiedere
+  // status==='active' escludeva anche stagioni tuttora aperte con gare
+  // a calendario. Si esclude invece solo 'completed' (stagione conclusa)
+  // e 'draft' (non ancora pubblico) — richiesta esplicita di Demetrio:
+  // niente reclami su campionati/gare già TERMINATI (#408 follow-up,
+  // 25/09/2026; corretto lo stesso giorno dopo verifica live).
+  const championshipsQuery = useChampionships({ enabled: isAuto });
   const championshipOptions = useMemo(
-    () => (isAuto ? (championshipsQuery.data || []) : []),
+    () => (isAuto
+      ? (championshipsQuery.data || []).filter(c => c.status !== 'completed' && c.status !== 'draft')
+      : []),
     [isAuto, championshipsQuery.data]
   );
   const activeChampionshipIds = useMemo(
