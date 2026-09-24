@@ -109,7 +109,13 @@ export default function IncidentReportSection({
   const racesForPicker = useMemo(() => {
     // 'draft'/'cancelled': gara non confermata o annullata — mai
     // selezionabile per una segnalazione, indipendentemente dal mode.
-    const all = (racesQuery.data?.races || []).filter(r => r.status !== 'draft' && r.status !== 'cancelled');
+    // NB: useRaces() (vedi AdminTeamSessions/Calendar/DriverProfile/
+    // SocialManager ecc.) restituisce l'ARRAY di gare direttamente, non
+    // { races: [...] } — .data?.races era sempre undefined e svuotava
+    // il picker in ogni mode (championship/race-picker), bug pre-esistente
+    // mai notato perché il campo "Gara" era opzionale. Trovato in
+    // verifica live del fix status campionati (#408 follow-up, 25/09/2026).
+    const all = (racesQuery.data || []).filter(r => r.status !== 'draft' && r.status !== 'cancelled');
     if (effectiveMode === 'championship') {
       return all.filter(r => !effectiveChampionship || r.championship_id === effectiveChampionship);
     }
