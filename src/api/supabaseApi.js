@@ -231,6 +231,15 @@ const LEGACY_TOKEN_FALLBACK_ACTIONS = new Set([
   // oltre al messaggio sotto il bottone). Fix gemello lato Edge Function
   // (resolveLegacyDriver, ora anche in push-subscribe/index.ts).
   'push.subscribe', 'push.unsubscribe',
+  // #391-fix-2 (24/09/2026): stesso identico gap trovato subito dopo,
+  // usando io stesso AdminMessenger.jsx per avvisare i piloti del fix
+  // sopra — "Auth richiesto" di nuovo, questa volta su messenger.send.
+  // L'intero dominio Messenger non aveva mai ricevuto il fallback
+  // legacy_token: gli unici invii Discord riusciti in audit_log
+  // venivano da automazioni server-to-server (service-role diretto),
+  // mai dalla UI reale. Fix gemello lato Edge Function
+  // (resolveLegacyDriver, ora anche in messenger-send/index.ts).
+  'messenger.send',
   // #370 (21/09/2026): stesso gap, trovato mentre si agganciava il
   // ricalcolo Elo/Safety Rank a raceResults.import — l'Edge Function
   // race-results-import richiedeva SEMPRE una sessione Supabase reale

@@ -22,9 +22,52 @@
 // prima ancora del cutover. Risolto: risoluzione driver_code→uuid
 // scoped al team prima della query; alias uuid→driver_code anche in
 // uscita (sent[]/failed[].driver_id) per coerenza col contratto.
+//
+// FIX (24/09/2026 — bug reale scoperto usando AdminMessenger.jsx dal
+// browser di Demetrio per avvisare i piloti del fix push-subscribe:
+// "Auth richiesto" identico al bug #391/push). Causa: stessa radice di
+// #358/#359/#370/#375/#376/#378/#385/#391 — messenger.send richiedeva
+// SEMPRE `req.headers.get('Authorization')` + `auth.getUser()` validi,
+// senza alcun fallback legacy_token. Nessun pilota reale, incluso
+// l'unico admin (Demetrio), ha mai avuto una sessione Supabase vera:
+// la UI del Messenger era di fatto irraggiungibile dal browser, gli
+// unici invii riusciti in audit_log venivano da automazioni
+// server-to-server (es. digest, notifiche post-import) che chiamano
+// Postgres/Discord direttamente con service-role, non da questa Edge
+// Function via HTTP con un JWT reale. Fix: stesso resolveLegacyDriver
+// di race-results-import/push-subscribe/ecc., qui select include anche
+// can_message per rispettare il gate esistente. Aggiunto anche
+// 'messenger.send' a LEGACY_TOKEN_FALLBACK_ACTIONS in supabaseApi.js.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+// Fallback token legacy — stesso identico pattern di resolveLegacyDriver
+// in race-results-import/index.ts (vedi nota lì per il contesto completo).
+const LEGACY_API_URL = 'https://script.google.com/macros/s/AKfycbyMXxEjZfm5EIsGUnKxpwtBtoeR4hwMG7Pl8ZESF8yG569SS0aIdsWqyu9PdBgR14vLiA/exec';
+
+async function resolveLegacyDriver(serviceClient: any, legacyToken: string | undefined) {
+  if (!legacyToken) return null;
+  try {
+    const r = await fetch(LEGACY_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'auth.verify', token: legacyToken, payload: {} }),
+    });
+    const j = await r.json();
+    const driverCode = j?.ok && j.data?.valid ? j.data?.driver?.driver_id : null;
+    if (!driverCode) return null;
+    const { data: d } = await serviceClient
+      .from('drivers')
+      .select('id, team_id, role, display_name, can_message, driver_code')
+      .eq('driver_code', driverCode)
+      .maybeSingle();
+    if (!d) return null;
+    return { ...d, role: j.data.driver.role || d.role };
+  } catch {
+    return null;
+  }
+}
 
 const MESSENGER_TEXT_MAX_LEN = 1900;
 
@@ -113,32 +156,48 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
+    const payload = await req.json().catch(() => ({}));
+
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) return json({ ok: false, error: 'Auth richiesto' }, 401);
+    let supabase: any = null;
+    let me: any = null;
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } },
-    );
+    if (authHeader) {
+      supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } },
+      );
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: meRow } = await supabase
+          .from('drivers')
+          .select('id, team_id, role, display_name, can_message')
+          .eq('auth_user_id', user.id)
+          .maybeSingle();
+        me = meRow || null;
+      }
+    }
 
-    const { data: { user }, error: userErr } = await supabase.auth.getUser();
-    if (userErr || !user) return json({ ok: false, error: 'Auth richiesto' }, 401);
+    // Fallback token legacy — vedi nota in testa al file. Se risolto,
+    // `supabase` passa a service-role (RLS bypassata, come nelle altre
+    // 20+ Edge Function con lo stesso fallback).
+    if (!me) {
+      const legacyServiceClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+      const legacyMe = await resolveLegacyDriver(legacyServiceClient, payload?.legacy_token);
+      if (legacyMe) {
+        me = legacyMe;
+        supabase = legacyServiceClient;
+      }
+    }
 
-    const { data: me, error: meErr } = await supabase
-      .from('drivers')
-      .select('id, team_id, role, display_name, can_message')
-      .eq('auth_user_id', user.id)
-      .maybeSingle();
-    if (meErr) return json({ ok: false, error: meErr.message }, 400);
-    if (!me) return json({ ok: false, error: 'Driver non collegato a questo account' }, 404);
+    if (!me) return json({ ok: false, error: 'Auth richiesto' }, 401);
 
     const isStaff = me.role === 'staff' || me.role === 'admin';
     if (!isStaff && !me.can_message) {
       return json({ ok: false, error: 'Operazione riservata a staff, admin o piloti abilitati al Messenger' }, 403);
     }
 
-    const payload = await req.json().catch(() => ({}));
     const mode = String(payload?.mode || '').trim();
     const text = String(payload?.text || '').trim().slice(0, MESSENGER_TEXT_MAX_LEN);
     if (!text) return json({ ok: false, error: 'Testo del messaggio obbligatorio' }, 400);
