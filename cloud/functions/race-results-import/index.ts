@@ -15,13 +15,24 @@
 //     race), ciascuna trasformata in formato LMU-like e passata allo
 //     stesso import core; practice/warmup skippate
 //
-// GAP NOTI (documentati, non dimenticanze): le notifiche Discord
-// post-import (notifyRaceImported_, checkAndNotifyPodiums_/
+// GAP CHIUSO (24/09/2026, richiesto da Demetrio — "sistemiamo le
+// notifiche perché gradite"): le notifiche Discord post-import
+// (notifyRaceImported_, checkAndNotifyPodiums_/
 // checkAndNotifyIracingPodiums_, checkAndNotifyMilestones_,
-// checkAndNotifyRaceMvp_) NON sono portate — dipendono da un dominio
-// non ancora portato (Notifications/Discord #256). I dati scritti qui
-// sono comunque completi: quando quel dominio arriverà potrà operare
-// su questi risultati senza re-importare.
+// checkAndNotifyRaceMvp_) sono ora portate qui sotto — vedi
+// notifyRaceImported/checkAndNotifyPodiumsLmu/checkAndNotifyPodiumsIracing/
+// checkAndNotifyMilestones/checkAndNotifyRaceMvp. Tutte non bloccanti
+// (try/catch interno, mai propagate al chiamante), stesso principio di
+// seedRaceReportsForRace/recomputeEloSafetyForSim sopra. Deviazione
+// deliberata rispetto al sorgente: la thumbnail foto pilota condizionata
+// al consenso social (hasSocialConsent_) NON è stata portata — avrebbe
+// richiesto una query aggiuntiva per ogni notifica per un dettaglio
+// puramente estetico; gli embed restano identici nel contenuto testuale.
+// Richiede i secret DISCORD_WEBHOOK_URL (canale pubblico) e, per la push
+// personale su traguardi/pilota della gara, PUSH_RELAY_URL/
+// PUSH_RELAY_SECRET (stesso relay Vercel già in uso lato Apps Script) —
+// se non configurati, le funzioni loggano e ritornano silenziosamente,
+// mai un errore propagato all'import.
 //
 // GAP CHIUSO in #261: il seeding automatico di Race Reports
 // (seedRaceReportsForRace_ nel sorgente) è ora replicato qui in
@@ -296,6 +307,192 @@ async function recomputeEloSafetyForSim(teamId: string, sim: string) {
   await bulkInsert('driver_safety_ranks', safetyRatingRows);
 }
 
+// ─── Notifiche Discord/push post-import (24/09/2026) ───
+// Porting di apps-script/Notifications.js — vedi nota in testa al file.
+const PADDOCK_URL = 'https://vsd-paddock.vercel.app';
+const VSD_COLORS = { cyan: 0x00d9ff, green: 0x4ade80, orange: 0xfbbf24, purple: 0xa855f7 };
+
+const MILESTONE_THRESHOLDS = [1, 10, 25, 50, 100, 150, 200, 250, 300];
+const PODIUM_MILESTONE_THRESHOLDS = [1, 5, 10, 25, 50];
+const WIN_MILESTONE_THRESHOLDS = [1, 5, 10, 25];
+const MILESTONE_LABELS: Record<number, string> = {
+  1: 'Debutto in gara! 🎉', 10: '10 gare disputate', 25: '25 gare disputate',
+  50: '50 gare disputate', 100: '100 gare disputate — un secolo! 💯',
+  150: '150 gare disputate', 200: '200 gare disputate', 250: '250 gare disputate', 300: '300 gare disputate',
+};
+const PODIUM_MILESTONE_LABELS: Record<number, string> = {
+  1: 'Primo podio! 🎉', 5: '5 podi', 10: '10 podi', 25: '25 podi', 50: '50 podi',
+};
+const WIN_MILESTONE_LABELS: Record<number, string> = {
+  1: 'Prima vittoria! 🎉', 5: '5 vittorie', 10: '10 vittorie', 25: '25 vittorie',
+};
+
+async function postToDiscord(payload: unknown) {
+  try {
+    const url = Deno.env.get('DISCORD_WEBHOOK_URL');
+    if (!url) { console.log('[notify] DISCORD_WEBHOOK_URL non configurato'); return; }
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    if (!res.ok) console.log('[notify] Discord webhook ' + res.status);
+  } catch (e) { console.log('[notify] postToDiscord error: ' + e); }
+}
+
+async function sendPushNotification(db: any, driverIds: string[] | null, notification: { title: string; body: string; url?: string }) {
+  try {
+    const relayUrl = Deno.env.get('PUSH_RELAY_URL');
+    const relaySecret = Deno.env.get('PUSH_RELAY_SECRET');
+    if (!relayUrl || !relaySecret) return;
+    let query = db.from('push_subscriptions').select('endpoint, p256dh, auth_key, driver_id');
+    if (driverIds) query = query.in('driver_id', driverIds);
+    const { data: subs } = await query;
+    if (!subs || subs.length === 0) return;
+    await fetch(relayUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-push-secret': relaySecret },
+      body: JSON.stringify({
+        subscriptions: subs.map((s: any) => ({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth_key }, driver_id: s.driver_id })),
+        title: notification.title, body: notification.body, url: notification.url || PADDOCK_URL,
+      }),
+    });
+  } catch (e) { console.log('[notify] sendPushNotification error: ' + e); }
+}
+
+function notifyRaceImported(race: { race_id: string; race_name?: string; sim?: string }, stats: { imported?: number; vsd_matched?: number }) {
+  return postToDiscord({
+    embeds: [{
+      author: { name: 'VSD Paddock' },
+      title: '🏁 Nuovo risultato gara importato',
+      description: `**${race.race_name || race.race_id}**`,
+      color: VSD_COLORS.cyan,
+      fields: [
+        { name: 'Sim', value: race.sim || '?', inline: true },
+        { name: 'Risultati', value: String(stats.imported || 0), inline: true },
+        { name: 'VSD', value: String(stats.vsd_matched || 0), inline: true },
+      ],
+      timestamp: new Date().toISOString(),
+      footer: { text: 'Apri Race Hub per dettagli' },
+      url: `${PADDOCK_URL}/race/${race.race_id}`,
+    }],
+  });
+}
+
+async function checkAndNotifyPodiumsLmu(groups: any[], race: { race_id: string; race_name?: string; sim?: string }, driverNameMap: Record<string, string>) {
+  for (const classGroup of groups) {
+    for (const r of (classGroup.result || [])) {
+      if (!r.position || r.position > 3 || r.dnf || r.dns) continue;
+      const matchedId = matchDriverName(r.id, driverNameMap);
+      if (!matchedId) continue;
+      await notifyVsdPodium(r.id, r.position, race);
+    }
+  }
+}
+
+function notifyVsdPodium(driverName: string, position: number, race: { race_id: string; race_name?: string; sim?: string }) {
+  const medals: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
+  const posLabels: Record<number, string> = { 1: 'P1 — VITTORIA', 2: 'P2', 3: 'P3' };
+  return postToDiscord({
+    embeds: [{
+      author: { name: 'VSD Paddock' },
+      title: `${medals[position]} Podio VSD!`,
+      description: `**${driverName}** ${posLabels[position]}\n${race.race_name || race.race_id}`,
+      color: position === 1 ? VSD_COLORS.green : VSD_COLORS.cyan,
+      fields: [{ name: 'Sim', value: race.sim || '?', inline: true }],
+      timestamp: new Date().toISOString(),
+      url: `${PADDOCK_URL}/race/${race.race_id}`,
+    }],
+  });
+}
+
+async function checkAndNotifyMilestones(db: any, teamId: string, driverIds: string[]) {
+  const uniqueIds = Array.from(new Set(driverIds.filter(Boolean)));
+  if (uniqueIds.length === 0) return;
+
+  const { data: allResults } = await db.from('race_results').select('driver_id, session_type, dns, dnf, finish_position').eq('team_id', teamId).in('driver_id', uniqueIds);
+  const { data: drivers } = await db.from('drivers').select('id, display_name').eq('team_id', teamId).in('id', uniqueIds);
+  const nameById = new Map<string, string>((drivers ?? []).map((d: any) => [d.id as string, d.display_name as string]));
+
+  for (const driverId of uniqueIds) {
+    const rows = (allResults ?? []).filter((r: any) => r.driver_id === driverId && (r.session_type || 'race') === 'race' && r.dns !== true);
+    const racesCount = rows.length;
+    const podiumsCount = rows.filter((r: any) => r.dnf !== true && Number(r.finish_position) > 0 && Number(r.finish_position) <= 3).length;
+    const winsCount = rows.filter((r: any) => r.dnf !== true && Number(r.finish_position) === 1).length;
+    const displayName = nameById.get(driverId) || driverId;
+
+    if (MILESTONE_THRESHOLDS.includes(racesCount)) await notifyMilestoneReached(db, driverId, displayName, MILESTONE_LABELS[racesCount] || `${racesCount} gare disputate`);
+    if (PODIUM_MILESTONE_THRESHOLDS.includes(podiumsCount)) await notifyMilestoneReached(db, driverId, displayName, PODIUM_MILESTONE_LABELS[podiumsCount]);
+    if (WIN_MILESTONE_THRESHOLDS.includes(winsCount)) await notifyMilestoneReached(db, driverId, displayName, WIN_MILESTONE_LABELS[winsCount]);
+  }
+}
+
+async function notifyMilestoneReached(db: any, driverId: string, displayName: string, label: string) {
+  await postToDiscord({
+    embeds: [{
+      author: { name: 'VSD Paddock' },
+      title: '🎖️ Traguardo raggiunto!',
+      description: `**${displayName}** — ${label}`,
+      color: VSD_COLORS.orange,
+      timestamp: new Date().toISOString(),
+      footer: { text: 'Continua così!' },
+      url: `${PADDOCK_URL}/roster/${driverId}`,
+    }],
+  });
+  await sendPushNotification(db, [driverId], { title: '🎖️ Traguardo raggiunto!', body: label, url: `${PADDOCK_URL}/roster/${driverId}` });
+}
+
+async function checkAndNotifyRaceMvp(db: any, teamId: string, race: { race_id: string; race_name?: string; sim?: string }) {
+  const { data: raceRows } = await db.from('race_results').select('driver_id, finish_position, car_class, dnf, dns, incidents')
+    .eq('team_id', teamId).eq('race_id', race.race_id).eq('session_type', 'race');
+  if (!raceRows || raceRows.length === 0) return;
+
+  const fieldSizes = new Map<string, number>();
+  raceRows.forEach((r: any) => {
+    const key = race.race_id + '__' + r.car_class;
+    fieldSizes.set(key, (fieldSizes.get(key) || 0) + 1);
+  });
+
+  const vsdFinishers = raceRows.filter((r: any) => r.driver_id && r.dnf !== true && r.dns !== true && Number(r.finish_position) > 0);
+  if (vsdFinishers.length === 0) return;
+
+  const scored: Array<{ row: any; finishPct: number; incidents: number | null }> = vsdFinishers.map((r: any) => {
+    const pos = Number(r.finish_position);
+    const fieldSize = fieldSizes.get(race.race_id + '__' + r.car_class) || 0;
+    const finishPct = fieldSize >= 3 ? Math.max(0, Math.min(1, 1 - (pos - 1) / (fieldSize - 1))) : 0;
+    const incidents = r.incidents != null && !isNaN(Number(r.incidents)) ? Number(r.incidents) : null;
+    return { row: r, finishPct, incidents };
+  });
+
+  scored.sort((a: { finishPct: number; incidents: number | null }, b: { finishPct: number; incidents: number | null }) => {
+    const ai = a.incidents === null ? Infinity : a.incidents;
+    const bi = b.incidents === null ? Infinity : b.incidents;
+    if (ai !== bi) return ai - bi;
+    return b.finishPct - a.finishPct;
+  });
+
+  const mvp = scored[0];
+  if (!mvp || mvp.finishPct <= 0) return;
+
+  const driverId = mvp.row.driver_id;
+  const { data: driver } = await db.from('drivers').select('display_name').eq('id', driverId).maybeSingle();
+  const displayName = driver?.display_name || driverId;
+  const cleanLine = mvp.incidents === 0 ? ' · guida pulita (0 incidenti)' : (mvp.incidents != null ? ` · ${mvp.incidents} incidenti` : '');
+
+  await postToDiscord({
+    embeds: [{
+      author: { name: 'VSD Paddock' },
+      title: '⭐ Pilota della gara',
+      description: `**${displayName}** — P${Number(mvp.row.finish_position)} (${mvp.row.car_class || '?'})${cleanLine}\n${race.race_name || race.race_id}`,
+      color: VSD_COLORS.green,
+      timestamp: new Date().toISOString(),
+      footer: { text: 'Selezionato su piazzamento normalizzato + pulizia di guida' },
+      url: `${PADDOCK_URL}/race/${race.race_id}`,
+    }],
+  });
+  await sendPushNotification(db, [driverId], {
+    title: '⭐ Sei il Pilota della gara!',
+    body: `${race.race_name || race.race_id} — P${Number(mvp.row.finish_position)}${cleanLine}`,
+    url: `${PADDOCK_URL}/race/${race.race_id}`,
+  });
+}
+
 function msToLapDisplay(ms: number | null | undefined): string {
   if (ms == null || isNaN(ms as number)) return '';
   const total = Number(ms);
@@ -565,7 +762,7 @@ Deno.serve(async (req: Request) => {
       });
 
       if (rowsToInsert.length === 0) {
-        return { imported: 0, vsd_matched: 0, external: 0, dns: 0, dnf: 0, skipped_duplicates: skippedCount, session_type: meta.session_type };
+        return { imported: 0, vsd_matched: 0, external: 0, dns: 0, dnf: 0, skipped_duplicates: skippedCount, session_type: meta.session_type, matchedIds: [] as string[] };
       }
 
       const { error: insertErr } = await supabase.from('race_results').insert(rowsToInsert);
@@ -574,6 +771,9 @@ Deno.serve(async (req: Request) => {
       const vsdCount = rowsToInsert.filter((r: any) => r.is_vsd_driver).length;
       const dnsCount = rowsToInsert.filter((r: any) => r.dns).length;
       const dnfCount = rowsToInsert.filter((r: any) => r.dnf).length;
+      // #24/09: raccolti per checkAndNotifyMilestones — driver_id VSD di
+      // TUTTI i risultati appena inseriti (non solo podio/MVP).
+      const matchedIds = rowsToInsert.filter((r: any) => r.driver_id).map((r: any) => r.driver_id as string);
 
       return {
         imported: rowsToInsert.length,
@@ -583,6 +783,7 @@ Deno.serve(async (req: Request) => {
         dnf: dnfCount,
         skipped_duplicates: skippedCount,
         session_type: meta.session_type,
+        matchedIds,
       };
     }
 
@@ -671,8 +872,15 @@ Deno.serve(async (req: Request) => {
         if (sessionType === 'race') {
           await seedRaceReportsForRace(race.race_id);
           try { await recomputeEloSafetyForSim(me!.team_id, 'IRC'); } catch (_e) { /* #370: non bloccante, come seedRaceReportsForRace */ }
+          try {
+            await checkAndNotifyPodiumsLmu(groups, race, driverNameMap);
+            await checkAndNotifyMilestones(supabase, me!.team_id, sessionStats.matchedIds);
+            await checkAndNotifyRaceMvp(supabase, me!.team_id, race);
+          } catch (_e) { /* #24/09: notifiche non bloccanti, come seedRaceReportsForRace */ }
         }
       }
+
+      try { await notifyRaceImported(race, aggStats); } catch (_e) { /* non bloccante */ }
 
       return json({ ok: true, data: aggStats });
     }
@@ -697,7 +905,14 @@ Deno.serve(async (req: Request) => {
     if (meta.session_type === 'race') {
       await seedRaceReportsForRace(meta.race_id);
       try { await recomputeEloSafetyForSim(me.team_id, meta.sim); } catch (_e) { /* #370: non bloccante, come seedRaceReportsForRace */ }
+      try {
+        await checkAndNotifyPodiumsLmu(jsonData, race, driverNameMap);
+        await checkAndNotifyMilestones(supabase, me.team_id, stats.matchedIds);
+        await checkAndNotifyRaceMvp(supabase, me.team_id, race);
+      } catch (_e) { /* #24/09: notifiche non bloccanti, come seedRaceReportsForRace */ }
     }
+
+    try { await notifyRaceImported(race, stats); } catch (_e) { /* non bloccante */ }
 
     return json({ ok: true, data: stats });
   } catch (e) {

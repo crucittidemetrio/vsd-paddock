@@ -1,5 +1,12 @@
+import { useState, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { usePageMeta } from '../hooks/usePageMeta';
+import { useAuth } from '../hooks/useAuth';
+import { useDrivers } from '../hooks/useRoster';
+import { usePrequalList, useAddPrequalCandidate, useRemovePrequalCandidate } from '../hooks/usePrequalCandidates';
+import { useConsentedDriverPhoto } from '../hooks/useConsent';
 import { SOCIAL_LINKS } from '../utils/constants';
+import Avatar from '../components/shared/Avatar';
 import ChampionshipInterestSection from '../components/shared/ChampionshipInterestSection';
 // Riuso deliberato del CSS module di ACI LMGT3 Challenge: le classi sono
 // generiche (hero/section/specGrid/calendarGrid/cta/…), pensate per lo
@@ -27,6 +34,15 @@ const INTEREST_KEY = 'era-season-3';
 // Nessun sito/regolamento ERA pubblico trovato — resta vuoto finché non
 // arriva un link ufficiale da citare.
 const REGOLAMENTO_URL = '';
+
+// Griglie di gara ERA Season 3 — dopo l'avvio del campionato (24/09/2026)
+// i round si corrono su due serate distinte. Riuso di prequal_candidates
+// (dominio già esistente, staff-managed, keyed per championship_key) come
+// roster "chi di noi corre, in quale griglia": stesso identico bisogno di
+// ACI LMGT3 Challenge ("nome + un dettaglio gestito a mano dallo staff"),
+// qui il dettaglio è la griglia invece del numero di gara — vedi migrazione
+// prequal_candidates_add_grid e redeploy prequal-list/prequal-add (#390).
+const GRIDS = ['Martedì', 'Mercoledì'];
 
 // Le classi ammesse, così come richieste nel modulo di iscrizione.
 const CLASSES = [
@@ -57,7 +73,7 @@ export default function EraSeason3() {
 
       {/* ════ HERO ════ */}
       <section className={styles.hero}>
-        <div className={styles.heroEyebrow}>CAMPIONATO ESTERNO</div>
+        <div className={styles.heroEyebrow}>CAMPIONATO ESTERNO · IN CORSO</div>
         <h1 className={styles.heroTitle}>
           ERA
           <span className={styles.heroTitleAccent}> Season 3</span>
@@ -67,17 +83,12 @@ export default function EraSeason3() {
         </p>
         <div className={styles.heroOpen}>
           <span className={styles.heroBadge}>🏁 7 round</span>
-          <span className={styles.heroBadge}>🏎️ LMGT3 · Hypercar</span>
+          <span className={styles.heroBadge}>🗓️ Griglie martedì e mercoledì</span>
           <span className={styles.heroBadge}>📅 Set–Dic 2026</span>
         </div>
         <div className={styles.heroActions}>
-          <a
-            href={REGISTRATION_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`${styles.btn} ${styles.btnPrimary}`}
-          >
-            📋 Iscriviti al campionato
+          <a href="#partecipanti" className={`${styles.btn} ${styles.btnPrimary}`}>
+            🏎️ Chi corre per noi
           </a>
           <a href="#interesse" className={`${styles.btn} ${styles.btnSecondary}`}>
             🙋 Ci provi anche tu?
@@ -144,6 +155,9 @@ export default function EraSeason3() {
         </div>
       </section>
 
+      {/* ════ CHI CORRE PER NOI ════ */}
+      <PartecipantiSection />
+
       {/* ════ MANIFESTAZIONE DI INTERESSE ════ */}
       <ChampionshipInterestSection
         championshipKey={INTEREST_KEY}
@@ -208,4 +222,197 @@ function SpecRow({ label, value }) {
       <div className={styles.specValue}>{value}</div>
     </div>
   );
+}
+
+// Stesso schema di matching già usato in AciLmgt3Challenge.jsx per
+// collegare un nome esterno (qui: il nome che lo staff digita a mano nel
+// form) al roster interno — il roster pubblico tronca il cognome per
+// privacy ("Silvio T."), quindi si normalizza a "nome|iniziale cognome"
+// su entrambi i lati.
+function firstNameLastInitial(fullName) {
+  const parts = String(fullName || '').trim().split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return String(fullName || '').toLowerCase().trim();
+  const first = parts[0].toLowerCase();
+  const lastInitial = parts[parts.length - 1][0]?.toLowerCase() || '';
+  return `${first}|${lastInitial}`;
+}
+
+// Riuso del dominio PrequalCandidates (staff-managed, championship_key)
+// come roster "chi di noi corre, in che griglia" — vedi nota su GRIDS in
+// testa al file. A differenza di ACI (dove il campo extra è il numero di
+// gara), qui il campo extra è la griglia: lo staff sceglie tra le due
+// serate dal form, il resto del meccanismo (add/remove, card cliccabile
+// al profilo se il nome combacia col roster) è identico.
+function PartecipantiSection() {
+  const { isStaff } = useAuth();
+  const { data: drivers } = useDrivers();
+  const { data, isLoading } = usePrequalList(INTEREST_KEY);
+  const addMutation = useAddPrequalCandidate(INTEREST_KEY);
+  const removeMutation = useRemovePrequalCandidate(INTEREST_KEY);
+
+  const candidates = data?.candidates || [];
+
+  const driverByName = useMemo(() => {
+    const m = {};
+    (drivers || []).forEach(d => { m[firstNameLastInitial(d.display_name)] = d; });
+    return m;
+  }, [drivers]);
+
+  const byGrid = useMemo(() => {
+    const groups = {};
+    GRIDS.forEach(g => { groups[g] = []; });
+    groups['Altro'] = [];
+    (data?.candidates || []).forEach(c => {
+      const g = GRIDS.includes(c.grid) ? c.grid : 'Altro';
+      groups[g].push(c);
+    });
+    return groups;
+  }, [data]);
+
+  const [name, setName] = useState('');
+  const [grid, setGrid] = useState(GRIDS[0]);
+  const [formError, setFormError] = useState(null);
+
+  function handleAddSubmit(e) {
+    e.preventDefault();
+    setFormError(null);
+    if (!name.trim()) {
+      setFormError('Il nome è obbligatorio.');
+      return;
+    }
+    addMutation.mutate(
+      { name: name.trim(), grid },
+      {
+        onSuccess: () => setName(''),
+        onError: (err) => setFormError(err.message),
+      }
+    );
+  }
+
+  function handleRemove(candidateId, candidateName) {
+    if (!window.confirm(`Rimuovere "${candidateName}" dai partecipanti ERA Season 3?`)) return;
+    removeMutation.mutate(candidateId);
+  }
+
+  const totalCount = candidates.length;
+
+  return (
+    <section className={styles.section} id="partecipanti">
+      <div className={styles.sectionEyebrow}>Chi corre per noi</div>
+      <h2 className={styles.sectionTitle}>I piloti VSD in griglia</h2>
+      <p className={styles.prequalIntro}>
+        Il campionato si corre su due griglie distinte, martedì e mercoledì sera. Questi sono i
+        piloti del team confermati in ciascuna — elenco aggiornato dallo staff, non un'iscrizione
+        ufficiale (quella resta il modulo ERA).
+      </p>
+
+      {!isLoading && totalCount === 0 && (
+        <p className={styles.prequalIntro}>Nessun partecipante VSD segnalato ancora.</p>
+      )}
+
+      {!isLoading && totalCount > 0 && GRIDS.map(g => (
+        byGrid[g].length > 0 && (
+          <div key={g} style={{ marginTop: 24 }}>
+            <h3 className={styles.sectionTitle} style={{ fontSize: '1.1rem' }}>🗓️ Griglia {g}</h3>
+            <div className={styles.prequalGrid}>
+              {byGrid[g].map(entry => (
+                <PartecipanteCard
+                  key={entry.candidate_id}
+                  entry={entry}
+                  driver={driverByName[firstNameLastInitial(entry.name)] || null}
+                  isStaff={isStaff}
+                  onRemove={handleRemove}
+                  removePending={removeMutation.isPending}
+                />
+              ))}
+            </div>
+          </div>
+        )
+      ))}
+
+      {!isLoading && byGrid['Altro'].length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <h3 className={styles.sectionTitle} style={{ fontSize: '1.1rem' }}>Griglia da confermare</h3>
+          <div className={styles.prequalGrid}>
+            {byGrid['Altro'].map(entry => (
+              <PartecipanteCard
+                key={entry.candidate_id}
+                entry={entry}
+                driver={driverByName[firstNameLastInitial(entry.name)] || null}
+                isStaff={isStaff}
+                onRemove={handleRemove}
+                removePending={removeMutation.isPending}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {isStaff && (
+        <form className={styles.prequalAddForm} onSubmit={handleAddSubmit} style={{ marginTop: 24 }}>
+          <span className={styles.prequalStaffLabel}>Staff: aggiungi partecipante</span>
+          <input
+            type="text"
+            className={styles.prequalAddNameInput}
+            placeholder="Nome pilota"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            maxLength={80}
+          />
+          <select
+            className={styles.prequalAddNumberInput}
+            value={grid}
+            onChange={e => setGrid(e.target.value)}
+          >
+            {GRIDS.map(g => <option key={g} value={g}>{g}</option>)}
+          </select>
+          <button
+            type="submit"
+            className={`${styles.btn} ${styles.btnPrimary} ${styles.btnSmall}`}
+            disabled={addMutation.isPending}
+          >
+            {addMutation.isPending ? 'Aggiunta…' : '+ Aggiungi'}
+          </button>
+          {formError && <div className={styles.prequalAddError}>{formError}</div>}
+        </form>
+      )}
+    </section>
+  );
+}
+
+function PartecipanteCard({ entry, driver, isStaff, onRemove, removePending }) {
+  const photoUrl = useConsentedDriverPhoto(driver?.driver_id);
+
+  const inner = (
+    <>
+      {isStaff && (
+        <button
+          type="button"
+          className={styles.prequalRemoveBtn}
+          title="Rimuovi partecipante"
+          disabled={removePending}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(entry.candidate_id, driver?.display_name || entry.name); }}
+        >
+          ✕
+        </button>
+      )}
+      <Avatar
+        name={driver?.display_name || entry.name}
+        driverId={driver?.driver_id || entry.name}
+        size={48}
+        photoUrl={photoUrl}
+      />
+      <div className={styles.prequalName}>{driver?.display_name || entry.name}</div>
+      <span className={styles.prequalBadge}>Confermato</span>
+    </>
+  );
+
+  if (driver) {
+    return (
+      <Link to={`/roster/${driver.driver_id}`} className={styles.prequalCard}>
+        {inner}
+      </Link>
+    );
+  }
+  return <div className={styles.prequalCard}>{inner}</div>;
 }
