@@ -176,6 +176,11 @@ const SUPABASE_MIGRATED_ACTIONS = new Set([
   'raceResults.list',
   'raceResults.import',
   'championships.list',
+  // #387/#395 (24/09/2026): championships.add/update chiudono il gap
+  // "creazione nuovo campionato senza UI" — vedi Edge Function
+  // championships-add/championships-update e nota in 018_championships.sql.
+  'championships.add',
+  'championships.update',
   'championships.importStandings',
   'championships.saveAdjustments',
   'standings.byChampionship',
@@ -682,6 +687,8 @@ export const api = {
 
   championships: {
     list: (filters = {}) => call('championships.list', filters),
+    add: (payload) => call('championships.add', payload),
+    update: (payload) => call('championships.update', payload),
     importStandings: ({ championship_id, json_data }) =>
       call('championships.importStandings', { championship_id, json_data }),
     saveAdjustments: ({ championship_id, adjustments }) =>

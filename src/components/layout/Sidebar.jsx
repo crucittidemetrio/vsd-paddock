@@ -85,6 +85,7 @@ const ADMIN_ITEMS = [
   { to: '/admin/import-results', label: 'Import Risultati', icon: '▽', group: 'gare' },
   { to: '/admin/import-lap-data', label: 'Import Analisi di Passo', icon: '⏱', group: 'gare' },
   { to: '/admin/import-standings', label: 'Import Standings', icon: '♛', group: 'gare' },
+  { to: '/admin/championships', label: 'Campionati', icon: '◈', group: 'gare' },
   { to: '/admin/garage61-sync', label: 'Sync Garage61', icon: '↻', group: 'gare' },
   { to: '/admin/posters', label: 'Race Posters', icon: '▭', group: 'gare' },
   { to: '/admin/endurance', label: 'Endurance Admin', icon: '◐', group: 'gare' },

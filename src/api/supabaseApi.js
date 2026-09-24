@@ -181,6 +181,11 @@ const LEGACY_TOKEN_FALLBACK_ACTIONS = new Set([
   // dispatcher endurance-auditions-get — mancava solo l'iniezione qui.
   'races.list', 'races.upcoming', 'raceResults.list', 'incidents.list',
   'auditLog.list', 'championships.list', 'recap.mine',
+  // #387/#395 (24/09/2026): championships.add/update sono staff/admin-only
+  // ma nessuno staff reale ha mai una sessione Supabase autentica (stesso
+  // gap #331/#358/#359/#392) — senza questo fallback la nuova UI di
+  // creazione campionato (AdminChampionships.jsx) sarebbe inutilizzabile.
+  'championships.add', 'championships.update',
   'social.posts.list', 'social.metrics.list', 'social.generateText', 'social.discord.stats',
   // #337 (20/09/2026): stesso gap trovato PRIMA del cutover — RaceDetail.jsx
   // (pagina pubblica /race/:raceId) chiama endurance.stints.list per ogni
