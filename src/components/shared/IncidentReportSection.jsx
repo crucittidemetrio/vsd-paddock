@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useReportIncident } from '../../hooks/useIncidents';
 import { useRaces } from '../../hooks/useRaces';
+import { useChampionships } from '../../hooks/useChampionships';
 // Riuso deliberato dello stesso CSS module già condiviso da
 // ChampionshipInterestSection (vedi lì per il perché) — stesse classi
 // form/formGroup/select/textarea/btn, coerenza visiva senza duplicare CSS.
@@ -33,7 +34,7 @@ const CLASH_ROUNDS = [1, 2, 3];
  *
  * @param {Object} props
  * @param {string} [props.anchorId]
- * @param {'championship'|'race'|'clash'} [props.mode='championship']
+ * @param {'championship'|'race'|'clash'|'auto'} [props.mode='championship'] - 'auto' lascia scegliere l'ambito al segnalante (usato nella pagina standalone /reclami, #408)
  * @param {string} [props.championship] - id campionato fisso (mode='championship'), usato anche per filtrare il selettore Gara
  * @param {string} [props.raceId] - race_id fisso (mode='race', es. da RaceDetail)
  * @param {string} [props.eyebrow]
@@ -48,6 +49,7 @@ export default function IncidentReportSection({
   title = 'Proteste',
 }) {
   const { driver, isVsdPilot } = useAuth();
+  const isAuto = mode === 'auto';
   const [open, setOpen] = useState(false);
   const [reporterSim, setReporterSim] = useState('');
   const [reporterDiscord, setReporterDiscord] = useState('');
@@ -61,19 +63,41 @@ export default function IncidentReportSection({
   const [description, setDescription] = useState('');
   const [replayUrl, setReplayUrl] = useState('');
   const [feedback, setFeedback] = useState(null);
+  // Stato aggiuntivo solo per mode='auto' (#408, pagina /reclami): qui
+  // l'"ambito" non arriva da una prop fissa del genitore (RaceDetail/ACI
+  // lo sanno già in anticipo), lo sceglie il segnalante — stesso concetto
+  // delle scelte statiche "ambito" del comando Discord /segnala-incidente.
+  const [ambito, setAmbito] = useState('campionato');
+  const [selectedChampionship, setSelectedChampionship] = useState('');
 
-  // Selettore Gara: solo per mode='championship', per lasciare al
-  // segnalante la scelta di QUALE gara di quel campionato riguarda la
-  // segnalazione (richiesta esplicita di Demetrio — prima il campo
-  // "Gara" non esisteva, solo un championship_id generico). races.list
-  // è ora pubblico via team_slug (#396) anche per un visitatore non
-  // loggato.
+  // effectiveMode: per mode='auto' mappa l'ambito scelto sullo stesso
+  // ramo di rendering di 'championship'/'clash' già esistenti; 'gara'
+  // è un caso nuovo ("race-picker"), un selettore libero su TUTTE le
+  // gare (non scoped a un campionato) — a differenza di mode='race'
+  // (raceId fisso da RaceDetail, nessun selettore mostrato).
+  const effectiveMode = isAuto
+    ? (ambito === 'campionato' ? 'championship' : ambito === 'clash' ? 'clash' : 'race-picker')
+    : mode;
+  const effectiveChampionship = isAuto ? selectedChampionship : championship;
+
+  // Selettore Gara: per mode='championship' (fisso dal genitore) o per
+  // mode='auto' con ambito='campionato'/'gara' — races.list è pubblico
+  // via team_slug (#396) anche per un visitatore non loggato.
   const racesQuery = useRaces();
-  const racesForChampionship = useMemo(() => {
-    if (mode !== 'championship') return [];
+  const racesForPicker = useMemo(() => {
     const all = racesQuery.data?.races || [];
-    return all.filter(r => !championship || r.championship_id === championship);
-  }, [racesQuery.data, mode, championship]);
+    if (effectiveMode === 'championship') {
+      return all.filter(r => !effectiveChampionship || r.championship_id === effectiveChampionship);
+    }
+    if (effectiveMode === 'race-picker') return all; // ambito='gara' in mode='auto': scelta libera su tutte le gare
+    return [];
+  }, [racesQuery.data, effectiveMode, effectiveChampionship]);
+
+  // Campionati: solo per mode='auto' (il selettore "ambito"='campionato'
+  // deve popolare la select) — nessuna chiamata extra per gli altri mode,
+  // dove championship arriva già fissato via prop.
+  const championshipsQuery = useChampionships({ enabled: isAuto });
+  const championshipOptions = isAuto ? (championshipsQuery.data || []) : [];
 
   const reportMutation = useReportIncident();
 
@@ -96,9 +120,9 @@ export default function IncidentReportSection({
         incident_type: incidentType,
         description: description.trim(),
         replay_url: replayUrl.trim(),
-        championship: mode === 'championship' ? championship : '',
-        race_id: mode === 'race' ? raceId : (mode === 'championship' ? selectedRaceId : ''),
-        clash_round: mode === 'clash' ? clashRound : '',
+        championship: effectiveMode === 'championship' ? effectiveChampionship : '',
+        race_id: mode === 'race' ? raceId : (effectiveMode === 'championship' || effectiveMode === 'race-picker') ? selectedRaceId : '',
+        clash_round: effectiveMode === 'clash' ? clashRound : '',
         source: 'web',
       });
       setFeedback({ ok: true, message: 'Segnalazione inviata. La Direzione Gara la esaminerà entro 48h.' });
@@ -106,6 +130,7 @@ export default function IncidentReportSection({
       setReporterDiscord('');
       setAgainst('');
       setSelectedRaceId(raceId || '');
+      setSelectedChampionship('');
       setTrack('');
       setLap('');
       setTimeInRace('');
@@ -147,6 +172,21 @@ export default function IncidentReportSection({
 
       {open && (
         <form className={styles.form} onSubmit={handleSubmit} style={{ marginTop: 20 }}>
+          {isAuto && (
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel} htmlFor={`${anchorId}-ambito`}>Cosa riguarda la segnalazione</label>
+              <select
+                id={`${anchorId}-ambito`} className={styles.select}
+                value={ambito}
+                onChange={e => { setAmbito(e.target.value); setSelectedRaceId(''); setSelectedChampionship(''); }}
+              >
+                <option value="campionato">Campionato</option>
+                <option value="gara">Gara specifica</option>
+                <option value="clash">Clash of Classes</option>
+              </select>
+            </div>
+          )}
+
           {isVsdPilot ? (
             <div className={styles.formGroup}>
               <label className={styles.formLabel}>Pilota segnalante</label>
@@ -172,7 +212,22 @@ export default function IncidentReportSection({
             />
           </div>
 
-          {mode === 'championship' && (
+          {isAuto && ambito === 'campionato' && (
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel} htmlFor={`${anchorId}-championship`}>Campionato</label>
+              <select
+                id={`${anchorId}-championship`} className={styles.select}
+                value={selectedChampionship} onChange={e => { setSelectedChampionship(e.target.value); setSelectedRaceId(''); }}
+              >
+                <option value="">Seleziona il campionato…</option>
+                {championshipOptions.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {effectiveMode === 'championship' && (
             <div className={styles.formGroup}>
               <label className={styles.formLabel} htmlFor={`${anchorId}-race`}>Gara (opzionale)</label>
               <select
@@ -180,7 +235,7 @@ export default function IncidentReportSection({
                 value={selectedRaceId} onChange={e => setSelectedRaceId(e.target.value)}
               >
                 <option value="">Non specifica / generico sul campionato</option>
-                {racesForChampionship.map(r => (
+                {racesForPicker.map(r => (
                   <option key={r.race_id} value={r.race_id}>
                     {r.race_name}{r.date ? ` — ${new Date(r.date).toLocaleDateString('it-IT')}` : ''}
                   </option>
@@ -189,7 +244,25 @@ export default function IncidentReportSection({
             </div>
           )}
 
-          {mode === 'clash' && (
+          {effectiveMode === 'race-picker' && (
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel} htmlFor={`${anchorId}-race-free`}>Gara</label>
+              <select
+                id={`${anchorId}-race-free`} className={styles.select}
+                value={selectedRaceId} onChange={e => setSelectedRaceId(e.target.value)}
+                required
+              >
+                <option value="">Seleziona la gara…</option>
+                {racesForPicker.map(r => (
+                  <option key={r.race_id} value={r.race_id}>
+                    {r.race_name}{r.date ? ` — ${new Date(r.date).toLocaleDateString('it-IT')}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {effectiveMode === 'clash' && (
             <div className={styles.formGroup}>
               <label className={styles.formLabel} htmlFor={`${anchorId}-round`}>Round</label>
               <select

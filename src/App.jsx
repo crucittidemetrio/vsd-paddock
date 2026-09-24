@@ -34,6 +34,7 @@ const Academy             = lazy(() => import('./pages/Academy'));
 const Endurance           = lazy(() => import('./pages/Endurance'));
 const EnduranceDetail     = lazy(() => import('./pages/EnduranceDetail'));
 const UE144               = lazy(() => import('./pages/UE144'));
+const Reclami             = lazy(() => import('./pages/Reclami'));
 const ChampionshipDetail  = lazy(() => import('./pages/ChampionshipDetail'));
 const AdminImportResults  = lazy(() => import('./pages/AdminImportResults'));
 const AdminImportLapData  = lazy(() => import('./pages/AdminImportLapData'));
@@ -138,6 +139,7 @@ export default function App() {
               <Route path="/endurance" element={<Endurance />} />
               <Route path="/endurance/:auditionId" element={<EnduranceDetail />} />
               <Route path="/ue144" element={<UE144 />} />
+              <Route path="/reclami" element={<Reclami />} />
               <Route path="/clash-of-classes" element={<ClashOfClasses />} />
               <Route path="/aci-lmgt3-challenge" element={<AciLmgt3Challenge />} />
               <Route path="/era-season-3" element={<EraSeason3 />} />

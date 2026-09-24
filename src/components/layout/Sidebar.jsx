@@ -19,6 +19,10 @@ const PUBLIC_ITEMS = [
   { to: '/results', label: LABELS.nav_results, icon: '⚑' },
   { to: '/compare', label: 'Confronto', icon: '⚖' },
   { to: '/endurance', label: LABELS.nav_endurance, icon: '◐' },
+  // #408 (25/09/2026): pagina pubblica community-wide, stesso spirito di
+  // Campionati/Calendario — accessibile anche a chi non ha mai fatto
+  // login, sostituisce il rimando implicito al comando Discord.
+  { to: '/reclami', label: 'Reclami', icon: '⚑' },
   // Voce visibile a tutti (individuabile da chiunque visiti il sito),
   // il contenuto è invece gated a pilot_vsd+ dentro Setup.jsx stesso
   // (stesso pattern di RaceDetail.jsx: pagina pubblica, sezioni interne

@@ -119,6 +119,13 @@ const ANON_TEAM_SLUG_ACTIONS = new Set([
   // incidenti anche per un visitatore non loggato (community esterna
   // UE144). Restano comunque auth-first per i chiamanti già loggati.
   'races.list', 'championships.list',
+  // #408 (25/09/2026): pagina pubblica /reclami#esiti — incidents.list
+  // ora ha anche un ramo pubblico lato Edge Function (sanitizzato, mai
+  // description/staff_notes/contatti — vedi incidents-list/index.ts v5).
+  // Iniettare team_slug qui per il visitatore anonimo non tocca la
+  // chiamata autenticata di useIncidents (staff, con sessione reale):
+  // l'iniezione avviene solo `!session?.access_token`.
+  'incidents.list',
 ]);
 
 // #334 FIX REGRESSIONE (19/09-20/09/2026): consent.accept spostato su

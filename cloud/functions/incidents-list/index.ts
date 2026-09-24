@@ -1,5 +1,19 @@
 // ═══════════════════════════════════════════════════════════
-// VSD-Paddock Cloud — incidents.list (v4 — sistema unificato)
+// VSD-Paddock Cloud — incidents.list (v5 — ramo pubblico "Esiti", #408)
+// ═══════════════════════════════════════════════════════════
+// v5 (25/09/2026): pagina pubblica /reclami#esiti — i piloti (anche non
+// tesserati, community-wide come il resto del sistema reclami) devono
+// poter vedere lo stato delle segnalazioni senza chiedere allo staff
+// via Discord. Nessuna sessione reale → richiede team_slug (stesso
+// pattern anon di roster.list/clash.*/incidents.report). Il ramo
+// pubblico NON è semplicemente "isStaff=false": esclude anche campi
+// che per un pilota loggato coinvolto restano visibili (description,
+// replay_url, reporter_discord, driver id interni) — verificato
+// leggendo lo screenshot fornito da Demetrio della UI di riferimento
+// ("Esiti dei reclami"): mostra nomi, round/momento, categoria e stato,
+// mai il testo del reclamo. Stessa ragione per cui staff_notes è
+// esclusa anche dal ramo autenticato non-staff: qui è "descrizione
+// esclusa di default", non un'eccezione per singolo campo.
 // ═══════════════════════════════════════════════════════════
 // FIX CRITICO (24/09/2026, trovato validando la richiesta di
 // unificazione di Demetrio): questa funzione era rimasta ferma al
@@ -94,17 +108,35 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    if (!me) return json({ ok: false, error: 'Auth richiesto' }, 401);
+    // Ramo pubblico (#408): nessuna sessione reale, ma team_slug presente
+    // (iniettato lato client per i chiamanti anonimi, stesso pattern di
+    // roster.list/clash.*/incidents.report) — pagina /reclami#esiti,
+    // community-wide, nessun login richiesto.
+    let isPublic = false;
+    let publicTeamId: string | null = null;
+    if (!me) {
+      const teamSlug = payload?.team_slug ? String(payload.team_slug).trim() : '';
+      if (!teamSlug) return json({ ok: false, error: 'Auth richiesto' }, 401);
+      const serviceClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+      const { data: team } = await serviceClient.from('teams').select('id').eq('slug', teamSlug).maybeSingle();
+      if (!team) return json({ ok: false, error: 'Team non trovato: ' + teamSlug }, 404);
+      isPublic = true;
+      publicTeamId = team.id;
+      supabase = serviceClient;
+    }
 
     const statusFilter = payload?.status ? String(payload.status) : null;
-    const isStaff = me.role === 'staff' || me.role === 'admin';
+    const isStaff = !isPublic && (me.role === 'staff' || me.role === 'admin');
+    const scopeTeamId = isPublic ? publicTeamId : me.team_id;
 
-    // Con client service-role (fallback legacy) la RLS è bypassata:
-    // replichiamo qui esplicitamente lo stesso scoping che la RLS
-    // applicherebbe con una sessione reale (staff/admin: tutto il team;
-    // pilota: solo le proprie segnalazioni, come segnalante o segnalato).
-    let reportsQuery = supabase.from('incident_reports').select('*').eq('team_id', me.team_id);
-    if (usingLegacyFallback && !isStaff) {
+    // Con client service-role (fallback legacy o ramo pubblico) la RLS è
+    // bypassata: replichiamo qui esplicitamente lo stesso scoping che la
+    // RLS applicherebbe con una sessione reale (staff/admin: tutto il
+    // team; pilota: solo le proprie segnalazioni, come segnalante o
+    // segnalato; pubblico: tutto il team, come la pagina Esiti — stesso
+    // spirito "tutti vedono lo stato" del vecchio Google Form).
+    let reportsQuery = supabase.from('incident_reports').select('*').eq('team_id', scopeTeamId);
+    if (usingLegacyFallback && !isStaff && !isPublic) {
       reportsQuery = reportsQuery.or(`reporter_driver_id.eq.${me.id},against_driver_id.eq.${me.id}`);
     }
     const { data: reports, error: reportsErr } = await reportsQuery;
@@ -123,37 +155,62 @@ Deno.serve(async (req: Request) => {
     const resByReportId: Record<string, any> = {};
     resolutions.forEach((r: any) => { resByReportId[r.report_id] = r; });
 
+    // Ramo pubblico: risolve championship_id/race_id in nomi leggibili —
+    // un visitatore anonimo non sa cosa sia "RACE030", a differenza
+    // dello staff nel registro admin (che lavora già con gli ID grezzi).
+    let championshipNames: Record<string, string> = {};
+    let raceNames: Record<string, string> = {};
+    if (isPublic) {
+      const champIds = [...new Set((reports ?? []).map((r: any) => r.championship_id).filter(Boolean))];
+      const raceIds = [...new Set((reports ?? []).map((r: any) => r.race_id).filter(Boolean))];
+      if (champIds.length > 0) {
+        const { data: champs } = await supabase.from('championships').select('id, name').in('id', champIds);
+        (champs ?? []).forEach((c: any) => { championshipNames[c.id] = c.name; });
+      }
+      if (raceIds.length > 0) {
+        const { data: races } = await supabase.from('races').select('race_id, race_name').in('race_id', raceIds);
+        (races ?? []).forEach((r: any) => { raceNames[r.race_id] = r.race_name; });
+      }
+    }
+
     let incidents = (reports ?? []).map((rep: any) => {
       const res = resByReportId[rep.id];
       const base: Record<string, unknown> = {
         complaint_key: rep.id,
         created_at: rep.created_at,
-        reporter_driver_id: rep.reporter_driver_id,
         reporter_sim: rep.reporter_sim,
-        reporter_discord: rep.reporter_discord,
-        against_driver_id: rep.against_driver_id,
         against: rep.against,
         race_date: rep.race_date,
         track: rep.track_id,
         lap: rep.lap,
         time_in_race: rep.time_in_race,
         incident_type: rep.incident_type,
-        description: rep.description,
-        championship: rep.championship_id,
-        race_id: rep.race_id,
+        championship: isPublic ? (championshipNames[rep.championship_id] || null) : rep.championship_id,
+        race_id: isPublic ? (raceNames[rep.race_id] || null) : rep.race_id,
         clash_round: rep.clash_round,
-        replay_url: rep.replay_url,
-        source: rep.source,
         status: res ? res.status : 'open',
         penalty_type: res ? res.penalty_type : null,
         penalty_detail: res ? res.penalty_detail : null,
-        resolved_by: res ? res.resolved_by : null,
         resolved_at: res ? res.resolved_at : null,
-        evidence_url: res ? res.evidence_url : null,
-        sim: res ? res.sim : null,
-        penalized_driver_id: res ? res.penalized_driver_id : null,
         formalized: !!res,
       };
+      // Campi esclusi dal ramo pubblico (#408): testo del reclamo, link
+      // prova, contatto Discord del segnalante, id driver interni — mai
+      // esposti senza login, indipendentemente dallo stato della
+      // segnalazione. Verificato contro lo screenshot di riferimento:
+      // la vista "Esiti" mostra solo nomi/round/momento/categoria/stato.
+      if (!isPublic) {
+        base.reporter_driver_id = rep.reporter_driver_id;
+        base.reporter_discord = rep.reporter_discord;
+        base.against_driver_id = rep.against_driver_id;
+        base.description = rep.description;
+        base.replay_url = rep.replay_url;
+        base.source = rep.source;
+        base.resolved_by = res ? res.resolved_by : null;
+        base.evidence_url = res ? res.evidence_url : null;
+        base.sim = res ? res.sim : null;
+        base.penalized_driver_id = res ? res.penalized_driver_id : null;
+      }
       // staff_notes: deliberazione interna, visibile SOLO a staff/admin.
       if (isStaff) base.staff_notes = res ? res.staff_notes : null;
       return base;
