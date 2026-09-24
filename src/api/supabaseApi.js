@@ -223,6 +223,14 @@ const LEGACY_TOKEN_FALLBACK_ACTIONS = new Set([
   'social.generateText',
   'social.media.list', 'social.media.add', 'social.media.remove',
   'social.plan.dismiss', 'social.plan.undismiss', 'social.plan.dismissed.list',
+  // #391-fix (24/09/2026): push.subscribe/push.unsubscribe non avevano MAI
+  // ricevuto il fallback legacy_token — stessa causa radice di #358/#359/
+  // #370/#375/#376/#378/#385. Bug reale: Demetrio segnalava "ho attivato
+  // le notifiche push" ma push_subscriptions restava a 0 righe (401 "Auth
+  // richiesto" silenzioso, mai propagato in modo visibile all'utente
+  // oltre al messaggio sotto il bottone). Fix gemello lato Edge Function
+  // (resolveLegacyDriver, ora anche in push-subscribe/index.ts).
+  'push.subscribe', 'push.unsubscribe',
   // #370 (21/09/2026): stesso gap, trovato mentre si agganciava il
   // ricalcolo Elo/Safety Rank a raceResults.import — l'Edge Function
   // race-results-import richiedeva SEMPRE una sessione Supabase reale
