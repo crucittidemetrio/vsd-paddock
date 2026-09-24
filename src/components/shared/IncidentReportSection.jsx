@@ -84,20 +84,40 @@ export default function IncidentReportSection({
   // mode='auto' con ambito='campionato'/'gara' — races.list è pubblico
   // via team_slug (#396) anche per un visitatore non loggato.
   const racesQuery = useRaces();
+  // Campionati: solo per mode='auto' (il selettore "ambito"='campionato'
+  // deve popolare la select) — nessuna chiamata extra per gli altri mode,
+  // dove championship arriva già fissato via prop. Filtrato a status
+  // 'active': non ha senso poter segnalare un incidente su un campionato
+  // (stagione intera) già concluso o non ancora aperto — richiesta
+  // esplicita di Demetrio (#408 follow-up, 25/09/2026).
+  const championshipsQuery = useChampionships({ status: 'active', enabled: isAuto });
+  const championshipOptions = useMemo(
+    () => (isAuto ? (championshipsQuery.data || []) : []),
+    [isAuto, championshipsQuery.data]
+  );
+  const activeChampionshipIds = useMemo(
+    () => new Set(championshipOptions.map(c => c.id)),
+    [championshipOptions]
+  );
+
   const racesForPicker = useMemo(() => {
-    const all = racesQuery.data?.races || [];
+    // 'draft'/'cancelled': gara non confermata o annullata — mai
+    // selezionabile per una segnalazione, indipendentemente dal mode.
+    const all = (racesQuery.data?.races || []).filter(r => r.status !== 'draft' && r.status !== 'cancelled');
     if (effectiveMode === 'championship') {
       return all.filter(r => !effectiveChampionship || r.championship_id === effectiveChampionship);
     }
-    if (effectiveMode === 'race-picker') return all; // ambito='gara' in mode='auto': scelta libera su tutte le gare
+    if (effectiveMode === 'race-picker') {
+      // ambito='gara' in mode='auto': scelta libera, ma solo tra gare di
+      // campionati ATTIVI — una gara isolata di una stagione già chiusa
+      // non deve comparire (stesso motivo del filtro sui campionati sopra).
+      // Se championshipsQuery non ha ancora risposto, non filtra nulla
+      // per evitare una select vuota "lampeggiante" al primo render.
+      if (championshipsQuery.isLoading) return all;
+      return all.filter(r => activeChampionshipIds.has(r.championship_id));
+    }
     return [];
-  }, [racesQuery.data, effectiveMode, effectiveChampionship]);
-
-  // Campionati: solo per mode='auto' (il selettore "ambito"='campionato'
-  // deve popolare la select) — nessuna chiamata extra per gli altri mode,
-  // dove championship arriva già fissato via prop.
-  const championshipsQuery = useChampionships({ enabled: isAuto });
-  const championshipOptions = isAuto ? (championshipsQuery.data || []) : [];
+  }, [racesQuery.data, effectiveMode, effectiveChampionship, championshipsQuery.isLoading, activeChampionshipIds]);
 
   const reportMutation = useReportIncident();
 
