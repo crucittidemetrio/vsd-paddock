@@ -5,11 +5,11 @@ import {
   useClashParticipants,
   useClashRegister,
   useClashStandings,
-  useClashReportIncident,
 } from '../hooks/useClashOfClasses';
 import { useAuth } from '../hooks/useAuth';
 import { SOCIAL_LINKS } from '../utils/constants';
 import { VEHICLES_BY_CLASS } from '../utils/clashVehicles';
+import IncidentReportSection from '../components/shared/IncidentReportSection';
 import styles from './ClashOfClasses.module.css';
 
 const CLASSES = [
@@ -269,7 +269,11 @@ export default function ClashOfClasses() {
       <StandingsSection />
 
       {/* ════ SEGNALAZIONE INCIDENTI ════ */}
-      <IncidentReportSection />
+      <IncidentReportSection
+        mode="clash"
+        eyebrow="Direzione Gara"
+        title="Segnalazioni Clash of Classes"
+      />
 
       {/* ════ CTA / CONTATTI ════ */}
       <section className={styles.cta}>
@@ -595,133 +599,10 @@ function TrophyTable({ trophy }) {
 }
 
 // ════ SEGNALAZIONE INCIDENTI ════
-
-function IncidentReportSection() {
-  const [open, setOpen] = useState(false);
-  const [round, setRound] = useState(1);
-  const [reportingName, setReportingName] = useState('');
-  const [reportedName, setReportedName] = useState('');
-  const [description, setDescription] = useState('');
-  const [replayUrl, setReplayUrl] = useState('');
-  const [feedback, setFeedback] = useState(null);
-
-  const reportMutation = useClashReportIncident();
-
-  async function handleSubmit(e) {
-    e.preventDefault();
-    setFeedback(null);
-    try {
-      await reportMutation.mutateAsync({
-        round,
-        reporting_name: reportingName.trim(),
-        reported_name: reportedName.trim(),
-        description: description.trim(),
-        replay_url: replayUrl.trim(),
-      });
-      setFeedback({ ok: true, message: 'Segnalazione inviata. La Direzione Generale la esaminerà entro 48h.' });
-      setReportingName('');
-      setReportedName('');
-      setDescription('');
-      setReplayUrl('');
-    } catch (err) {
-      setFeedback({ ok: false, message: err.message || 'Errore durante l’invio.' });
-    }
-  }
-
-  return (
-    <section id="segnalazioni" className={styles.section}>
-      <div className={styles.sectionEyebrow}>Direzione Generale</div>
-      <h2 className={styles.sectionTitle}>Proteste</h2>
-      <div className={styles.protestBox}>
-        <div className={styles.protestRow}>
-          <span className={styles.protestIcon}>💬</span>
-          <span>Invia la segnalazione tramite il modulo qui sotto entro <strong>48 ore</strong> dal termine della gara</span>
-        </div>
-        <div className={styles.protestRow}>
-          <span className={styles.protestIcon}>🎬</span>
-          <span>Allega obbligatoriamente <strong>clip video</strong> (telemetria consigliata)</span>
-        </div>
-        <div className={styles.protestRow}>
-          <span className={styles.protestIcon}>⚖️</span>
-          <span>Le decisioni della Direzione Generale sono <strong>inappellabili</strong> e basate esclusivamente sui dati</span>
-        </div>
-        <div className={styles.protestRow}>
-          <span className={styles.protestIcon}>📋</span>
-          <span>L'iscrizione al campionato implica la piena accettazione del presente regolamento</span>
-        </div>
-      </div>
-
-      <button
-        type="button"
-        className={`${styles.btn} ${styles.btnPrimary}`}
-        style={{ marginTop: 'var(--sp-4, 16px)' }}
-        onClick={() => setOpen(v => !v)}
-      >
-        {open ? 'Chiudi il form' : 'Segnala un incidente'}
-      </button>
-
-      {open && (
-        <form className={styles.form} onSubmit={handleSubmit} style={{ marginTop: 20 }}>
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel} htmlFor="coc-inc-round">Round</label>
-            <select
-              id="coc-inc-round"
-              className={styles.select}
-              value={round}
-              onChange={e => setRound(Number(e.target.value))}
-            >
-              {CALENDAR.map(r => (
-                <option key={r.round} value={r.round}>Round {r.round} — {r.circuit}</option>
-              ))}
-            </select>
-          </div>
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel} htmlFor="coc-inc-from">Pilota segnalante</label>
-            <input
-              id="coc-inc-from" type="text" className={styles.input}
-              value={reportingName} onChange={e => setReportingName(e.target.value)}
-              maxLength={80} required
-            />
-          </div>
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel} htmlFor="coc-inc-to">Pilota segnalato</label>
-            <input
-              id="coc-inc-to" type="text" className={styles.input}
-              value={reportedName} onChange={e => setReportedName(e.target.value)}
-              maxLength={80} required
-            />
-          </div>
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel} htmlFor="coc-inc-desc">Descrizione</label>
-            <textarea
-              id="coc-inc-desc" className={styles.textarea} rows={4}
-              value={description} onChange={e => setDescription(e.target.value)}
-              maxLength={2000} required
-            />
-          </div>
-          <div className={styles.formGroup}>
-            <label className={styles.formLabel} htmlFor="coc-inc-replay">Link replay/telemetria (opzionale)</label>
-            <input
-              id="coc-inc-replay" type="url" className={styles.input}
-              value={replayUrl} onChange={e => setReplayUrl(e.target.value)}
-              placeholder="https://…"
-            />
-          </div>
-
-          <button type="submit" className={`${styles.btn} ${styles.btnPrimary}`} disabled={reportMutation.isPending}>
-            {reportMutation.isPending ? 'Invio…' : 'Invia segnalazione'}
-          </button>
-
-          {feedback && (
-            <div className={feedback.ok ? styles.formSuccess : styles.formError}>
-              {feedback.message}
-            </div>
-          )}
-        </form>
-      )}
-    </section>
-  );
-}
+// Sezione condivisa (src/components/shared/IncidentReportSection.jsx),
+// vedi call-site più sopra. La versione locale duplicata (round fisso,
+// campi divergenti) è stata rimossa il 24/09/2026 — "stesso sistema
+// per tutto" (unificazione #396-#399).
 
 // ════ HELPER ════
 

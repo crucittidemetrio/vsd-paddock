@@ -112,6 +112,13 @@ const ANON_TEAM_SLUG_ACTIONS = new Set([
   // via team_slug (resolvePublicTeam, stesso helper di Clash/Interest),
   // mancava solo l'iniezione automatica qui lato client.
   'endurance.auditions.list', 'endurance.auditions.get', 'endurance.participants.list',
+  // #396 (24/09/2026, "stesso sistema per tutto" — unificazione
+  // segnalazione incidenti): races.list/championships.list ora
+  // supportano anche il path anonimo (team_slug) lato Edge Function,
+  // per popolare il selettore gara/campionato nel form di segnalazione
+  // incidenti anche per un visitatore non loggato (community esterna
+  // UE144). Restano comunque auth-first per i chiamanti già loggati.
+  'races.list', 'championships.list',
 ]);
 
 // #334 FIX REGRESSIONE (19/09-20/09/2026): consent.accept spostato su

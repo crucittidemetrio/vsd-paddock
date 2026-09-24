@@ -19,6 +19,7 @@ import { usePageMeta } from '../hooks/usePageMeta';
 import { normalizeImageUrl } from '../utils/driveUrl';
 import { useBlobUpload } from '../hooks/useBlobUpload';
 import RaceResultsSection from '../components/race/RaceResultsSection';
+import IncidentReportSection from '../components/shared/IncidentReportSection';
 import TrackKerbBackdrop from '../components/shared/TrackKerbBackdrop';
 import './Page.css';
 import './RaceDetail.css';
@@ -624,6 +625,14 @@ export default function RaceDetail() {
           </RequireTier>
         </section>
       )}
+
+      {/* Segnalazione incidenti — form unificato (#396-#400), gara fissa */}
+      <IncidentReportSection
+        mode="race"
+        raceId={race.race_id}
+        eyebrow="Direzione Gara"
+        title="Proteste"
+      />
 
       <GallerySection race={race} isStaff={isStaff} onUpdated={refreshRace} />
     </div>

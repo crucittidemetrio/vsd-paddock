@@ -14,17 +14,20 @@
 // col frontend reale, ma è sempre null finché Championships non esiste.
 // L'isolamento multi-tenant lo fa la RLS (current_driver_team_id()),
 // non serve filtrare team_id qui.
+//
+// v3 (24/09/2026, unificazione segnalazione incidenti — "stesso
+// sistema per tutto"): aggiunto un path ANONIMO (team_slug), stesso
+// pattern service-role di roster-list/incidents-report/clash-*. Serve
+// a popolare il selettore "Gara" nel form di segnalazione incidenti
+// anche per un visitatore non loggato (community esterna UE144) — la
+// funzione resta comunque auth-first (sessione o legacy token hanno
+// sempre priorità), il ramo anonimo è solo un fallback quando nessuno
+// dei due è presente, mai un downgrade di sicurezza per un chiamante
+// autenticato.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// Fallback token legacy (stesso pattern #331/#358/#359, esteso qui il
-// 21/09/2026 — gap trovato diagnosticando "sistema non più utilizzabile
-// da notebook", segnalato da Demetrio: races.list non aveva mai
-// ricevuto questo fallback nei giri precedenti, quindi falliva con
-// "Auth richiesto" per qualunque pilota senza una sessione Supabase
-// reale — cioè quasi chiunque, tranne su un browser con una vecchia
-// sessione di test rimasta agganciata).
 const LEGACY_API_URL = 'https://script.google.com/macros/s/AKfycbyMXxEjZfm5EIsGUnKxpwtBtoeR4hwMG7Pl8ZESF8yG569SS0aIdsWqyu9PdBgR14vLiA/exec';
 
 async function resolveLegacyDriver(serviceClient: any, legacyToken: string | undefined) {
@@ -61,9 +64,14 @@ Deno.serve(async (req: Request) => {
 
   try {
     const payload = await req.json().catch(() => ({}));
+    const serviceClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+
     const authHeader = req.headers.get('Authorization');
     let supabase: any = null;
-    let me: any = null;
+    let teamId: string | null = null;
 
     if (authHeader) {
       supabase = createClient(
@@ -73,32 +81,43 @@ Deno.serve(async (req: Request) => {
       );
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: meRow } = await supabase
+        const { data: meRow } = await serviceClient
           .from('drivers')
-          .select('id, team_id, role, display_name, driver_code')
+          .select('team_id')
           .eq('auth_user_id', user.id)
           .maybeSingle();
-        me = meRow || null;
+        if (meRow) teamId = meRow.team_id;
       }
     }
 
-    if (!me) {
-      const legacyServiceClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-      const legacyMe = await resolveLegacyDriver(legacyServiceClient, payload?.legacy_token);
+    if (!teamId) {
+      const legacyMe = await resolveLegacyDriver(serviceClient, payload?.legacy_token);
       if (legacyMe) {
-        me = legacyMe;
-        supabase = legacyServiceClient;
+        teamId = legacyMe.team_id;
+        supabase = serviceClient;
       }
     }
 
-    if (!me) return json({ ok: false, error: 'Auth richiesto' }, 401);
+    if (!teamId) {
+      const teamSlug = payload?.team_slug ? String(payload.team_slug).trim() : '';
+      if (!teamSlug) return json({ ok: false, error: 'Auth richiesto' }, 401);
+      const { data: team, error: teamErr } = await serviceClient
+        .from('teams')
+        .select('id')
+        .eq('slug', teamSlug)
+        .maybeSingle();
+      if (teamErr) return json({ ok: false, error: teamErr.message }, 400);
+      if (!team) return json({ ok: false, error: 'Team non trovato: ' + teamSlug }, 404);
+      teamId = team.id;
+      supabase = serviceClient;
+    }
 
     const statusFilter = payload?.status ? String(payload.status) : null;
 
-    // Con client service-role (fallback legacy) la RLS è bypassata: lo
-    // scoping team_id va applicato esplicitamente qui (con sessione
-    // Supabase reale è ridondante ma innocuo, la RLS lo farebbe comunque).
-    let query = supabase.from('races').select('*').eq('team_id', me.team_id).order('date', { ascending: true });
+    // Con client service-role (fallback legacy/anonimo) la RLS è
+    // bypassata: lo scoping team_id va applicato esplicitamente qui
+    // (con sessione Supabase reale è ridondante ma innocuo).
+    let query = supabase.from('races').select('*').eq('team_id', teamId).order('date', { ascending: true });
     if (statusFilter) query = query.eq('status', statusFilter);
 
     const { data, error } = await query;

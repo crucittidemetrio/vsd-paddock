@@ -147,7 +147,14 @@ function IncidentCard({ incident: inc }) {
       </div>
 
       <div className={styles.cardHead}>
+        {inc.source && (
+          <span className={styles.meta}>
+            {inc.source === 'discord' ? '🎮 via Discord' : '🌐 via sito'}
+          </span>
+        )}
         {inc.championship && <span className={styles.typeTag}>{inc.championship}</span>}
+        {inc.race_id && <span className={styles.meta}>gara {inc.race_id}</span>}
+        {inc.clash_round && <span className={styles.meta}>Clash Round {inc.clash_round}</span>}
         {inc.track && <span className={styles.meta}>{inc.track}</span>}
         {inc.lap && <span className={styles.meta}>giro {inc.lap}</span>}
         {inc.time_in_race && <span className={styles.meta}>{inc.time_in_race}</span>}
@@ -155,6 +162,13 @@ function IncidentCard({ incident: inc }) {
       </div>
 
       {inc.description && <div className={styles.description}>{inc.description}</div>}
+
+      {inc.replay_url && (
+        <div className={styles.meta}>
+          🎬 Clip/telemetria allegata dal segnalante:{' '}
+          <a href={inc.replay_url} target="_blank" rel="noopener noreferrer">{inc.replay_url}</a>
+        </div>
+      )}
 
       {inc.verdict && (
         <div className={styles.verdictBox}>

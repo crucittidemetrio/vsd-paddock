@@ -10,13 +10,15 @@
 //
 // FIX 21/09/2026 (segnalato da Demetrio, "sistema non più utilizzabile
 // da notebook"): aggiunto fallback token legacy, stesso pattern
-// #331/#358/#359 — mai incluso qui perché il file non era mai stato
-// sincronizzato in git (gap di drift, stesso pattern già visto per
-// audit-log-list/messenger-send in #335 e standings-by-championship
-// il 21/09/2026). Senza sessione Supabase reale (praticamente ogni
-// pilota, solo token legacy Discord OAuth via Apps Script), la pagina
-// Campionati mostrava "Nessun campionato disponibile" con 401
-// silenzioso.
+// #331/#358/#359.
+//
+// v3 (24/09/2026, unificazione segnalazione incidenti — "stesso
+// sistema per tutto"): aggiunto anche un path ANONIMO (team_slug),
+// stesso pattern di roster-list/races-list/incidents-report — serve a
+// popolare il selettore "Campionato" nel form di segnalazione incidenti
+// per un visitatore non loggato (community esterna UE144). Auth-first:
+// il ramo anonimo è solo un fallback quando né sessione né legacy
+// token sono presenti.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -73,9 +75,14 @@ Deno.serve(async (req: Request) => {
 
   try {
     const payload = await req.json().catch(() => ({}));
+    const serviceClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+
     const authHeader = req.headers.get('Authorization');
     let supabase: any = null;
-    let me: any = null;
+    let teamId: string | null = null;
 
     if (authHeader) {
       supabase = createClient(
@@ -85,27 +92,38 @@ Deno.serve(async (req: Request) => {
       );
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: meRow } = await supabase
+        const { data: meRow } = await serviceClient
           .from('drivers')
-          .select('id, team_id, role, display_name, driver_code')
+          .select('team_id')
           .eq('auth_user_id', user.id)
           .maybeSingle();
-        me = meRow || null;
+        if (meRow) teamId = meRow.team_id;
       }
     }
 
-    if (!me) {
-      const legacyServiceClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-      const legacyMe = await resolveLegacyDriver(legacyServiceClient, payload?.legacy_token);
+    if (!teamId) {
+      const legacyMe = await resolveLegacyDriver(serviceClient, payload?.legacy_token);
       if (legacyMe) {
-        me = legacyMe;
-        supabase = legacyServiceClient;
+        teamId = legacyMe.team_id;
+        supabase = serviceClient;
       }
     }
 
-    if (!me) return json({ ok: false, error: 'Auth richiesto' }, 401);
+    if (!teamId) {
+      const teamSlug = payload?.team_slug ? String(payload.team_slug).trim() : '';
+      if (!teamSlug) return json({ ok: false, error: 'Auth richiesto' }, 401);
+      const { data: team, error: teamErr } = await serviceClient
+        .from('teams')
+        .select('id')
+        .eq('slug', teamSlug)
+        .maybeSingle();
+      if (teamErr) return json({ ok: false, error: teamErr.message }, 400);
+      if (!team) return json({ ok: false, error: 'Team non trovato: ' + teamSlug }, 404);
+      teamId = team.id;
+      supabase = serviceClient;
+    }
 
-    let query = supabase.from('championships').select('*').eq('team_id', me.team_id);
+    let query = supabase.from('championships').select('*').eq('team_id', teamId);
     if (payload?.sim) query = query.eq('sim', String(payload.sim));
     if (payload?.status) query = query.eq('status', String(payload.status));
     if (payload?.season) query = query.eq('season', String(payload.season));

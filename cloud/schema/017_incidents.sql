@@ -150,3 +150,18 @@ grant select, insert on incident_reports to authenticated;
 revoke all on incident_resolutions from anon;
 revoke all on incident_resolutions from authenticated;
 grant select, insert, update on incident_resolutions to authenticated;
+
+-- ═══════════════════════════════════════════════════════════
+-- NOTA DI DRIFT (scoperta il 24/09/2026, vedi 032_incidents_unify.sql):
+-- questo file NON descrive più lo schema live di incident_reports.
+-- Tra #351/#352 la tabella è stata evoluta direttamente in produzione,
+-- mai sincronizzata qui: reporter_driver_id è ora NULLABLE,
+-- against_name_external NON esiste più (sostituita da `against` NOT
+-- NULL), sono comparse `reporter_sim` (NOT NULL) e `reporter_discord`,
+-- e championship_id ha ora un vero FK composito su
+-- championships(team_id, id). 032_incidents_unify.sql aggiunge sopra
+-- a QUESTO stato reale (non a quello descritto sopra in questo file)
+-- race_id/clash_round/source/replay_url. Per lo schema autoritativo
+-- di incident_reports, guardare 032 + `information_schema.columns`
+-- live, non le CREATE TABLE qui sopra.
+-- ═══════════════════════════════════════════════════════════

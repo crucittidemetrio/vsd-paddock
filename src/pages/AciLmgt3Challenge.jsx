@@ -10,6 +10,7 @@ import { STORY_PILLAR_IDS, storyPillarLabel } from '../utils/storyPillars';
 import { SOCIAL_LINKS } from '../utils/constants';
 import Avatar from '../components/shared/Avatar';
 import ChampionshipInterestSection from '../components/shared/ChampionshipInterestSection';
+import IncidentReportSection from '../components/shared/IncidentReportSection';
 import { useConsentedDriverPhoto } from '../hooks/useConsent';
 import styles from './AciLmgt3Challenge.module.css';
 
@@ -337,6 +338,14 @@ export default function AciLmgt3Challenge() {
 
       {/* ════ CLASSIFICA ════ */}
       <StandingsSection />
+
+      {/* ════ SEGNALAZIONE INCIDENTI ════ */}
+      <IncidentReportSection
+        mode="championship"
+        championship={ACI_CHAMPIONSHIP_ID}
+        eyebrow="Direzione Gara"
+        title="Proteste"
+      />
 
       {/* ════ CTA ════ */}
       <section className={styles.cta}>

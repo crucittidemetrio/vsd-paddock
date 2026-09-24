@@ -1,24 +1,31 @@
 // ═══════════════════════════════════════════════════════════
-// VSD-Paddock Cloud — incidents.list (porting ADATTATO di
-// apps-script/Incidents.js, handleIncidentsList)
+// VSD-Paddock Cloud — incidents.list (v4 — sistema unificato)
 // ═══════════════════════════════════════════════════════════
-// Unisce incident_reports con lo stato formalizzato in
-// incident_resolutions. La RLS su incident_reports/incident_resolutions
-// già limita le RIGHE visibili (staff/admin tutto, pilota solo le
-// proprie) — qui replichiamo comunque l'oscuramento a livello di
-// COLONNA di staff_notes per i non-staff, fedele al sorgente reale
-// (RLS filtra righe, non colonne).
+// FIX CRITICO (24/09/2026, trovato validando la richiesta di
+// unificazione di Demetrio): questa funzione era rimasta ferma al
+// contratto v1/pre-#351 (report_id, against_name_external, nessun
+// reporter_sim/against/complaint_key), mentre incidents-report e
+// incidents-resolve erano già stati aggiornati al v2/v3 (complaint_key,
+// reporter_sim, against — vedi note in quei file). AdminIncidents.jsx
+// si aspetta da sempre complaint_key/reporter_sim/against/championship/
+// track: con questo contratto vecchio li riceveva sempre undefined,
+// e la risoluzione (handleSave invia `complaint_key: inc.complaint_key`)
+// falliva silenziosamente con "complaint_key obbligatorio" — NESSUNA
+// segnalazione era risolvibile dallo staff, bug mai notato perché il
+// registro sembrava comunque "funzionare" (mostrava le card, solo con
+// campi vuoti al posto di segnalante/segnalato).
 //
-// A differenza del sorgente reale non esiste più un "verdetto storico"
-// testuale libero (era una colonna del Google Form ora sostituito) —
-// senza resolution una segnalazione è semplicemente 'open', niente
-// derivazione closed-da-verdetto.
+// v4: contratto allineato a reporter-report/resolve + nuovi campi
+// dell'unificazione (race_id, clash_round, source, replay_url,
+// reporter_discord). `championship`/`track` restano gli ID grezzi
+// (championship_id/track_id) — la UI admin già lo trattava come label
+// diretta prima del drift, e risolvere il nome reale richiederebbe un
+// secondo giro di query non essenziale per il flusso di risoluzione.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
-// Fallback token legacy (stesso pattern #331/#358/#359, esteso il
-// 21/09/2026 — vedi nota completa in races-list/index.ts).
+// Fallback token legacy (stesso pattern #331/#358/#359).
 const LEGACY_API_URL = 'https://script.google.com/macros/s/AKfycbyMXxEjZfm5EIsGUnKxpwtBtoeR4hwMG7Pl8ZESF8yG569SS0aIdsWqyu9PdBgR14vLiA/exec';
 
 async function resolveLegacyDriver(serviceClient: any, legacyToken: string | undefined) {
@@ -95,10 +102,10 @@ Deno.serve(async (req: Request) => {
     // Con client service-role (fallback legacy) la RLS è bypassata:
     // replichiamo qui esplicitamente lo stesso scoping che la RLS
     // applicherebbe con una sessione reale (staff/admin: tutto il team;
-    // pilota: solo le proprie segnalazioni).
+    // pilota: solo le proprie segnalazioni, come segnalante o segnalato).
     let reportsQuery = supabase.from('incident_reports').select('*').eq('team_id', me.team_id);
     if (usingLegacyFallback && !isStaff) {
-      reportsQuery = reportsQuery.eq('reporter_driver_id', me.id);
+      reportsQuery = reportsQuery.or(`reporter_driver_id.eq.${me.id},against_driver_id.eq.${me.id}`);
     }
     const { data: reports, error: reportsErr } = await reportsQuery;
     if (reportsErr) return json({ ok: false, error: reportsErr.message }, 400);
@@ -119,18 +126,24 @@ Deno.serve(async (req: Request) => {
     let incidents = (reports ?? []).map((rep: any) => {
       const res = resByReportId[rep.id];
       const base: Record<string, unknown> = {
-        report_id: rep.id,
+        complaint_key: rep.id,
         created_at: rep.created_at,
         reporter_driver_id: rep.reporter_driver_id,
+        reporter_sim: rep.reporter_sim,
+        reporter_discord: rep.reporter_discord,
         against_driver_id: rep.against_driver_id,
-        against_name_external: rep.against_name_external,
+        against: rep.against,
         race_date: rep.race_date,
-        track_id: rep.track_id,
+        track: rep.track_id,
         lap: rep.lap,
         time_in_race: rep.time_in_race,
         incident_type: rep.incident_type,
         description: rep.description,
-        championship_id: rep.championship_id,
+        championship: rep.championship_id,
+        race_id: rep.race_id,
+        clash_round: rep.clash_round,
+        replay_url: rep.replay_url,
+        source: rep.source,
         status: res ? res.status : 'open',
         penalty_type: res ? res.penalty_type : null,
         penalty_detail: res ? res.penalty_detail : null,
@@ -141,8 +154,7 @@ Deno.serve(async (req: Request) => {
         penalized_driver_id: res ? res.penalized_driver_id : null,
         formalized: !!res,
       };
-      // staff_notes: deliberazione interna, visibile SOLO a staff/admin —
-      // fedele al sorgente (dove veniva rimossa via destructuring per i piloti).
+      // staff_notes: deliberazione interna, visibile SOLO a staff/admin.
       if (isStaff) base.staff_notes = res ? res.staff_notes : null;
       return base;
     });

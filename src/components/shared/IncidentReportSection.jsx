@@ -1,33 +1,49 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useReportIncident } from '../../hooks/useIncidents';
+import { useRaces } from '../../hooks/useRaces';
 // Riuso deliberato dello stesso CSS module già condiviso da
 // ChampionshipInterestSection (vedi lì per il perché) — stesse classi
 // form/formGroup/select/textarea/btn, coerenza visiva senza duplicare CSS.
 import styles from '../../pages/AciLmgt3Challenge.module.css';
 
+// Le 12 tipologie del modulo originale ("VSD - Modulo reclamo
+// ufficiale"), fedeli allo screenshot fornito da Demetrio — prima
+// dell'unificazione ne erano rimaste solo 6, divergenti dal Form reale.
 const INCIDENT_TYPES = [
-  '', 'Contatto in gara', 'Track limits ripetuti', 'Blocking/difesa scorretta',
-  'Comportamento antisportivo', 'Rejoin pericoloso', 'Altro',
+  '', 'Contatto evitabile', 'Divebomb (attacco irregolare)', 'Unsafe rejoin',
+  'Track limits / vantaggio scorretto', 'Blocco difensivo irregolare',
+  'Collisione in fase di sorpasso', 'Tamponamento (rear-end)',
+  'Incidente al via (start incident)', 'Unsafe pit entry / exit',
+  'Comportamento antisportivo', 'Lag / contatto di rete', 'Altro',
 ];
 
+const CLASH_ROUNDS = [1, 2, 3];
+
 /**
- * IncidentReportSection — form nativo di segnalazione incidenti (#351),
- * sostituisce il vecchio Google Form esterno ("VSD - Modulo reclamo").
- * Pubblico/community-wide come il Form che sostituisce: nessun login
- * richiesto (le leghe come UE144 sono multi-team, non solo piloti VSD).
- * Se il chiamante è un pilota VSD loggato, il nome è precompilato e il
- * reporter_driver_id viene risolto automaticamente lato backend.
+ * IncidentReportSection — form unico di segnalazione incidenti (#351,
+ * unificato 24/09/2026 — "stesso sistema per tutto": prima esisteva
+ * anche una versione duplicata e divergente in ClashOfClasses.jsx).
+ * Sostituisce il vecchio Google Form esterno ("VSD - Modulo reclamo").
+ * Pubblico/community-wide: nessun login richiesto (le leghe come
+ * UE144 sono multi-team, non solo piloti VSD; Clash of Classes ammette
+ * community non tesserata). Se il chiamante è un pilota VSD loggato,
+ * il nome è precompilato e il reporter_driver_id viene risolto
+ * automaticamente lato backend.
  *
  * @param {Object} props
  * @param {string} [props.anchorId]
- * @param {string} [props.championship] - valore fisso salvato con la segnalazione (es. "UE144")
+ * @param {'championship'|'race'|'clash'} [props.mode='championship']
+ * @param {string} [props.championship] - id campionato fisso (mode='championship'), usato anche per filtrare il selettore Gara
+ * @param {string} [props.raceId] - race_id fisso (mode='race', es. da RaceDetail)
  * @param {string} [props.eyebrow]
  * @param {string} [props.title]
  */
 export default function IncidentReportSection({
   anchorId = 'segnalazioni',
+  mode = 'championship',
   championship = '',
+  raceId = '',
   eyebrow = 'Direzione Gara',
   title = 'Proteste',
 }) {
@@ -36,12 +52,28 @@ export default function IncidentReportSection({
   const [reporterSim, setReporterSim] = useState('');
   const [reporterDiscord, setReporterDiscord] = useState('');
   const [against, setAgainst] = useState('');
+  const [selectedRaceId, setSelectedRaceId] = useState(raceId || '');
+  const [clashRound, setClashRound] = useState(CLASH_ROUNDS[0]);
   const [track, setTrack] = useState('');
   const [lap, setLap] = useState('');
   const [timeInRace, setTimeInRace] = useState('');
   const [incidentType, setIncidentType] = useState('');
   const [description, setDescription] = useState('');
+  const [replayUrl, setReplayUrl] = useState('');
   const [feedback, setFeedback] = useState(null);
+
+  // Selettore Gara: solo per mode='championship', per lasciare al
+  // segnalante la scelta di QUALE gara di quel campionato riguarda la
+  // segnalazione (richiesta esplicita di Demetrio — prima il campo
+  // "Gara" non esisteva, solo un championship_id generico). races.list
+  // è ora pubblico via team_slug (#396) anche per un visitatore non
+  // loggato.
+  const racesQuery = useRaces();
+  const racesForChampionship = useMemo(() => {
+    if (mode !== 'championship') return [];
+    const all = racesQuery.data?.races || [];
+    return all.filter(r => !championship || r.championship_id === championship);
+  }, [racesQuery.data, mode, championship]);
 
   const reportMutation = useReportIncident();
 
@@ -63,17 +95,23 @@ export default function IncidentReportSection({
         time_in_race: timeInRace.trim(),
         incident_type: incidentType,
         description: description.trim(),
-        championship,
+        replay_url: replayUrl.trim(),
+        championship: mode === 'championship' ? championship : '',
+        race_id: mode === 'race' ? raceId : (mode === 'championship' ? selectedRaceId : ''),
+        clash_round: mode === 'clash' ? clashRound : '',
+        source: 'web',
       });
       setFeedback({ ok: true, message: 'Segnalazione inviata. La Direzione Gara la esaminerà entro 48h.' });
       setReporterSim('');
       setReporterDiscord('');
       setAgainst('');
+      setSelectedRaceId(raceId || '');
       setTrack('');
       setLap('');
       setTimeInRace('');
       setIncidentType('');
       setDescription('');
+      setReplayUrl('');
     } catch (err) {
       setFeedback({ ok: false, message: err.message || 'Errore durante l’invio.' });
     }
@@ -134,6 +172,37 @@ export default function IncidentReportSection({
             />
           </div>
 
+          {mode === 'championship' && (
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel} htmlFor={`${anchorId}-race`}>Gara (opzionale)</label>
+              <select
+                id={`${anchorId}-race`} className={styles.select}
+                value={selectedRaceId} onChange={e => setSelectedRaceId(e.target.value)}
+              >
+                <option value="">Non specifica / generico sul campionato</option>
+                {racesForChampionship.map(r => (
+                  <option key={r.race_id} value={r.race_id}>
+                    {r.race_name}{r.date ? ` — ${new Date(r.date).toLocaleDateString('it-IT')}` : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {mode === 'clash' && (
+            <div className={styles.formGroup}>
+              <label className={styles.formLabel} htmlFor={`${anchorId}-round`}>Round</label>
+              <select
+                id={`${anchorId}-round`} className={styles.select}
+                value={clashRound} onChange={e => setClashRound(Number(e.target.value))}
+              >
+                {CLASH_ROUNDS.map(r => (
+                  <option key={r} value={r}>Round {r}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <div className={styles.formGroup}>
             <label className={styles.formLabel} htmlFor={`${anchorId}-track`}>Circuito (opzionale)</label>
             <input
@@ -171,6 +240,15 @@ export default function IncidentReportSection({
                 <option key={t} value={t}>{t || 'Non specificata'}</option>
               ))}
             </select>
+          </div>
+
+          <div className={styles.formGroup}>
+            <label className={styles.formLabel} htmlFor={`${anchorId}-replay`}>Link clip/telemetria (opzionale)</label>
+            <input
+              id={`${anchorId}-replay`} type="url" className={styles.input}
+              value={replayUrl} onChange={e => setReplayUrl(e.target.value)}
+              placeholder="Twitch/YouTube/Discord…" maxLength={500}
+            />
           </div>
 
           <div className={styles.formGroup}>
