@@ -412,7 +412,8 @@ const ROUTING = {
   'consent.socialFlags': 'consent-social-flags',
   'auditLog.list': 'audit-log-list',
   'push.subscribe': 'push-subscribe',
-  'push.unsubscribe': 'push-unsubscribe',
+  // 'push.unsubscribe' non è più qui: gestita sopra come caso speciale
+  // (stesso slug 'push-subscribe', vedi #391).
   'devices.createToken': 'devices-create-token',
 
   'fuel.logSample': 'fuel-log-sample',
@@ -554,6 +555,14 @@ function buildRequest(action, payload) {
   }
   if (action === 'messenger.send') {
     return { slug: 'messenger-send', body: payload }; // payload usa già `mode`
+  }
+  // #391 (24/09/2026): push-subscribe/push-unsubscribe consolidate in
+  // un solo slug Edge Function (dispatcher su body.action) per liberare
+  // uno slot quota — push-unsubscribe non esiste più, eliminata dal
+  // dashboard Supabase. push.subscribe passa senza action esplicita
+  // (il dispatcher assume 'subscribe' di default).
+  if (action === 'push.unsubscribe') {
+    return { slug: 'push-subscribe', body: { action: 'unsubscribe', ...payload } };
   }
   if (action.startsWith('social.')) {
     const inner = action.slice('social.'.length);
