@@ -125,9 +125,17 @@ const EMPTY_FORM = {
   media_url: '',
 };
 
+// Solo Gemini: Claude (Anthropic) rimosso dalle opzioni disponibili su
+// richiesta esplicita di Demetrio (24/09/2026) — l'API key Anthropic non è
+// mai stata configurata come secret e comporterebbe un costo ricorrente
+// (pay-as-you-go) che il progetto ha deciso di evitare, vedi discussione
+// costi hosting nella stessa sessione. Gemini resta l'unica opzione,
+// gratuita. Il backend (`social-manager`/generateText, `provider` in
+// payload) supporta ancora 'anthropic' se in futuro si volesse
+// riattivarlo — nessuna modifica lato Edge Function necessaria per farlo,
+// basta riaggiungere la entry qui.
 const AI_PROVIDERS = [
   { id: 'gemini', label: 'Gemini — gratis' },
-  { id: 'anthropic', label: 'Claude — a pagamento' },
 ];
 
 // Stessa cautela di formatDate in utils/format.js: le stringhe data-pura
