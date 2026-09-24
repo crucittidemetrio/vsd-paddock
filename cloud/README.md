@@ -1,5 +1,66 @@
 # VSD-Paddock Cloud (Supabase) — progetto parallelo
 
+## DECISIONE — Apps Script NON viene spento del tutto (24/09/2026)
+
+Chiudendo #265 (cutover finale): Demetrio ha chiesto "possiamo tenere lo
+script solo per il login?" dopo che la verifica live del 23/09 (fix
+races-get) aveva mostrato che spegnere Apps Script oggi avrebbe rotto
+l'intero sito, login compreso (vedi sotto). Risposta: sì, con perimetro
+preciso — non è "solo login", è "auth + presence + 3 endpoint usati da
+tool esterni mai ricollegati a Supabase":
+
+- **`auth.discordStart`/`auth.discordCallback`** — login: OGNI utente,
+  Demetrio incluso, autentica ancora tramite il backend Apps Script
+  (`Login.jsx`/`AuthCallback.jsx`, mai portato a Supabase Auth
+  nonostante Discord OAuth via Supabase esista da #176/#327, mai
+  collegato al flusso reale).
+- **`auth.verify`** — chiamato internamente da TUTTI i ~30 fallback
+  `resolveLegacyDriver` nelle Edge Function Supabase per validare il
+  legacy_token. Deve restare vivo finché quei fallback esistono (#341,
+  vedi sotto).
+- **`presence.heartbeat`/`presence.online`** — "chi è online" nel
+  Roster, mai portato, legge ancora il foglio Drivers legacy.
+- **3 tool esterni con l'URL Apps Script hardcoded come default, mai
+  ricollegati alle Edge Function già pronte**: `companion/results_bridge.py`
+  (raceResults.import), `companion/fuel_bridge.py` (fuel.logSample/
+  logLive), `vsd-pitwall-bridge` C# (`pitwall.logSession` — **scoperta
+  nuova**: il README di #340 dava per portato l'intero Pit Wall, ma solo
+  `pitwall.broadcastLive` (live) è su Supabase; lo snapshot di fine
+  sessione va ancora su Apps Script).
+
+Il resto — tutte le Sheet, tutta la logica dati storica — non serve più
+a nessuno in produzione. **Decisione**: Apps Script resta permanentemente
+acceso come microservizio di autenticazione + ingestion companion, non
+più come backend dati. #265 chiuso come "non applicabile" con questa
+motivazione. #341 (rimozione fallback legacy) chiuso di conseguenza:
+il fallback NON va più rimosso, è parte strutturale della decisione,
+non un debito temporaneo.
+
+**Due gap scoperti durante l'audit "cosa posso fare da UI/Supabase invece
+di Apps Script", non ancora chiusi:**
+1. **Creazione nuovo campionato** (`championships.add`/`championships.update`):
+   Edge Function pronte e deployate da #252/#267, ma MAI collegate ad
+   alcuna UI (nessun hook, nessun componente le chiama) — stesso identico
+   gap del sorgente originale ("funzioni one-off eseguite dallo
+   sviluppatore nell'editor"), solo spostato da Apps Script a "SQL diretto
+   su Supabase". Se Demetrio deve creare un campionato nuovo, serve
+   ancora un intervento diretto (via Supabase o chiedendo qui).
+2. **Automazioni Discord basate su trigger time-driven** (`runBirthdayCheck`,
+   `runWeeklyDigest`, `runSponsorFollowUpDigest`, `runRsvpReminderCheck`,
+   `runSkillIndexSnapshot`, `runStintNotificationsCheck`,
+   `runUpcomingRacePushCheck`, `runTeamSessionReminderCheck` in
+   Notifications.js/Push.js/SkillIndex.js/Sponsors.js/RaceRSVP.js/
+   TeamSessionsScheduler.js/SocialManager.js): leggono le Sheet legacy dei
+   rispettivi domini, TUTTE congelate dal momento del cutover di quel
+   dominio a Supabase (nessuna nuova riga arriva più lì). Sono quindi
+   **già silenziosamente rotte o obsolete** indipendentemente da questa
+   decisione — non generano più notifiche corrette (compleanni di piloti
+   aggiunti dopo il cutover Roster, digest su dati Social Manager fermi,
+   promemoria RSVP su gare create dopo il cutover Races, ecc.). Non
+   toccate in questa sessione: da valutare se portarle su Supabase
+   (richiederebbe pg_cron, mai fatto per nessun dominio finora) o
+   accettarle come funzionalità perse.
+
 Vedi `docs/ADR-multi-team-saas.md` (Opzione D) per il contesto completo della decisione.
 
 ## Cos'è
