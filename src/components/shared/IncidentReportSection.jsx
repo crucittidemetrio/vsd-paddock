@@ -91,13 +91,15 @@ export default function IncidentReportSection({
   // finché lo staff non lo marca 'active' a mano, quindi richiedere
   // status==='active' escludeva anche stagioni tuttora aperte con gare
   // a calendario. Si esclude invece solo 'completed' (stagione conclusa)
-  // e 'draft' (non ancora pubblico) — richiesta esplicita di Demetrio:
-  // niente reclami su campionati/gare già TERMINATI (#408 follow-up,
-  // 25/09/2026; corretto lo stesso giorno dopo verifica live).
+  // 'draft' (non ancora pubblico) e 'cancelled' (ritirato — es. ACI
+  // LMGT3 Challenge, ritirato il 25/09/2026 per forza maggiore, nuovo
+  // status introdotto proprio per quel caso) — richiesta esplicita di
+  // Demetrio: niente reclami su campionati/gare già TERMINATI o
+  // RITIRATI (#408 follow-up, 25/09/2026).
   const championshipsQuery = useChampionships({ enabled: isAuto });
   const championshipOptions = useMemo(
     () => (isAuto
-      ? (championshipsQuery.data || []).filter(c => c.status !== 'completed' && c.status !== 'draft')
+      ? (championshipsQuery.data || []).filter(c => c.status !== 'completed' && c.status !== 'draft' && c.status !== 'cancelled')
       : []),
     [isAuto, championshipsQuery.data]
   );
