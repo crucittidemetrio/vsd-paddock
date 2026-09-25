@@ -33,9 +33,35 @@ export function useServiceWorkerUpdate() {
     if (!('serviceWorker' in navigator)) return undefined;
     let cancelled = false;
     let intervalId;
+    let currentRegistration = null;
+
+    // 25/09/2026 — la PWA installata su iPhone di Demetrio si è
+    // bloccata dopo una raffica di deploy ravvicinati: la app era
+    // aperta/in background durante l'aggiornamento del service worker
+    // (skipWaiting+clients.claim), ha continuato a eseguire il bundle
+    // JS vecchio. Il controllo ogni 5 min (sotto) non basta per una
+    // PWA standalone su iOS, che passa la maggior parte del tempo in
+    // background — setInterval lì può non girare affatto — e viene
+    // "risvegliata" al ritorno in primo piano, non a intervalli
+    // regolari. Controllare anche a ogni ritorno in foreground
+    // (visibilitychange + focus, i due eventi più affidabili per
+    // "l'utente è tornato sull'app" su iOS Safari/PWA) intercetta
+    // l'aggiornamento nel momento in cui conta davvero. Il listener è
+    // registrato subito (non dentro watchRegistration) e ripulito
+    // correttamente nel cleanup dell'effect — la versione precedente
+    // lo registrava nel return di watchRegistration, che non essendo
+    // usato come cleanup da nessuno non veniva mai rimosso.
+    const checkOnForeground = () => {
+      if (document.visibilityState === 'visible' && currentRegistration) {
+        currentRegistration.update().catch(() => {});
+      }
+    };
+    document.addEventListener('visibilitychange', checkOnForeground);
+    window.addEventListener('focus', checkOnForeground);
 
     const watchRegistration = (registration) => {
       if (!registration || cancelled) return;
+      currentRegistration = registration;
 
       const watchInstalling = (installingWorker) => {
         if (!installingWorker) return;
@@ -67,6 +93,8 @@ export function useServiceWorkerUpdate() {
     return () => {
       cancelled = true;
       if (intervalId) clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', checkOnForeground);
+      window.removeEventListener('focus', checkOnForeground);
     };
   }, []);
 
