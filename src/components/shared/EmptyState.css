@@ -1,0 +1,65 @@
+/* ===========================================
+   VSD PADDOCK — EmptyState (condiviso)
+   =========================================== */
+
+.vsd-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 48px 24px;
+  text-align: center;
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+  animation: vsd-empty-in 300ms ease-out;
+}
+
+.vsd-empty-icon {
+  font-size: 36px;
+  color: var(--color-text-dim);
+  margin-bottom: 4px;
+}
+
+.vsd-empty-title {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  color: var(--color-text);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.vsd-empty-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  max-width: 420px;
+  line-height: 1.6;
+}
+
+.vsd-empty-text code {
+  background: var(--vsd-bg);
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+@keyframes vsd-empty-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vsd-empty {
+    animation: none;
+  }
+}

@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useChampionships } from '../hooks/useChampionships';
 import { usePageMeta } from '../hooks/usePageMeta';
+import EmptyState from '../components/shared/EmptyState';
 import styles from './ChampionshipsList.module.css';
 
 const STATUS_ORDER = ['active', 'upcoming', 'completed', 'draft'];
@@ -42,7 +43,11 @@ export default function ChampionshipsList() {
         <header className={styles.header}>
           <h1>Campionati</h1>
         </header>
-        <div className={styles.empty}>Nessun campionato disponibile.</div>
+        <EmptyState
+          icon="🏆"
+          title="Nessun campionato disponibile"
+          text="Il calendario campionati si aggiorna man mano che vengono aperti — torna a dare un'occhiata più avanti."
+        />
       </div>
     );
   }

@@ -1,5 +1,6 @@
 import { usePageMeta } from '../hooks/usePageMeta';
 import { SOCIAL_LINKS } from '../utils/constants';
+import EmptyState from '../components/shared/EmptyState';
 import styles from './AciLmgt3Challenge.module.css';
 
 // ═══════════════════════════════════════════════════════════
@@ -51,24 +52,26 @@ export default function AciLmgt3Challenge() {
       <section className={styles.section}>
         <div className={styles.sectionEyebrow}>Comunicazione</div>
         <h2 className={styles.sectionTitle}>VSD Racing si ritira dalla competizione</h2>
-        <div className={styles.emptyBox}>
-          <div className={styles.emptyIcon}>🏳️</div>
-          <div className={styles.emptyTitle}>Nessun nostro pilota potrà scendere in pista</div>
-          <div className={styles.emptyText}>
-            Per cause di forza maggiore, nessuno dei quattro alfieri VSD iscritti alla
-            competizione — Silvio Tuveri, Francesco Mastrangelo, Simone Pelloni e
-            Simone Mazzola — potrà parteciparvi. VSD Racing non sarà quindi presente
-            all'ACI LMGT3 Challenge 2026.
-            <br /><br />
-            Un ringraziamento a chi si era messo in gioco fin dalle prequalifiche: il
-            tentativo resta un merito, a prescindere da come è andata a finire.
-            <br /><br />
-            Il campionato resta indetto da ACI Sport e gestito operativamente da Apex
-            Italia Simracing — per chi fosse comunque interessato a seguirlo o
-            parteciparvi come pilota indipendente, il regolamento ufficiale resta
-            pubblicato su acisport.it.
-          </div>
-        </div>
+        <EmptyState
+          icon="🏳️"
+          title="Nessun nostro pilota potrà scendere in pista"
+          text={(
+            <>
+              Per cause di forza maggiore, nessuno dei quattro alfieri VSD iscritti alla
+              competizione — Silvio Tuveri, Francesco Mastrangelo, Simone Pelloni e
+              Simone Mazzola — potrà parteciparvi. VSD Racing non sarà quindi presente
+              all'ACI LMGT3 Challenge 2026.
+              <br /><br />
+              Un ringraziamento a chi si era messo in gioco fin dalle prequalifiche: il
+              tentativo resta un merito, a prescindere da come è andata a finire.
+              <br /><br />
+              Il campionato resta indetto da ACI Sport e gestito operativamente da Apex
+              Italia Simracing — per chi fosse comunque interessato a seguirlo o
+              parteciparvi come pilota indipendente, il regolamento ufficiale resta
+              pubblicato su acisport.it.
+            </>
+          )}
+        />
       </section>
 
       {/* ════ CTA ════ */}

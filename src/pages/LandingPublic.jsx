@@ -136,37 +136,31 @@ export default function LandingPublic() {
             <SimBadge sim="IRC" />
             <SimBadge sim="ACE" />
           </div>
+          {/* Gerarchia CTA (25/09/2026): prima erano 5 bottoni identici per
+              peso visivo (Discord pieno, Instagram/Facebook outline,
+              Unisciti pieno, Accedi outline) — nessuno spiccava, e "Accedi"
+              duplicava il bottone già presente in ogni pagina nella TopBar
+              (Login con Discord). L'obiettivo del sito è reclutare piloti
+              (confermato dalla sezione CTA poco sotto: "Cerchiamo piloti
+              motivati") — "Unisciti al team" resta quindi l'unico bottone
+              pieno, i social diventano un rigo di link secondari più
+              piccolo, "Accedi" è stato rimosso da qui (resta in TopBar). */}
           <div className={styles.heroActions}>
-            <a
-              href={DISCORD_INVITE}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`${styles.btn} ${styles.btnPrimary}`}
-            >
-              Discord
-            </a>
-            <a
-              href={INSTAGRAM_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.btn}
-            >
-              Instagram
-            </a>
-            <a
-              href={FACEBOOK_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={styles.btn}
-            >
-              Facebook
-            </a>
-            <Link to="/joinus" className={`${styles.btn} ${styles.btnAccent}`}>
+            <Link to="/joinus" className={`${styles.btn} ${styles.btnAccent} ${styles.btnLg}`}>
               Unisciti al team
             </Link>
-            <Link to="/login" className={`${styles.btn} ${styles.btnGhost}`}>
-              Accedi
-            </Link>
+          </div>
+          <div className={styles.socialRow}>
+            <span className={styles.socialLabel}>Seguici:</span>
+            <a href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer" className={styles.socialLink}>
+              Discord
+            </a>
+            <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className={styles.socialLink}>
+              Instagram
+            </a>
+            <a href={FACEBOOK_URL} target="_blank" rel="noopener noreferrer" className={styles.socialLink}>
+              Facebook
+            </a>
           </div>
 
           <div className={styles.statBand}>
@@ -220,31 +214,19 @@ export default function LandingPublic() {
           Endurance, sprint, multi-sim: scegli la tua categoria.
         </p>
         <div className={styles.ctaActions}>
-          <Link to="/joinus" className={`${styles.btn} ${styles.btnAccent}`}>
+          <Link to="/joinus" className={`${styles.btn} ${styles.btnAccent} ${styles.btnLg}`}>
             Compila il form
           </Link>
-          <a
-            href={DISCORD_INVITE}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.btn}
-          >
+        </div>
+        <div className={styles.socialRow}>
+          <span className={styles.socialLabel}>Oppure:</span>
+          <a href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer" className={styles.socialLink}>
             Entra nel Discord
           </a>
-          <a
-            href={INSTAGRAM_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.btn}
-          >
+          <a href={INSTAGRAM_URL} target="_blank" rel="noopener noreferrer" className={styles.socialLink}>
             Instagram
           </a>
-          <a
-            href={FACEBOOK_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.btn}
-          >
+          <a href={FACEBOOK_URL} target="_blank" rel="noopener noreferrer" className={styles.socialLink}>
             Facebook
           </a>
         </div>

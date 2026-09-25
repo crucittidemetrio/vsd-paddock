@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import IncidentReportSection from '../components/shared/IncidentReportSection';
+import EmptyState from '../components/shared/EmptyState';
 import { useIncidentsPublicOutcomes } from '../hooks/useIncidents';
 import styles from './Reclami.module.css';
 
@@ -117,7 +118,11 @@ function EsitiTab() {
       {!query.isLoading && !query.error && (
         <div className={styles.list}>
           {filtered.length === 0 && (
-            <div className={styles.empty}>Nessuna segnalazione in questa vista.</div>
+            <EmptyState
+              icon="🏁"
+              title="Nessuna segnalazione in questa vista"
+              text="Prova a cambiare filtro di stato o la ricerca per pilota — oppure è semplicemente un buon segno: nessun incidente da segnalare."
+            />
           )}
           {filtered.map(inc => (
             <div key={inc.complaint_key} className={`${styles.card} ${styles['status_' + inc.status]}`}>

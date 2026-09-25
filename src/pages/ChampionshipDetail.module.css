@@ -130,31 +130,7 @@
   font-size: var(--fs-sm);
 }
 
-/* EMPTY STATE */
-.emptyBox {
-  background: var(--vsd-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--r-lg);
-  padding: var(--sp-7);
-  text-align: center;
-  color: var(--color-text-muted);
-}
-.emptyIcon {
-  font-size: var(--fs-3xl);
-  color: var(--color-text-dim);
-  margin-bottom: var(--sp-3);
-}
-.emptyBox h2 {
-  color: var(--color-text);
-  margin-bottom: var(--sp-3);
-}
-.emptyBox code {
-  background: var(--vsd-bg);
-  padding: 2px var(--sp-2);
-  border-radius: var(--r-sm);
-  font-family: var(--font-mono);
-  font-size: var(--fs-xs);
-}
+/* empty state ora gestito dal componente condiviso EmptyState (vedi src/components/shared/EmptyState.css) */
 
 /* CHAMPION CARD */
 .championCard {

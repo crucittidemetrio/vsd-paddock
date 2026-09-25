@@ -5,6 +5,7 @@ import { useDrivers } from '../hooks/useRoster';
 import { useAuth } from '../hooks/useAuth';
 import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
+import EmptyState from '../components/shared/EmptyState';
 import { useConsentedDriverPhoto } from '../hooks/useConsent';
 import PointsProgressionChart from '../components/championship/PointsProgressionChart';
 import { formatDate } from '../utils/format';
@@ -125,15 +126,17 @@ export default function ChampionshipDetail() {
 
       {/* Nessun round */}
       {rounds.length === 0 ? (
-        <div className={styles.emptyBox}>
-          <div className={styles.emptyIcon}>∅</div>
-          <h2>Nessun round di campionato</h2>
-          <p>
-            Per popolare la classifica, tagga almeno una gara nel sheet con<br />
-            <code>event_type=championship</code> e <code>championship_id={championshipId}</code>,<br />
-            poi importa i risultati via <Link to="/admin/import-results">Importa risultati</Link>.
-          </p>
-        </div>
+        <EmptyState
+          icon="∅"
+          title="Nessun round di campionato"
+          text={(
+            <>
+              Per popolare la classifica, tagga almeno una gara nel sheet con{' '}
+              <code>event_type=championship</code> e <code>championship_id={championshipId}</code>,{' '}
+              poi importa i risultati via <Link to="/admin/import-results">Importa risultati</Link>.
+            </>
+          )}
+        />
       ) : (
         <>
           {/* CHAMPION CARD (se completed) */}

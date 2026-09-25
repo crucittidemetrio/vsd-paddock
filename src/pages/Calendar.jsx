@@ -4,9 +4,13 @@ import { useRaces } from '../hooks/useRaces';
 import { useTeamSessions } from '../hooks/useTeamSessions';
 import { useDrivers } from '../hooks/useRoster';
 import { useAuth } from '../hooks/useAuth';
+import { useTracks } from '../hooks/useLookups';
+import { formatTrack } from '../utils/format';
+import { trackAccentColor } from '../utils/trackAccent';
 import RequireTier from '../components/auth/RequireTier';
 import LoginPrompt from '../components/auth/LoginPrompt';
 import SessionRSVP from '../components/shared/SessionRSVP';
+import EmptyState from '../components/shared/EmptyState';
 import styles from './Calendar.module.css';
 
 function getDriverName(driverId, drivers) {
@@ -149,6 +153,11 @@ export default function Calendar() {
   const { data: teamSessions } = useTeamSessions({ enabled: isAuthenticated });
   // Roster per il RSVP sessioni (Fase 2) — lettura pubblica, nessun gate.
   const { data: driversRaw } = useDrivers({ includeRemoved: true });
+  // Tracks per l'accento visivo per circuito in vista Lista (#418, 25/09/2026):
+  // ogni pista ottiene un colore deterministico (trackAccentColor, già usato
+  // in RaceDetail) + il nome esteso invece del solo track_id/sim, per rendere
+  // il calendario più riconoscibile a colpo d'occhio senza dover aprire ogni gara.
+  const { data: tracks } = useTracks();
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -332,6 +341,7 @@ export default function Calendar() {
           currentDriverId={driver?.driver_id || null}
           drivers={driversRaw}
           rosterSize={activeRosterSize}
+          tracks={tracks}
         />
       )}
     </div>
@@ -442,7 +452,7 @@ function WeekView({ cells, racesByDate }) {
   );
 }
 
-function ListView({ groupedByMonth, currentDriverId, drivers, rosterSize }) {
+function ListView({ groupedByMonth, currentDriverId, drivers, rosterSize, tracks }) {
   // Ascendente: mese più vecchio in alto, più recente in fondo — coerente
   // con l'ordine cronologico di sortedRaces (vedi Calendar()).
   const entries = Array.from(groupedByMonth.entries()).sort((a, b) => a[0].localeCompare(b[0]));
@@ -475,7 +485,13 @@ function ListView({ groupedByMonth, currentDriverId, drivers, rosterSize }) {
   }, [anchorRaceId]);
 
   if (entries.length === 0) {
-    return <div className={styles.empty}>Nessuna gara nel calendario.</div>;
+    return (
+      <EmptyState
+        icon="📅"
+        title="Nessuna gara nel calendario"
+        text="Il calendario si popola man mano che i round vengono programmati — torna a dare un'occhiata più avanti."
+      />
+    );
   }
 
   return (
@@ -491,6 +507,12 @@ function ListView({ groupedByMonth, currentDriverId, drivers, rosterSize }) {
                 const isPast = startOfDay(d) < today;
                 const isAnchor = r.race_id === anchorRaceId;
                 const isSession = r.kind === 'session';
+                // Accento per circuito (#418): colore deterministico per
+                // track_id (stesso helper di RaceDetail) sul bordo sinistro
+                // della riga, + nome pista esteso invece del solo track_id —
+                // rende ogni gara riconoscibile a colpo d'occhio in Lista.
+                const trackAccent = !isSession && r.track_id ? trackAccentColor(r.track_id) : null;
+                const trackLabel = !isSession && r.track_id ? formatTrack(r.track_id, tracks) : null;
 
                 const inner = (
                   <>
@@ -507,6 +529,7 @@ function ListView({ groupedByMonth, currentDriverId, drivers, rosterSize }) {
                         {r.sim && (
                           <span className={`${styles.listSim} ${styles[`listSim_${SIM_KEY[r.sim] || 'default'}`]}`}>{r.sim}</span>
                         )}
+                        {trackLabel && trackLabel !== '—' && <span>· {trackLabel}</span>}
                         {raceChampionship(r) && <span>· {raceChampionship(r)}</span>}
                         {r.round && <span>· R{r.round}</span>}
                       </div>
@@ -560,6 +583,7 @@ function ListView({ groupedByMonth, currentDriverId, drivers, rosterSize }) {
                     ref={isAnchor ? anchorRef : null}
                     to={`/race/${r.race_id}`}
                     className={`${styles.listItem} ${isPast ? styles.listItemPast : ''}`}
+                    style={trackAccent ? { borderLeft: `3px solid ${trackAccent}` } : undefined}
                   >
                     {inner}
                   </Link>

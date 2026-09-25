@@ -612,40 +612,7 @@ a.prequalCard:hover {
   50%       { opacity: 0.9; }
 }
 
-.emptyBox {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding: 48px 24px;
-  background: var(--vsd-bg-elevated);
-  border: 1px solid var(--color-border);
-  border-radius: var(--r-lg);
-  text-align: center;
-}
-
-.emptyIcon {
-  font-size: 36px;
-  margin-bottom: 4px;
-}
-
-.emptyTitle {
-  font-family: var(--font-display);
-  font-size: var(--fs-lg);
-  font-weight: var(--fw-semibold);
-  color: var(--color-text);
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-}
-
-.emptyText {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.05em;
-  color: var(--color-text-muted);
-  max-width: 420px;
-  line-height: 1.6;
-}
+/* empty state ora gestito dal componente condiviso EmptyState (vedi src/components/shared/EmptyState.css) */
 
 /* ════ CLASSIFICA (tabella) ════ */
 .standingsTableWrap {
