@@ -333,7 +333,7 @@ export default function Calendar() {
         <MonthView cells={monthCells} racesByDate={racesByDate} tracks={tracks} />
       )}
       {viewMode === 'settimana' && (
-        <WeekView cells={weekCells} racesByDate={racesByDate} />
+        <WeekView cells={weekCells} racesByDate={racesByDate} tracks={tracks} />
       )}
       {viewMode === 'lista' && (
         <ListView
@@ -410,7 +410,7 @@ function MonthView({ cells, racesByDate, tracks }) {
   );
 }
 
-function WeekView({ cells, racesByDate }) {
+function WeekView({ cells, racesByDate, tracks }) {
   return (
     <div className={styles.weekGridWrap}>
       <div className={styles.weekGrid}>
@@ -435,6 +435,13 @@ function WeekView({ cells, racesByDate }) {
                 )}
                 {racesToday.map(r => {
                   const cls = `${styles.weekRace} ${styles[`weekRace_${SIM_KEY[r.sim] || 'default'}`]}`;
+                  // Accento per circuito (#418, esteso a Settimana): stesso
+                  // colore deterministico usato in Mese/Lista, come bordo
+                  // sinistro della card — nome pista esteso nel tooltip.
+                  const trackAccent = r.kind !== 'session' && r.track_id ? trackAccentColor(r.track_id) : null;
+                  const trackLabel = r.kind !== 'session' && r.track_id ? formatTrack(r.track_id, tracks) : null;
+                  const raceTitle = trackLabel && trackLabel !== '—' ? `${raceName(r)} — ${trackLabel}` : raceName(r);
+                  const raceStyle = trackAccent ? { borderLeft: `3px solid ${trackAccent}` } : undefined;
                   const content = (
                     <>
                       <div className={styles.weekRaceTime}>{formatTime(r.date)}</div>
@@ -449,7 +456,7 @@ function WeekView({ cells, racesByDate }) {
                   return r.kind === 'session' ? (
                     <div key={r.race_id} className={cls}>{content}</div>
                   ) : (
-                    <Link key={r.race_id} to={`/race/${r.race_id}`} className={cls}>{content}</Link>
+                    <Link key={r.race_id} to={`/race/${r.race_id}`} className={cls} title={raceTitle} style={raceStyle}>{content}</Link>
                   );
                 })}
               </div>
