@@ -330,7 +330,7 @@ export default function Calendar() {
       </div>
 
       {viewMode === 'mese' && (
-        <MonthView cells={monthCells} racesByDate={racesByDate} />
+        <MonthView cells={monthCells} racesByDate={racesByDate} tracks={tracks} />
       )}
       {viewMode === 'settimana' && (
         <WeekView cells={weekCells} racesByDate={racesByDate} />
@@ -348,7 +348,7 @@ export default function Calendar() {
   );
 }
 
-function MonthView({ cells, racesByDate }) {
+function MonthView({ cells, racesByDate, tracks }) {
   return (
     <div className={styles.monthGrid}>
       <div className={styles.dayLabels}>
@@ -379,14 +379,23 @@ function MonthView({ cells, racesByDate }) {
                       <span className={styles.chipName}>{raceName(r)}</span>
                     </>
                   );
+                  // Accento per circuito (#418, esteso a Mese su richiesta di
+                  // Demetrio dopo aver verificato la vista Lista): stesso
+                  // colore deterministico per track_id, qui come bordo
+                  // sinistro del chip — nome pista esteso nel tooltip (title),
+                  // lo spazio del chip resta troppo stretto per mostrarlo per esteso.
+                  const trackAccent = r.kind !== 'session' && r.track_id ? trackAccentColor(r.track_id) : null;
+                  const trackLabel = r.kind !== 'session' && r.track_id ? formatTrack(r.track_id, tracks) : null;
+                  const chipTitle = trackLabel && trackLabel !== '—' ? `${raceName(r)} — ${trackLabel}` : raceName(r);
+                  const chipStyle = trackAccent ? { borderLeft: `3px solid ${trackAccent}` } : undefined;
                   // Le sessioni team (Fase 1) non hanno pagina dettaglio —
                   // chip informativo, non navigabile (a differenza delle gare).
                   return r.kind === 'session' ? (
-                    <span key={r.race_id} className={chipCls} title={raceName(r)}>
+                    <span key={r.race_id} className={chipCls} title={chipTitle} style={chipStyle}>
                       {chipContent}
                     </span>
                   ) : (
-                    <Link key={r.race_id} to={`/race/${r.race_id}`} className={chipCls} title={raceName(r)}>
+                    <Link key={r.race_id} to={`/race/${r.race_id}`} className={chipCls} title={chipTitle} style={chipStyle}>
                       {chipContent}
                     </Link>
                   );
