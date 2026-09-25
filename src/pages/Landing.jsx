@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useLandingData } from '../hooks/useLandingData';
+import { useCountUp } from '../hooks/useCountUp';
 import SimBadge from '../components/shared/SimBadge';
 import CountdownLive from '../components/shared/CountdownLive';
 import LapTime from '../components/shared/LapTime';
@@ -438,9 +439,10 @@ function FormaRecente({ results, racesById, tracks }) {
 }
 
 function QuickStat({ label, value, sub, accent = 'cyan' }) {
+  const displayValue = useCountUp(value);
   return (
     <div className={`mc-qs mc-qs-${accent}`}>
-      <div className="mc-qs-value">{value}</div>
+      <div className="mc-qs-value">{displayValue}</div>
       <div className="mc-qs-label">{label}</div>
       {sub && <div className="mc-qs-sub">{sub}</div>}
     </div>
