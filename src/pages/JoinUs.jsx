@@ -4,12 +4,17 @@ import { usePageMeta } from '../hooks/usePageMeta';
 import './JoinUs.css';
 import Logo from '../components/shared/Logo';
 import totalPaintLogo from '../assets/total-paint-logo.webp';
+import CandidateApplyForm from '../components/shared/CandidateApplyForm';
 import { SOCIAL_LINKS } from '../utils/constants';
 
 const DISCORD_INVITE = SOCIAL_LINKS.DISCORD;
 const INSTAGRAM_URL = SOCIAL_LINKS.INSTAGRAM;
 const FACEBOOK_URL = SOCIAL_LINKS.FACEBOOK;
-const JOIN_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLScA6mFauERcpKetn0T58LMPioRZHJ1W5PQpl9e9ytV5QB31Tw/viewform';
+// Il Google Form esterno (JOIN_FORM_URL) è stato sostituito il
+// 26/09/2026 dal form nativo <CandidateApplyForm /> qui sotto, che
+// scrive direttamente nella pipeline candidates via candidates.apply
+// — vedi cloud/functions/candidates-add/index.ts v3. Nessun link
+// esterno più necessario per candidarsi.
 
 // Testimonianze reali di piloti — messaggi spontanei postati su Discord
 // a fine campionato, riportati con il loro consenso implicito (pubblici nel server).
@@ -250,19 +255,11 @@ export default function JoinUs() {
         </div>
 
         <div className="joinus-steps">
-          <Step n={1} title="Compila il form di candidatura">
+          <Step n={1} title="Compila il form di candidatura qui sotto">
             <p className="joinus-step-text">
-              Ti chiederà nome, esperienza, sim preferenze e una breve motivazione.
-              Tempo richiesto: 3-5 minuti.
+              Nome, contatto, simulatore preferito e una breve motivazione.
+              Tempo richiesto: 3-5 minuti — niente da scaricare o aprire altrove.
             </p>
-            <a
-              href={JOIN_FORM_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="joinus-discord-btn"
-            >
-              Apri il form ↗
-            </a>
           </Step>
           <Step n={2} title="Entra nel server Discord VSD">
             <p className="joinus-step-text">
@@ -282,6 +279,10 @@ export default function JoinUs() {
               Solitamente entro 48-72 ore. Se selezionato, riceverai accesso al server come pilota VSD e potrai iniziare a correre con noi.
             </p>
           </Step>
+        </div>
+
+        <div style={{ marginTop: 32 }}>
+          <CandidateApplyForm />
         </div>
 
         <div className="joinus-requirements">

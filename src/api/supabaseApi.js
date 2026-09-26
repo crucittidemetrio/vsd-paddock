@@ -126,6 +126,12 @@ const ANON_TEAM_SLUG_ACTIONS = new Set([
   // chiamata autenticata di useIncidents (staff, con sessione reale):
   // l'iniezione avviene solo `!session?.access_token`.
   'incidents.list',
+  // #424 (26/09/2026): candidates.apply — form pubblico /joinus
+  // (sostituisce il Google Form esterno). Stesso pattern esatto di
+  // incidents.report: community-wide, nessuna sessione, risoluzione
+  // team via team_slug lato Edge Function (ramo payload.mode==='apply'
+  // in candidates-add/index.ts v3).
+  'candidates.apply',
 ]);
 
 // #334 FIX REGRESSIONE (19/09-20/09/2026): consent.accept spostato su
@@ -464,6 +470,12 @@ const ROUTING = {
   'candidates.add': 'candidates-add',
   'candidates.update': 'candidates-update',
   'candidates.remove': 'candidates-remove',
+  // candidates.apply (26/09/2026) — stesso slug di candidates.add
+  // deliberatamente (dispatch server-side su payload.mode==='apply',
+  // vedi cloud/functions/candidates-add/index.ts v3): niente nuovo
+  // slot Edge Function consumato, il progetto era già al tetto
+  // funzioni del piano (#391).
+  'candidates.apply': 'candidates-add',
   'sponsors.list': 'sponsors-list',
   'sponsors.add': 'sponsors-add',
   'sponsors.update': 'sponsors-update',

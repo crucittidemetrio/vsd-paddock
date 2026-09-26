@@ -1,0 +1,130 @@
+/* CandidateApplyForm — form pubblico di candidatura in /joinus
+   (26/09/2026). Stessi design token del resto del sito (var(--vsd-*)/
+   var(--sp-*) definiti globalmente), niente CSS module: componente
+   usato in un solo punto per ora. */
+
+.candapply-form {
+  max-width: 720px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg, 12px);
+  padding: var(--sp-6);
+}
+
+/* Honeypot: fuori dal flusso visivo e non raggiungibile da tab, ma
+   presente nel DOM — un bot che compila "tutti i campi" lo trova e lo
+   riempie, un utente reale non lo vede mai. */
+.candapply-honeypot {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.candapply-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--sp-4);
+}
+
+.candapply-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.candapply-label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+}
+
+.candapply-input,
+.candapply-select,
+.candapply-textarea {
+  background: var(--vsd-bg);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--r-md);
+  padding: var(--sp-3);
+  color: var(--color-text);
+  font-size: var(--fs-sm);
+  font-family: inherit;
+  transition: border-color var(--t-fast);
+}
+
+.candapply-input:focus,
+.candapply-select:focus,
+.candapply-textarea:focus {
+  outline: none;
+  border-color: var(--vsd-cyan);
+}
+
+.candapply-textarea {
+  resize: vertical;
+  min-height: 72px;
+}
+
+.candapply-submit {
+  align-self: flex-start;
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: var(--sp-3) var(--sp-6);
+  border-radius: var(--r-md);
+  border: 1px solid transparent;
+  background: linear-gradient(90deg, var(--vsd-cyan), var(--vsd-blue));
+  color: var(--vsd-bg);
+  cursor: pointer;
+  transition: all var(--t-fast);
+}
+
+.candapply-submit:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 212, 255, 0.3);
+}
+
+.candapply-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.candapply-success,
+.candapply-error {
+  font-size: var(--fs-sm);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  line-height: 1.5;
+}
+
+.candapply-success {
+  background: rgba(98, 212, 136, 0.12);
+  border: 1px solid rgba(98, 212, 136, 0.4);
+  color: #8fe8ac;
+}
+
+.candapply-error {
+  background: rgba(255, 92, 92, 0.12);
+  border: 1px solid rgba(255, 92, 92, 0.4);
+  color: #ff9c9c;
+}
+
+@media (max-width: 599px) {
+  .candapply-form {
+    padding: var(--sp-4);
+  }
+  .candapply-grid {
+    grid-template-columns: 1fr;
+  }
+}

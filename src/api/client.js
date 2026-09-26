@@ -267,6 +267,10 @@ const SUPABASE_MIGRATED_ACTIONS = new Set([
   'candidates.add',
   'candidates.update',
   'candidates.remove',
+  // candidates.apply (26/09/2026) — vedi commento in api.candidates
+  // sopra: nuova azione pubblica, stesso slug candidates-add lato
+  // Edge Function (niente tetto funzioni consumato, #391).
+  'candidates.apply',
   'sponsors.list',
   'sponsors.add',
   'sponsors.update',
@@ -704,6 +708,13 @@ export const api = {
     add: (payload) => call('candidates.add', payload),
     update: (payload) => call('candidates.update', payload),
     remove: (candidate_id) => call('candidates.remove', { candidate_id }),
+    // candidates.apply (26/09/2026): form pubblico /joinus, nessuna
+    // auth — sostituisce il Google Form esterno. Stesso slug Edge
+    // Function di candidates.add (dispatch su payload.mode==='apply'
+    // lato server, vedi cloud/functions/candidates-add/index.ts v3),
+    // ma azione distinta lato frontend perché ANON_TEAM_SLUG_ACTIONS
+    // deve iniettare team_slug qui e NON su candidates.add (staff).
+    apply: (payload) => call('candidates.apply', { ...payload, mode: 'apply' }),
   },
 
   push: {
