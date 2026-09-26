@@ -77,6 +77,16 @@ function normalizeDrivePosterUrl(url: string): string {
   return str;
 }
 
+async function postToDiscordWebhook(payload: unknown, envName: string): Promise<void> {
+  try {
+    const url = Deno.env.get(envName);
+    if (!url) return;
+    await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+  } catch (_e) {
+    // notifica non bloccante
+  }
+}
+
 function slugify(name: string): string {
   const ascii = String(name)
     .normalize('NFD').replace(/[̀-ͯ]/g, '') // rimuove accenti
@@ -174,6 +184,25 @@ Deno.serve(async (req: Request) => {
 
     const { data, error } = await supabase.from('championships').insert(insertRow).select().maybeSingle();
     if (error) return json({ ok: false, error: error.message }, 400);
+
+    // Notifica Discord non bloccante — chiude parte del gap #388
+    // (nessuna automazione avvisava mai su creazione campionato/gara).
+    try {
+      const embed: any = {
+        author: { name: 'VSD Paddock' },
+        title: '🏆 Nuovo campionato',
+        description: `**${name}**` +
+          (insertRow.sim ? ` — ${insertRow.sim}` : '') +
+          (insertRow.season ? ` (${insertRow.season})` : ''),
+        color: 0x3b8bff,
+        timestamp: new Date().toISOString(),
+        footer: { text: 'Campionati' },
+        url: 'https://vsd-paddock.vercel.app/championships',
+      };
+      await postToDiscordWebhook({ embeds: [embed] }, 'DISCORD_WEBHOOK_URL');
+    } catch (_e) {
+      // notifica non bloccante
+    }
 
     return json({ ok: true, data: { championship: data } });
   } catch (e) {

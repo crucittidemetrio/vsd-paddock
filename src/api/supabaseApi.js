@@ -241,6 +241,13 @@ const LEGACY_TOKEN_FALLBACK_ACTIONS = new Set([
   'roster.adminUpdate', 'roster.deletionCandidates', 'roster.adminDelete',
   'roster.availableSlots', 'roster.adminCreate',
   'laps.syncFromGarage61',
+  // #443 (26/09/2026): laps.add (form "Inserimento manuale"/NUOVO LAP in
+  // AdminBestLaps.jsx, staff/admin-only) non aveva MAI ricevuto il fallback
+  // legacy token, a differenza di tutte le altre azioni admin di questa
+  // stessa famiglia — segnalato da Demetrio con screenshot: banner rosso
+  // "✕ Auth richiesto" sul form. Fix gemello lato Edge Function
+  // (resolveLegacyDriver aggiunto in best-laps-add/index.ts).
+  'laps.add',
   'lapSubmissions.listPending', 'lapSubmissions.approve',
   'lapSubmissions.reject', 'lapSubmissions.remove',
   'social.posts.list', 'social.posts.create', 'social.posts.update', 'social.posts.remove',
