@@ -26,9 +26,44 @@
 // omessa nel porting iniziale di Races. Il sorgente reale la scrive
 // solo tramite races.update generico (mai in races.add), quindi
 // races-update è l'unico posto giusto per aggiungerla.
+//
+// Fallback token legacy (aggiunto 26/09/2026, bug "Cambia Stato" →
+// Auth richiesto): nessuno staff reale ha mai una sessione Supabase
+// autentica, solo il token legacy Discord OAuth via Apps Script —
+// stesso pattern già applicato a championships-update, best-laps-update
+// e tanti altri domini (#331/#358/#359/#392/#422). Qui mancava, ed era
+// l'unico endpoint del dominio Races rimasto scoperto (races-add ha
+// lo stesso gap, races-get/races-list erano già stati corretti).
+// Quando si passa dal fallback (service role, bypassa la RLS), lo
+// scoping team_id va aggiunto esplicitamente sulla UPDATE.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const LEGACY_API_URL = 'https://script.google.com/macros/s/AKfycbyMXxEjZfm5EIsGUnKxpwtBtoeR4hwMG7Pl8ZESF8yG569SS0aIdsWqyu9PdBgR14vLiA/exec';
+
+async function resolveLegacyDriver(serviceClient: any, legacyToken: string | undefined) {
+  if (!legacyToken) return null;
+  try {
+    const r = await fetch(LEGACY_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'auth.verify', token: legacyToken, payload: {} }),
+    });
+    const j = await r.json();
+    const driverCode = j?.ok && j.data?.valid ? j.data?.driver?.driver_id : null;
+    if (!driverCode) return null;
+    const { data: d } = await serviceClient
+      .from('drivers')
+      .select('id, team_id, role, display_name, driver_code')
+      .eq('driver_code', driverCode)
+      .maybeSingle();
+    if (!d) return null;
+    return { ...d, role: j.data.driver.role || d.role };
+  } catch {
+    return null;
+  }
+}
 
 // Converte un link di condivisione Google Drive nel formato diretto
 // embeddabile come <img src> — stessa logica di races-add e
@@ -61,22 +96,42 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) return json({ ok: false, error: 'Auth richiesto' }, 401);
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } },
-    );
-
-    const {
-      data: { user },
-      error: userErr,
-    } = await supabase.auth.getUser();
-    if (userErr || !user) return json({ ok: false, error: 'Auth richiesto' }, 401);
-
     const payload = await req.json().catch(() => ({}));
+    const authHeader = req.headers.get('Authorization');
+    let supabase: any = null;
+    let me: any = null;
+
+    if (authHeader) {
+      supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } },
+      );
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: meRow } = await supabase
+          .from('drivers')
+          .select('id, team_id, role')
+          .eq('auth_user_id', user.id)
+          .maybeSingle();
+        me = meRow || null;
+      }
+    }
+
+    if (!me) {
+      const legacyServiceClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+      const legacyMe = await resolveLegacyDriver(legacyServiceClient, payload?.legacy_token);
+      if (legacyMe) {
+        me = legacyMe;
+        supabase = legacyServiceClient;
+      }
+    }
+
+    if (!me) return json({ ok: false, error: 'Auth richiesto' }, 401);
+    if (me.role !== 'admin') {
+      return json({ ok: false, error: 'Permessi insufficienti' }, 403);
+    }
+
     const raceId = payload?.race_id ? String(payload.race_id) : '';
     if (!raceId) return json({ ok: false, error: "Campo race_id obbligatorio per l'aggiornamento" }, 400);
 
@@ -85,17 +140,6 @@ Deno.serve(async (req: Request) => {
     }
     if (payload?.status !== undefined && !VALID_STATUSES.includes(String(payload.status))) {
       return json({ ok: false, error: 'status non valido — atteso uno tra: ' + VALID_STATUSES.join(', ') }, 400);
-    }
-
-    const { data: me, error: meErr } = await supabase
-      .from('drivers')
-      .select('role')
-      .eq('auth_user_id', user.id)
-      .maybeSingle();
-    if (meErr) return json({ ok: false, error: meErr.message }, 400);
-    if (!me) return json({ ok: false, error: 'Driver non collegato a questo account' }, 404);
-    if (me.role !== 'admin') {
-      return json({ ok: false, error: 'Permessi insufficienti' }, 403);
     }
 
     const updates: Record<string, unknown> = {};
@@ -124,6 +168,7 @@ Deno.serve(async (req: Request) => {
       .from('races')
       .update(updates)
       .eq('race_id', raceId)
+      .eq('team_id', me.team_id)
       .select()
       .maybeSingle();
 

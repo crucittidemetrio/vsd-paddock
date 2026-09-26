@@ -31,9 +31,37 @@
 //     grezzo come poster_url, immagine non renderizzabile): fedeltà
 //     al sorgente legacy va bene finché non produce un bug visibile
 //     per lo staff. Ora races.add normalizza sempre in scrittura.
+//   - Fallback token legacy (aggiunto 26/09/2026 insieme a races-update,
+//     bug "Cambia Stato" → Auth richiesto): stesso pattern del resto
+//     del sito, nessuno staff reale ha una sessione Supabase autentica.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const LEGACY_API_URL = 'https://script.google.com/macros/s/AKfycbyMXxEjZfm5EIsGUnKxpwtBtoeR4hwMG7Pl8ZESF8yG569SS0aIdsWqyu9PdBgR14vLiA/exec';
+
+async function resolveLegacyDriver(serviceClient: any, legacyToken: string | undefined) {
+  if (!legacyToken) return null;
+  try {
+    const r = await fetch(LEGACY_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'auth.verify', token: legacyToken, payload: {} }),
+    });
+    const j = await r.json();
+    const driverCode = j?.ok && j.data?.valid ? j.data?.driver?.driver_id : null;
+    if (!driverCode) return null;
+    const { data: d } = await serviceClient
+      .from('drivers')
+      .select('id, team_id, role, display_name, driver_code')
+      .eq('driver_code', driverCode)
+      .maybeSingle();
+    if (!d) return null;
+    return { ...d, role: j.data.driver.role || d.role };
+  } catch {
+    return null;
+  }
+}
 
 // Converte un link di condivisione Google Drive (.../file/d/{id}/view
 // o ...?id={id}) nel formato diretto embeddabile come <img src>.
@@ -63,22 +91,41 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) return json({ ok: false, error: 'Auth richiesto' }, 401);
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } },
-    );
-
-    const {
-      data: { user },
-      error: userErr,
-    } = await supabase.auth.getUser();
-    if (userErr || !user) return json({ ok: false, error: 'Auth richiesto' }, 401);
-
     const payload = await req.json().catch(() => ({}));
+    const authHeader = req.headers.get('Authorization');
+    let supabase: any = null;
+    let me: any = null;
+
+    if (authHeader) {
+      supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } },
+      );
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: meRow } = await supabase
+          .from('drivers')
+          .select('id, team_id, role')
+          .eq('auth_user_id', user.id)
+          .maybeSingle();
+        me = meRow || null;
+      }
+    }
+
+    if (!me) {
+      const legacyServiceClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+      const legacyMe = await resolveLegacyDriver(legacyServiceClient, payload?.legacy_token);
+      if (legacyMe) {
+        me = legacyMe;
+        supabase = legacyServiceClient;
+      }
+    }
+
+    if (!me) return json({ ok: false, error: 'Auth richiesto' }, 401);
+    if (me.role !== 'admin') {
+      return json({ ok: false, error: 'Permessi insufficienti' }, 403);
+    }
 
     for (const field of REQUIRED_FIELDS) {
       const v = payload?.[field];
@@ -91,17 +138,6 @@ Deno.serve(async (req: Request) => {
     }
     if (!VALID_STATUSES.includes(String(payload.status))) {
       return json({ ok: false, error: 'status non valido — atteso uno tra: ' + VALID_STATUSES.join(', ') }, 400);
-    }
-
-    const { data: me, error: meErr } = await supabase
-      .from('drivers')
-      .select('id, team_id, role')
-      .eq('auth_user_id', user.id)
-      .maybeSingle();
-    if (meErr) return json({ ok: false, error: meErr.message }, 400);
-    if (!me) return json({ ok: false, error: 'Driver non collegato a questo account' }, 404);
-    if (me.role !== 'admin') {
-      return json({ ok: false, error: 'Permessi insufficienti' }, 403);
     }
 
     // Scan globale (tutti i team) per garantire l'unicità del PK

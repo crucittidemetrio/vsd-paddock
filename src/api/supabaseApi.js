@@ -317,6 +317,16 @@ const LEGACY_TOKEN_FALLBACK_ACTIONS = new Set([
   'teamSessions.list', 'teamSessions.create', 'teamSessions.update', 'teamSessions.remove',
   'sessionRsvp.list', 'sessionRsvp.set',
   'lapData.import', 'lapData.sessions', 'lapData.session',
+  // races.update/races.add (26/09/2026, segnalato da Demetrio —
+  // pannello "Cambia Stato" di una gara conclusa dava "Auth richiesto"
+  // sui bottoni Avvia/Concludi/Annulla, e la gara restava bloccata in
+  // "Programmate" invece di passare a "Storico"): stesso identico gap
+  // di races.get (era stata corretta solo la lettura, non la scrittura
+  // dello stesso dominio). Fix gemello lato Edge Function
+  // (resolveLegacyDriver aggiunto sia a races-update che a races-add,
+  // con scoping esplicito team_id sull'UPDATE dato che il fallback usa
+  // un client service-role che bypassa la RLS).
+  'races.update', 'races.add',
 ]);
 const LEGACY_TOKEN_STORAGE_KEY = 'vsd_paddock_token';
 // ═══════════════════════════════════════════════════════════
