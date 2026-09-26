@@ -45,6 +45,20 @@ const corsHeaders = {
 const VALID_STATUSES = ['draft', 'upcoming', 'active', 'completed'];
 const EDITABLE_FIELDS = ['name', 'sim', 'season', 'status', 'format', 'start_date', 'end_date', 'notes', 'banner_url'];
 
+// Converte un link di condivisione Google Drive nel formato diretto
+// embeddabile come <img src> — stessa logica di championships-add
+// (aggiunta qui il 26/09/2026, bug banner ERA S3 grezzo).
+function normalizeDrivePosterUrl(url: string): string {
+  if (!url) return url;
+  const str = String(url).trim();
+  if (!str) return str;
+  let match = str.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (match) return `https://lh3.googleusercontent.com/d/${match[1]}`;
+  match = str.match(/drive\.google\.com\/(?:open|uc|thumbnail)\?(?:[^&]*&)*id=([a-zA-Z0-9_-]+)/);
+  if (match) return `https://lh3.googleusercontent.com/d/${match[1]}`;
+  return str;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -105,6 +119,8 @@ Deno.serve(async (req: Request) => {
         } else {
           updates[field] = new Date(payload[field]).toISOString().slice(0, 10);
         }
+      } else if (field === 'banner_url') {
+        updates[field] = payload[field] === null || payload[field] === '' ? null : normalizeDrivePosterUrl(String(payload[field]));
       } else {
         updates[field] = payload[field] === null ? null : String(payload[field]);
       }

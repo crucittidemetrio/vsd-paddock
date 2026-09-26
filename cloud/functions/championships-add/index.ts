@@ -63,6 +63,20 @@ const corsHeaders = {
 
 const VALID_STATUSES = ['draft', 'upcoming', 'active', 'completed'];
 
+// Converte un link di condivisione Google Drive nel formato diretto
+// embeddabile come <img src> — stessa logica usata per poster_url
+// gare (aggiunta qui il 26/09/2026, bug banner ERA S3 grezzo).
+function normalizeDrivePosterUrl(url: string): string {
+  if (!url) return url;
+  const str = String(url).trim();
+  if (!str) return str;
+  let match = str.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (match) return `https://lh3.googleusercontent.com/d/${match[1]}`;
+  match = str.match(/drive\.google\.com\/(?:open|uc|thumbnail)\?(?:[^&]*&)*id=([a-zA-Z0-9_-]+)/);
+  if (match) return `https://lh3.googleusercontent.com/d/${match[1]}`;
+  return str;
+}
+
 function slugify(name: string): string {
   const ascii = String(name)
     .normalize('NFD').replace(/[̀-ͯ]/g, '') // rimuove accenti
@@ -155,7 +169,7 @@ Deno.serve(async (req: Request) => {
       start_date: payload?.start_date ? new Date(payload.start_date).toISOString().slice(0, 10) : null,
       end_date: payload?.end_date ? new Date(payload.end_date).toISOString().slice(0, 10) : null,
       notes: payload?.notes ? String(payload.notes) : null,
-      banner_url: payload?.banner_url ? String(payload.banner_url) : null,
+      banner_url: payload?.banner_url ? normalizeDrivePosterUrl(String(payload.banner_url)) : null,
     };
 
     const { data, error } = await supabase.from('championships').insert(insertRow).select().maybeSingle();

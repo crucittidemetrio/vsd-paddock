@@ -30,6 +30,20 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// Converte un link di condivisione Google Drive nel formato diretto
+// embeddabile come <img src> — stessa logica di races-add e
+// races-update-poster (aggiunta qui il 26/09/2026, bug ERA S3).
+function normalizeDrivePosterUrl(url: string): string {
+  if (!url) return url;
+  const str = String(url).trim();
+  if (!str) return str;
+  let match = str.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (match) return `https://lh3.googleusercontent.com/d/${match[1]}`;
+  match = str.match(/drive\.google\.com\/(?:open|uc|thumbnail)\?(?:[^&]*&)*id=([a-zA-Z0-9_-]+)/);
+  if (match) return `https://lh3.googleusercontent.com/d/${match[1]}`;
+  return str;
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -94,6 +108,8 @@ Deno.serve(async (req: Request) => {
         updates[field] = Number(payload[field]);
       } else if (field === 'race_number') {
         updates[field] = payload[field] === null || payload[field] === '' ? null : Number(payload[field]);
+      } else if (field === 'poster_url') {
+        updates[field] = payload[field] === null || payload[field] === '' ? null : normalizeDrivePosterUrl(String(payload[field]));
       } else {
         updates[field] = payload[field] === null || payload[field] === '' ? null : String(payload[field]);
       }

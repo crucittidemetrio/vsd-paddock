@@ -25,12 +25,29 @@
 //     come nel foglio reale) — coerente con l'indice parziale
 //     `where championship_id is not null` in 015_races.sql e con lo
 //     stile del resto di cloud/ (es. best-laps-add).
-//   - poster_url qui NON viene normalizzato (drive share link →
-//     diretto): nel sorgente reale races.add non lo normalizza,
-//     solo races.updatePoster lo fa. Fedele al sorgente.
+//   - poster_url QUI VIENE normalizzato (drive share link → diretto),
+//     stessa funzione di races-update-poster — cambio deciso il
+//     26/09/2026 dopo il bug ERA S3 (14 gare create con link Drive
+//     grezzo come poster_url, immagine non renderizzabile): fedeltà
+//     al sorgente legacy va bene finché non produce un bug visibile
+//     per lo staff. Ora races.add normalizza sempre in scrittura.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+// Converte un link di condivisione Google Drive (.../file/d/{id}/view
+// o ...?id={id}) nel formato diretto embeddabile come <img src>.
+// Stessa logica di races-update-poster/index.ts.
+function normalizeDrivePosterUrl(url: string): string {
+  if (!url) return url;
+  const str = String(url).trim();
+  if (!str) return str;
+  let match = str.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (match) return `https://lh3.googleusercontent.com/d/${match[1]}`;
+  match = str.match(/drive\.google\.com\/(?:open|uc|thumbnail)\?(?:[^&]*&)*id=([a-zA-Z0-9_-]+)/);
+  if (match) return `https://lh3.googleusercontent.com/d/${match[1]}`;
+  return str;
+}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -124,7 +141,7 @@ Deno.serve(async (req: Request) => {
       weather: payload.weather ? String(payload.weather) : null,
       event_type: payload.event_type ? String(payload.event_type) : null,
       championship_id: payload.championship_id ? String(payload.championship_id) : null,
-      poster_url: payload.poster_url ? String(payload.poster_url) : null,
+      poster_url: payload.poster_url ? normalizeDrivePosterUrl(String(payload.poster_url)) : null,
     };
 
     const { data, error } = await supabase.from('races').insert(insertRow).select().maybeSingle();

@@ -13,6 +13,24 @@ const STATUS_LABELS = {
   cancelled: 'Annullata',
 };
 
+// FIX (26/09/2026, stesso bug del fuso orario corretto in handleSubmit):
+// `race.date` è un ISO UTC vero (es. "2026-09-27T18:30:00.000Z" = 20:30
+// Italia). String(race.date).slice(0,16) prendeva i primi 16 caratteri
+// COSÌ COME SONO (quindi "18:30", l'orario UTC) e li rimetteva
+// nell'input datetime-local, che li avrebbe mostrati come "18:30" invece
+// di "20:30" — corretto solo per il vecchio bug (che salvava già in
+// "falso UTC" = ora italiana nuda), sbagliato ora che il dato è UTC vero.
+// Qui si converte l'ISO nel fuso orario del browser (Europe/Rome per lo
+// staff) prima di formattarlo per l'input, così l'edit mostra l'orario
+// italiano corretto — simmetrico alla conversione in handleSubmit.
+function toLocalInputValue(isoString) {
+  if (!isoString) return '';
+  const d = new Date(isoString);
+  if (isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
 /**
  * RaceFormModal — form di creazione/modifica gara.
  * race === null → modalità CREATE (chiama races.add)
@@ -26,7 +44,7 @@ export default function RaceFormModal({ race, onClose, onSaved }) {
   const [form, setForm] = useState(() => ({
     race_name: race?.race_name || '',
     sim: race?.sim || 'LMU',
-    date: race?.date ? String(race.date).slice(0, 16) : '',
+    date: race?.date ? toLocalInputValue(race.date) : '',
     duration_minutes: race?.duration_minutes ?? '',
     format: race?.format || 'sprint',
     status: race?.status || 'draft',
@@ -69,8 +87,20 @@ export default function RaceFormModal({ race, onClose, onSaved }) {
     setSaving(true);
 
     // Normalizza duration_minutes a numero (o stringa vuota)
+    // FIX (26/09/2026, segnalato da Demetrio — gare UE144 mostrate 2h in
+    // avanti): l'input <input type="datetime-local"> produce una stringa
+    // "nuda" senza fuso orario (es. "2026-09-27T20:30"). Se la si manda
+    // così com'è, la conversione a UTC avviene lato Edge Function
+    // (new Date(payload.date).toISOString()) — ma il runtime Deno lì gira
+    // in UTC, quindi interpreta "20:30" come UTC invece che come ora
+    // italiana, salvando l'orario sbagliato di 1-2h (a seconda di
+    // ora legale/solare). La conversione va fatta QUI, nel browser di chi
+    // compila il form: new Date() qui interpreta la stringa nuda nel fuso
+    // orario del browser (Europe/Rome per lo staff), producendo l'ISO
+    // string corretta prima ancora che parta la richiesta.
     const payload = {
       ...form,
+      date: form.date ? new Date(form.date).toISOString() : form.date,
       duration_minutes: form.duration_minutes === '' ? '' : Number(form.duration_minutes),
     };
 
