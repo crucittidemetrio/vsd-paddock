@@ -105,6 +105,31 @@ function isCurrentTesserato(d: any): boolean {
   return String(d.status).toLowerCase() === 'active';
 }
 
+// #444 (26/09/2026): foto pilota nell'embed "Nuovo record di squadra!",
+// mai portata da apps-script/Notifications.js (gap documentato e
+// accettato in race-results-import/index.ts, riaperto su richiesta di
+// Demetrio). Sorgente foto: drivers.avatar_url (upload reale, #381) al
+// posto del vecchio pattern /drivers/{id}.jpg su Google Drive. Gate
+// identico al legacy: solo se il pilota ha accettato social_consent
+// per la versione corrente del documento consensi.
+const CONSENT_VERSION = 'v1-2026-08-08'; // allineato a src/pages/ConsentForm.jsx
+
+async function getDriverThumbnailUrl(supabase: any, teamId: string, driverId: string, avatarUrl: string | null | undefined): Promise<string | null> {
+  if (!avatarUrl) return null;
+  try {
+    const { data: consentRow } = await supabase
+      .from('consents')
+      .select('social_consent')
+      .eq('team_id', teamId)
+      .eq('driver_id', driverId)
+      .eq('consent_version', CONSENT_VERSION)
+      .maybeSingle();
+    return consentRow?.social_consent ? avatarUrl : null;
+  } catch {
+    return null;
+  }
+}
+
 async function postToDiscordWebhook(payload: unknown, envName: string): Promise<void> {
   try {
     const url = Deno.env.get(envName);
@@ -171,7 +196,7 @@ Deno.serve(async (req: Request) => {
     // risolto qui all'uuid, ristretto al team del chiamante.
     const { data: targetDriver, error: targetErr } = await supabase
       .from('drivers')
-      .select('id')
+      .select('id, avatar_url')
       .eq('team_id', me.team_id)
       .eq('driver_code', String(payload.driver_id))
       .maybeSingle();
@@ -249,6 +274,8 @@ Deno.serve(async (req: Request) => {
           footer: { text: 'Muro dei Record' },
           url: 'https://vsd-paddock.vercel.app/records',
         };
+        const thumbUrl = await getDriverThumbnailUrl(supabase, me.team_id, targetDriver.id, targetDriver.avatar_url);
+        if (thumbUrl) embed.thumbnail = { url: thumbUrl };
         await postToDiscordWebhook({ embeds: [embed] }, 'DISCORD_WEBHOOK_URL');
       } catch (_e) {
         // notifica non bloccante, fedele al sorgente

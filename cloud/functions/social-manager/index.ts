@@ -489,8 +489,30 @@ async function addBestLapWithRecordCheck(
   };
 }
 
-async function notifyNewTeamRecordEmbed(driverName: string, trackName: string, sim: string, lapTimeDisplay: string, previousDisplay: string | null) {
-  const embed = {
+// #444 (26/09/2026): foto pilota nell'embed "Nuovo record di squadra!",
+// mai portata da apps-script/Notifications.js (gap documentato e
+// accettato in race-results-import/index.ts, riaperto su richiesta di
+// Demetrio). Sorgente foto: drivers.avatar_url (upload reale, #381) al
+// posto del vecchio pattern /drivers/{id}.jpg su Google Drive. Gate
+// identico al legacy: solo se il pilota ha accettato social_consent
+// per la versione corrente del documento consensi.
+const CONSENT_VERSION = 'v1-2026-08-08'; // allineato a src/pages/ConsentForm.jsx
+
+async function getDriverThumbnailUrl(supabase: any, teamId: string, driverId: string): Promise<string | null> {
+  try {
+    const [{ data: driverRow }, { data: consentRow }] = await Promise.all([
+      supabase.from('drivers').select('avatar_url').eq('id', driverId).maybeSingle(),
+      supabase.from('consents').select('social_consent').eq('team_id', teamId).eq('driver_id', driverId).eq('consent_version', CONSENT_VERSION).maybeSingle(),
+    ]);
+    if (!driverRow?.avatar_url || !consentRow?.social_consent) return null;
+    return driverRow.avatar_url;
+  } catch {
+    return null;
+  }
+}
+
+async function notifyNewTeamRecordEmbed(supabase: any, teamId: string, driverId: string, driverName: string, trackName: string, sim: string, lapTimeDisplay: string, previousDisplay: string | null) {
+  const embed: any = {
     author: { name: 'VSD Paddock' },
     title: '🏆 Nuovo record di squadra!',
     description: `**${driverName}** — ${trackName} (${sim})\n⏱️ **${lapTimeDisplay}**` +
@@ -500,6 +522,8 @@ async function notifyNewTeamRecordEmbed(driverName: string, trackName: string, s
     footer: { text: 'Muro dei Record' },
     url: PADDOCK_URL + '/records',
   };
+  const thumbUrl = await getDriverThumbnailUrl(supabase, teamId, driverId);
+  if (thumbUrl) embed.thumbnail = { url: thumbUrl };
   await postToDiscordWebhook({ embeds: [embed] }, 'DISCORD_WEBHOOK_URL');
 }
 
@@ -1868,7 +1892,7 @@ Deno.serve(async (req: Request) => {
 
       if (addResult.isNewRecord) {
         try {
-          await notifyNewTeamRecordEmbed(addResult.driverName, addResult.trackName, sub.sim, addResult.lapRow.lap_time_display, addResult.previousBestDisplay);
+          await notifyNewTeamRecordEmbed(supabase, teamId, sub.driver_id, addResult.driverName, addResult.trackName, sub.sim, addResult.lapRow.lap_time_display, addResult.previousBestDisplay);
         } catch (_e) {
           // notifica non bloccante
         }
@@ -2032,6 +2056,7 @@ Deno.serve(async (req: Request) => {
                 if (currentBestMs === null || lapTimeMs < currentBestMs) {
                   recordCandidatesByTrack.set(vsdTrackId, {
                     ms: lapTimeMs, display: garage61FormatTime(lapTimeMs),
+                    driverId,
                     driverName: driverFullById.get(driverId)?.display_name || driverId,
                     previousDisplay: preSync ? preSync.display : null,
                   });
@@ -2079,7 +2104,7 @@ Deno.serve(async (req: Request) => {
         if (recordCandidatesByTrack.size > 0) {
           try {
             for (const [vsdTrackId, rec] of recordCandidatesByTrack) {
-              await notifyNewTeamRecordEmbed(rec.driverName, trackNameByVsdId.get(vsdTrackId) || vsdTrackId, 'IRC', rec.display, rec.previousDisplay);
+              await notifyNewTeamRecordEmbed(supabase, teamId, rec.driverId, rec.driverName, trackNameByVsdId.get(vsdTrackId) || vsdTrackId, 'IRC', rec.display, rec.previousDisplay);
             }
           } catch (_e) {
             // notifica non bloccante
