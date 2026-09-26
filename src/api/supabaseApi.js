@@ -296,6 +296,27 @@ const LEGACY_TOKEN_FALLBACK_ACTIONS = new Set([
   // gemello lato Edge Function già deployato (resolveLegacyDriver in
   // races-get/index.ts, v8).
   'races.get',
+  // standings.byChampionship/progression/byDriver (26/09/2026,
+  // segnalato da Demetrio — "Auth richiesto" aprendo /championships/:id
+  // da loggato): stesso identico gap, mai chiuso nonostante lo stesso
+  // giro di cutover #332 l'avesse già dato a championships.list/
+  // race-results.list/academy.ranking/recap.mine. In più, standings-
+  // progression e standings-by-driver non esistevano nemmeno nel repo
+  // git locale (drift — solo il deploy live le aveva): ricreate e
+  // corrette in coppia col fix gemello lato Edge Function
+  // (resolveLegacyDriver in tutte e 3), altrimenti questa riga da sola
+  // non avrebbe alcun effetto.
+  'standings.byChampionship', 'standings.progression', 'standings.byDriver',
+  // teamSessions.*/sessionRsvp.*/lapData.* (26/09/2026, segnalato da
+  // Demetrio — "Anche Sessioni team da errore, come Analisi di Passo"):
+  // stesso identico gap, mai chiuso nonostante il dominio Calendario/
+  // TeamSessions fosse tra i primi migrati (#330). Fix gemello lato
+  // Edge Function (resolveLegacyDriver) applicato a tutte e 8 le
+  // funzioni corrispondenti — senza questa riga il fix lato backend da
+  // solo non ha alcun effetto (stessa lezione di standings.* sopra).
+  'teamSessions.list', 'teamSessions.create', 'teamSessions.update', 'teamSessions.remove',
+  'sessionRsvp.list', 'sessionRsvp.set',
+  'lapData.import', 'lapData.sessions', 'lapData.session',
 ]);
 const LEGACY_TOKEN_STORAGE_KEY = 'vsd_paddock_token';
 // ═══════════════════════════════════════════════════════════

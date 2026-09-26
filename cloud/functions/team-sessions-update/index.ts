@@ -6,6 +6,34 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+const LEGACY_API_URL = 'https://script.google.com/macros/s/AKfycbyMXxEjZfm5EIsGUnKxpwtBtoeR4hwMG7Pl8ZESF8yG569SS0aIdsWqyu9PdBgR14vLiA/exec';
+
+// FIX (26/09/2026, segnalato da Demetrio — "Sessioni team da errore"):
+// stesso identico gap già chiuso in races-get/standings-by-championship
+// e decine di altre funzioni. Stesso fallback identico.
+async function resolveLegacyDriver(serviceClient: any, legacyToken: string | undefined) {
+  if (!legacyToken) return null;
+  try {
+    const r = await fetch(LEGACY_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'auth.verify', token: legacyToken, payload: {} }),
+    });
+    const j = await r.json();
+    const driverCode = j?.ok && j.data?.valid ? j.data?.driver?.driver_id : null;
+    if (!driverCode) return null;
+    const { data: d } = await serviceClient
+      .from('drivers')
+      .select('id, team_id, role, display_name, driver_code')
+      .eq('driver_code', driverCode)
+      .maybeSingle();
+    if (!d) return null;
+    return { ...d, role: j.data.driver.role || d.role };
+  } catch {
+    return null;
+  }
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -22,22 +50,39 @@ Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
   try {
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader) return json({ ok: false, error: 'Auth richiesto' }, 401);
-
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } },
-    );
-
-    const {
-      data: { user },
-      error: userErr,
-    } = await supabase.auth.getUser();
-    if (userErr || !user) return json({ ok: false, error: 'Auth richiesto' }, 401);
-
     const payload = await req.json().catch(() => ({}));
+    const authHeader = req.headers.get('Authorization');
+    let supabase: any = null;
+    let me: any = null;
+
+    if (authHeader) {
+      supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } },
+      );
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: meRow } = await supabase
+          .from('drivers')
+          .select('id, team_id, role')
+          .eq('auth_user_id', user.id)
+          .maybeSingle();
+        me = meRow || null;
+      }
+    }
+
+    if (!me) {
+      const legacyServiceClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+      const legacyMe = await resolveLegacyDriver(legacyServiceClient, payload?.legacy_token);
+      if (legacyMe) {
+        me = legacyMe;
+        supabase = legacyServiceClient;
+      }
+    }
+
+    if (!me) return json({ ok: false, error: 'Auth richiesto' }, 401);
+
     const sessionId = String(payload?.session_id || '').trim();
     if (!sessionId) return json({ ok: false, error: 'session_id obbligatorio' }, 400);
 
@@ -48,13 +93,6 @@ Deno.serve(async (req: Request) => {
       return json({ ok: false, error: 'datetime_start non valido' }, 400);
     }
 
-    const { data: me, error: meErr } = await supabase
-      .from('drivers')
-      .select('role')
-      .eq('auth_user_id', user.id)
-      .maybeSingle();
-    if (meErr) return json({ ok: false, error: meErr.message }, 400);
-    if (!me) return json({ ok: false, error: 'Driver non collegato a questo account' }, 404);
     if (me.role !== 'staff' && me.role !== 'admin') {
       return json({ ok: false, error: 'Operazione riservata a staff o admin' }, 403);
     }
@@ -80,6 +118,7 @@ Deno.serve(async (req: Request) => {
       .from('team_sessions')
       .update(updates)
       .eq('id', sessionId)
+      .eq('team_id', me.team_id)
       .select('*, drivers(driver_code)')
       .maybeSingle();
 
