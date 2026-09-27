@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Fragment } from 'react';
 import { Link } from 'react-router-dom';
-import { useReports, useRaces } from '../hooks/useRaces';
+import { useReports, useRaces, useUpdateReport } from '../hooks/useRaces';
 import { useDrivers } from '../hooks/useRoster';
 import { useAuth } from '../hooks/useAuth';
 import { useReportReactions, useToggleReportReaction } from '../hooks/useReportReactions';
@@ -179,6 +179,7 @@ export default function Reports() {
 function RaceGroup({ race, rows, driverMap, isStaff }) {
   const { data: socialFlagsData } = useConsentSocialFlags();
   const socialFlags = socialFlagsData?.flags || {};
+  const [editingId, setEditingId] = useState(null);
   if (!race) return null;
   const podiums = rows.filter(r => r.finish_position <= 3).length;
 
@@ -208,6 +209,7 @@ function RaceGroup({ race, rows, driverMap, isStaff }) {
               <th className="num">Inc.</th>
               <th>Strategia</th>
               {isStaff && <th className="num">Rating</th>}
+              {isStaff && <th className="num">Azioni</th>}
             </tr>
           </thead>
           <tbody>
@@ -215,42 +217,63 @@ function RaceGroup({ race, rows, driverMap, isStaff }) {
               const d = driverMap[r.driver_id];
               const delta = r.grid_position - r.finish_position;
               const isPodium = r.finish_position <= 3;
+              const isEditing = editingId === r.report_id;
               return (
-                <tr key={r.report_id}>
-                  <td>
-                    {d ? (
-                      <Link to={`/roster/${d.driver_id}`} className="driver-link">
-                        <Avatar name={d.display_name} driverId={d.driver_id} size={28} photoUrl={resolvePhotoUrl(d.driver_id, socialFlags)} />
-                        <span className="driver-link-name">{d.display_name}</span>
-                      </Link>
-                    ) : r.driver_id}
-                  </td>
-                  <td className="num">{r.grid_position}</td>
-                  <td className="num">
-                    <span className={`finish-pos${isPodium ? ' is-podium' : ''}`}>
-                      P{r.finish_position}
-                    </span>
-                    {delta !== 0 && (
-                      <span className={`pos-delta${delta > 0 ? ' is-gain' : ' is-loss'}`}>
-                        {delta > 0 ? `+${delta}` : delta}
-                      </span>
-                    )}
-                  </td>
-                  <td className="num">
-                    <LapTime ms={r.best_lap_ms} size="sm" />
-                  </td>
-                  <td className="num">
-                    <span className={r.incidents > 0 ? 'inc-bad' : 'inc-clean'}>
-                      {r.incidents}
-                    </span>
-                  </td>
-                  <td className="cell-notes">{r.strategy_notes || '—'}</td>
-                  {isStaff && (
-                    <td className="num">
-                      <RatingStars value={r.staff_rating} />
+                <Fragment key={r.report_id}>
+                  <tr>
+                    <td>
+                      {d ? (
+                        <Link to={`/roster/${d.driver_id}`} className="driver-link">
+                          <Avatar name={d.display_name} driverId={d.driver_id} size={28} photoUrl={resolvePhotoUrl(d.driver_id, socialFlags)} />
+                          <span className="driver-link-name">{d.display_name}</span>
+                        </Link>
+                      ) : r.driver_id}
                     </td>
+                    <td className="num">{r.grid_position}</td>
+                    <td className="num">
+                      <span className={`finish-pos${isPodium ? ' is-podium' : ''}`}>
+                        P{r.finish_position}
+                      </span>
+                      {delta !== 0 && (
+                        <span className={`pos-delta${delta > 0 ? ' is-gain' : ' is-loss'}`}>
+                          {delta > 0 ? `+${delta}` : delta}
+                        </span>
+                      )}
+                    </td>
+                    <td className="num">
+                      <LapTime ms={r.best_lap_ms} size="sm" />
+                    </td>
+                    <td className="num">
+                      <span className={r.incidents > 0 ? 'inc-bad' : 'inc-clean'}>
+                        {r.incidents}
+                      </span>
+                    </td>
+                    <td className="cell-notes">{r.strategy_notes || '—'}</td>
+                    {isStaff && (
+                      <td className="num">
+                        <RatingStars value={r.staff_rating} />
+                      </td>
+                    )}
+                    {isStaff && (
+                      <td className="num">
+                        <button
+                          type="button"
+                          className="rc-edit-toggle-btn"
+                          onClick={() => setEditingId(isEditing ? null : r.report_id)}
+                        >
+                          {isEditing ? 'Chiudi' : 'Modifica'}
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                  {isStaff && isEditing && (
+                    <tr className="rc-edit-row">
+                      <td colSpan={7}>
+                        <ReportEditForm report={r} onDone={() => setEditingId(null)} />
+                      </td>
+                    </tr>
                   )}
-                </tr>
+                </Fragment>
               );
             })}
           </tbody>
@@ -265,6 +288,7 @@ function RaceGroup({ race, rows, driverMap, isStaff }) {
 // =====================================================
 function ReportCard({ report, race, driver, isStaff, reactions = [], myDriverId }) {
   const photoUrl = useConsentedDriverPhoto(driver?.driver_id);
+  const [isEditing, setIsEditing] = useState(false);
   if (!race || !driver) return null;
   const delta = report.grid_position - report.finish_position;
   const isPodium = report.finish_position <= 3;
@@ -296,6 +320,15 @@ function ReportCard({ report, race, driver, isStaff, reactions = [], myDriverId 
           <div className="rc-grid">da P{report.grid_position}</div>
         </div>
       </div>
+
+      {isStaff && !isEditing && (
+        <button type="button" className="rc-edit-toggle-btn rc-edit-toggle-btn-card" onClick={() => setIsEditing(true)}>
+          Modifica report
+        </button>
+      )}
+      {isStaff && isEditing && (
+        <ReportEditForm report={report} onDone={() => setIsEditing(false)} />
+      )}
 
       <div className="rc-stats">
         <RcStat label="Best Lap" value={<LapTime ms={report.best_lap_ms} size="sm" />} />
@@ -394,6 +427,111 @@ function RatingStars({ value = 0 }) {
       {Array.from({ length: max }).map((_, i) => (
         <span key={i} className={`star${i < value ? ' is-on' : ''}`}>★</span>
       ))}
+    </span>
+  );
+}
+
+// =====================================================
+// REPORT EDIT FORM — #446: pannello staff/admin per
+// strategy_notes/incident_notes/staff_rating/staff_notes.
+// Usato sia nella riga espandibile di RaceGroup (vista "Per gara")
+// sia in ReportCard (vista "Cronologico").
+// =====================================================
+function ReportEditForm({ report, onDone }) {
+  const mutation = useUpdateReport();
+  const [strategyNotes, setStrategyNotes] = useState(report.strategy_notes || '');
+  const [incidentNotes, setIncidentNotes] = useState(report.incident_notes || '');
+  const [staffNotes, setStaffNotes] = useState(report.staff_notes || '');
+  const [staffRating, setStaffRating] = useState(report.staff_rating || 0);
+
+  function handleSave() {
+    mutation.mutate(
+      {
+        report_id: report.report_id,
+        strategy_notes: strategyNotes,
+        incident_notes: incidentNotes,
+        staff_notes: staffNotes,
+        staff_rating: staffRating,
+      },
+      { onSuccess: () => onDone?.() }
+    );
+  }
+
+  return (
+    <div className="rc-edit">
+      <div className="rc-edit-field">
+        <label className="rc-edit-label" htmlFor={`strategy-${report.report_id}`}>Strategia</label>
+        <textarea
+          id={`strategy-${report.report_id}`}
+          className="rc-edit-textarea"
+          rows={2}
+          value={strategyNotes}
+          onChange={e => setStrategyNotes(e.target.value)}
+          placeholder="Scelte di strategia, pit stop, gestione gomme…"
+        />
+      </div>
+      <div className="rc-edit-field">
+        <label className="rc-edit-label" htmlFor={`incident-${report.report_id}`}>Incidenti</label>
+        <textarea
+          id={`incident-${report.report_id}`}
+          className="rc-edit-textarea"
+          rows={2}
+          value={incidentNotes}
+          onChange={e => setIncidentNotes(e.target.value)}
+          placeholder="Note su contatti, penalità, episodi in pista…"
+        />
+      </div>
+      <div className="rc-edit-field">
+        <label className="rc-edit-label" htmlFor={`staffnotes-${report.report_id}`}>Note staff (visibili solo allo staff)</label>
+        <textarea
+          id={`staffnotes-${report.report_id}`}
+          className="rc-edit-textarea"
+          rows={2}
+          value={staffNotes}
+          onChange={e => setStaffNotes(e.target.value)}
+          placeholder="Valutazioni interne non visibili al pilota…"
+        />
+      </div>
+      <div className="rc-edit-field">
+        <span className="rc-edit-label">Rating</span>
+        <StarPicker value={staffRating} onChange={setStaffRating} />
+      </div>
+
+      {mutation.isError && (
+        <div className="rc-edit-error">Errore: {mutation.error?.message || 'salvataggio fallito'}</div>
+      )}
+
+      <div className="rc-edit-actions">
+        <button type="button" className="rc-edit-cancel-btn" onClick={onDone} disabled={mutation.isPending}>
+          Annulla
+        </button>
+        <button type="button" className="rc-edit-save-btn" onClick={handleSave} disabled={mutation.isPending}>
+          {mutation.isPending ? 'Salvataggio…' : 'Salva'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function StarPicker({ value = 0, onChange }) {
+  const max = 5;
+  return (
+    <span className="rating-stars rating-stars-edit">
+      {Array.from({ length: max }).map((_, i) => {
+        const n = i + 1;
+        return (
+          <button
+            key={n}
+            type="button"
+            className={`star star-btn${n <= value ? ' is-on' : ''}`}
+            onClick={() => onChange(n === value ? 0 : n)}
+            aria-label={`${n} stelle`}
+            title={`${n} stelle`}
+          >
+            ★
+          </button>
+        );
+      })}
     </span>
   );
 }

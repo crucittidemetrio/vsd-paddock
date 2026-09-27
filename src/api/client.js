@@ -778,6 +778,11 @@ export const api = {
   reports: {
     list: (filters = {}) => call('reports.list', filters),
     recent: (limit = 5) => call('reports.recent', { limit }),
+    // #446 (27/09/2026): edit staff/admin dei campi race report
+    // (strategy_notes/incident_notes/staff_rating/staff_notes) — azione
+    // backend reports.update già esistente in social-manager, mai
+    // esposta lato client/UI.
+    update: (reportId, fields = {}) => call('reports.update', { report_id: reportId, ...fields }),
   },
 
   reportReactions: {

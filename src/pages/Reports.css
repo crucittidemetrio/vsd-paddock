@@ -264,3 +264,127 @@
 .reports-table .cell-notes {
   max-width: 360px;
 }
+
+/* ========== EDIT REPORT (#446, staff/admin) ========== */
+.rc-edit-toggle-btn {
+  padding: 3px 10px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--color-border);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.rc-edit-toggle-btn:hover {
+  border-color: var(--vsd-cyan, #00d4ff);
+  color: var(--color-text);
+}
+
+.rc-edit-toggle-btn-card {
+  align-self: flex-start;
+}
+
+.rc-edit-row td {
+  background: var(--vsd-bg);
+  padding: var(--sp-4) !important;
+}
+
+.rc-edit {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  background: var(--vsd-bg);
+  border: 1px dashed var(--color-border-strong);
+  border-radius: var(--r-md);
+}
+
+.rc-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rc-edit-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--color-text-dim);
+}
+
+.rc-edit-textarea {
+  width: 100%;
+  resize: vertical;
+  font-family: inherit;
+  font-size: var(--fs-sm);
+  color: var(--color-text);
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-sm);
+  padding: var(--sp-2) var(--sp-3);
+}
+
+.rc-edit-textarea:focus {
+  outline: none;
+  border-color: var(--vsd-cyan, #00d4ff);
+}
+
+.rating-stars-edit .star-btn {
+  background: none;
+  border: none;
+  padding: 0 2px;
+  cursor: pointer;
+  font-size: var(--fs-md);
+  color: var(--color-border-strong);
+  line-height: 1;
+}
+
+.rating-stars-edit .star-btn.is-on {
+  color: var(--vsd-orange);
+}
+
+.rc-edit-error {
+  font-size: var(--fs-sm);
+  color: var(--vsd-red, #ff4d4f);
+}
+
+.rc-edit-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-2);
+}
+
+.rc-edit-cancel-btn,
+.rc-edit-save-btn {
+  padding: 6px 14px;
+  border-radius: var(--r-sm);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+
+.rc-edit-cancel-btn {
+  background: transparent;
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+}
+
+.rc-edit-cancel-btn:hover:not(:disabled) {
+  border-color: var(--color-text-muted);
+}
+
+.rc-edit-save-btn {
+  background: var(--vsd-cyan, #00d4ff);
+  border: 1px solid var(--vsd-cyan, #00d4ff);
+  color: #05141a;
+  font-weight: var(--fw-semibold);
+}
+
+.rc-edit-save-btn:disabled,
+.rc-edit-cancel-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}

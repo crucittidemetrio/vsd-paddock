@@ -164,9 +164,15 @@ const LEGACY_TOKEN_FALLBACK_ACTIONS = new Set([
   // errore Auth richiesto". Stesso fallback aggiunto lato Edge
   // Function; qui solo le azioni self-service (auth: qualsiasi pilota
   // nel sorgente) — quelle admin-only dello stesso dispatcher
-  // (Social Manager, lapSubmissions.listPending/approve/reject/remove,
-  // reports.update/seedForRace) restano fuori per ora: nessun caso
-  // reale segnalato per un admin/staff senza sessione Supabase.
+  // (Social Manager, lapSubmissions.listPending/approve/reject/remove)
+  // restano fuori per ora: nessun caso reale segnalato per un
+  // admin/staff senza sessione Supabase.
+  // #446 (27/09/2026): reports.update ORA ha una UI reale (pannello
+  // "Modifica" in ReportCard, staff/admin) — stesso pattern di tutte
+  // le azioni admin-only sopra: nessuno staff/admin reale ha mai una
+  // sessione Supabase vera, solo il token legacy. Aggiunto qui per
+  // evitare lo stesso "Auth richiesto" già visto in #331/#358/#359/#392/#443.
+  'reports.update',
   'lapSubmissions.submit', 'lapSubmissions.listMine',
   'reports.list', 'reports.recent', 'reportReactions.list', 'reportReactions.toggle',
   'landing.data', 'laps.raceLaps',
