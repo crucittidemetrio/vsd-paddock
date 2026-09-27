@@ -443,6 +443,16 @@ const SUPABASE_MIGRATED_ACTIONS = new Set([
   'social.plan.dismissed.list',
   'reports.list',
   'reports.recent',
+  // #446 (27/09/2026): reports.update ora ha una UI reale (pannello
+  // "Modifica" staff/admin in Reports.jsx) — azione backend
+  // reports.update già esistente in social-manager/index.ts (Edge
+  // Function endurance-auditions-get) e già instradata in
+  // supabaseApi.js (SOCIAL_DIRECT_ACTIONS), ma MAI aggiunta qui: senza
+  // questa riga call() la manda al vecchio dispatcher legacy
+  // (callRealApi) invece che a Supabase, che non conosce l'azione →
+  // "Action non instradata: reports.update" (bug osservato in
+  // produzione, stesso giorno del fix).
+  'reports.update',
   'reportReactions.list',
   'reportReactions.toggle',
   'landing.data',
