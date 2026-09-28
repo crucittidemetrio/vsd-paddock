@@ -79,6 +79,8 @@
   .stat .num{font-family:var(--font-mono); font-size:32px; font-weight:700; color:var(--vsd-cyan);}
   .stat .lbl{font-size:12.5px; color:var(--color-text-dim); margin-top:4px;}
   @media(max-width:640px){ .stat-row{grid-template-columns:1fr;} }
+  .hero-credit{margin:18px auto 0; font-size:13px; color:var(--color-text-dim);}
+  .hero-credit strong{color:var(--color-text-muted);}
 
   /* SECTION shell */
   section{padding:64px 0;}
@@ -194,14 +196,15 @@
 
 <section class="hero">
   <div class="wrap">
-    <div class="eyebrow">CAMPIONATO APERTO · ORGANIZZATO DA VSD · LE MANS ULTIMATE</div>
+    <div class="eyebrow">Campionato aperto, organizzato da VSD — Le Mans Ultimate</div>
     <h1>ULTIMATE ENDURANCE <span class="accent">UE144'</span></h1>
-    <div class="tagline">Un solo pilota, nessun cambio, nessun compromesso.</div>
+    <div class="tagline">UE144'. Un solo pilota, nessun cambio, nessun compromesso.</div>
     <p class="lede">
       Nel panorama sim-racing dominato dalle staffette, UE144' ribalta le regole: endurance estrema in singolo,
-      senza compagno a cui cedere il volante. Il nome resta UE144', anche se il cronometro del server segna
-      <strong>145 minuti</strong> di gara ininterrotta — gomme, carburante, traffico e concentrazione dal primo
-      all'ultimo giro. Non è un campionato interno: le iscrizioni sono aperte a qualsiasi sim racer, tesserato VSD o no.
+      senza compagno a cui cedere il volante. Il nome del campionato resta UE144', anche se il cronometro del server
+      segna <strong>145 minuti</strong> di gara ininterrotta — gestione gomme, carburante, traffico e force feedback,
+      dal primo all'ultimo giro. Non è un campionato interno: le iscrizioni sono aperte a qualsiasi sim racer,
+      tesserato VSD o no.
     </p>
     <div class="cta-row">
       <a href="#iscrizioni" class="btn btn-primary">Iscriviti al campionato</a>
@@ -212,6 +215,7 @@
       <div class="stat"><div class="num">145'</div><div class="lbl">minuti di gara<br>segnati dal server</div></div>
       <div class="stat"><div class="num">6→14</div><div class="lbl">piloti per classe<br>minimo garantito, ideale a cui puntiamo</div></div>
     </div>
+    <p class="hero-credit">Organizzato da <strong>VSD</strong>, team di sim-racing endurance con piloti attivi in roster.</p>
   </div>
 </section>
 
