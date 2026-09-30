@@ -212,6 +212,14 @@ export default function ChampionshipDetail() {
                           </td>
                           <td className={styles.num}>
                             <strong>{s.total_points}</strong>
+                            {s.dropped_points != null && (
+                              <span
+                                className={styles.droppedMark}
+                                title={`Scarto applicato: -${s.dropped_points} pt dalla gara peggiore, non conteggiati`}
+                              >
+                                *
+                              </span>
+                            )}
                           </td>
                           <td className={styles.num}>{s.races_count}</td>
                           <td className={styles.num}>{s.wins || '—'}</td>
@@ -233,6 +241,15 @@ export default function ChampionshipDetail() {
               championshipId={championshipId}
               className={activeClass.class_name}
               currentDriverId={currentDriver?.driver_id}
+            />
+          )}
+
+          {/* SCARTO PEGGIOR RISULTATO (#448) — solo staff */}
+          {isStaff && (
+            <ScartoPanel
+              championshipId={championshipId}
+              enabled={!!championship.drop_worst_round}
+              onSaved={refetch}
             />
           )}
 
@@ -349,6 +366,54 @@ function RoundsList({ rounds }) {
 // ─── ADJUSTMENTS PANEL (staff only) ───────────────────────────────────────────
 
 const EMPTY_FORM = { driver_key: '', car_class: '', race_id: '', delta: '', reason: '' };
+
+/**
+ * ScartoPanel (#448) — toggle staff/admin per lo scarto stile SimGrid:
+ * quando attivo, standings-by-championship (path computed) esclude
+ * dal totale di ogni pilota+classe la gara col punteggio più basso
+ * (min. 2 gare non-DNS). Utile per qualunque campionato presente o
+ * futuro, ma non applicato di default — va acceso esplicitamente qui.
+ */
+function ScartoPanel({ championshipId, enabled, onSaved }) {
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+
+  async function toggle() {
+    setSaving(true);
+    setMsg('');
+    try {
+      await api.championships.update({ id: championshipId, drop_worst_round: !enabled });
+      setMsg('✓ Salvato');
+      onSaved();
+    } catch (err) {
+      setMsg('❌ ' + err.message);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <section className={styles.adjPanel}>
+      <h2 className={styles.adjTitle}>
+        🗑️ Scarto peggior risultato <span className={styles.adjBadge}>STAFF</span>
+      </h2>
+      <div className={styles.scartoRow}>
+        <p className={styles.scartoDesc}>
+          Come su SimGrid: quando attivo, per ogni pilota la gara col punteggio più basso non conta ai fini del totale in classifica (serve almeno 2 gare corse). Le gare escluse sono segnate con <strong>*</strong> accanto ai punti.
+        </p>
+        <button
+          type="button"
+          className={`${styles.scartoBtn} ${enabled ? styles.scartoBtnActive : ''}`}
+          onClick={toggle}
+          disabled={saving}
+        >
+          {enabled ? '✓ Scarto attivo — disattiva' : 'Attiva scarto'}
+        </button>
+      </div>
+      {msg && <div className={styles.adjMsg}>{msg}</div>}
+    </section>
+  );
+}
 
 function AdjustmentsPanel({ championshipId, adjustments, classes, rounds, onSaved }) {
   const [list, setList]     = useState(adjustments);

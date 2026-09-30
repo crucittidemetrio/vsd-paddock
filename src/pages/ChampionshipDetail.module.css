@@ -463,6 +463,42 @@ select.adjInput option { background-color: #0e1729; color: #fff; }
   color: var(--color-text-muted);
 }
 
+/* SCARTO peggior risultato (#448) — stesso guscio staff di adjPanel */
+.scartoRow {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.scartoDesc {
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+  flex: 1;
+  min-width: 220px;
+}
+.scartoBtn {
+  border-radius: var(--r-sm);
+  padding: var(--sp-2) var(--sp-4);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  border: 1px solid var(--vsd-orange);
+  background: transparent;
+  color: var(--vsd-orange);
+}
+.scartoBtnActive {
+  background: var(--vsd-orange);
+  color: var(--vsd-bg);
+}
+.scartoBtn:disabled { opacity: 0.5; cursor: default; }
+.droppedMark {
+  color: var(--color-text-dim);
+  font-size: var(--fs-xs);
+  margin-left: 4px;
+  cursor: help;
+}
+
 /* ROUNDS */
 .roundsSection {
   display: flex;

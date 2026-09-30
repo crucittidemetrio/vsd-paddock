@@ -389,6 +389,9 @@ Deno.serve(async (req: Request) => {
           is_vsd: isVsd,
           car_class: carClass,
           total_points: 0, races_count: 0, wins: 0, podiums: 0, best_finish: null, dnfs: 0, dns_count: 0,
+          // #448: gare non-DNS con relativi punti, per poter individuare
+          // (dopo il loop) la gara peggiore da scartare — vedi sotto.
+          _racePoints: [],
         };
       }
       const agg = aggregates[aggKey];
@@ -397,7 +400,7 @@ Deno.serve(async (req: Request) => {
       const points = Number(r.point_total) || 0;
       const position = Number(r.finish_position) || null;
 
-      if (!isDns) agg.races_count++;
+      if (!isDns) { agg.races_count++; agg._racePoints.push({ race_id: r.race_id, points }); }
       if (isDnf) agg.dnfs++;
       if (isDns) agg.dns_count++;
       agg.total_points += points;
@@ -408,6 +411,29 @@ Deno.serve(async (req: Request) => {
         if (agg.best_finish === null || position < agg.best_finish) agg.best_finish = position;
       }
     });
+
+    // #448 (30/09/2026, segnalato da Demetrio): scarto stile SimGrid.
+    // SimGrid nel proprio pannello Standings esclude dal totale, per
+    // ogni pilota, la gara col risultato peggiore (verificato sui dati
+    // reali di UE144' round 2 Imola — colonna barrata su SimGrid). I
+    // file JSON che importiamo sono i risultati grezzi di OGNI gara
+    // (nessuno scarto lì), e standings_json qui è vuoto ([]) per UE144'
+    // 2026 → si passa sempre da questo path 2 (computed), quindi lo
+    // scarto va applicato qui. Attivo solo se il campionato ha
+    // drop_worst_round=true (toggle staff/admin), e solo per chi ha
+    // almeno 2 gare non-DNS — un pilota con una sola gara corsa non ha
+    // nulla da scartare (comportamento identico a SimGrid: nessuna
+    // barratura con un solo risultato).
+    if (championship.drop_worst_round) {
+      Object.values(aggregates).forEach((agg: any) => {
+        if (agg._racePoints.length < 2) return;
+        const worst = agg._racePoints.reduce((min: any, r: any) => (r.points < min.points ? r : min), agg._racePoints[0]);
+        agg.total_points -= worst.points;
+        agg.dropped_race_id = worst.race_id;
+        agg.dropped_points = worst.points;
+      });
+    }
+    Object.values(aggregates).forEach((agg: any) => { delete agg._racePoints; });
 
     const classesMap: Record<string, any[]> = {};
     Object.values(aggregates).forEach((agg: any) => {
