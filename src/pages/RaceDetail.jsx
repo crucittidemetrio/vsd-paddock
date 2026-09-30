@@ -357,9 +357,16 @@ export default function RaceDetail() {
   const { data: cars } = useCars();
   const { data: reports } = useReports({ race_id: raceId });
   const { data: driversRaw } = useDrivers({ includeRemoved: true });
+  // Bug #447: race_results.driver_id (settato in fase di import, vedi
+  // race-results-import/matchDriverName) è lo UUID reale del pilota
+  // (drivers.id), NON driver_id/driver_code. Questa mappa è consumata
+  // solo da RaceResultsSection (badge VSD/EX VSD) e va quindi indicizzata
+  // per id, non per driver_id come le altre mappe di questa pagina
+  // (RSVP/CrewRoster/ReportCard, che risolvono per driver_code via
+  // driversRaw array + getDriverName — non toccati).
   const drivers = useMemo(() => {
     const m = {};
-    (driversRaw || []).forEach(d => { m[d.driver_id] = d; });
+    (driversRaw || []).forEach(d => { m[d.id] = d; });
     return m;
   }, [driversRaw]);
   const { data: raceResultsData } = useRaceResults({ race_id: raceId });
