@@ -441,6 +441,15 @@ function AdjustmentsPanel({ championshipId, adjustments, classes, rounds, onSave
     return opts;
   }, [classes]);
 
+  // Nome leggibile per driver_key (driver_code tipo "VSD026" per i piloti
+  // VSD, già il nome esterno per gli altri) — solo per la lista attivi
+  // sotto, il salvataggio continua a usare driver_key com'è.
+  const driverNameByKey = useMemo(() => {
+    const map = {};
+    driverOptions.forEach(o => { if (!map[o.key]) map[o.key] = o.label.replace(/ \([^)]+\)$/, ''); });
+    return map;
+  }, [driverOptions]);
+
   function handleDriverChange(e) {
     const val = e.target.value;
     const opt = driverOptions.find(o => o.key + '__' + o.car_class === val);
@@ -503,7 +512,7 @@ function AdjustmentsPanel({ championshipId, adjustments, classes, rounds, onSave
               <span className={styles.adjDelta} style={{ color: a.delta >= 0 ? 'var(--vsd-cyan)' : 'var(--color-danger)' }}>
                 {a.delta >= 0 ? '+' : ''}{a.delta}
               </span>
-              <span className={styles.adjDriver}>{a.driver_key}</span>
+              <span className={styles.adjDriver}>{driverNameByKey[a.driver_key] || a.driver_key}</span>
               <span className={styles.adjClass}>{a.car_class}</span>
               {a.race_id && <span className={styles.adjRound}>{a.race_id}</span>}
               {a.reason && <span className={styles.adjReason}>{a.reason}</span>}
