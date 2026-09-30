@@ -75,14 +75,17 @@ const POINTS = [
   { pos: 10, pts: 1 },
 ];
 
-// Ora server = 21:00 reale, fissa per tutti i round (vedi SERVER_TIME sotto).
-// time = orologio in-game all'avvio gara (varia per round, da regolamento
-// ufficiale — non va confuso con l'ora reale di apertura server).
+// Il server si attiva alle 20:30 reali per prove/qualifiche, la gara
+// parte alle 21:00 reali — fisso per tutti i round (corretto 30/09/2026,
+// prima il box mostrava solo "21:00" senza distinguere apertura server
+// da partenza gara). time = orologio in-game all'avvio gara (varia per
+// round, da regolamento ufficiale — non va confuso con l'ora reale).
 // airTemp/trackTemp = temperature di scenario inizio→fine, impostate lato
 // server: valori climatici reali per sede/periodo, corretti verso l'alto
 // su asfalto/pista (tranne Sebring) per garantire grip e trazione — vedi
 // regolamento cap. 8 per il dettaglio.
-const SERVER_TIME = '21:00';
+const SERVER_OPEN_TIME = '20:30';
+const RACE_START_TIME = '21:00';
 
 const CALENDAR = [
   {
@@ -273,7 +276,8 @@ export default function UE144() {
         <div className={styles.sectionEyebrow}>Stagione 2026 · Start Settembre</div>
         <h2 className={styles.sectionTitle}>Calendario ufficiale</h2>
         <p className={styles.calendarNote}>
-          Apertura server: <strong>{SERVER_TIME} (ora reale)</strong> per tutti i round.
+          Apertura server: <strong>{SERVER_OPEN_TIME} (ora reale)</strong> per prove e
+          qualifiche — gara alle <strong>{RACE_START_TIME}</strong>, fisso per tutti i round.
           Il campionato richiederà massima flessibilità sui setup per adattarsi
           all'evoluzione termica del Real Road.
         </p>
@@ -287,7 +291,7 @@ export default function UE144() {
               </div>
               <div className={styles.calendarMeta}>
                 <span className={styles.calendarDate}>📅 {r.date}</span>
-                <span className={styles.calendarTime}>🕐 {r.time} in-game (server {SERVER_TIME})</span>
+                <span className={styles.calendarTime}>🕐 {r.time} in-game (server {SERVER_OPEN_TIME}, gara {RACE_START_TIME})</span>
               </div>
               <div className={styles.calendarWeather}>
                 <span className={styles.weatherText}>{r.weather}</span>
