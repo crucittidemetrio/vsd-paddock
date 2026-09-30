@@ -212,6 +212,14 @@ const LEGACY_TOKEN_FALLBACK_ACTIONS = new Set([
   // gap #331/#358/#359/#392) — senza questo fallback la nuova UI di
   // creazione campionato (AdminChampionships.jsx) sarebbe inutilizzabile.
   'championships.add', 'championships.update',
+  // #455 (30/09/2026): stesso gap, mai colmato quando championships.add/
+  // update lo furono in #387/#395 — "Aggiustamenti punti" (bonus/penalità
+  // manuali in ChampionshipDetail.jsx) restava sull'unica Edge Function
+  // della famiglia championships-* senza resolveLegacyDriver. Segnalato
+  // da Demetrio: bonus pole position Pelloni (Clash of Classes,
+  // Silverston R1) → "Auth richiesto". Fix gemello lato Edge Function
+  // in championships-save-adjustments/index.ts.
+  'championships.saveAdjustments',
   'social.posts.list', 'social.metrics.list', 'social.generateText', 'social.discord.stats',
   // #337 (20/09/2026): stesso gap trovato PRIMA del cutover — RaceDetail.jsx
   // (pagina pubblica /race/:raceId) chiama endurance.stints.list per ogni
