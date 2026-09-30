@@ -214,6 +214,23 @@
   background: #22c55e;
 }
 
+/* Voci archiviate (es. ACI LMGT3 Challenge) — visibili solo a staff/admin
+   (vedi Sidebar.jsx, filtro EXTERNAL_ITEMS), attenuate per segnalare a
+   colpo d'occhio che il campionato non è più attivo senza doverlo
+   rimuovere dal codice. */
+.nav-item.is-archived {
+  opacity: 0.45;
+  filter: grayscale(0.4);
+}
+.nav-item.is-archived:hover {
+  opacity: 0.8;
+  filter: none;
+}
+.nav-tag-archived {
+  color: var(--color-text-dim);
+  border-color: var(--color-text-dim);
+}
+
 .nav-tag-live {
   color: #22c55e;
   border-color: #22c55e;

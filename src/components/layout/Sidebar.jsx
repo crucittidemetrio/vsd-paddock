@@ -40,8 +40,14 @@ const EVENTS_ITEMS = [
 // Campionati esterni — VSD vi partecipa con propri piloti ma non li
 // organizza (serie ufficiali di una federazione/ente terzo). Sezione
 // distinta da Eventi VSD, che sono format proprietari interni.
+// `archived: true` (richiesto 30/09/2026): il campionato non è più
+// attivo (es. ACI, ritirati — vedi #414/#416) ma la pagina resta nel
+// sito per eventuale riattivazione futura. Voce nascosta a piloti ed
+// esterni, visibile solo a staff/admin con stile attenuato (vedi
+// isStaff + is-archived più sotto) così è chiaro a colpo d'occhio che
+// non è attiva senza doverla rimuovere dal codice.
 const EXTERNAL_ITEMS = [
-  { to: '/aci-lmgt3-challenge', label: 'ACI LMGT3 Challenge', icon: '♟' },
+  { to: '/aci-lmgt3-challenge', label: 'ACI LMGT3 Challenge', icon: '♟', archived: true },
   { to: '/era-season-3', label: 'ERA Season 3', icon: '◈' },
 ];
 
@@ -141,7 +147,8 @@ function groupAdminItems(items) {
 }
 
 function renderNavItem(item, onMobileClose, extraClass = '', badgeCount = 0) {
-  const tagText = extraClass.includes('is-soon') ? 'soon'
+  const tagText = extraClass.includes('is-archived') ? 'inattivo'
+    : extraClass.includes('is-soon') ? 'soon'
     : extraClass.includes('is-tool') ? 'live'
     : null;
   return (
@@ -155,7 +162,11 @@ function renderNavItem(item, onMobileClose, extraClass = '', badgeCount = 0) {
       <span className="nav-icon">{item.icon}</span>
       <span className="nav-label">{item.label}</span>
       {badgeCount > 0 && <span className="nav-count">{badgeCount}</span>}
-      {tagText && <span className={`nav-tag${tagText === 'live' ? ' nav-tag-live' : ''}`}>{tagText}</span>}
+      {tagText && (
+        <span className={`nav-tag${tagText === 'live' ? ' nav-tag-live' : ''}${tagText === 'inattivo' ? ' nav-tag-archived' : ''}`}>
+          {tagText}
+        </span>
+      )}
     </NavLink>
   );
 }
@@ -238,7 +249,9 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
         {EVENTS_ITEMS.map(item => renderNavItem(item, onMobileClose, 'is-event'))}
 
         <div className="nav-section-label nav-section-label-external">Campionati Esterni</div>
-        {EXTERNAL_ITEMS.map(item => renderNavItem(item, onMobileClose, 'is-external'))}
+        {EXTERNAL_ITEMS
+          .filter(item => !item.archived || isStaff)
+          .map(item => renderNavItem(item, onMobileClose, item.archived ? 'is-external is-archived' : 'is-external'))}
 
         <div className="nav-section-label">Team</div>
         {TEAM_ITEMS.map(item => renderNavItem(item, onMobileClose))}
