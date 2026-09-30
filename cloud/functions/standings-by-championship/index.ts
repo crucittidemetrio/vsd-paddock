@@ -333,7 +333,7 @@ Deno.serve(async (req: Request) => {
         });
 
         const parsed = parseLmuStandingsJson(championship.standings_json, driverNameMap, driverInfoMap);
-        let classes = applyAdjustments(parsed.classes, adjustments);
+        let classes = parsed.classes;
 
         if (rounds.length > 0) {
           const { data: allResults, error: resErr } = await supabase
@@ -342,12 +342,20 @@ Deno.serve(async (req: Request) => {
             .in('race_id', Array.from(roundRaceIds));
           if (resErr) throw new Error(resErr.message);
           const relevantResults = (allResults ?? []).filter((r: any) => r.session_type === 'race');
+          // mergeRaceStats confronta contro race_results.driver_id (UUID) —
+          // deve girare PRIMA dell'alias sotto, mentre classes ha ancora
+          // l'uuid grezzo (vedi nota #456 più sotto sul path computed).
           if (relevantResults.length > 0) classes = mergeRaceStats(classes, relevantResults);
         }
 
+        // #456 (30/09/2026): alias PRIMA di applyAdjustments, non dopo —
+        // vedi nota gemella sul path computed più sotto per il bug e la
+        // segnalazione originale (Pelloni/VSD026, Silverston R1).
+        classes = applyAdjustments(aliasClassesDriverIds(classes, codeByUuid), adjustments);
+
         return json({
           ok: true,
-          data: { championship, classes: aliasClassesDriverIds(classes, codeByUuid), rounds, points_configured: true, source: 'lmu_import', adjustments },
+          data: { championship, classes, rounds, points_configured: true, source: 'lmu_import', adjustments },
         });
       } catch (e) {
         // Parse fallito: fallback al compute, fedele al sorgente (log + continua).
@@ -465,11 +473,23 @@ Deno.serve(async (req: Request) => {
       });
 
     const pointsConfigured = Object.values(aggregates).some((a: any) => a.total_points > 0);
-    const classesWithAdj = applyAdjustments(classes, adjustments);
+    // #456 (30/09/2026, segnalato da Demetrio): applyAdjustments girava
+    // PRIMA di aliasClassesDriverIds, confrontando a.driver_key (sempre
+    // driver_code, es. "VSD026" — è quello che il dropdown di
+    // AdjustmentsPanel.jsx mostra e salva, perché legge da `classes` già
+    // alias-ato dalla risposta precedente di questa stessa funzione) con
+    // s.driver_id ancora UUID grezzo in quel punto: match sempre fallito
+    // in silenzio, nessun errore — solo "il bonus non cambia la
+    // classifica". Bug reale: +1 pole position a Pelloni (VSD026,
+    // Silverston R1) salvato correttamente ma mai applicato al totale
+    // visibile. Fix: alias PRIMA di applyAdjustments, così driver_id è
+    // già driver_code quando il confronto avviene — stesso ordine
+    // applicato anche al path LMU import più sopra.
+    const classesWithAdj = applyAdjustments(aliasClassesDriverIds(classes, codeByUuid), adjustments);
 
     return json({
       ok: true,
-      data: { championship, classes: aliasClassesDriverIds(classesWithAdj, codeByUuid), rounds, points_configured: pointsConfigured, source: 'computed', adjustments },
+      data: { championship, classes: classesWithAdj, rounds, points_configured: pointsConfigured, source: 'computed', adjustments },
     });
   } catch (e) {
     return json({ ok: false, error: String(e) }, 500);
