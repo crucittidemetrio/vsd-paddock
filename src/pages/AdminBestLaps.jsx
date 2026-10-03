@@ -141,6 +141,19 @@ function ManualTab() {
     return m;
   }, [driversQuery.data]);
 
+  // Driver selezionabili nel form "Nuovo Lap" — esclude ex piloti VSD
+  // (removed_at impostato) indipendentemente da cosa restituisce il
+  // backend: roster-list dovrebbe già filtrarli con includeRemoved:
+  // false, ma qui applichiamo comunque un filtro client-side difensivo
+  // (segnalato da Demetrio: ex piloti ancora visibili nel dropdown).
+  // Non riusiamo isActiveDriver di utils/driverStatus.js perché quello
+  // esclude anche status!=='active', mentre qui un pilota "inactive"
+  // ma non rimosso deve restare selezionabile per un inserimento manuale.
+  const selectableDrivers = useMemo(
+    () => (driversQuery.data || []).filter(d => !d.removed_at && !d.is_ex_vsd),
+    [driversQuery.data],
+  );
+
   const sortedLaps = useMemo(() => {
     const laps = lapsQuery.data || [];
     return [...laps].sort((a, b) => {
@@ -286,7 +299,7 @@ function ManualTab() {
                 <select className={styles.select} value={form.driver_id}
                   onChange={e => update('driver_id', e.target.value)}>
                   <option value="">— Seleziona pilota —</option>
-                  {(driversQuery.data || []).map(d => (
+                  {selectableDrivers.map(d => (
                     <option key={d.driver_id} value={d.driver_id}>
                       {d.display_name} ({d.driver_id})
                     </option>
