@@ -1,52 +1,16 @@
-// ═══════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
 // VSD-Paddock Cloud — lookups.tracks (porting di apps-script/Lookups.js)
-// ═══════════════════════════════════════════════════════════
-// Logica di riferimento reale (handleLookupsTracks): identica a
-// lookups-cars ma sulla tabella tracks (catalogo globale, vedi 009).
-//
-// FIX (23/09/2026, richiesto da Demetrio dopo aver notato che due
-// tracciati LMU aggiunti direttamente su Supabase non comparivano sul
-// sito): causa non di questo file ma di client.js — lookups.tracks/
-// lookups.cars non erano mai stati aggiunti a SUPABASE_MIGRATED_ACTIONS,
-// quindi il sito ha continuato a leggere il catalogo dal vecchio
-// Google Sheet via Apps Script, ignorando questa Edge Function pur
-// gia' deployata. Aggiunto qui il fallback token legacy — stesso
-// pattern gia' usato in ~25 altre Edge Function di questo progetto
-// (best-laps-list, roster-list, ecc.) — perche' quasi nessun pilota
-// reale ha mai una sessione Supabase vera (solo il token Discord OAuth
-// legacy via Apps Script): senza questo fallback, attivare il cutover
-// in SUPABASE_MIGRATED_ACTIONS avrebbe bloccato con 401 "Auth richiesto"
-// chiunque non avesse rifatto login — che e' esattamente quanto
-// Demetrio ha chiesto di evitare (i piloti non useranno mai un account
-// Supabase separato: e' sempre lo stesso login Discord di sempre).
-// ═══════════════════════════════════════════════════════════
+// ════════════════════════════════════════════════════════
+// Catalogo GLOBALE (tabella tracks non è team-scoped, vedi 009), dato
+// non sensibile: da #458 (04/10/2026, segnalato da Demetrio: nel form
+// "Nuovo Lap" i tracciati/auto di ACE e iRacing non si caricavano)
+// la funzione è PUBBLICA — client service role, nessuna auth. Prima
+// richiedeva sessione Supabase o legacy_token verificato via Apps
+// Script: una round-trip extra lenta/instabile per un catalogo che non
+// ha nulla da proteggere. Filtro: active = true + sim opzionale.
+// ════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const LEGACY_API_URL = 'https://script.google.com/macros/s/AKfycbyMXxEjZfm5EIsGUnKxpwtBtoeR4hwMG7Pl8ZESF8yG569SS0aIdsWqyu9PdBgR14vLiA/exec';
-
-async function resolveLegacyDriver(serviceClient: any, legacyToken: string | undefined) {
-  if (!legacyToken) return null;
-  try {
-    const r = await fetch(LEGACY_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'auth.verify', token: legacyToken, payload: {} }),
-    });
-    const j = await r.json();
-    const driverCode = j?.ok && j.data?.valid ? j.data?.driver?.driver_id : null;
-    if (!driverCode) return null;
-    const { data: d } = await serviceClient
-      .from('drivers')
-      .select('id, team_id, role, display_name, driver_code')
-      .eq('driver_code', driverCode)
-      .maybeSingle();
-    if (!d) return null;
-    return { ...d, role: j.data.driver.role || d.role };
-  } catch {
-    return null;
-  }
-}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -59,37 +23,10 @@ Deno.serve(async (req: Request) => {
 
   try {
     const payload = await req.json().catch(() => ({}));
-    const authHeader = req.headers.get('Authorization');
-    let supabase: any = null;
-    let me: any = null;
-
-    if (authHeader) {
-      supabase = createClient(
-        Deno.env.get('SUPABASE_URL')!,
-        Deno.env.get('SUPABASE_ANON_KEY')!,
-        { global: { headers: { Authorization: authHeader } } },
-      );
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: meRow } = await supabase
-          .from('drivers')
-          .select('id, team_id, role, display_name, driver_code')
-          .eq('auth_user_id', user.id)
-          .maybeSingle();
-        me = meRow || null;
-      }
-    }
-
-    if (!me) {
-      const legacyServiceClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-      const legacyMe = await resolveLegacyDriver(legacyServiceClient, payload?.legacy_token);
-      if (legacyMe) {
-        me = legacyMe;
-        supabase = legacyServiceClient;
-      }
-    }
-
-    if (!me) return json({ ok: false, error: 'Auth richiesto' }, 401);
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
 
     const sim = payload?.sim ? String(payload.sim) : null;
 
