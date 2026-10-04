@@ -334,8 +334,19 @@ function MineView({ driver, filters, tracks, cars }) {
 }
 
 function MineTables({ data, tracks, cars }) {
+  const navigate = useNavigate();
   const classified = data.filter(r => r.race_class);
   const unclassified = data.filter(r => !r.race_class);
+
+  // Stesso drilldown della Leaderboard (grafico andamento per combo
+  // sim/tracciato/classe). Solo righe classificate: senza race_class la
+  // route non ha il terzo parametro.
+  function goToDrilldown(rec) {
+    const sim = String(rec.sim).toLowerCase();
+    const track = String(rec.track_id).toLowerCase();
+    const category = String(rec.race_class).toLowerCase();
+    navigate(`/laps/${encodeURIComponent(sim)}/${encodeURIComponent(track)}/${encodeURIComponent(category)}`);
+  }
 
   return (
     <>
@@ -354,7 +365,12 @@ function MineTables({ data, tracks, cars }) {
           </thead>
           <tbody>
             {classified.map(rec => (
-              <tr key={`${rec.sim}-${rec.track_id}-${rec.race_class}`}>
+              <tr
+                key={`${rec.sim}-${rec.track_id}-${rec.race_class}`}
+                className="is-clickable"
+                onClick={() => goToDrilldown(rec)}
+                title="Apri il grafico dell'andamento"
+              >
                 <td><SimBadge sim={rec.sim} /></td>
                 <td>{formatTrack(rec.track_id, tracks)}</td>
                 <td>{rec.race_class}</td>
