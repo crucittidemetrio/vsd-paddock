@@ -48,7 +48,7 @@ const VALID_STATUSES = ['draft', 'upcoming', 'active', 'completed'];
 // (path computed). Va nella whitelist come gli altri campi "semplici",
 // a differenza di standings_json/points_adjustments_json che restano
 // sui loro endpoint dedicati (vedi commento in testa al file).
-const EDITABLE_FIELDS = ['name', 'sim', 'season', 'status', 'format', 'start_date', 'end_date', 'notes', 'banner_url', 'drop_worst_round'];
+const EDITABLE_FIELDS = ['name', 'sim', 'season', 'status', 'format', 'start_date', 'end_date', 'notes', 'banner_url', 'drop_worst_round', 'series'];
 
 // Converte un link di condivisione Google Drive nel formato diretto
 // embeddabile come <img src> — stessa logica di championships-add
@@ -126,6 +126,11 @@ Deno.serve(async (req: Request) => {
         }
       } else if (field === 'banner_url') {
         updates[field] = payload[field] === null || payload[field] === '' ? null : normalizeDrivePosterUrl(String(payload[field]));
+      } else if (field === 'series') {
+        // #466: serie = ponte tra stagioni dello stesso format
+        // ('clash-of-classes', 'ue144'); slug minuscolo, vuoto → null.
+        const v = payload[field] === null ? '' : String(payload[field]).trim().toLowerCase();
+        updates[field] = v ? v.replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '') : null;
       } else if (field === 'drop_worst_round') {
         updates[field] = payload[field] === true;
       } else {

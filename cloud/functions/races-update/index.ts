@@ -89,7 +89,7 @@ const VALID_STATUSES = ['scheduled', 'live', 'completed', 'cancelled'];
 const EDITABLE_FIELDS = [
   'sim', 'round', 'race_name', 'track_id', 'car_id', 'date', 'duration_minutes',
   'format', 'status', 'broadcast_url', 'notes', 'weather', 'event_type',
-  'championship_id', 'poster_url', 'race_number',
+  'championship_id', 'poster_url', 'race_number', 'details',
 ];
 
 Deno.serve(async (req: Request) => {
@@ -152,6 +152,22 @@ Deno.serve(async (req: Request) => {
         updates[field] = Number(payload[field]);
       } else if (field === 'race_number') {
         updates[field] = payload[field] === null || payload[field] === '' ? null : Number(payload[field]);
+      } else if (field === 'details') {
+        // #466: metadati editoriali per round (nazione, nota, meteo,
+        // temperature, moltiplicatore, orario in-game...) — oggetto JSON piatto.
+        const d = payload[field];
+        if (d === null || d === '') {
+          updates[field] = {};
+        } else if (typeof d === 'object' && !Array.isArray(d)) {
+          const clean: Record<string, string> = {};
+          for (const [k, v] of Object.entries(d)) {
+            if (v === null || v === undefined || String(v).trim() === '') continue;
+            clean[String(k).slice(0, 40)] = String(v).slice(0, 200);
+          }
+          updates[field] = clean;
+        } else {
+          return json({ ok: false, error: 'details deve essere un oggetto' }, 400);
+        }
       } else if (field === 'poster_url') {
         updates[field] = payload[field] === null || payload[field] === '' ? null : normalizeDrivePosterUrl(String(payload[field]));
       } else {

@@ -180,6 +180,10 @@ Deno.serve(async (req: Request) => {
       end_date: payload?.end_date ? new Date(payload.end_date).toISOString().slice(0, 10) : null,
       notes: payload?.notes ? String(payload.notes) : null,
       banner_url: payload?.banner_url ? normalizeDrivePosterUrl(String(payload.banner_url)) : null,
+      // #466: serie (ponte tra stagioni dello stesso format), slug minuscolo
+      series: payload?.series
+        ? (String(payload.series).trim().toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '') || null)
+        : null,
     };
 
     const { data, error } = await supabase.from('championships').insert(insertRow).select().maybeSingle();

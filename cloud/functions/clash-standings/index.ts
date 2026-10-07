@@ -17,7 +17,9 @@
 //  - DNS: escluso dalla classifica (SimGrid gli assegna -2, non da regolamento).
 //  - Posizione assoluta: ordine per giri (desc) poi tempo totale (asc),
 //    tra tutti i classificati di entrambe le classi.
-//  - Round = ordine dei race_id del campionato (1..3).
+//  - Stagione: payload.championship_id oppure, in assenza, il campionato
+//    attivo della serie 'clash-of-classes' (altrimenti il più recente).
+//    Numero di round = numero di gare del campionato (varia per stagione).
 //
 // driver_id in uscita = driver_code (contratto pubblico, #333) se il
 // pilota è nel roster, altrimenti ''.
@@ -31,9 +33,7 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
 
-const CLASH_CHAMPIONSHIP_ID = 'chmp-lmu-gte-vs-gt3-clash-2026';
-const CLASH_VALID_CLASSES = ['GTE', 'GT3'];
-const CLASH_VALID_ROUNDS = [1, 2, 3];
+const CLASH_SERIES = 'clash-of-classes';
 const CLASS_MAP: Record<string, 'GTE' | 'GT3'> = { LMGTE: 'GTE', GTE: 'GTE', LMGT3: 'GT3', GT3: 'GT3' };
 
 const CLASH_POSITION_POINTS_TABLE: Record<number, number> = {
@@ -103,17 +103,37 @@ Deno.serve(async (req: Request) => {
       teamId = team.id;
     }
 
-    // Gare del campionato → round
+    // Stagione: richiesta esplicita o campionato attivo della serie
+    const { data: champs, error: champsErr } = await serviceClient
+      .from('championships')
+      .select('id, name, season, status, start_date')
+      .eq('team_id', teamId)
+      .eq('series', CLASH_SERIES);
+    if (champsErr) return json({ ok: false, error: champsErr.message }, 400);
+    const requestedId = payload?.championship_id ? String(payload.championship_id) : '';
+    const sortedChamps = (champs ?? []).slice().sort((a: any, b: any) =>
+      String(b.start_date || '').localeCompare(String(a.start_date || '')));
+    const championship = requestedId
+      ? sortedChamps.find((c: any) => c.id === requestedId)
+      : (sortedChamps.find((c: any) => c.status === 'active') || sortedChamps[0]);
+    if (!championship) {
+      return json({ ok: true, data: { gte: [], gt3: [], overall: [], trophy: emptyTrophy(0), championship: null } });
+    }
+
+    // Gare del campionato → round (ordine cronologico)
     const { data: races, error: racesErr } = await serviceClient
       .from('races')
-      .select('race_id')
+      .select('race_id, date')
       .eq('team_id', teamId)
-      .eq('championship_id', CLASH_CHAMPIONSHIP_ID)
+      .eq('championship_id', championship.id)
+      .order('date', { ascending: true })
       .order('race_id', { ascending: true });
     if (racesErr) return json({ ok: false, error: racesErr.message }, 400);
     const roundByRace: Record<string, number> = {};
     (races ?? []).forEach((r: any, i: number) => { roundByRace[r.race_id] = i + 1; });
     const raceIds = Object.keys(roundByRace);
+    const totalRounds = raceIds.length;
+    const ROUNDS = Array.from({ length: totalRounds }, (_v, i) => i + 1);
 
     let rows: any[] = [];
     if (raceIds.length > 0) {
@@ -152,7 +172,7 @@ Deno.serve(async (req: Request) => {
     // Posizione assoluta per round: giri desc, tempo asc (solo non-DNS con giri)
     const raceRows = rows.filter((r: any) => r.session_type === 'race');
     const overallByRound: Record<number, Record<string, number>> = {};
-    CLASH_VALID_ROUNDS.forEach((rd) => {
+    ROUNDS.forEach((rd) => {
       const list = raceRows
         .filter((r: any) => roundByRace[r.race_id] === rd && r.dns !== true && Number(r.total_laps) > 0)
         .sort((a: any, b: any) => {
@@ -244,7 +264,7 @@ Deno.serve(async (req: Request) => {
     const gt3 = sortStandings(Object.values(classAgg.GT3));
     const overall = sortStandings(Object.values(overallAgg));
 
-    const byRound = CLASH_VALID_ROUNDS
+    const byRound = ROUNDS
       .filter((rd) => roundTotals[rd])
       .map((rd) => ({ round: rd, GTE: roundTotals[rd].GTE, GT3: roundTotals[rd].GT3 }));
 
@@ -269,14 +289,28 @@ Deno.serve(async (req: Request) => {
       class_wins: classWins,
       class_poles: classPoles,
       leading_class: leadingClass,
-      decided: byRound.length >= CLASH_VALID_ROUNDS.length,
+      rounds_total: totalRounds,
+      decided: totalRounds > 0 && byRound.length >= totalRounds,
     };
 
-    return json({ ok: true, data: { gte, gt3, overall, trophy } });
+    return json({
+      ok: true,
+      data: {
+        gte, gt3, overall, trophy,
+        championship: { id: championship.id, name: championship.name, season: championship.season, rounds_total: totalRounds },
+      },
+    });
   } catch (e) {
     return json({ ok: false, error: String(e) }, 500);
   }
 });
+
+function emptyTrophy(totalRounds: number) {
+  return {
+    gte_total: 0, gt3_total: 0, by_round: [], class_wins: { GTE: 0, GT3: 0 },
+    class_poles: { GTE: 0, GT3: 0 }, leading_class: null, rounds_total: totalRounds, decided: false,
+  };
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {

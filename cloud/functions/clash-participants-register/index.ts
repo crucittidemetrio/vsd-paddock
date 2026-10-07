@@ -1,46 +1,17 @@
 // ═══════════════════════════════════════════════════════════
-// VSD-Paddock Cloud — clash.participants.add (porting fedele di
-// apps-script/ClashOfClasses.js, handleClashParticipantsAdd)
+// VSD-Paddock Cloud — clash.participants.register
 // ═══════════════════════════════════════════════════════════
-// Auth: staff/admin. Iscrizione manuale per riallineare con SimGrid.
+// Auth: opzionale. Loggato → iscrizione legata al proprio driver_id.
+// Anonimo → team_slug + display_name (community non tesserata).
+// Client SERVICE ROLE (lettura/scrittura pubblica controllata).
 //
-// #333: payload.driver_id è driver_code (VSD00X); clash_participants.
-// driver_id è uuid → risolto driver_code→uuid scoped al team prima
-// dell'insert; l'output torna a esporre driver_code.
-//
-// #466: l'iscritto è legato alla stagione (championship_id) attiva della serie
-// 'clash-of-classes' o a payload.championship_id.
-//
-// #461 (07/10/2026): fallback legacy_token aggiunto (vedi
-// clash-incidents-list).
+// #333: output driver_id = driver_code.
+// #466 (stagioni): l'iscrizione si lega al campionato attivo della serie
+// 'clash-of-classes' (o a payload.championship_id); niente iscrizioni a
+// una stagione conclusa. Duplicati e griglia piena sono per stagione.
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const LEGACY_API_URL = 'https://script.google.com/macros/s/AKfycbyMXxEjZfm5EIsGUnKxpwtBtoeR4hwMG7Pl8ZESF8yG569SS0aIdsWqyu9PdBgR14vLiA/exec';
-
-async function resolveLegacyDriver(serviceClient: any, legacyToken: string | undefined) {
-  if (!legacyToken) return null;
-  try {
-    const r = await fetch(LEGACY_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-      body: JSON.stringify({ action: 'auth.verify', token: legacyToken, payload: {} }),
-    });
-    const j = await r.json();
-    const driverCode = j?.ok && j.data?.valid ? j.data?.driver?.driver_id : null;
-    if (!driverCode) return null;
-    const { data: d } = await serviceClient
-      .from('drivers')
-      .select('id, team_id, role, display_name, driver_code')
-      .eq('driver_code', driverCode)
-      .maybeSingle();
-    if (!d) return null;
-    return { ...d, role: j.data.driver.role || d.role };
-  } catch {
-    return null;
-  }
-}
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -104,40 +75,10 @@ Deno.serve(async (req: Request) => {
 
   try {
     const payload = await req.json().catch(() => ({}));
-    const authHeader = req.headers.get('Authorization');
-    let supabase: any = null;
-    let me: any = null;
-
-    if (authHeader) {
-      supabase = createClient(
-        Deno.env.get('SUPABASE_URL')!,
-        Deno.env.get('SUPABASE_ANON_KEY')!,
-        { global: { headers: { Authorization: authHeader } } },
-      );
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: meRow } = await supabase
-          .from('drivers')
-          .select('id, team_id, role, display_name, driver_code')
-          .eq('auth_user_id', user.id)
-          .maybeSingle();
-        me = meRow || null;
-      }
-    }
-
-    if (!me) {
-      const legacyServiceClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-      const legacyMe = await resolveLegacyDriver(legacyServiceClient, payload?.legacy_token);
-      if (legacyMe) {
-        me = legacyMe;
-        supabase = legacyServiceClient;
-      }
-    }
-
-    if (!me) return json({ ok: false, error: 'Auth richiesto' }, 401);
-    if (me.role !== 'staff' && me.role !== 'admin') {
-      return json({ ok: false, error: 'Operazione riservata a staff e admin' }, 403);
-    }
+    const serviceClient = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
 
     const cls = String(payload?.class || '').trim().toUpperCase();
     if (CLASH_VALID_CLASSES.indexOf(cls) === -1) {
@@ -147,40 +88,62 @@ Deno.serve(async (req: Request) => {
     if (!vehicleCheck.ok) return json({ ok: false, error: vehicleCheck.error }, 400);
     const vehicle = vehicleCheck.value;
 
-    const displayName = String(payload?.display_name || '').trim();
-    if (!displayName) return json({ ok: false, error: 'Nome pilota mancante' }, 400);
-
-    const championship = await resolveClashChampionship(
-      createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!),
-      me.team_id,
-      payload?.championship_id ? String(payload.championship_id) : '',
-    );
-    if (!championship) return json({ ok: false, error: 'Nessuna stagione Clash of Classes trovata' }, 400);
-
-    const { data: teamDrivers, error: teamDriversErr } = await supabase
-      .from('drivers')
-      .select('id, driver_code')
-      .eq('team_id', me.team_id);
-    if (teamDriversErr) return json({ ok: false, error: teamDriversErr.message }, 400);
-    const codeByUuid: Record<string, string> = {};
-    const uuidByCode: Record<string, string> = {};
-    (teamDrivers ?? []).forEach((d: any) => {
-      if (d.driver_code) { codeByUuid[d.id] = d.driver_code; uuidByCode[d.driver_code] = d.id; }
-    });
-
-    const driverCodeInput = payload?.driver_id ? String(payload.driver_id).trim() : '';
+    let teamId: string | null = null;
     let driverId: string | null = null;
-    if (driverCodeInput) {
-      driverId = uuidByCode[driverCodeInput] || null;
-      if (!driverId) return json({ ok: false, error: 'driver_id non trovato nel roster: ' + driverCodeInput }, 400);
+    let driverCode: string = '';
+    let displayName = String(payload?.display_name || '').trim();
+
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader) {
+      const userClient = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } },
+      );
+      const { data: { user } } = await userClient.auth.getUser();
+      if (user) {
+        const { data: me } = await serviceClient
+          .from('drivers')
+          .select('id, team_id, display_name, driver_code')
+          .eq('auth_user_id', user.id)
+          .maybeSingle();
+        if (me) {
+          teamId = me.team_id;
+          driverId = me.id;
+          driverCode = me.driver_code || '';
+          if (!displayName) displayName = me.display_name || '';
+        }
+      }
     }
 
+    if (!teamId) {
+      const teamSlug = payload?.team_slug ? String(payload.team_slug).trim() : '';
+      if (!teamSlug) return json({ ok: false, error: 'team_slug obbligatorio per chiamate anonime' }, 400);
+      const { data: team, error: teamErr } = await serviceClient
+        .from('teams')
+        .select('id')
+        .eq('slug', teamSlug)
+        .maybeSingle();
+      if (teamErr) return json({ ok: false, error: teamErr.message }, 400);
+      if (!team) return json({ ok: false, error: 'Team non trovato: ' + teamSlug }, 404);
+      teamId = team.id;
+    }
+
+    const championship = await resolveClashChampionship(
+      serviceClient, teamId!, payload?.championship_id ? String(payload.championship_id) : '',
+    );
+    if (!championship) return json({ ok: false, error: 'Nessuna stagione Clash of Classes aperta alle iscrizioni' }, 400);
+    if (championship.status === 'completed' || championship.status === 'cancelled') {
+      return json({ ok: false, error: 'Le iscrizioni a questa stagione sono chiuse' }, 400);
+    }
+
+    if (!displayName) return json({ ok: false, error: 'Nome pilota mancante' }, 400);
     const discordHandle = String(payload?.discord_handle || '').trim();
 
-    const { data: existing, error: existErr } = await supabase
+    const { data: existing, error: existErr } = await serviceClient
       .from('clash_participants')
       .select('driver_id, display_name, class')
-      .eq('team_id', me.team_id)
+      .eq('team_id', teamId)
       .eq('championship_id', championship.id)
       .neq('status', 'withdrawn');
     if (existErr) return json({ ok: false, error: existErr.message }, 400);
@@ -194,12 +157,10 @@ Deno.serve(async (req: Request) => {
       (driverId && p.driver_id === driverId) ||
       String(p.display_name || '').trim().toLowerCase() === nameKey,
     );
-    if (dup) {
-      return json({ ok: false, error: 'Pilota già iscritto (classe ' + dup.class + ') — usa clash.participants.update per modificarlo' }, 400);
-    }
+    if (dup) return json({ ok: false, error: 'Sei già iscritto a Clash of Classes (classe ' + dup.class + ')' }, 400);
 
     const insertRow = {
-      team_id: me.team_id,
+      team_id: teamId,
       championship_id: championship.id,
       driver_id: driverId,
       display_name: displayName,
@@ -209,20 +170,20 @@ Deno.serve(async (req: Request) => {
       status: 'registered',
     };
 
-    const { data, error } = await supabase.from('clash_participants').insert(insertRow).select().maybeSingle();
+    const { data, error } = await serviceClient.from('clash_participants').insert(insertRow).select().maybeSingle();
     if (error) return json({ ok: false, error: error.message }, 400);
 
     return json({
       ok: true,
       data: {
         participant_id: data.id,
-        driver_id: data.driver_id ? (codeByUuid[data.driver_id] || data.driver_id) : '',
+        driver_id: driverCode || '',
         display_name: data.display_name,
         class: data.class,
         vehicle: data.vehicle || '',
-        discord_handle: data.discord_handle || '',
         registered_at: data.registered_at,
         status: data.status,
+        championship_id: championship.id,
       },
     });
   } catch (e) {
