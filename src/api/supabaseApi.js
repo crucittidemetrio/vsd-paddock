@@ -305,6 +305,14 @@ const LEGACY_TOKEN_FALLBACK_ACTIONS = new Set([
   // lo stesso login Discord di sempre.
   'lookups.tracks', 'lookups.cars',
 
+  // #461 (07/10/2026, segnalato da Demetrio: Gestione evento Clash of
+  // Classes → "Auth richiesto" su Segnalazioni incidenti e impossibile
+  // aggiungere iscritti). Le 5 Edge Function admin del dominio Clash non
+  // avevano mai ricevuto il fallback legacy_token (ora sì, deployato):
+  // serve solo l'iniezione lato client.
+  'clash.incidents.list', 'clash.participants.add', 'clash.participants.update',
+  'clash.participants.remove', 'clash.results.submitRound',
+
   // RaceRSVP/RaceCrews (23/09/2026 — vedi nota gemella in client.js
   // SUPABASE_MIGRATED_ACTIONS): fallback lato Edge Function già
   // deployato (resolveLegacyDriver in rsvp-list/rsvp-set/
