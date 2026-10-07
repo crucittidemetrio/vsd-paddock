@@ -118,6 +118,21 @@ function ResultsTab() {
       return;
     }
 
+    // #462 (07/10/2026): senza posizione di classe la classifica non
+    // assegna i punti-posizione (solo i bonus pole/giro veloce/finisher):
+    // round salvati "a metà" senza alcun errore visibile. Chi ha chiuso
+    // la gara (finisher) deve avere la posizione di classe.
+    const missingPos = results.filter(
+      r => r.finisher && (r.finish_position_class == null || Number.isNaN(r.finish_position_class)),
+    );
+    if (missingPos.length > 0) {
+      setFeedback({
+        ok: false,
+        message: `Manca la posizione di classe per: ${missingPos.map(r => r.display_name).join(', ')}. Senza, la classifica non assegna i punti-posizione.`,
+      });
+      return;
+    }
+
     try {
       const res = await submitMutation.mutateAsync({ round, results });
       setFeedback({ ok: true, message: `Round ${round}: ${res.inserted} righe salvate.` });
