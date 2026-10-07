@@ -346,8 +346,8 @@ function DashboardHome({ posts, metrics, postsQuery, metricsQuery }) {
                       <stop offset="100%" stopColor="#3b8bff" stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="dcGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#5865f2" stopOpacity={0.35} />
-                      <stop offset="100%" stopColor="#5865f2" stopOpacity={0} />
+                      <stop offset="0%" stopColor="#14b8a6" stopOpacity={0.35} />
+                      <stop offset="100%" stopColor="#14b8a6" stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="fbGroupGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#f5a623" stopOpacity={0.35} />
@@ -368,7 +368,7 @@ function DashboardHome({ posts, metrics, postsQuery, metricsQuery }) {
                     fill="url(#fbGrad)" strokeWidth={2} connectNulls dot={{ r: 3 }} />
                   <Area type="monotone" dataKey="facebook_group" name="Gruppo FB" stroke="#f5a623"
                     fill="url(#fbGroupGrad)" strokeWidth={2} connectNulls dot={{ r: 3 }} />
-                  <Area type="monotone" dataKey="discord" name="Discord" stroke="#5865f2"
+                  <Area type="monotone" dataKey="discord" name="Discord" stroke="#14b8a6"
                     fill="url(#dcGrad)" strokeWidth={2} connectNulls dot={{ r: 3 }} />
                 </AreaChart>
               </ResponsiveContainer>

@@ -185,7 +185,7 @@
   background: radial-gradient(circle at 30% 110%, #fdf497 0%, #fdf497 5%, #fd5949 45%, #d6249f 60%, #285AEB 90%);
 }
 .badgeFacebook { background: linear-gradient(135deg, #3b8bff, #1959c9); }
-.badgeDiscord { background: linear-gradient(135deg, #5865f2, #3a44b8); }
+.badgeDiscord { background: linear-gradient(135deg, #14b8a6, #0b7a6e); }
 .badgeQueue { background: linear-gradient(135deg, var(--vsd-orange), #c07800); }
 .badgeCheck { background: linear-gradient(135deg, var(--color-success), #1a8f66); }
 
