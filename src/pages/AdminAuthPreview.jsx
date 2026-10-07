@@ -25,9 +25,9 @@ import { supabaseConfigured } from '../api/supabaseClient';
 export default function AdminAuthPreview() {
   const [session, setSession] = useState(null);
   const [loadingSession, setLoadingSession] = useState(true);
-  const [driverInfo, setDriverInfo] = useState(null);
-  const [resolveError, setResolveError] = useState(null);
-  const [resolving, setResolving] = useState(false);
+  // Esito della risoluzione driver+tier, legato alla sessione che l'ha prodotto.
+  // Stato derivato (niente setState sincrono dentro l'effect).
+  const [resolved, setResolved] = useState({ key: null, info: null, error: null });
   const [loginError, setLoginError] = useState(null);
 
   // ── Carica la sessione corrente al mount + sottoscrive i cambi ──
@@ -46,19 +46,20 @@ export default function AdminAuthPreview() {
     return () => { cancelled = true; unsubscribe(); };
   }, []);
 
+  const sessionKey = session?.access_token || null;
+  const isCurrent = sessionKey !== null && resolved.key === sessionKey;
+  const driverInfo = isCurrent ? resolved.info : null;
+  const resolveError = isCurrent ? resolved.error : null;
+  const resolving = sessionKey !== null && !isCurrent;
+
   // ── Risolve driver+tier ogni volta che cambia la sessione ──
   useEffect(() => {
-    if (!session) {
-      setDriverInfo(null);
-      return;
-    }
+    if (!session) return;
     let cancelled = false;
-    setResolving(true);
-    setResolveError(null);
+    const key = session.access_token;
     resolveDriverAndTier(session)
-      .then(info => { if (!cancelled) setDriverInfo(info); })
-      .catch(err => { if (!cancelled) setResolveError(err.message || String(err)); })
-      .finally(() => { if (!cancelled) setResolving(false); });
+      .then(info => { if (!cancelled) setResolved({ key, info, error: null }); })
+      .catch(err => { if (!cancelled) setResolved({ key, info: null, error: err.message || String(err) }); });
     return () => { cancelled = true; };
   }, [session]);
 
@@ -74,7 +75,7 @@ export default function AdminAuthPreview() {
   async function logout() {
     await signOutSupabase();
     setSession(null);
-    setDriverInfo(null);
+    setResolved({ key: null, info: null, error: null });
   }
 
   if (!supabaseConfigured) {

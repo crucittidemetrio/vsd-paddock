@@ -362,3 +362,17 @@ cloud/
   README.md          questo file
   schema/             migrazioni SQL, in ordine numerico
 ```
+
+## #468/#469 — Audit ottobre 2026: sorgenti versionati e auth uniforme
+
+- Tutte le Edge Function chiamate dal frontend hanno ora il sorgente in `cloud/functions/<slug>/index.ts`
+  (23 funzioni esistevano solo nel deploy: candidates, sponsors, treasury, consent, interest, prequal,
+  skill-index-*, championships-import-standings — recuperate dal deploy live e versionate).
+- Regola: ogni funzione usata da utenti loggati deve accettare **sessione Supabase OPPURE `legacy_token`**
+  (nessun pilota ha una sessione Supabase) e l'action deve stare in `LEGACY_TOKEN_FALLBACK_ACTIONS`
+  (`src/api/supabaseApi.js`). Snippet di riferimento in `cloud/functions/_shared_snippets/`
+  (copiati inline: le Edge Function sono deploy indipendenti, niente import condivisi).
+- `driver_id` in uscita = sempre `driver_code` (VSDxxx), mai l'uuid.
+- Letture potenzialmente > 1000 righe: usare `fetchAllRows` (paginazione). Data API "Max rows" alzato a 10000.
+- Fix #469: `sponsors-add/update` scrivevano la colonna inesistente `value` (reale: `value_estimate`) →
+  nessuno sponsor poteva essere inserito.

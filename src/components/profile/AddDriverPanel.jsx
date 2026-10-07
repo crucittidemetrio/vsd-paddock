@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useAvailableSlots, useAdminCreateDriver } from '../../hooks/useRoster';
 import { ROLES, DRIVER_STATUS, SIM_LIST } from '../../utils/constants';
@@ -21,7 +21,7 @@ export default function AddDriverPanel() {
   const { isStaff, isAdmin } = useAuth();
   const [open, setOpen] = useState(false);
   const [displayName, setDisplayName] = useState('');
-  const [driverCode, setDriverCode] = useState('');
+  const [driverCode, setDriverCode] = useState(null);
   const [raceNumber, setRaceNumber] = useState('');
   const [status, setStatus] = useState(DRIVER_STATUS.TRIAL);
   const [role, setRole] = useState(ROLES.DRIVER);
@@ -33,18 +33,15 @@ export default function AddDriverPanel() {
   const usedRaceNumbers = new Set(slots?.used_race_numbers || []);
   const raceNumberTaken = raceNumber !== '' && usedRaceNumbers.has(Number(raceNumber));
 
-  useEffect(() => {
-    if (open && slots?.next_driver_code && !driverCode) {
-      setDriverCode(slots.next_driver_code);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, slots]);
+  // Codice suggerito derivato (prima: setState dentro useEffect → render a cascata).
+  // driverCode === null = l'utente non ha ancora toccato il campo → si mostra il prossimo libero.
+  const effectiveDriverCode = driverCode ?? (slots?.next_driver_code || '');
 
   if (!isStaff && !isAdmin) return null;
 
   function handleOpen() {
     setDisplayName('');
-    setDriverCode('');
+    setDriverCode(null);
     setRaceNumber('');
     setStatus(DRIVER_STATUS.TRIAL);
     setRole(ROLES.DRIVER);
@@ -65,7 +62,7 @@ export default function AddDriverPanel() {
       status,
       preferred_sims: sims,
     };
-    if (driverCode.trim()) payload.driver_id = driverCode.trim();
+    if (effectiveDriverCode.trim()) payload.driver_id = effectiveDriverCode.trim();
     if (raceNumber !== '') payload.race_number = raceNumber;
     if (isAdmin && role !== ROLES.DRIVER) payload.role = role;
     create(payload, { onSuccess: () => setOpen(false) });
@@ -108,7 +105,7 @@ export default function AddDriverPanel() {
             id="adnp-code"
             className="adnp-input"
             type="text"
-            value={driverCode}
+            value={effectiveDriverCode}
             onChange={e => setDriverCode(e.target.value.toUpperCase())}
             placeholder={slotsLoading ? 'Calcolo…' : 'VSD0XX'}
           />

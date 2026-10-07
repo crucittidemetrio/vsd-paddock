@@ -262,6 +262,12 @@ const LEGACY_TOKEN_FALLBACK_ACTIONS = new Set([
   'pitwall.sessions', 'pitwall.session',
   'fuel.summary', 'fuel.mySession', 'fuel.stints',
   'races.remove', 'races.updatePoster', 'races.updateGallery',
+  // #469: interest.list/register riconoscevano il pilota/staff solo via
+  // sessione Supabase → staff senza contatti/note, iscrizione del pilota
+  // salvata come anonima (poi non modificabile). Import classifica e
+  // snapshot Skill Index rispondevano "Auth richiesto".
+  'interest.list', 'interest.register',
+  'championships.importStandings', 'skillIndex.snapshot',
   // #443 (26/09/2026): laps.add (form "Inserimento manuale"/NUOVO LAP in
   // AdminBestLaps.jsx, staff/admin-only) non aveva MAI ricevuto il fallback
   // legacy token, a differenza di tutte le altre azioni admin di questa

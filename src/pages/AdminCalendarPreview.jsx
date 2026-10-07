@@ -43,8 +43,20 @@ function readStoredSession() {
   }
 }
 
+// Legge access_token dall'hash del redirect Discord OAuth (se presente),
+// lo salva in sessionStorage e lo restituisce come sessione iniziale.
+function captureOAuthSession() {
+  if (typeof window === 'undefined' || !window.location.hash.includes('access_token')) return null;
+  const params = new URLSearchParams(window.location.hash.slice(1));
+  const access_token = params.get('access_token');
+  if (!access_token) return null;
+  const next = { access_token, user: decodeJwtPayload(access_token) };
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify(next));
+  return next;
+}
+
 export default function AdminCalendarPreview() {
-  const [session, setSession] = useState(() => readStoredSession());
+  const [session, setSession] = useState(() => captureOAuthSession() || readStoredSession());
 
   const [listResult, setListResult] = useState(null);
   const [listLoading, setListLoading] = useState(false);
@@ -72,18 +84,13 @@ export default function AdminCalendarPreview() {
   const [rsvpSetResult, setRsvpSetResult] = useState(null);
   const [rsvpSetError, setRsvpSetError] = useState(null);
 
-  // ── Cattura il token dopo il redirect di Discord OAuth ──
+  // ── Pulisce il token dalla URL dopo il redirect Discord OAuth ──
+  // (la cattura avviene in captureOAuthSession, nell'inizializzatore di useState:
+  // niente setState dentro l'effect → niente render a cascata)
   useEffect(() => {
-    if (!window.location.hash.includes('access_token')) return;
-    const params = new URLSearchParams(window.location.hash.slice(1));
-    const access_token = params.get('access_token');
-    if (access_token) {
-      const payload = decodeJwtPayload(access_token);
-      const next = { access_token, user: payload };
-      sessionStorage.setItem(SESSION_KEY, JSON.stringify(next));
-      setSession(next);
+    if (window.location.hash.includes('access_token')) {
+      window.history.replaceState(null, '', window.location.pathname);
     }
-    window.history.replaceState(null, '', window.location.pathname);
   }, []);
 
   const callFn = useCallback(async (name, body) => {
