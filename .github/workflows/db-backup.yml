@@ -1,0 +1,80 @@
+# #470 — Backup settimanale del database Supabase (piano gratuito: nessun
+# backup scaricabile incluso). Ogni lunedì alle 03:00 UTC (+ avvio manuale
+# da Actions → "DB backup" → Run workflow).
+#
+# Il dump contiene dati personali (email, date di nascita dei consensi…):
+# viene CIFRATO con AES-256 prima di essere caricato come artifact, così è
+# illeggibile anche se il repo fosse pubblico. Conservazione: 90 giorni.
+#
+# Secret da creare in GitHub → Settings → Secrets and variables → Actions:
+#   SUPABASE_DB_URL     stringa di connessione "Session pooler" (porta 5432)
+#                       presa da Supabase → Connect → Session pooler
+#                       (i runner GitHub non hanno IPv6: NON usare la
+#                       "Direct connection")
+#   BACKUP_PASSPHRASE   una password lunga a tua scelta (conservala: serve
+#                       per decifrare il backup)
+#
+# Ripristino:
+#   openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -in vsd-db-AAAA-MM-GG.sql.gz.enc \
+#     -pass pass:"LA_TUA_PASSPHRASE" | gunzip > dump.sql
+#   psql "<connection string>" -f dump.sql
+
+name: DB backup
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Verifica secret
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          PASS: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          if [ -z "$DB_URL" ] || [ -z "$PASS" ]; then
+            echo "::error::Mancano i secret SUPABASE_DB_URL e/o BACKUP_PASSPHRASE"
+            exit 1
+          fi
+
+      - name: Installa pg_dump 17 (stessa major del server Supabase)
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client-17
+          /usr/lib/postgresql/17/bin/pg_dump --version
+
+      - name: Dump schema public + auth (dati e struttura), cifrato
+        env:
+          DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          PASS: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -o pipefail
+          STAMP=$(date -u +%Y-%m-%d)
+          echo "STAMP=$STAMP" >> "$GITHUB_ENV"
+          /usr/lib/postgresql/17/bin/pg_dump "$DB_URL" \
+            --schema=public --schema=auth \
+            --no-owner --no-privileges --quote-all-identifiers \
+            | gzip -9 \
+            | openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -pass env:PASS \
+            > "vsd-db-$STAMP.sql.gz.enc"
+          ls -lh "vsd-db-$STAMP.sql.gz.enc"
+          # sanity check: il file cifrato non deve essere quasi vuoto
+          test $(stat -c%s "vsd-db-$STAMP.sql.gz.enc") -gt 10000
+
+      - name: Carica artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsd-db-${{ env.STAMP }}
+          path: vsd-db-${{ env.STAMP }}.sql.gz.enc
+          retention-days: 90
+          if-no-files-found: error
