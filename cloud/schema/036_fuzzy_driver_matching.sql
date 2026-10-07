@@ -65,3 +65,9 @@ drop trigger if exists trg_race_results_fuzzy_driver on public.race_results;
 create trigger trg_race_results_fuzzy_driver
   before insert on public.race_results
   for each row execute function public.race_results_fuzzy_driver();
+
+-- Funzioni trigger: non devono essere invocabili via /rest/v1/rpc
+-- (security advisor). EXECUTE non serve ai trigger per scattare.
+revoke execute on function public.race_results_fuzzy_driver() from public, anon, authenticated;
+revoke execute on function public.link_driver_on_signup() from public, anon, authenticated;
+revoke execute on function public.rls_auto_enable() from public, anon, authenticated;
