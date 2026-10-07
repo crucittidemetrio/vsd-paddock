@@ -19,6 +19,21 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// #468: PostgREST tronca le select a 1000 righe (max_rows). race_results
+// è già a ~900 righe: senza paginazione i calcoli perderebbero dati in
+// silenzio. factory() deve ricostruire la query a ogni pagina.
+async function fetchAllRows(factory: () => any): Promise<{ data: any[] | null; error: any }> {
+  const PAGE = 1000;
+  const out: any[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await factory().range(from, from + PAGE - 1);
+    if (error) return { data: null, error };
+    out.push(...(data ?? []));
+    if (!data || data.length < PAGE) break;
+  }
+  return { data: out, error: null };
+}
+
 // Fallback token legacy (stesso pattern #331/#358/#359, esteso il
 // 21/09/2026 — vedi nota completa in races-list/index.ts).
 const LEGACY_API_URL = 'https://script.google.com/macros/s/AKfycbyMXxEjZfm5EIsGUnKxpwtBtoeR4hwMG7Pl8ZESF8yG569SS0aIdsWqyu9PdBgR14vLiA/exec';
@@ -95,16 +110,21 @@ Deno.serve(async (req: Request) => {
     const limit = payload?.limit ? Number(payload.limit) : null;
     const sortOrder = payload?.sort ? String(payload.sort) : null;
 
-    let query = supabase.from('race_results').select('*').eq('team_id', me.team_id);
-    if (raceIdFilter) query = query.eq('race_id', raceIdFilter);
-    if (sessionFilter) query = query.eq('session_type', sessionFilter);
+    let driverUuid: string | null = null;
     if (driverIdFilter) {
       // il filtro arriva come driver_code: lo traduco in UUID
       const { data: dm } = await supabase.from('drivers').select('id').eq('team_id', me.team_id).eq('driver_code', driverIdFilter).maybeSingle();
-      query = query.eq('driver_id', dm?.id ?? '00000000-0000-0000-0000-000000000000');
+      driverUuid = dm?.id ?? '00000000-0000-0000-0000-000000000000';
     }
+    const buildQuery = () => {
+      let q = supabase.from('race_results').select('*').eq('team_id', me.team_id).order('result_id', { ascending: true });
+      if (raceIdFilter) q = q.eq('race_id', raceIdFilter);
+      if (sessionFilter) q = q.eq('session_type', sessionFilter);
+      if (driverUuid) q = q.eq('driver_id', driverUuid);
+      return q;
+    };
 
-    const { data, error } = await query;
+    const { data, error } = await fetchAllRows(buildQuery);
     if (error) return json({ ok: false, error: error.message }, 400);
 
     // #467: race_results.driver_id è l'UUID interno; il frontend (roster,

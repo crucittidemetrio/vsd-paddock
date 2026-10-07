@@ -255,6 +255,13 @@ const LEGACY_TOKEN_FALLBACK_ACTIONS = new Set([
   'roster.adminUpdate', 'roster.deletionCandidates', 'roster.adminDelete',
   'roster.availableSlots', 'roster.adminCreate',
   'laps.syncFromGarage61',
+  // #468 (07/10/2026): audit — queste Edge Function accettavano solo una
+  // sessione Supabase (che nessun pilota ha): Skill Index, storico Pit Wall,
+  // Carburante/Energia e azioni admin sulle gare rispondevano "Auth richiesto".
+  'skillIndex.list', 'skillIndex.history',
+  'pitwall.sessions', 'pitwall.session',
+  'fuel.summary', 'fuel.mySession', 'fuel.stints',
+  'races.remove', 'races.updatePoster', 'races.updateGallery',
   // #443 (26/09/2026): laps.add (form "Inserimento manuale"/NUOVO LAP in
   // AdminBestLaps.jsx, staff/admin-only) non aveva MAI ricevuto il fallback
   // legacy token, a differenza di tutte le altre azioni admin di questa

@@ -52,6 +52,21 @@
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// #468: PostgREST tronca le select a 1000 righe (max_rows). race_results
+// è già a ~900 righe: senza paginazione i calcoli perderebbero dati in
+// silenzio. factory() deve ricostruire la query a ogni pagina.
+async function fetchAllRows(factory: () => any): Promise<{ data: any[] | null; error: any }> {
+  const PAGE = 1000;
+  const out: any[] = [];
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await factory().range(from, from + PAGE - 1);
+    if (error) return { data: null, error };
+    out.push(...(data ?? []));
+    if (!data || data.length < PAGE) break;
+  }
+  return { data: out, error: null };
+}
+
 // Fallback token legacy (#331 fix, 20/09/2026 — vedi nota completa in
 // cloud/functions/social-manager/index.ts): nessun pilota reale ha mai
 // una sessione Supabase reale, solo il token legacy Discord OAuth via
@@ -181,12 +196,18 @@ Deno.serve(async (req: Request) => {
     const sim = payload?.sim ? String(payload.sim) : '';
     if (!sim) return json({ ok: false, error: 'sim mancante' }, 400);
 
-    const { data: allResults, error: resErr } = await supabase
+    // #468: si leggono TUTTE le righe della sessione, anche i piloti non VSD
+    // (driver_id null). Prima il filtro .not('driver_id','is',null) faceva
+    // calcolare giro veloce, giri del leader, pole e gap% solo tra i piloti
+    // VSD: +1 giro veloce/pole assegnati a chi non li aveva fatti e gap 0%
+    // automatico per chi correva come unico VSD in classe. I punti restano
+    // attribuiti solo ai piloti VSD (r.driver_id valorizzato).
+    const { data: allResults, error: resErr } = await fetchAllRows(() => supabase
       .from('race_results')
-      .select('race_id, sim, car_class, session_type, driver_id, total_laps, best_lap_ms, finish_position, track_id')
+      .select('result_id, race_id, sim, car_class, session_type, driver_id, total_laps, best_lap_ms, finish_position, track_id, dns')
       .eq('team_id', me.team_id)
       .eq('sim', sim)
-      .not('driver_id', 'is', null);
+      .order('result_id', { ascending: true }));
     if (resErr) return json({ ok: false, error: resErr.message }, 400);
     const results = allResults ?? [];
 

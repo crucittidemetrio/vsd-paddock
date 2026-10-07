@@ -1,13 +1,21 @@
 // ═══════════════════════════════════════════════════════════
-// VSD-Paddock Cloud — pitwall.session (porting di apps-script/PitwallSessions.js)
+// VSD-Paddock Cloud — skillIndex.history (porting di apps-script/SkillIndex.js)
 // ═══════════════════════════════════════════════════════════
-// Logica di riferimento reale (handlePitwallSession):
-//   - auth richiesto (chiunque nel team)
-//   - session_id obbligatorio
-//   - classifica per miglior giro (ascendente), tempi assenti in coda
+// Serie storica Skill Index di un pilota (grafico sul profilo).
+// payload.driver_id = driver_code; risolto in uuid prima della query,
+// output aliasato al driver_code (#332).
+//
+// #468 (07/10/2026): sorgente versionato + fallback token legacy (prima
+// solo sessione Supabase → "Auth richiesto" per tutti i piloti reali).
 // ═══════════════════════════════════════════════════════════
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+};
 
 // #468 — risoluzione chiamante: sessione Supabase OPPURE token legacy
 // (Apps Script auth.verify). Nessun pilota reale ha una sessione Supabase:
@@ -54,12 +62,6 @@ async function resolveCaller(req: Request, payload: any): Promise<{ client: any;
   return null;
 }
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
-};
-
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -69,63 +71,29 @@ Deno.serve(async (req: Request) => {
     if (!caller) return json({ ok: false, error: 'Auth richiesto' }, 401);
     const supabase = caller.client;
 
-    const sessionId = String(payload?.session_id || '').trim();
-    if (!sessionId) return json({ ok: false, error: 'session_id mancante' }, 400);
+    const driverCodeParam = payload?.driver_id ? String(payload.driver_id).trim() : '';
+    if (!driverCodeParam) return json({ ok: false, error: 'driver_id mancante' }, 400);
 
-    const { data: rows, error } = await supabase
-      .from('pitwall_sessions')
-      .select('*')
-      .eq('session_id', sessionId)
-      .eq('team_id', caller.teamId);
+    const { data: driver, error: driverErr } = await supabase
+      .from('drivers')
+      .select('id, driver_code')
+      .eq('driver_code', driverCodeParam)
+      .eq('team_id', caller.teamId)
+      .maybeSingle();
+    if (driverErr) return json({ ok: false, error: driverErr.message }, 400);
+    if (!driver) return json({ ok: false, error: 'Driver non trovato: ' + driverCodeParam }, 404);
+
+    const { data: snapshots, error } = await supabase
+      .from('skill_index_history')
+      .select('driver_id, score, races_counted, avg_finish_pct, podium_rate, avg_incidents, snapshot_date')
+      .eq('driver_id', driver.id)
+      .eq('team_id', caller.teamId)
+      .order('snapshot_date', { ascending: true });
     if (error) return json({ ok: false, error: error.message }, 400);
-    if (!rows || rows.length === 0) return json({ ok: false, error: 'Sessione non trovata: ' + sessionId }, 404);
 
-    // FIX #339 (stesso pattern driver_id-come-uuid già risolto in #329/
-    // #331/#333/#334/#335/#336/#337/#338): pitwall_sessions.driver_id è
-    // una colonna uuid reale (FK su drivers.id), ma per contratto di
-    // progetto ogni `driver_id` esposto in risposta deve essere il
-    // driver_code leggibile (coerente con roster.list/laps.*/ecc).
-    // Non ancora consumato lato frontend (PitWall.jsx usa solo
-    // driver_name_external per la UI, driver_id solo come React key),
-    // quindi nessuna regressione visibile finora — ma un domani in cui
-    // driver_id venisse letto per un link/lookup avrebbe restituito un
-    // uuid invece del driver_code, stesso bug silenzioso già visto
-    // altrove. Risolto qui, prima del cutover, non in validazione.
-    const driverIds = Array.from(new Set(rows.map((r: any) => r.driver_id).filter(Boolean)));
-    const codeById: Record<string, string> = {};
-    if (driverIds.length > 0) {
-      const { data: driverRows } = await supabase.from('drivers').select('id, driver_code').in('id', driverIds);
-      (driverRows ?? []).forEach((d: any) => { codeById[d.id] = d.driver_code; });
-    }
+    const aliased = (snapshots ?? []).map((s: any) => ({ ...s, driver_id: driver.driver_code }));
 
-    const drivers = rows
-      .map((r: any) => ({
-        driver_id: (r.driver_id && codeById[r.driver_id]) || '',
-        driver_name_external: r.driver_name_external || '',
-        vehicle_name: r.vehicle_name || '',
-        vehicle_class: r.vehicle_class || '',
-        best_lap_time_ms: r.best_lap_time_ms ?? null,
-        laps_completed: r.laps_completed ?? 0,
-        final_place: r.final_place ?? null,
-      }))
-      .sort((a: any, b: any) => {
-        if (a.best_lap_time_ms == null && b.best_lap_time_ms == null) return 0;
-        if (a.best_lap_time_ms == null) return 1;
-        if (b.best_lap_time_ms == null) return -1;
-        return a.best_lap_time_ms - b.best_lap_time_ms;
-      });
-
-    return json({
-      ok: true,
-      data: {
-        session_id: sessionId,
-        track_name: rows[0].track_name || '',
-        sim: rows[0].sim || '',
-        session_type: rows[0].session_type,
-        captured_at: rows[0].captured_at || '',
-        drivers,
-      },
-    });
+    return json({ ok: true, data: { snapshots: aliased, count: aliased.length } });
   } catch (e) {
     return json({ ok: false, error: String(e) }, 500);
   }

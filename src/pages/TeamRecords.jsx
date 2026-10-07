@@ -106,7 +106,7 @@ export default function TeamRecords() {
               {recs.map(r => {
                 const carInfo = formatCarInfo(r.car_id, carsQuery.data);
                 return (
-                  <div key={`${r.sim}-${r.track_id}-${r.race_class || 'nc'}`} className={styles.card}>
+                  <div key={`${r.sim}-${r.track_id}-${r.race_class || ('nc-' + r.car_id)}`} className={styles.card}>
                     <span className={styles.cardIcon}>🏆</span>
                     <div>
                       <div className={styles.cardHolder}>

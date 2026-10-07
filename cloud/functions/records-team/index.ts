@@ -149,7 +149,10 @@ Deno.serve(async (req: Request) => {
     const recordsByKey: Record<string, { lap: any; race_class: string | null }> = {};
     filtered.forEach((l: any) => {
       const raceClass = carRaceClass[l.car_id] ?? null;
-      const key = `${l.sim}|${l.track_id}|${raceClass || ''}`;
+      // #468: vetture senza classe (es. iRacing NASCAR, F1, Beetle) non
+      // vanno messe tutte nello stesso secchio "senza classe": il record
+      // sarebbe un confronto F1 vs Beetle. Senza classe → record per vettura.
+      const key = `${l.sim}|${l.track_id}|${raceClass || ('car:' + (l.car_id || ''))}`;
       const ms = Number(l.lap_time_ms);
       if (!recordsByKey[key] || ms < Number(recordsByKey[key].lap.lap_time_ms)) {
         recordsByKey[key] = { lap: l, race_class: raceClass };

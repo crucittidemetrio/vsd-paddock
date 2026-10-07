@@ -17,6 +17,22 @@ import { formatTrack } from '../utils/format';
 import './BestLaps.css';
 import './Page.css';
 
+// #468: car_class nei risultati è l'etichetta dell'evento ("LMGT3 PLATINUM",
+// "PRO/AM - LMGT3", "LMGTE AM"...), mentre le opzioni del filtro arrivano
+// dal catalogo vetture (LMGT3, GTE, Hypercar...). Il confronto esatto
+// scartava la maggior parte delle righe: si normalizza alla classe base.
+function baseRaceClass(cls) {
+  const c = String(cls || '').toUpperCase();
+  if (!c) return '';
+  if (c.includes('HYPERCAR')) return 'Hypercar';
+  if (c.includes('LMGTE') || /\bGTE\b/.test(c)) return 'GTE';
+  if (c.includes('GT3')) return 'LMGT3';
+  if (c.includes('GT4')) return 'GT4';
+  if (c.includes('LMP2')) return 'LMP2';
+  if (c.includes('LMP3')) return 'LMP3';
+  return String(cls).trim();
+}
+
 const SEASON_OPTIONS = [
   { id: 'season2026', label: 'Stagione 2026' },
   { id: 'all', label: 'All-time' },
@@ -58,7 +74,7 @@ export default function Results() {
       const rc = c.race_class && String(c.race_class).trim();
       if (!rc) return;
       if (simFilter === 'all' || c.sim === simFilter) {
-        set.add(rc);
+        set.add(baseRaceClass(rc));
       }
     });
     return Array.from(set).sort();
@@ -200,8 +216,10 @@ function RaceResultsView({ filters, driverMap, tracks }) {
     const rows = (data?.results || []).filter(r => r.is_vsd_driver);
     const filtered = rows.filter(r => {
       if (filters.sim !== 'all' && r.sim !== filters.sim) return false;
+      // #468: il toggle "Stagione 2026" prima non filtrava nulla.
+      if (filters.season === 'season2026' && String(r.set_date || '') < '2026-01-01') return false;
       if (filters.track_id !== 'all' && r.track_id !== filters.track_id) return false;
-      if (filters.race_class !== 'all' && r.car_class !== filters.race_class) return false;
+      if (filters.race_class !== 'all' && baseRaceClass(r.car_class) !== filters.race_class) return false;
       // Ex-VSD nascosti di default (stesso criterio di BestLaps.jsx/TeamRecords):
       // i piloti attuali si confrontano tra compagni, non con chi ha lasciato
       // il team. Toggle admin-only per rivelarli, mai dati cancellati.
