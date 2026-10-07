@@ -21,12 +21,6 @@ export default function AdminClashResults() {
 
       <div className={styles.tabs}>
         <button
-          className={`${styles.tab} ${tab === 'results' ? styles.tabActive : ''}`}
-          onClick={() => setTab('results')}
-        >
-          Risultati
-        </button>
-        <button
           className={`${styles.tab} ${tab === 'incidents' ? styles.tabActive : ''}`}
           onClick={() => setTab('incidents')}
         >
