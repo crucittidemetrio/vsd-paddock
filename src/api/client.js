@@ -642,12 +642,12 @@ export const api = {
   },
 
   clash: {
-    participantsList: () => call('clash.participants.list', {}),
+    participantsList: (championship_id) => call('clash.participants.list', championship_id ? { championship_id } : {}),
     register: (payload) => call('clash.participants.register', payload),
     addParticipant: (payload) => call('clash.participants.add', payload),
     updateParticipant: (payload) => call('clash.participants.update', payload),
     removeParticipant: (participant_id) => call('clash.participants.remove', { participant_id }),
-    standings: () => call('clash.standings', {}),
+    standings: (championship_id) => call('clash.standings', championship_id ? { championship_id } : {}),
     submitRoundResults: (payload) => call('clash.results.submitRound', payload),
     reportIncident: (payload) => call('clash.incidents.report', payload),
     incidentsList: () => call('clash.incidents.list', {}),

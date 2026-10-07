@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { usePageMeta } from '../hooks/usePageMeta';
 import {
   useClashParticipants,
@@ -7,6 +7,7 @@ import {
   useClashStandings,
 } from '../hooks/useClashOfClasses';
 import { useAuth } from '../hooks/useAuth';
+import { useSeason, raceCircuitName, raceDetails, formatRaceDate } from '../hooks/useSeason';
 import { SOCIAL_LINKS } from '../utils/constants';
 import { VEHICLES_BY_CLASS } from '../utils/clashVehicles';
 import IncidentReportSection from '../components/shared/IncidentReportSection';
@@ -41,27 +42,6 @@ const CLASSES = [
   },
 ];
 
-const CALENDAR = [
-  {
-    round: 1, circuit: 'Silverstone Circuit', nation: 'Regno Unito', note: 'Apertura stagione', date: '2026-09-20',
-    weather: '☁️ Nuvoloso, asfalto umido', airTemp: '18-19°C', trackTemp: '24-26°C',
-  },
-  {
-    round: 2, circuit: 'Autodromo di Imola', nation: 'Italia', note: 'Round di casa', date: '2026-10-04',
-    weather: '☀️ Sereno', airTemp: '22-23°C', trackTemp: '32-34°C',
-  },
-  {
-    round: 3, circuit: 'Spa-Francorchamps', nation: 'Belgio', note: 'Finale — Trofeo delle Classi', date: '2026-10-18',
-    weather: '🌦️ Sereno freddo o pioggia leggera costante', airTemp: '14-16°C', trackTemp: '19-22°C',
-  },
-];
-
-function formatClashDate_(iso) {
-  return new Date(`${iso}T00:00:00`).toLocaleDateString('it-IT', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-  });
-}
-
 const FORMAT = [
   { label: 'Prove Libere', value: '10\'', detail: 'Set-up libero, carburante e gomme a scelta' },
   { label: 'Qualifica', value: '10\'', detail: 'Sessione unica: il giro migliore vale la griglia' },
@@ -75,10 +55,25 @@ const POINTS_TABLE = [
   { pos: 13, pts: 3 }, { pos: 14, pts: 2 }, { pos: 15, pts: 1 },
 ];
 
+function shortDate(iso) {
+  return formatRaceDate(iso, { day: 'numeric', month: 'short' });
+}
+
 export default function ClashOfClasses() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedSeason = searchParams.get('season') || '';
+  const { championship, races, seasons, roundsTotal, isLoading: seasonLoading } = useSeason('clash-of-classes', requestedSeason);
+  const seasonLabel = championship?.season || '';
+  const calendar = races.map((r, i) => ({
+    round: i + 1, circuit: raceCircuitName(r), date: r.date, details: raceDetails(r),
+  }));
+  const firstDate = races[0]?.date;
+  const lastDate = races[races.length - 1]?.date;
+  const circuitNames = calendar.map(r => r.circuit);
+
   usePageMeta({
-    title: 'Clash of Classes — GTE vs LMGT3 | VSD',
-    description: 'VSD Clash of Classes: mini-campionato esibizione GTE vs LMGT3 su Le Mans Ultimate. 3 round — Silverstone, Imola, Spa-Francorchamps. Aperto a tutta la community.',
+    title: `Clash of Classes ${seasonLabel} — GTE vs LMGT3 | VSD`.replace('  ', ' '),
+    description: `VSD Clash of Classes: mini-campionato esibizione GTE vs LMGT3 su Le Mans Ultimate.${roundsTotal ? ` ${roundsTotal} round${circuitNames.length ? ' — ' + circuitNames.join(', ') : ''}.` : ''} Aperto a tutta la community.`,
   });
 
   return (
@@ -86,16 +81,35 @@ export default function ClashOfClasses() {
 
       {/* ════ HERO ════ */}
       <section className={styles.hero}>
-        <div className={styles.heroEyebrow}>VIRTUAL SIM-DRIVER PRESENTA</div>
+        <div className={styles.heroEyebrow}>VIRTUAL SIM-DRIVER PRESENTA{seasonLabel ? ` · STAGIONE ${seasonLabel}` : ''}</div>
         <h1 className={styles.heroTitle}>
           CLASH OF <span className={styles.heroTitleAccent}>CLASSES</span>
         </h1>
         <p className={styles.heroSub}>GTE vs LMGT3 — Old School vs New School</p>
         <div className={styles.heroOpen}>
           <span className={styles.heroBadge}>🌍 Aperto a tutta la community</span>
-          <span className={styles.heroBadge}>🏁 3 round · LMU</span>
-          <span className={styles.heroBadge}>📅 20 set – 18 ott 2026</span>
+          <span className={styles.heroBadge}>🏁 {roundsTotal || '—'} round · {championship?.sim || 'LMU'}</span>
+          {firstDate && (
+            <span className={styles.heroBadge}>
+              📅 {shortDate(firstDate)}{lastDate && lastDate !== firstDate ? ` – ${shortDate(lastDate)}` : ''} {new Date(lastDate || firstDate).getFullYear()}
+            </span>
+          )}
         </div>
+        {seasons.length > 1 && (
+          <div className={styles.heroActions}>
+            <label className={styles.formLabel} htmlFor="coc-season" style={{ marginRight: 8 }}>Stagione</label>
+            <select
+              id="coc-season"
+              className={styles.select}
+              value={championship?.id || ''}
+              onChange={e => setSearchParams(e.target.value ? { season: e.target.value } : {})}
+            >
+              {seasons.map(c => (
+                <option key={c.id} value={c.id}>{c.season || c.name}{c.status === 'active' ? ' (in corso)' : ''}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className={styles.heroActions}>
           <a href="#iscrizione" className={`${styles.btn} ${styles.btnPrimary}`}>Iscriviti</a>
           <a href="#classifiche" className={`${styles.btn} ${styles.btnSecondary}`}>Classifiche</a>
@@ -154,34 +168,42 @@ export default function ClashOfClasses() {
       </section>
 
       {/* ════ CALENDARIO ════ */}
+      {calendar.length > 0 && (
       <section className={styles.section}>
         <div className={styles.sectionEyebrow}>Calendario</div>
-        <h2 className={styles.sectionTitle}>Tre round, tre grandi circuiti</h2>
+        <h2 className={styles.sectionTitle}>{calendar.length} round, {calendar.length} circuiti</h2>
         <p className={styles.calendarNote}>
           Meteo calibrato sul periodo reale di ogni round —
           {' '}<strong>condizioni fisse per tutto lo sprint (40')</strong>, nessun cambio a gara in corso.
         </p>
         <div className={styles.calendarGrid}>
-          {CALENDAR.map(r => (
+          {calendar.map(r => (
             <div key={r.round} className={styles.calendarCard}>
               <div className={styles.calendarRound}>Round {r.round}</div>
               <div className={styles.calendarCircuit}>{r.circuit}</div>
-              <div className={styles.calendarMeta}>
-                <span>{r.nation}</span>
-                <span className={styles.calendarNoteTag}>{r.note}</span>
-              </div>
-              <div className={styles.calendarDate}>📅 {formatClashDate_(r.date)}</div>
-              <div className={styles.calendarWeather}>
-                <span className={styles.weatherText}>{r.weather}</span>
-              </div>
-              <div className={styles.calendarTemps}>
-                <span>🌡️ Aria {r.airTemp}</span>
-                <span>🛣️ Asfalto {r.trackTemp}</span>
-              </div>
+              {(r.details.nation || r.details.note) && (
+                <div className={styles.calendarMeta}>
+                  {r.details.nation && <span>{r.details.nation}</span>}
+                  {r.details.note && <span className={styles.calendarNoteTag}>{r.details.note}</span>}
+                </div>
+              )}
+              <div className={styles.calendarDate}>📅 {formatRaceDate(r.date)}</div>
+              {r.details.weather && (
+                <div className={styles.calendarWeather}>
+                  <span className={styles.weatherText}>{r.details.weather}</span>
+                </div>
+              )}
+              {(r.details.air_temp || r.details.track_temp) && (
+                <div className={styles.calendarTemps}>
+                  {r.details.air_temp && <span>🌡️ Aria {r.details.air_temp}</span>}
+                  {r.details.track_temp && <span>🛣️ Asfalto {r.details.track_temp}</span>}
+                </div>
+              )}
             </div>
           ))}
         </div>
       </section>
+      )}
 
       {/* ════ FORMATO ════ */}
       <section className={styles.section}>
@@ -249,7 +271,8 @@ export default function ClashOfClasses() {
             la partecipazione, non solo la performance dei top driver.
           </p>
           <p>
-            Il totale di ogni round si somma sui 3 round: dopo Spa-Francorchamps, la classe col
+            Il totale di ogni round si somma sui {roundsTotal || 'tutti i'} round
+            {circuitNames.length > 0 ? `: dopo ${circuitNames[circuitNames.length - 1]}` : ''}, la classe col
             punteggio cumulativo più alto vince il <strong>Trofeo delle Classi</strong>. In
             parallelo, la <strong>Classifica Assoluta</strong> unisce tutti i piloti (GTE+LMGT3): chi
             la guida a fine stagione è il <strong>Vincitore Assoluto</strong>, a prescindere dalla
@@ -263,10 +286,19 @@ export default function ClashOfClasses() {
       </section>
 
       {/* ════ ISCRIZIONE ════ */}
-      <RegistrationSection />
+      <RegistrationSection
+        championship={championship}
+        roundsTotal={roundsTotal}
+        firstDate={firstDate}
+        seasonLoading={seasonLoading}
+      />
 
       {/* ════ CLASSIFICHE ════ */}
-      <StandingsSection />
+      <StandingsSection
+        championshipId={championship?.id}
+        firstCircuit={circuitNames[0]}
+        seasonLabel={seasonLabel}
+      />
 
       {/* ════ SEGNALAZIONE INCIDENTI ════ */}
       <IncidentReportSection
@@ -297,9 +329,11 @@ export default function ClashOfClasses() {
 
 // ════ ISCRIZIONE ════
 
-function RegistrationSection() {
+function RegistrationSection({ championship, roundsTotal, firstDate, seasonLoading }) {
   const { driver, isVsdPilot } = useAuth();
-  const { data: participantsData, isLoading: loadingParticipants } = useClashParticipants();
+  const { data: participantsData, isLoading: loadingParticipants } = useClashParticipants(championship?.id);
+  const registrationsClosed = championship?.status === 'completed' || championship?.status === 'cancelled';
+  const closeDate = firstDate ? new Date(new Date(firstDate).getTime() - 48 * 3600 * 1000) : null;
   const registerMutation = useClashRegister();
 
   const [displayName, setDisplayName] = useState('');
@@ -317,6 +351,7 @@ function RegistrationSection() {
   const total = participantsData?.count ?? 0;
   const maxGrid = participantsData?.max_grid ?? 22;
   const isFull = total >= maxGrid;
+  const noSeason = !seasonLoading && !championship;
 
   async function handleSubmit(e) {
     e.preventDefault();
@@ -347,8 +382,12 @@ function RegistrationSection() {
       <div className={styles.sectionEyebrow}>Iscrizioni</div>
       <h2 className={styles.sectionTitle}>Scegli la tua classe</h2>
       <p className={styles.leadText}>
-        La classe scelta resta fissa per tutte e 3 le gare della serie: nessun cambio classe a
-        stagione avviata. Chiusura iscrizioni: 48 ore prima di Round 1 — entro il 18 settembre 2026.
+        La classe scelta resta fissa per {roundsTotal ? `tutte e ${roundsTotal} le gare` : 'tutte le gare'} della serie: nessun cambio classe a
+        stagione avviata.
+        {closeDate && !registrationsClosed
+          ? ` Chiusura iscrizioni: 48 ore prima di Round 1 — entro il ${formatRaceDate(closeDate.toISOString(), { day: 'numeric', month: 'long', year: 'numeric' })}.`
+          : ''}
+        {registrationsClosed ? ' Le iscrizioni a questa stagione sono chiuse.' : ''}
       </p>
 
       <div className={styles.registrationLayout}>
@@ -416,9 +455,9 @@ function RegistrationSection() {
           <button
             type="submit"
             className={`${styles.btn} ${styles.btnPrimary}`}
-            disabled={registerMutation.isPending || isFull}
+            disabled={registerMutation.isPending || isFull || registrationsClosed || noSeason}
           >
-            {isFull ? 'Griglia al completo' : registerMutation.isPending ? 'Invio…' : 'Iscriviti a Clash of Classes'}
+            {registrationsClosed ? 'Iscrizioni chiuse' : isFull ? 'Griglia al completo' : registerMutation.isPending ? 'Invio…' : 'Iscriviti a Clash of Classes'}
           </button>
 
           {feedback && (
@@ -456,8 +495,8 @@ const STANDINGS_TABS = [
   { id: 'trophy', label: 'Trofeo delle Classi' },
 ];
 
-function StandingsSection() {
-  const { data, isLoading } = useClashStandings();
+function StandingsSection({ championshipId, firstCircuit, seasonLabel }) {
+  const { data, isLoading } = useClashStandings(championshipId);
   const [activeTab, setActiveTab] = useState('gte');
 
   const hasData = !!data && (
@@ -466,7 +505,7 @@ function StandingsSection() {
 
   return (
     <section id="classifiche" className={styles.section}>
-      <div className={styles.sectionEyebrow}>Stagione</div>
+      <div className={styles.sectionEyebrow}>Stagione{seasonLabel ? ` ${seasonLabel}` : ''}</div>
       <h2 className={styles.sectionTitle}>Classifiche</h2>
 
       {isLoading && (
@@ -482,7 +521,7 @@ function StandingsSection() {
           <div className={styles.standingsEmptyIcon}>🏁</div>
           <div className={styles.standingsEmptyTitle}>Stagione in arrivo</div>
           <div className={styles.standingsEmptyText}>
-            Le classifiche saranno disponibili dopo Round 1 — Silverstone.
+            Le classifiche saranno disponibili dopo Round 1{firstCircuit ? ` — ${firstCircuit}` : ''}.
           </div>
         </div>
       )}

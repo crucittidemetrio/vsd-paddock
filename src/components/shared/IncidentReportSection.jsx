@@ -3,6 +3,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { useReportIncident } from '../../hooks/useIncidents';
 import { useRaces } from '../../hooks/useRaces';
 import { useChampionships } from '../../hooks/useChampionships';
+import { useSeason } from '../../hooks/useSeason';
 // Riuso deliberato dello stesso CSS module già condiviso da
 // ChampionshipInterestSection (vedi lì per il perché) — stesse classi
 // form/formGroup/select/textarea/btn, coerenza visiva senza duplicare CSS.
@@ -19,7 +20,7 @@ const INCIDENT_TYPES = [
   'Comportamento antisportivo', 'Lag / contatto di rete', 'Altro',
 ];
 
-const CLASH_ROUNDS = [1, 2, 3];
+const DEFAULT_CLASH_ROUNDS = 3;
 
 /**
  * IncidentReportSection — form unico di segnalazione incidenti (#351,
@@ -55,7 +56,14 @@ export default function IncidentReportSection({
   const [reporterDiscord, setReporterDiscord] = useState('');
   const [against, setAgainst] = useState('');
   const [selectedRaceId, setSelectedRaceId] = useState(raceId || '');
-  const [clashRound, setClashRound] = useState(CLASH_ROUNDS[0]);
+  // #466: i round Clash dipendono dalla stagione attiva (numero di gare del
+  // campionato 'clash-of-classes'), non più fissi a 3.
+  const clashSeason = useSeason('clash-of-classes');
+  const clashRounds = useMemo(
+    () => Array.from({ length: clashSeason.roundsTotal || DEFAULT_CLASH_ROUNDS }, (_v, i) => i + 1),
+    [clashSeason.roundsTotal],
+  );
+  const [clashRound, setClashRound] = useState(1);
   const [track, setTrack] = useState('');
   const [lap, setLap] = useState('');
   const [timeInRace, setTimeInRace] = useState('');
@@ -303,7 +311,7 @@ export default function IncidentReportSection({
                 id={`${anchorId}-round`} className={styles.select}
                 value={clashRound} onChange={e => setClashRound(Number(e.target.value))}
               >
-                {CLASH_ROUNDS.map(r => (
+                {clashRounds.map(r => (
                   <option key={r} value={r}>Round {r}</option>
                 ))}
               </select>

@@ -6,10 +6,10 @@ import { api } from '../api/client';
  * Hook dedicati (dominio custom, non il generico Championships).
  */
 
-export function useClashParticipants() {
+export function useClashParticipants(championshipId) {
   return useQuery({
-    queryKey: ['clash', 'participants'],
-    queryFn: () => api.clash.participantsList(),
+    queryKey: ['clash', 'participants', championshipId || null],
+    queryFn: () => api.clash.participantsList(championshipId),
     staleTime: 30_000,
   });
 }
@@ -54,10 +54,10 @@ export function useClashRemoveParticipant() {
   });
 }
 
-export function useClashStandings() {
+export function useClashStandings(championshipId) {
   return useQuery({
-    queryKey: ['clash', 'standings'],
-    queryFn: () => api.clash.standings(),
+    queryKey: ['clash', 'standings', championshipId || null],
+    queryFn: () => api.clash.standings(championshipId),
     staleTime: 30_000,
   });
 }

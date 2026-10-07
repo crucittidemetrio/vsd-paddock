@@ -98,10 +98,22 @@ Deno.serve(async (req: Request) => {
     let query = supabase.from('race_results').select('*').eq('team_id', me.team_id);
     if (raceIdFilter) query = query.eq('race_id', raceIdFilter);
     if (sessionFilter) query = query.eq('session_type', sessionFilter);
-    if (driverIdFilter) query = query.eq('driver_id', driverIdFilter);
+    if (driverIdFilter) {
+      // il filtro arriva come driver_code: lo traduco in UUID
+      const { data: dm } = await supabase.from('drivers').select('id').eq('team_id', me.team_id).eq('driver_code', driverIdFilter).maybeSingle();
+      query = query.eq('driver_id', dm?.id ?? '00000000-0000-0000-0000-000000000000');
+    }
 
     const { data, error } = await query;
     if (error) return json({ ok: false, error: error.message }, 400);
+
+    // #467: race_results.driver_id è l'UUID interno; il frontend (roster,
+    // driverMap) ragiona in driver_code (VSDxxx). Senza questa traduzione
+    // ogni riga VSD non trovava il pilota e /results restava vuota.
+    const { data: drvRows } = await supabase
+      .from('drivers').select('id, driver_code').eq('team_id', me.team_id);
+    const codeById: Record<string, string> = {};
+    (drvRows ?? []).forEach((d: any) => { if (d.driver_code) codeById[d.id] = d.driver_code; });
 
     let results = (data ?? []).map((r: any) => ({
       result_id: r.result_id,
@@ -113,7 +125,7 @@ Deno.serve(async (req: Request) => {
       car_class: r.car_class || '',
       car_num: r.car_num ?? null,
       car_external_name: r.car_external_name || '',
-      driver_id: r.driver_id || '',
+      driver_id: codeById[r.driver_id] || '',
       driver_name_external: r.driver_name_external || '',
       total_laps: r.total_laps ?? null,
       best_lap_ms: r.best_lap_ms ?? null,

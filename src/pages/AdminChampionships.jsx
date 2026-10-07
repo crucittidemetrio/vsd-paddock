@@ -32,7 +32,7 @@ function fmtDate(iso) {
 function EmptyForm() {
   return {
     name: '', sim: '', season: '', status: 'draft', format: '',
-    start_date: '', end_date: '', notes: '', banner_url: '',
+    start_date: '', end_date: '', notes: '', banner_url: '', series: '',
   };
 }
 
@@ -133,6 +133,16 @@ export default function AdminChampionships() {
               {STATUSES.map(st => (
                 <option key={st.value} value={st.value}>{st.label}</option>
               ))}
+            </select>
+            <select
+              value={form.series}
+              onChange={e => setForm({ ...form, series: e.target.value })}
+              className={styles.input}
+              title="Serie: collega le stagioni dello stesso format"
+            >
+              <option value="">Serie: nessuna</option>
+              <option value="ue144">UE144</option>
+              <option value="clash-of-classes">Clash of Classes</option>
             </select>
             <input
               type="text"

@@ -59,6 +59,15 @@ export default function RaceFormModal({ race, onClose, onSaved }) {
     notes: race?.notes || '',
   }));
 
+  // #466: metadati editoriali per round (calendario pubblico UE144/Clash)
+  const [details, setDetails] = useState(() => {
+    const d = race?.details;
+    if (!d) return {};
+    if (typeof d === 'string') { try { return JSON.parse(d) || {}; } catch { return {}; } }
+    return d;
+  });
+  function setDetail(k, v) { setDetails(d => ({ ...d, [k]: v })); }
+
   const [showOptional, setShowOptional] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -101,6 +110,7 @@ export default function RaceFormModal({ race, onClose, onSaved }) {
     const payload = {
       ...form,
       date: form.date ? new Date(form.date).toISOString() : form.date,
+      details,
       duration_minutes: form.duration_minutes === '' ? '' : Number(form.duration_minutes),
     };
 
@@ -110,7 +120,11 @@ export default function RaceFormModal({ race, onClose, onSaved }) {
         await api.races.update(payload);
         onSaved(`Gara "${form.race_name}" aggiornata.`);
       } else {
-        const res = await api.races.add(payload);
+        const { details: det, ...addPayload } = payload;
+        const res = await api.races.add(addPayload);
+        if (res?.race_id && Object.values(det || {}).some(v => String(v || '').trim())) {
+          await api.races.update({ race_id: res.race_id, details: det });
+        }
         onSaved(`Gara "${form.race_name}" creata (${res?.race_id || ''}).`);
       }
     } catch (e) {
@@ -209,6 +223,19 @@ export default function RaceFormModal({ race, onClose, onSaved }) {
               <label className={`${styles.field} ${styles.fieldWide}`}>
                 <span>Poster URL</span>
                 <input value={form.poster_url} onChange={e => set('poster_url', e.target.value)} />
+              </label>
+              {[
+                ['nation', 'Nazione'], ['location', 'Località'], ['game_time', 'Orario in-game'],
+                ['multiplier', 'Moltiplicatore'], ['air_temp', 'Temp. aria'], ['track_temp', 'Temp. pista'],
+              ].map(([k, label]) => (
+                <label key={k} className={styles.field}>
+                  <span>{label}</span>
+                  <input value={details[k] || ''} onChange={e => setDetail(k, e.target.value)} />
+                </label>
+              ))}
+              <label className={`${styles.field} ${styles.fieldFull}`}>
+                <span>Nota calendario</span>
+                <input value={details.note || ''} onChange={e => setDetail('note', e.target.value)} />
               </label>
               <label className={`${styles.field} ${styles.fieldFull}`}>
                 <span>Note</span>

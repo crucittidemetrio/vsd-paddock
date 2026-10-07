@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useChampionshipStandings } from '../hooks/useChampionshipStandings';
+import { useSeason, raceCircuitName, raceDetails, formatRaceDate } from '../hooks/useSeason';
 import { useDrivers } from '../hooks/useRoster';
 import { usePageMeta } from '../hooks/usePageMeta';
 import { SOCIAL_LINKS } from '../utils/constants';
@@ -8,8 +9,6 @@ import Avatar from '../components/shared/Avatar';
 import { useConsentedDriverPhoto } from '../hooks/useConsent';
 import IncidentReportSection from '../components/shared/IncidentReportSection';
 import styles from './UE144.module.css';
-
-const UE144_CHAMPIONSHIP_ID = 'chmp-lmu-ultimate-endurance-144-2026';
 
 const SIMGRID_URL = 'https://www.thesimgrid.com/championships/26197';
 
@@ -87,74 +86,26 @@ const POINTS = [
 const SERVER_OPEN_TIME = '20:30';
 const RACE_START_TIME = '21:00';
 
-const CALENDAR = [
-  {
-    round: 'R1',
-    circuit: 'Sebring International Raceway',
-    date: '13 Set 2026',
-    time: '14:00',
-    weather: 'Sereno → Notte serena',
-    multiplier: '5×',
-    airTemp: '31°C → 22°C',
-    trackTemp: '42°C → 24°C',
-  },
-  {
-    round: 'R2',
-    circuit: 'Autodromo Enzo e Dino Ferrari',
-    location: 'Imola',
-    date: '27 Set 2026',
-    time: '10:00',
-    weather: 'Nuvoloso → Sereno',
-    multiplier: '2×',
-    airTemp: '17°C → 23°C',
-    trackTemp: '22°C → 28°C',
-  },
-  {
-    round: 'R3',
-    circuit: 'Circuit de Spa-Francorchamps',
-    date: '11 Ott 2026',
-    time: '15:00',
-    weather: 'Sereno → Pioggia → Asciutto',
-    multiplier: '10×',
-    airTemp: '12°C → 6°C → 10°C',
-    trackTemp: '18°C → 14°C → 17°C',
-  },
-  {
-    round: 'R4',
-    circuit: 'Fuji Speedway',
-    date: '25 Ott 2026',
-    time: '13:00',
-    weather: 'Nuvoloso → Nebbia → Sereno',
-    multiplier: '4×',
-    airTemp: '17°C → 12°C → 10°C',
-    trackTemp: '20°C → 16°C → 15°C',
-  },
-  {
-    round: 'R5',
-    circuit: 'Autodromo Nazionale Monza',
-    date: '08 Nov 2026',
-    time: '13:00',
-    weather: 'Sereno e Caldo',
-    multiplier: '2×',
-    airTemp: '15°C → 11°C',
-    trackTemp: '22°C → 16°C',
-  },
-  {
-    round: 'R6',
-    circuit: 'Circuit des 24 Heures du Mans',
-    date: '22 Nov 2026',
-    time: '16:00',
-    weather: 'Variabile → Notte → Alba',
-    multiplier: '10×',
-    airTemp: '8°C → 3°C → 2°C',
-    trackTemp: '14°C → 10°C → 8°C',
-  },
-];
+function monthYear(iso) {
+  return formatRaceDate(iso, { month: 'short', year: 'numeric' });
+}
 
 export default function UE144() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedSeason = searchParams.get('season') || '';
+  const { championship, races, seasons, roundsTotal } = useSeason('ue144', requestedSeason);
+  const championshipId = championship?.id || '';
+  const seasonLabel = championship?.season || '';
+  const calendar = races.map((r, i) => ({
+    round: `R${i + 1}`, circuit: raceCircuitName(r), date: r.date,
+    weather: r.weather, details: raceDetails(r),
+  }));
+  const firstDate = races[0]?.date;
+  const lastDate = races[races.length - 1]?.date;
+
   usePageMeta({
-    title: 'Ultimate Endurance 144\' — Campionato Le Mans Ultimate Aperto a Tutti | VSD',
-    description: 'Campionato endurance gratuito su Le Mans Ultimate (LMU): 6 round, 3 classi (Hypercar, LMP2, LMGT3), gare da 144 minuti a pilota singolo. Aperto a tutti, nessun requisito di membership. Iscriviti su SimGrid.',
+    title: `Ultimate Endurance 144' ${seasonLabel} — Campionato Le Mans Ultimate Aperto a Tutti | VSD`.replace('  ', ' '),
+    description: `Campionato endurance gratuito su Le Mans Ultimate (LMU):${roundsTotal ? ` ${roundsTotal} round,` : ''} 3 classi (Hypercar, LMP2, LMGT3), gare da 144 minuti a pilota singolo. Aperto a tutti, nessun requisito di membership. Iscriviti su SimGrid.`,
   });
 
   return (
@@ -173,8 +124,26 @@ export default function UE144() {
         <div className={styles.heroOpen}>
           <span className={styles.heroBadge}>🌍 Aperto a tutti</span>
           <span className={styles.heroBadge}>👤 Single Driver Only</span>
-          <span className={styles.heroBadge}>📅 6 round · Set–Nov 2026</span>
+          {roundsTotal > 0 && (
+            <span className={styles.heroBadge}>
+              📅 {roundsTotal} round · {monthYear(firstDate)}{lastDate && monthYear(lastDate) !== monthYear(firstDate) ? ` – ${monthYear(lastDate)}` : ''}
+            </span>
+          )}
         </div>
+        {seasons.length > 1 && (
+          <div className={styles.heroActions}>
+            <select
+              aria-label="Stagione"
+              className={styles.select}
+              value={championshipId}
+              onChange={e => setSearchParams(e.target.value ? { season: e.target.value } : {})}
+            >
+              {seasons.map(c => (
+                <option key={c.id} value={c.id}>{c.season || c.name}{c.status === 'active' ? ' (in corso)' : ''}</option>
+              ))}
+            </select>
+          </div>
+        )}
         <div className={styles.heroActions}>
           {SIMGRID_URL ? (
             <a href={SIMGRID_URL} target="_blank" rel="noopener noreferrer"
@@ -273,7 +242,7 @@ export default function UE144() {
 
       {/* ════ CALENDARIO ════ */}
       <section className={styles.section}>
-        <div className={styles.sectionEyebrow}>Stagione 2026 · Start Settembre</div>
+        <div className={styles.sectionEyebrow}>Stagione {seasonLabel}</div>
         <h2 className={styles.sectionTitle}>Calendario ufficiale</h2>
         <p className={styles.calendarNote}>
           Apertura server: <strong>{SERVER_OPEN_TIME} (ora reale)</strong> per prove e
@@ -282,25 +251,31 @@ export default function UE144() {
           all'evoluzione termica del Real Road.
         </p>
         <div className={styles.calendarGrid}>
-          {CALENDAR.map(r => (
+          {calendar.map(r => (
             <div key={r.round} className={styles.calendarCard}>
               <div className={styles.calendarRound}>{r.round}</div>
               <div className={styles.calendarCircuit}>
                 {r.circuit}
-                {r.location && <span className={styles.calendarLocation}> · {r.location}</span>}
+                {r.details.location && <span className={styles.calendarLocation}> · {r.details.location}</span>}
               </div>
               <div className={styles.calendarMeta}>
-                <span className={styles.calendarDate}>📅 {r.date}</span>
-                <span className={styles.calendarTime}>🕐 {r.time} in-game (server {SERVER_OPEN_TIME}, gara {RACE_START_TIME})</span>
+                <span className={styles.calendarDate}>📅 {formatRaceDate(r.date, { day: '2-digit', month: 'short', year: 'numeric' })}</span>
+                {r.details.game_time && (
+                  <span className={styles.calendarTime}>🕐 {r.details.game_time} in-game (server {SERVER_OPEN_TIME}, gara {RACE_START_TIME})</span>
+                )}
               </div>
-              <div className={styles.calendarWeather}>
-                <span className={styles.weatherText}>{r.weather}</span>
-                <span className={styles.weatherMult}>{r.multiplier}</span>
-              </div>
-              <div className={styles.calendarTemps}>
-                <span>🌡️ Aria {r.airTemp}</span>
-                <span>🛣️ Asfalto {r.trackTemp}</span>
-              </div>
+              {(r.weather || r.details.multiplier) && (
+                <div className={styles.calendarWeather}>
+                  {r.weather && <span className={styles.weatherText}>{r.weather}</span>}
+                  {r.details.multiplier && <span className={styles.weatherMult}>{r.details.multiplier}</span>}
+                </div>
+              )}
+              {(r.details.air_temp || r.details.track_temp) && (
+                <div className={styles.calendarTemps}>
+                  {r.details.air_temp && <span>🌡️ Aria {r.details.air_temp}</span>}
+                  {r.details.track_temp && <span>🛣️ Asfalto {r.details.track_temp}</span>}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -326,10 +301,10 @@ export default function UE144() {
       </section>
 
       {/* ════ CLASSIFICA ════ */}
-      <StandingsSection />
+      <StandingsSection championshipId={championshipId} seasonLabel={seasonLabel} />
 
       {/* ════ PROTESTE ════ */}
-      <IncidentReportSection anchorId="proteste" championship={UE144_CHAMPIONSHIP_ID} />
+      <IncidentReportSection anchorId="proteste" championship={championshipId} />
 
       {/* ════ CTA ════ */}
       <section className={styles.cta}>
@@ -376,8 +351,8 @@ const CLASS_META = {
   LMGT3:    { icon: '🟠', color: 'var(--vsd-orange)' },
 };
 
-function StandingsSection() {
-  const { data, isLoading } = useChampionshipStandings(UE144_CHAMPIONSHIP_ID);
+function StandingsSection({ championshipId, seasonLabel }) {
+  const { data, isLoading } = useChampionshipStandings(championshipId);
   const { data: drivers } = useDrivers();
   const [selectedClass, setSelectedClass] = useState(null);
 
@@ -399,7 +374,7 @@ function StandingsSection() {
 
   return (
     <section className={styles.section}>
-      <div className={styles.sectionEyebrow}>Stagione 2026</div>
+      <div className={styles.sectionEyebrow}>Stagione {seasonLabel}</div>
       <h2 className={styles.sectionTitle}>Classifica</h2>
 
       {isLoading && (
@@ -490,7 +465,7 @@ function StandingsSection() {
 
           {/* Link alla pagina completa */}
           <div className={styles.standingsFooter}>
-            <Link to={`/championships/${UE144_CHAMPIONSHIP_ID}`} className={styles.standingsDetailLink}>
+            <Link to={`/championships/${championshipId}`} className={styles.standingsDetailLink}>
               Classifica completa →
             </Link>
           </div>
