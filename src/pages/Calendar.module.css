@@ -348,6 +348,29 @@
 .listSessionRsvp { margin-top: 0.5rem; }
 .listSessionRsvp :global(.rsvp-section) { margin-top: 0; }
 
+/* Deep link ?session= (notifiche Discord): sessione evidenziata in Lista. */
+.listSessionFocus {
+  border-radius: 10px;
+  outline: 2px solid var(--vsd-cyan, #00d4ff);
+  outline-offset: 4px;
+  animation: sessionFocusPulse 1.6s ease-out 2;
+}
+@keyframes sessionFocusPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.45); }
+  100% { box-shadow: 0 0 0 14px rgba(0, 212, 255, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .listSessionFocus { animation: none; }
+}
+.focusNotice {
+  margin: 0 0 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--vsd-border);
+  border-radius: 8px;
+  color: var(--color-text-dim);
+  font-size: 0.875rem;
+}
+
 .sessionTag {
   display: inline-block;
   margin-left: 0.5rem;

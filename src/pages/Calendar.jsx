@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useRaces } from '../hooks/useRaces';
 import { useTeamSessions } from '../hooks/useTeamSessions';
 import { useDrivers } from '../hooks/useRoster';
@@ -142,7 +142,14 @@ function raceChampionship(r) {
 }
 
 export default function Calendar() {
-  const [viewMode, setViewMode] = useState('mese');
+  // Deep link dalle notifiche Discord (nuova sessione / promemoria 24h-2h):
+  // /calendar?session=<id> apre direttamente la Lista, scrollata ed
+  // evidenziata sulla sessione con il pannello RSVP — prima il link
+  // portava alla vista Mese, dove le sessioni non sono cliccabili e la
+  // conferma presenza non si trova.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const focusSessionId = searchParams.get('session');
+  const [viewMode, setViewMode] = useState(() => (focusSessionId ? 'lista' : 'mese'));
   const [eventFilter, setEventFilter] = useState('tutto'); // 'gare' | 'sessioni' | 'tutto'
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const { isAuthenticated, driver } = useAuth();
@@ -150,7 +157,7 @@ export default function Calendar() {
   // Sessioni team (ADR-Team-Scheduler Fase 1): backend richiede auth,
   // quindi il layer resta vuoto per un visitatore non loggato invece di
   // fallire — il Calendario pubblico mostra comunque le gare.
-  const { data: teamSessions } = useTeamSessions({ enabled: isAuthenticated });
+  const { data: teamSessions, isFetched: sessionsFetched } = useTeamSessions({ enabled: isAuthenticated });
   // Roster per il RSVP sessioni (Fase 2) — lettura pubblica, nessun gate.
   const { data: driversRaw } = useDrivers({ includeRemoved: true });
   // Tracks per l'accento visivo per circuito in vista Lista (#418, 25/09/2026):
@@ -213,6 +220,19 @@ export default function Calendar() {
     });
     return map;
   }, [sortedRaces]);
+
+  // Da Mese/Settimana un click su una sessione apre la Lista su di essa
+  // (stesso deep link delle notifiche), dove c'è il pannello RSVP.
+  const focusSession = (id) => {
+    setSearchParams({ session: id });
+    setEventFilter('tutto');
+    setViewMode('lista');
+  };
+
+  const focusMissing = Boolean(
+    focusSessionId && isAuthenticated && sessionsFetched
+    && !(teamSessions || []).some(s => s.session_id === focusSessionId)
+  );
 
   if (isLoading) return <div className={styles.page}>Caricamento calendario…</div>;
 
@@ -329,14 +349,27 @@ export default function Calendar() {
         )}
       </div>
 
+      {focusSessionId && !isAuthenticated && (
+        <div className={styles.focusNotice}>
+          <LoginPrompt feature="la conferma di presenza alla sessione" compact />
+        </div>
+      )}
+      {focusMissing && (
+        <div className={styles.focusNotice}>
+          La sessione del link non è più in calendario (cancellata o spostata).
+        </div>
+      )}
+
       {viewMode === 'mese' && (
-        <MonthView cells={monthCells} racesByDate={racesByDate} tracks={tracks} />
+        <MonthView cells={monthCells} racesByDate={racesByDate} tracks={tracks} onSessionClick={focusSession} />
       )}
       {viewMode === 'settimana' && (
-        <WeekView cells={weekCells} racesByDate={racesByDate} tracks={tracks} />
+        <WeekView cells={weekCells} racesByDate={racesByDate} tracks={tracks} onSessionClick={focusSession} />
       )}
       {viewMode === 'lista' && (
         <ListView
+          focusId={focusMissing ? null : focusSessionId}
+          focusReady={!focusSessionId || focusMissing || !isAuthenticated || sessionsFetched}
           groupedByMonth={groupedByMonth}
           currentDriverId={driver?.driver_id || null}
           drivers={driversRaw}
@@ -348,7 +381,7 @@ export default function Calendar() {
   );
 }
 
-function MonthView({ cells, racesByDate, tracks }) {
+function MonthView({ cells, racesByDate, tracks, onSessionClick }) {
   return (
     <div className={styles.monthGrid}>
       <div className={styles.dayLabels}>
@@ -388,10 +421,19 @@ function MonthView({ cells, racesByDate, tracks }) {
                   const trackLabel = r.kind !== 'session' && r.track_id ? formatTrack(r.track_id, tracks) : null;
                   const chipTitle = trackLabel && trackLabel !== '—' ? `${raceName(r)} — ${trackLabel}` : raceName(r);
                   const chipStyle = trackAccent ? { borderLeft: `3px solid ${trackAccent}` } : undefined;
-                  // Le sessioni team (Fase 1) non hanno pagina dettaglio —
-                  // chip informativo, non navigabile (a differenza delle gare).
+                  // Le sessioni team non hanno pagina dettaglio: il click
+                  // apre la Lista sulla sessione, dove c'è il pannello RSVP.
                   return r.kind === 'session' ? (
-                    <span key={r.race_id} className={chipCls} title={chipTitle} style={chipStyle}>
+                    <span
+                      key={r.race_id}
+                      className={chipCls}
+                      title={`${chipTitle} — conferma presenza`}
+                      style={chipStyle}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => onSessionClick(r.race_id)}
+                      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSessionClick(r.race_id); } }}
+                    >
                       {chipContent}
                     </span>
                   ) : (
@@ -410,7 +452,7 @@ function MonthView({ cells, racesByDate, tracks }) {
   );
 }
 
-function WeekView({ cells, racesByDate, tracks }) {
+function WeekView({ cells, racesByDate, tracks, onSessionClick }) {
   return (
     <div className={styles.weekGridWrap}>
       <div className={styles.weekGrid}>
@@ -454,7 +496,18 @@ function WeekView({ cells, racesByDate, tracks }) {
                     </>
                   );
                   return r.kind === 'session' ? (
-                    <div key={r.race_id} className={cls}>{content}</div>
+                    <div
+                      key={r.race_id}
+                      className={cls}
+                      title={`${raceName(r)} — conferma presenza`}
+                      style={{ cursor: 'pointer' }}
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => onSessionClick(r.race_id)}
+                      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSessionClick(r.race_id); } }}
+                    >
+                      {content}
+                    </div>
                   ) : (
                     <Link key={r.race_id} to={`/race/${r.race_id}`} className={cls} title={raceTitle} style={raceStyle}>{content}</Link>
                   );
@@ -468,7 +521,7 @@ function WeekView({ cells, racesByDate, tracks }) {
   );
 }
 
-function ListView({ groupedByMonth, currentDriverId, drivers, rosterSize, tracks }) {
+function ListView({ focusId, focusReady, groupedByMonth, currentDriverId, drivers, rosterSize, tracks }) {
   // Ascendente: mese più vecchio in alto, più recente in fondo — coerente
   // con l'ordine cronologico di sortedRaces (vedi Calendar()).
   const entries = Array.from(groupedByMonth.entries()).sort((a, b) => a[0].localeCompare(b[0]));
@@ -479,15 +532,20 @@ function ListView({ groupedByMonth, currentDriverId, drivers, rosterSize, tracks
   // essendo l'elenco ordinato in modo ascendente) appena la lista è
   // montata, cosi l'utente non deve scorrere manualmente da tutto lo
   // storico passato — che resta comunque raggiungibile scorrendo in su.
-  let anchorRaceId = null;
+  let todayAnchorId = null;
   outer: for (const [, races] of entries) {
     for (const r of races) {
       if (startOfDay(new Date(r.date)) >= today) {
-        anchorRaceId = r.race_id;
+        todayAnchorId = r.race_id;
         break outer;
       }
     }
   }
+  // Deep link ?session=: si ancora alla sessione richiesta. Finché le
+  // sessioni non sono caricate (focusReady=false) non si scrolla affatto,
+  // altrimenti l'ancora "oggi" consumerebbe l'unico scroll automatico.
+  const focusFound = Boolean(focusId) && entries.some(([, races]) => races.some(r => r.race_id === focusId));
+  const anchorRaceId = focusFound ? focusId : (focusReady ? todayAnchorId : null);
 
   const anchorRef = useRef(null);
   const hasScrolled = useRef(false);
@@ -496,9 +554,9 @@ function ListView({ groupedByMonth, currentDriverId, drivers, rosterSize, tracks
     if (hasScrolled.current) return;
     if (!anchorRaceId) return;
     if (!anchorRef.current) return;
-    anchorRef.current.scrollIntoView({ block: 'start', behavior: 'auto' });
+    anchorRef.current.scrollIntoView({ block: focusFound ? 'center' : 'start', behavior: 'auto' });
     hasScrolled.current = true;
-  }, [anchorRaceId]);
+  }, [anchorRaceId, focusFound]);
 
   if (entries.length === 0) {
     return (
@@ -571,7 +629,11 @@ function ListView({ groupedByMonth, currentDriverId, drivers, rosterSize, tracks
                 // il team deve vedere chi ha confermato a colpo d'occhio.
                 if (isSession) {
                   return (
-                    <div key={r.race_id} ref={isAnchor ? anchorRef : null} className={styles.listSessionGroup}>
+                    <div
+                      key={r.race_id}
+                      ref={isAnchor ? anchorRef : null}
+                      className={`${styles.listSessionGroup} ${focusFound && r.race_id === focusId ? styles.listSessionFocus : ''}`}
+                    >
                       <div className={`${styles.listItem} ${styles.listItemSession} ${isPast ? styles.listItemPast : ''}`}>
                         {inner}
                       </div>

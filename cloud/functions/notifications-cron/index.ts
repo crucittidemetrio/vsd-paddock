@@ -549,7 +549,9 @@ async function runTeamSessionReminderCheck() {
           color: VSD_COLORS.orange,
           timestamp: new Date().toISOString(),
           footer: { text: 'Non hai ancora confermato? Fallo dal Calendario' },
-          url: `${PADDOCK_URL}/calendar`,
+          // Deep link: apre il Calendario in Lista, scrollato ed evidenziato
+          // sulla sessione con il pannello RSVP (Calendar.jsx ?session=).
+          url: `${PADDOCK_URL}/calendar?session=${session.id}`,
         }],
       });
       notified++;

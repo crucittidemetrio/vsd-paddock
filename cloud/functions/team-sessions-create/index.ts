@@ -197,8 +197,10 @@ async function notifySessionCreated(supabase: any, row: any, me: any) {
         color: 0x3b82f6,
         fields,
         timestamp: new Date().toISOString(),
-        footer: { text: 'Rispondi Ci sono / Forse / Non ci sono dal Calendario' },
-        url: 'https://vsd-paddock.vercel.app/calendar',
+        footer: { text: 'Clicca il titolo per rispondere: Ci sarò / Forse / Assente' },
+        // Deep link: Calendario in Lista, scrollato ed evidenziato sulla
+        // sessione con il pannello RSVP (Calendar.jsx ?session=).
+        url: `https://vsd-paddock.vercel.app/calendar?session=${row.id}`,
       }],
     }),
   });
