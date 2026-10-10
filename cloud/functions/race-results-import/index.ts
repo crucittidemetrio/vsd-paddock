@@ -356,11 +356,33 @@ async function sendPushNotification(db: any, driverIds: string[] | null, notific
   } catch (e) { console.log('[notify] sendPushNotification error: ' + e); }
 }
 
-function notifyRaceImported(race: { race_id: string; race_name?: string; sim?: string }, stats: { imported?: number; vsd_matched?: number }) {
+// 10/10/2026 (segnalato da Demetrio, Big 6 R3): foto pilota negli embed
+// podio / traguardo / pilota della gara — stesso gate di best-laps-add
+// (#444): drivers.avatar_url solo con social_consent sulla versione
+// corrente dei consensi. Contesto impostato una volta per richiesta.
+const CONSENT_VERSION = 'v1-2026-08-08'; // allineato a src/pages/ConsentForm.jsx
+let NOTIFY_CTX: { db: any; teamId: string } | null = null;
+
+async function driverThumb(driverId: string | null | undefined): Promise<{ url: string } | undefined> {
+  if (!driverId || !NOTIFY_CTX) return undefined;
+  try {
+    const { db, teamId } = NOTIFY_CTX;
+    const [{ data: d }, { data: c }] = await Promise.all([
+      db.from('drivers').select('avatar_url').eq('id', driverId).maybeSingle(),
+      db.from('consents').select('social_consent').eq('team_id', teamId).eq('driver_id', driverId).eq('consent_version', CONSENT_VERSION).maybeSingle(),
+    ]);
+    return d?.avatar_url && c?.social_consent ? { url: d.avatar_url } : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function notifyRaceImported(race: { race_id: string; race_name?: string; sim?: string }, stats: { imported?: number; vsd_matched?: number; session_type?: string }) {
+  const isQuali = stats.session_type === 'qualifying';
   return postToDiscord({
     embeds: [{
       author: { name: 'VSD Paddock' },
-      title: '🏁 Nuovo risultato gara importato',
+      title: isQuali ? '⏱️ Qualifica importata' : '🏁 Nuovo risultato gara importato',
       description: `**${race.race_name || race.race_id}**`,
       color: VSD_COLORS.cyan,
       fields: [
@@ -381,12 +403,12 @@ async function checkAndNotifyPodiumsLmu(groups: any[], race: { race_id: string; 
       if (!r.position || r.position > 3 || r.dnf || r.dns) continue;
       const matchedId = matchDriverName(r.id, driverNameMap);
       if (!matchedId) continue;
-      await notifyVsdPodium(r.id, r.position, race);
+      await notifyVsdPodium(r.id, r.position, race, await driverThumb(matchedId));
     }
   }
 }
 
-function notifyVsdPodium(driverName: string, position: number, race: { race_id: string; race_name?: string; sim?: string }) {
+function notifyVsdPodium(driverName: string, position: number, race: { race_id: string; race_name?: string; sim?: string }, thumbnail?: { url: string }) {
   const medals: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
   const posLabels: Record<number, string> = { 1: 'P1 — VITTORIA', 2: 'P2', 3: 'P3' };
   return postToDiscord({
@@ -396,6 +418,7 @@ function notifyVsdPodium(driverName: string, position: number, race: { race_id: 
       description: `**${driverName}** ${posLabels[position]}\n${race.race_name || race.race_id}`,
       color: position === 1 ? VSD_COLORS.green : VSD_COLORS.cyan,
       fields: [{ name: 'Sim', value: race.sim || '?', inline: true }],
+      ...(thumbnail ? { thumbnail } : {}),
       timestamp: new Date().toISOString(),
       url: `${PADDOCK_URL}/race/${race.race_id}`,
     }],
@@ -432,6 +455,7 @@ async function notifyMilestoneReached(db: any, driverId: string, displayName: st
       color: VSD_COLORS.orange,
       timestamp: new Date().toISOString(),
       footer: { text: 'Continua così!' },
+      ...(await driverThumb(driverId).then((t) => (t ? { thumbnail: t } : {}))),
       url: `${PADDOCK_URL}/roster/${driverId}`,
     }],
   });
@@ -483,6 +507,7 @@ async function checkAndNotifyRaceMvp(db: any, teamId: string, race: { race_id: s
       color: VSD_COLORS.green,
       timestamp: new Date().toISOString(),
       footer: { text: 'Selezionato su piazzamento normalizzato + pulizia di guida' },
+      ...(await driverThumb(driverId).then((t) => (t ? { thumbnail: t } : {}))),
       url: `${PADDOCK_URL}/race/${race.race_id}`,
     }],
   });
@@ -653,11 +678,12 @@ Deno.serve(async (req: Request) => {
 
     const { data: race, error: raceErr } = await supabase
       .from('races')
-      .select('race_id, sim, track_id, date')
+      .select('race_id, race_name, sim, track_id, date')
       .eq('race_id', String(payload.race_id))
       .maybeSingle();
     if (raceErr) return json({ ok: false, error: raceErr.message }, 400);
     if (!race) return json({ ok: false, error: 'Gara non trovata: ' + payload.race_id }, 404);
+    NOTIFY_CTX = { db: supabase, teamId: me.team_id };
 
     // Mappa nome→driver_id, ristretta al team del chiamante.
     const { data: teamDrivers, error: driversErr } = await supabase
