@@ -248,7 +248,8 @@
   font-variant-numeric: tabular-nums;
 }
 .colPos {
-  width: 56px;
+  width: 80px;
+  white-space: nowrap;
 }
 .posBadge {
   display: inline-flex;
@@ -549,3 +550,15 @@ select.adjInput option { background-color: #0e1729; color: #fff; }
   color: var(--color-text-muted);
   margin-top: 2px;
 }
+/* Variazione posizione dopo l'ultimo round. */
+.posDeltaUp, .posDeltaDown {
+  display: inline-block;
+  margin-left: 6px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  vertical-align: middle;
+}
+.posDeltaUp { color: #34d399; }
+.posDeltaDown { color: #f87171; }

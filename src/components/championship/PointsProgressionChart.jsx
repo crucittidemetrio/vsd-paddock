@@ -1,9 +1,10 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer,
 } from 'recharts';
 import { useChampionshipProgression } from '../../hooks/useChampionshipStandings';
+import { computeRoundPositions, seriesKey } from '../../utils/standingsPositions';
 import './PointsProgressionChart.css';
 
 // Stessa palette di LapsDrilldown: 8 colori distinti, riconoscibili anche
@@ -28,6 +29,25 @@ export default function PointsProgressionChart({ championshipId, className, curr
   const { data, isLoading } = useChampionshipProgression(championshipId, className, {
     enabled: Boolean(championshipId),
   });
+
+  const [mode, setMode] = useState('points'); // 'points' | 'positions'
+
+  // Modalità "Posizioni": una riga per round disputato, valore = posizione
+  // in classifica dopo quel round (asse Y invertito, 1 in alto).
+  const positionData = useMemo(() => {
+    if (!data?.rounds?.length) return { rows: [], fieldSize: 0 };
+    const { completed, positions } = computeRoundPositions(data.series || [], data.rounds);
+    const rows = completed.map((roundIdx, j) => {
+      const r = data.rounds[roundIdx];
+      const row = { label: r.label, date: r.date };
+      (data.series || []).forEach(s => {
+        const name = s.display_name || s.driver_id || '—';
+        row[name] = positions[seriesKey(s)]?.[j] ?? null;
+      });
+      return row;
+    });
+    return { rows, fieldSize: (data.series || []).length };
+  }, [data]);
 
   const chartData = useMemo(() => {
     if (!data?.rounds?.length) return [];
@@ -57,24 +77,47 @@ export default function PointsProgressionChart({ championshipId, className, curr
   return (
     <section className="ppc-section">
       <div className="ppc-section-head">
-        <h3 className="ppc-section-title">Andamento Punti</h3>
+        <h3 className="ppc-section-title">{mode === 'points' ? 'Andamento Punti' : 'Andamento Posizioni'}</h3>
         <span className="ppc-section-meta">{data.class_name}</span>
+        <div className="ppc-toggle" role="tablist">
+          <button type="button" className={mode === 'points' ? 'is-active' : ''} onClick={() => setMode('points')}>Punti</button>
+          <button
+            type="button"
+            className={mode === 'positions' ? 'is-active' : ''}
+            onClick={() => setMode('positions')}
+            disabled={positionData.rows.length < 2}
+          >
+            Posizioni
+          </button>
+        </div>
       </div>
 
       <div className="ppc-card">
         <ResponsiveContainer width="100%" height={320}>
-          <LineChart data={chartData} margin={{ top: 12, right: 24, left: 4, bottom: 4 }}>
+          <LineChart data={mode === 'points' ? chartData : positionData.rows} margin={{ top: 12, right: 24, left: 4, bottom: 4 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
             <XAxis
               dataKey="label"
               stroke="rgba(255,255,255,0.4)"
               fontSize={11}
             />
-            <YAxis
-              stroke="rgba(255,255,255,0.4)"
-              fontSize={11}
-              width={40}
-            />
+            {mode === 'points' ? (
+              <YAxis
+                stroke="rgba(255,255,255,0.4)"
+                fontSize={11}
+                width={40}
+              />
+            ) : (
+              <YAxis
+                reversed
+                allowDecimals={false}
+                domain={[1, Math.max(positionData.fieldSize, 1)]}
+                stroke="rgba(255,255,255,0.4)"
+                fontSize={11}
+                width={40}
+                tickFormatter={(v) => `P${v}`}
+              />
+            )}
             <Tooltip
               contentStyle={{
                 background: '#0a0e1a',
@@ -91,7 +134,7 @@ export default function PointsProgressionChart({ championshipId, className, curr
               return (
                 <Line
                   key={name}
-                  type="monotone"
+                  type={mode === 'points' ? 'monotone' : 'linear'}
                   dataKey={name}
                   stroke={CHART_COLORS[i % CHART_COLORS.length]}
                   strokeWidth={isMine ? 3.5 : 2}

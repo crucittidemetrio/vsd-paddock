@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { useChampionshipStandings } from '../hooks/useChampionshipStandings';
+import { useChampionshipStandings, useChampionshipProgression } from '../hooks/useChampionshipStandings';
+import { lastRoundDeltas } from '../utils/standingsPositions';
 import { useDrivers } from '../hooks/useRoster';
 import { useAuth } from '../hooks/useAuth';
 import Avatar from '../components/shared/Avatar';
@@ -48,6 +49,21 @@ export default function ChampionshipDetail() {
     }
     return data.classes[0];
   }, [data, selectedClass]);
+
+  // Variazione di posizione dopo l'ultimo round (▲▼), dai punti
+  // cumulativi round per round della classe attiva.
+  const { data: progression } = useChampionshipProgression(championshipId, activeClass?.class_name, {
+    enabled: Boolean(activeClass?.class_name) && Boolean(data?.points_configured),
+  });
+  const deltas = useMemo(
+    () => lastRoundDeltas(
+      progression?.series || [],
+      progression?.rounds || [],
+      activeClass?.standings || [],
+      (r) => r.driver_id || r.driver_name_external || r.display_name,
+    ),
+    [progression, activeClass],
+  );
 
   if (isLoading) {
     return (
@@ -202,6 +218,7 @@ export default function ChampionshipDetail() {
                         <tr key={`${s.driver_id || s.driver_name_external}__${s.car_class}`} className={rowClass}>
                           <td className={styles.colPos}>
                             <span className={styles.posBadge}>{s.position}</span>
+                            <PosDelta delta={deltas[s.driver_id || s.driver_name_external || s.display_name]} />
                           </td>
                           <td>
                             <DriverDisplay
@@ -573,5 +590,18 @@ function AdjustmentsPanel({ championshipId, adjustments, classes, rounds, onSave
 
       {msg && <div className={styles.adjMsg}>{msg}</div>}
     </section>
+  );
+}
+
+function PosDelta({ delta }) {
+  if (!delta) return null;
+  const up = delta > 0;
+  return (
+    <span
+      className={up ? styles.posDeltaUp : styles.posDeltaDown}
+      title={`${up ? 'Guadagnate' : 'Perse'} ${Math.abs(delta)} posizioni nell'ultimo round`}
+    >
+      {up ? '▲' : '▼'}{Math.abs(delta)}
+    </span>
   );
 }

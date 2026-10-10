@@ -34,3 +34,27 @@
   border-radius: var(--r-lg);
   padding: var(--sp-5);
 }
+
+/* Toggle Punti / Posizioni */
+.ppc-toggle {
+  margin-left: auto;
+  display: inline-flex;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--r-pill);
+  overflow: hidden;
+}
+.ppc-toggle button {
+  background: transparent;
+  color: var(--color-text-muted);
+  border: 0;
+  padding: 4px 12px;
+  font-size: var(--fs-xs);
+  font-family: var(--font-mono);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.ppc-toggle button.is-active {
+  background: rgba(0, 212, 255, 0.15);
+  color: var(--vsd-cyan);
+}
+.ppc-toggle button:disabled { opacity: 0.4; cursor: default; }
