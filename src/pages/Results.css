@@ -1,0 +1,216 @@
+/* ═══ Risultati — vista per gara (Results.jsx) ═══ */
+
+.rr-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+}
+
+.rr-race {
+  background: var(--vsd-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.rr-race-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: 1px solid var(--color-border);
+  background: linear-gradient(90deg, rgba(0, 217, 255, 0.06), transparent 60%);
+}
+
+.rr-race-name {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  color: var(--color-text);
+  text-decoration: none;
+  letter-spacing: 0.01em;
+}
+.rr-race-name:hover { color: var(--vsd-cyan); }
+
+.rr-race-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2) var(--sp-3);
+  margin-top: var(--sp-1);
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}
+
+.rr-race-link {
+  flex-shrink: 0;
+  font-size: var(--fs-sm);
+  color: var(--vsd-cyan);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.rr-race-link:hover { text-decoration: underline; }
+
+.rr-class + .rr-class { border-top: 1px dashed var(--color-border); }
+
+.rr-class-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-5) var(--sp-1);
+}
+
+.rr-class-label {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-semibold);
+  color: var(--vsd-cyan);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.rr-class-field {
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}
+
+.rr-rows { padding: 0 var(--sp-3) var(--sp-3); }
+
+.rr-row {
+  display: grid;
+  grid-template-columns: 72px minmax(150px, 1.4fr) minmax(80px, 1fr) 110px 120px 64px 56px;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: 8px var(--sp-2);
+  border-radius: var(--r-md);
+}
+.rr-row:hover { background: var(--vsd-bg-hover); }
+
+.rr-row--podium { background: rgba(251, 191, 36, 0.05); }
+
+.rr-row--dnf,
+.rr-row--dns { opacity: 0.55; }
+
+.rr-pos {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  font-family: var(--font-display);
+}
+.rr-pos-num {
+  font-size: var(--fs-md);
+  font-weight: var(--fw-bold);
+  color: var(--color-text);
+}
+.rr-pos-field {
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}
+
+.rr-state {
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  padding: 2px 6px;
+  border-radius: var(--r-sm);
+  border: 1px solid currentColor;
+}
+.rr-state--dnf { color: var(--vsd-orange); }
+.rr-state--dns { color: var(--color-text-muted); }
+
+.rr-driver { min-width: 0; }
+.rr-driver .driver-link-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Barra "dove sei nel gruppo": piena = vincitore, vuota = ultimo. */
+.rr-bar {
+  height: 6px;
+  border-radius: var(--r-pill);
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+.rr-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, rgba(0, 217, 255, 0.35), var(--vsd-cyan));
+}
+.rr-row--podium .rr-bar-fill {
+  background: linear-gradient(90deg, rgba(251, 191, 36, 0.4), #fbbf24);
+}
+
+.rr-gap,
+.rr-laps,
+.rr-pts {
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+  text-align: right;
+  white-space: nowrap;
+}
+.rr-pts { color: var(--color-text); }
+
+.rr-lap {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.rr-fl {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: var(--fw-bold);
+  color: #c084fc;
+  border: 1px solid rgba(192, 132, 252, 0.5);
+  border-radius: var(--r-sm);
+  padding: 0 4px;
+}
+
+.rr-dim { color: var(--color-text-dim); }
+
+/* Skeleton durante il caricamento (niente salto di layout). */
+.rr-skel { padding: var(--sp-4) var(--sp-5); display: flex; flex-direction: column; gap: var(--sp-3); }
+.rr-skel-line {
+  height: 14px;
+  border-radius: var(--r-sm);
+  background: linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.09), rgba(255,255,255,0.04));
+  background-size: 200% 100%;
+  animation: rr-shimmer 1.4s ease-in-out infinite;
+}
+.rr-skel-title { height: 20px; width: 40%; }
+@keyframes rr-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Tablet: via barra e giri. */
+@media (max-width: 900px) {
+  .rr-row { grid-template-columns: 64px minmax(120px, 1fr) 96px 110px 52px; }
+  .rr-bar, .rr-laps { display: none; }
+}
+
+/* Telefono: due righe per pilota. */
+@media (max-width: 640px) {
+  .rr-race-head { flex-direction: column; padding: var(--sp-3) var(--sp-4); }
+  .rr-class-head { padding: var(--sp-3) var(--sp-4) var(--sp-1); }
+  .rr-rows { padding: 0 var(--sp-2) var(--sp-2); }
+  .rr-row {
+    grid-template-columns: 56px 1fr auto;
+    grid-template-areas:
+      "pos driver pts"
+      "pos gap lap";
+    row-gap: 2px;
+  }
+  .rr-pos { grid-area: pos; }
+  .rr-driver { grid-area: driver; }
+  .rr-pts { grid-area: pts; }
+  .rr-gap { grid-area: gap; text-align: left; }
+  .rr-lap { grid-area: lap; }
+}

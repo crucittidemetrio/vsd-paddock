@@ -16,6 +16,7 @@ import { SIM_LIST } from '../utils/constants';
 import { formatTrack } from '../utils/format';
 import './BestLaps.css';
 import './Page.css';
+import './Results.css';
 
 // #468: car_class nei risultati è l'etichetta dell'evento ("LMGT3 PLATINUM",
 // "PRO/AM - LMGT3", "LMGTE AM"...), mentre le opzioni del filtro arrivano
@@ -196,6 +197,52 @@ export default function Results() {
 }
 
 
+// ─── Vista per gara ──────────────────────────────────────────
+// Prima: lista piatta (una riga per pilota per gara, nome gara ripetuto,
+// ordine non per posizione). Ora: un blocco per gara, sotto-blocchi per
+// classe, piloti VSD ordinati per posizione (classificati → DNF → DNS),
+// con posizione/griglia, barra "dove sei nel gruppo", distacco dal
+// vincitore di classe e giro veloce di classe. I riferimenti (field,
+// vincitore, giro veloce) usano l'INTERO schieramento, non solo i VSD.
+
+// "LMGT3 - LMGT3" → "LMGT3", "LMP2 ELMS · LMP2" → "LMP2 ELMS"
+function cleanClassLabel(cls) {
+  const raw = String(cls || '').trim();
+  if (!raw) return '—';
+  const parts = raw.split(/\s+[-·|]\s+/).map(p => p.trim()).filter(Boolean);
+  const out = [];
+  parts.forEach(p => {
+    const up = p.toUpperCase();
+    if (out.some(o => o.toUpperCase() === up || o.toUpperCase().includes(up))) return;
+    out.push(p);
+  });
+  return out.join(' · ');
+}
+
+function isTrue(v) { return v === true || v === 'TRUE'; }
+function num(v) { const n = Number(v); return Number.isFinite(n) && n > 0 ? n : null; }
+
+function fmtGap(ms) {
+  if (ms == null) return '';
+  const s = ms / 1000;
+  if (s < 60) return `+${s.toFixed(3)}`;
+  const m = Math.floor(s / 60);
+  return `+${m}:${(s - m * 60).toFixed(3).padStart(6, '0')}`;
+}
+
+function fmtDate(d) {
+  if (!d) return '';
+  const dt = new Date(d);
+  if (isNaN(dt.getTime())) return String(d).slice(0, 10);
+  return dt.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function rowState(r) {
+  if (isTrue(r.dns)) return 'dns';
+  if (isTrue(r.dnf)) return 'dnf';
+  return 'ok';
+}
+
 function RaceResultsView({ filters, driverMap, tracks }) {
   const { data, isLoading, isError, error } = useRaceResults({
     session_type: 'race',
@@ -212,7 +259,23 @@ function RaceResultsView({ filters, driverMap, tracks }) {
     return m;
   }, [races]);
 
-  const records = useMemo(() => {
+  // Riferimenti per gara+classe calcolati sull'intero schieramento.
+  const classRefs = useMemo(() => {
+    const refs = {};
+    (data?.results || []).forEach(r => {
+      const key = `${r.race_id}__${r.car_class || ''}`;
+      const ref = refs[key] || (refs[key] = { field: 0, winner: null, fastest: null });
+      if (isTrue(r.dns)) return;
+      ref.field += 1;
+      const pos = Number(r.finish_position);
+      if (pos === 1 && !isTrue(r.dnf)) ref.winner = r;
+      const bl = num(r.best_lap_ms);
+      if (bl && (ref.fastest == null || bl < ref.fastest)) ref.fastest = bl;
+    });
+    return refs;
+  }, [data]);
+
+  const groups = useMemo(() => {
     const rows = (data?.results || []).filter(r => r.is_vsd_driver);
     const filtered = rows.filter(r => {
       if (filters.sim !== 'all' && r.sim !== filters.sim) return false;
@@ -220,83 +283,182 @@ function RaceResultsView({ filters, driverMap, tracks }) {
       if (filters.season === 'season2026' && String(r.set_date || '') < '2026-01-01') return false;
       if (filters.track_id !== 'all' && r.track_id !== filters.track_id) return false;
       if (filters.race_class !== 'all' && baseRaceClass(r.car_class) !== filters.race_class) return false;
-      // Ex-VSD nascosti di default (stesso criterio di BestLaps.jsx/TeamRecords):
-      // i piloti attuali si confrontano tra compagni, non con chi ha lasciato
-      // il team. Toggle admin-only per rivelarli, mai dati cancellati.
+      // Ex-VSD nascosti di default (stesso criterio di BestLaps.jsx/TeamRecords).
       if (!filters.includeExVsd && !isActiveDriver(driverMap[r.driver_id])) return false;
       return true;
     });
-    return filtered.sort((a, b) => {
-      const da = String(a.set_date || '');
-      const db = String(b.set_date || '');
-      if (da !== db) return db.localeCompare(da);
-      return String(b.race_id || '').localeCompare(String(a.race_id || ''));
-    });
-  }, [data, filters, driverMap]);
 
-  if (isLoading) return <Prompt text="Caricamento…" />;
+    const byRace = new Map();
+    filtered.forEach(r => {
+      if (!byRace.has(r.race_id)) byRace.set(r.race_id, []);
+      byRace.get(r.race_id).push(r);
+    });
+
+    const stateOrder = { ok: 0, dnf: 1, dns: 2 };
+    const out = [];
+    byRace.forEach((list, raceId) => {
+      const race = raceMap[raceId];
+      const first = list[0];
+      const byClass = new Map();
+      list.forEach(r => {
+        const k = r.car_class || '';
+        if (!byClass.has(k)) byClass.set(k, []);
+        byClass.get(k).push(r);
+      });
+      const classes = Array.from(byClass.entries()).map(([cls, rs]) => ({
+        cls,
+        label: cleanClassLabel(cls),
+        ref: classRefs[`${raceId}__${cls}`] || { field: 0 },
+        rows: rs.sort((a, b) => {
+          const sa = stateOrder[rowState(a)], sb = stateOrder[rowState(b)];
+          if (sa !== sb) return sa - sb;
+          return (Number(a.finish_position) || 999) - (Number(b.finish_position) || 999);
+        }),
+      })).sort((a, b) => a.label.localeCompare(b.label));
+      out.push({
+        raceId,
+        name: race?.race_name || formatTrack(first.track_id, tracks) || raceId,
+        date: race?.date || first.set_date,
+        sim: first.sim,
+        track: formatTrack(first.track_id, tracks),
+        championshipId: race?.championship_id || null,
+        classes,
+        vsdCount: list.length,
+      });
+    });
+    return out.sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+  }, [data, filters, driverMap, raceMap, classRefs, tracks]);
+
+  if (isLoading) return <ResultsSkeleton />;
   if (isError) return <Prompt text={`Errore: ${error?.message || 'sconosciuto'}`} />;
-  if (records.length === 0) {
+  if (groups.length === 0) {
     return (
       <Prompt
         icon="🏁"
         title="Nessuna partecipazione VSD"
-        text="Nessun risultato di gara trovato. I risultati appaiono dopo aver importato il JSON di una gara."
+        text="Nessun risultato di gara trovato con questi filtri. I risultati appaiono dopo aver importato il JSON di una gara."
       />
     );
   }
 
   return (
-    <table className="laps-table">
-      <thead>
-        <tr>
-          <th>Gara</th><th>Sim</th><th>Tracciato</th><th>Classe</th><th>Pilota</th>
-          <th>Pos</th><th>Laps</th><th>Best lap</th><th>Tot time</th><th>Punti</th><th>Status</th>
-        </tr>
-      </thead>
-      <tbody>
-        {records.map(rec => {
-          const drv = driverMap[rec.driver_id];
-          const race = raceMap[rec.race_id];
-          const raceName = race?.race_name || rec.race_id || '—';
-          const isDnf = rec.dnf === 'TRUE' || rec.dnf === true;
-          const isDns = rec.dns === 'TRUE' || rec.dns === true;
-          const position = rec.finish_position;
-          const points = (rec.point_total !== '' && rec.point_total != null) ? rec.point_total : '—';
+    <div className="rr-list">
+      {groups.map(g => (
+        <section key={g.raceId} className="rr-race">
+          <header className="rr-race-head">
+            <div className="rr-race-title">
+              <Link to={`/race/${g.raceId}`} className="rr-race-name">{g.name}</Link>
+              <div className="rr-race-meta">
+                <SimBadge sim={g.sim} />
+                {g.track && g.track !== g.name && <span>{g.track}</span>}
+                <span>{fmtDate(g.date)}</span>
+                <span>{g.vsdCount} {g.vsdCount === 1 ? 'pilota VSD' : 'piloti VSD'}</span>
+              </div>
+            </div>
+            <Link to={`/race/${g.raceId}`} className="rr-race-link">Dettagli gara →</Link>
+          </header>
 
-          return (
-            <tr key={`${rec.race_id}-${rec.driver_id}-${rec.session_type}`}>
-              <td>
-                <Link to={`/race/${rec.race_id}`} className="driver-link">
-                  <span className="driver-link-name">{raceName}</span>
-                </Link>
-              </td>
-              <td><SimBadge sim={rec.sim} /></td>
-              <td>{formatTrack(rec.track_id, tracks)}</td>
-              <td>{rec.car_class ? <span className="lap-badge-record">{rec.car_class}</span> : '—'}</td>
-              <td>
-                {drv ? (
-                  <Link to={`/roster/${drv.driver_id}`} className="driver-link">
-                    <Avatar name={drv.display_name} driverId={drv.driver_id} size={28} photoUrl={resolvePhotoUrl(drv.driver_id, socialFlags)} />
-                    <span className="driver-link-name">{drv.display_name}</span>
-                  </Link>
-                ) : (rec.driver_name_external || rec.driver_id)}
-              </td>
-              <td>{isDns ? '—' : (position != null && position !== '' ? position : '—')}</td>
-              <td>{rec.total_laps !== '' && rec.total_laps != null ? rec.total_laps : '—'}</td>
-              <td>{rec.best_lap_ms ? <LapTime ms={rec.best_lap_ms} /> : '—'}</td>
-              <td><span className="cell-gap">{rec.total_time_display || '—'}</span></td>
-              <td><span className="cell-gap">{points}</span></td>
-              <td>
-                {isDns ? <span className="lap-badge-unclassified">DNS</span>
-                  : isDnf ? <span className="lap-badge-unclassified">DNF</span>
-                  : <span className="lap-badge-record">✓</span>}
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+          {g.classes.map(c => (
+            <div key={c.cls} className="rr-class">
+              <div className="rr-class-head">
+                <span className="rr-class-label">{c.label}</span>
+                {c.ref.field > 0 && <span className="rr-class-field">{c.ref.field} al via</span>}
+              </div>
+              <div className="rr-rows">
+                {c.rows.map(rec => (
+                  <ResultRow
+                    key={`${rec.race_id}-${rec.driver_id || rec.driver_name_external}`}
+                    rec={rec}
+                    ref_={c.ref}
+                    drv={driverMap[rec.driver_id]}
+                    socialFlags={socialFlags}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function ResultRow({ rec, ref_, drv, socialFlags }) {
+  const state = rowState(rec);
+  const pos = Number(rec.finish_position) || null;
+  const field = ref_.field || 0;
+  const pct = state === 'ok' && pos && field > 1 ? Math.max(0.04, 1 - (pos - 1) / (field - 1)) : 0;
+  const medal = state === 'ok' && pos ? ({ 1: '🥇', 2: '🥈', 3: '🥉' }[pos] || null) : null;
+  const bestLap = num(rec.best_lap_ms);
+  const isFastest = bestLap && ref_.fastest && bestLap === ref_.fastest;
+
+  let gap = '';
+  if (state === 'ok' && pos && pos > 1 && ref_.winner) {
+    const wLaps = Number(ref_.winner.total_laps) || 0;
+    const myLaps = Number(rec.total_laps) || 0;
+    if (wLaps && myLaps && myLaps < wLaps) {
+      const d = wLaps - myLaps;
+      gap = `+${d} ${d === 1 ? 'giro' : 'giri'}`;
+    } else {
+      const wt = num(ref_.winner.total_time_ms), mt = num(rec.total_time_ms);
+      if (wt && mt && mt >= wt) gap = fmtGap(mt - wt);
+    }
+  } else if (state === 'ok' && pos === 1) {
+    gap = 'Vincitore';
+  }
+
+  const points = rec.point_total !== '' && rec.point_total != null ? Number(rec.point_total) : null;
+
+  return (
+    <div className={`rr-row rr-row--${state}${pos && pos <= 3 && state === 'ok' ? ' rr-row--podium' : ''}`}>
+      <div className="rr-pos">
+        {state === 'ok' ? (
+          <>
+            <span className="rr-pos-num">{medal || (pos ? `P${pos}` : '—')}</span>
+            {field > 0 && <span className="rr-pos-field">/{field}</span>}
+          </>
+        ) : (
+          <span className={`rr-state rr-state--${state}`}>{state.toUpperCase()}</span>
+        )}
+      </div>
+
+      <div className="rr-driver">
+        {drv ? (
+          <Link to={`/roster/${drv.driver_id}`} className="driver-link">
+            <Avatar name={drv.display_name} driverId={drv.driver_id} size={28} photoUrl={resolvePhotoUrl(drv.driver_id, socialFlags)} />
+            <span className="driver-link-name">{drv.display_name}</span>
+          </Link>
+        ) : (rec.driver_name_external || rec.driver_id)}
+      </div>
+
+      <div className="rr-bar" title={pct ? `Ha battuto ${field - pos} piloti su ${field - 1}` : ''}>
+        {pct > 0 && <span className="rr-bar-fill" style={{ width: `${Math.round(pct * 100)}%` }} />}
+      </div>
+
+      <div className="rr-gap">{gap}</div>
+
+      <div className="rr-lap">
+        {bestLap ? <LapTime ms={bestLap} size="sm" emphasis={isFastest ? 'best' : 'normal'} /> : <span className="rr-dim">—</span>}
+        {isFastest && <span className="rr-fl" title="Giro più veloce della classe">GV</span>}
+      </div>
+
+      <div className="rr-laps">{rec.total_laps ? `${rec.total_laps} giri` : ''}</div>
+
+      <div className={`rr-pts${points ? '' : ' rr-dim'}`}>{points != null ? `${points} pt` : ''}</div>
+    </div>
+  );
+}
+
+function ResultsSkeleton() {
+  return (
+    <div className="rr-list" aria-busy="true">
+      {[0, 1, 2].map(i => (
+        <section key={i} className="rr-race rr-skel">
+          <div className="rr-skel-line rr-skel-title" />
+          {[0, 1, 2].map(j => <div key={j} className="rr-skel-line" />)}
+        </section>
+      ))}
+    </div>
   );
 }
 
