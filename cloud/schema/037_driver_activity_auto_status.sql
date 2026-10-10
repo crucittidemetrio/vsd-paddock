@@ -130,7 +130,8 @@ begin
       when e.status_locked or e.in_grace then e.old_status
       when e.days_idle >= p_inactive_days then 'inactive'
       else 'active'
-    end;
+    end
+   where true;  -- pg_safeupdate (attivo sulle chiamate RPC) rifiuta UPDATE senza WHERE
 
   if p_apply then
     perform set_config('vsd.auto_status', 'on', true);
