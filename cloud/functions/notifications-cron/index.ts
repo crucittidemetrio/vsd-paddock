@@ -653,6 +653,51 @@ async function runRosterActivity() {
   return { ok: true, warnings: warnings.length, changes: (changes ?? []).length, discord: discordNote };
 }
 
+// ─── 10) runResultsMissingCheck — gare passate senza risultati ───
+// 10/10/2026 (Big 6 R3 Silverstone: disputata, vinta in LMGT3, ma senza
+// risultati caricati → classifica falsata senza che nessuno se ne accorga).
+// Ogni giorno: gare non annullate, iniziate da più di 24 h e da meno di 60
+// giorni, senza nessuna riga in race_results (sessione gara). Un avviso
+// allo staff, al massimo uno ogni 7 giorni per gara.
+async function runResultsMissingCheck() {
+  const supa = db();
+  const now = Date.now();
+  const { data: races } = await supa.from('races')
+    .select('race_id, race_name, status, date, championship_id')
+    .neq('status', 'cancelled')
+    .lt('date', new Date(now - 24 * 3600 * 1000).toISOString())
+    .gt('date', new Date(now - 60 * 24 * 3600 * 1000).toISOString());
+  if (!races || races.length === 0) return { ok: true, missing: 0 };
+
+  const ids = races.map((r: any) => r.race_id);
+  const { data: res } = await supa.from('race_results').select('race_id').in('race_id', ids).eq('session_type', 'race');
+  const withResults = new Set((res ?? []).map((r: any) => r.race_id));
+  const missing = races.filter((r: any) => !withResults.has(r.race_id));
+
+  const toNotify: any[] = [];
+  for (const r of missing) {
+    if (!(await alreadyNotified(supa, `results_missing_${r.race_id}`, 7 * 24 * 3600))) toNotify.push(r);
+  }
+  if (toNotify.length === 0) return { ok: true, missing: missing.length, notified: 0 };
+
+  const fmt = (iso: string) => new Date(iso).toLocaleDateString('it-IT', { timeZone: 'Europe/Rome', day: '2-digit', month: '2-digit' });
+  await postAdmin({
+    embeds: [{
+      author: { name: 'VSD Paddock — Risultati' },
+      title: `📥 ${toNotify.length === 1 ? 'Una gara disputata è' : toNotify.length + ' gare disputate sono'} senza risultati`,
+      description: toNotify
+        .sort((a: any, b: any) => String(a.date).localeCompare(String(b.date)))
+        .map((r: any) => `• **${r.race_name || r.race_id}** — ${fmt(r.date)}${r.status === 'scheduled' ? ' _(ancora "In programma": se non si è corsa, annullala)_' : ''}`)
+        .join('\n')
+        .slice(0, 3800) + '\n\nFinché non vengono importati, classifiche, Punti Merito ed Elo non contano queste gare.',
+      color: VSD_COLORS.orange,
+      timestamp: new Date().toISOString(),
+      url: `${PADDOCK_URL}/admin/import-results`,
+    }],
+  });
+  return { ok: true, missing: missing.length, notified: toNotify.length };
+}
+
 const CHECKS: Record<string, () => Promise<unknown>> = {
   birthday: runBirthdayCheck,
   weeklyDigest: runWeeklyDigest,
@@ -663,6 +708,7 @@ const CHECKS: Record<string, () => Promise<unknown>> = {
   upcomingRacePush: runUpcomingRacePushCheck,
   teamSessionReminder: runTeamSessionReminderCheck,
   rosterActivity: runRosterActivity,
+  resultsMissing: runResultsMissingCheck,
 };
 
 const corsHeaders = {

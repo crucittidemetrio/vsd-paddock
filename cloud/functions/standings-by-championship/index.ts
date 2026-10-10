@@ -119,6 +119,13 @@ function aliasClassesDriverIds(classes: any[], codeByUuid: Record<string, string
   }));
 }
 
+// 10/10/2026: segna i round con risultati gara caricati, così il frontend
+// distingue "Disputata" da "Disputata · risultati in attesa" (es. Big 6 R3).
+function markRoundsWithResults(rounds: any[], relevantResults: any[]) {
+  const withResults = new Set(relevantResults.map((r: any) => r.race_id));
+  rounds.forEach((r: any) => { r.has_results = withResults.has(r.race_id); });
+}
+
 // Porting di parseLmuStandingsJson_ — qui `data` è già un array JS
 // (jsonb decodificato da supabase-js), non una stringa da parsare.
 function parseLmuStandingsJson(data: any, driverNameMap: Record<string, string>, driverInfoMap: Record<string, any>) {
@@ -342,6 +349,7 @@ Deno.serve(async (req: Request) => {
             .in('race_id', Array.from(roundRaceIds));
           if (resErr) throw new Error(resErr.message);
           const relevantResults = (allResults ?? []).filter((r: any) => r.session_type === 'race');
+          markRoundsWithResults(rounds, relevantResults);
           // mergeRaceStats confronta contro race_results.driver_id (UUID) —
           // deve girare PRIMA dell'alias sotto, mentre classes ha ancora
           // l'uuid grezzo (vedi nota #456 più sotto sul path computed).
@@ -387,6 +395,7 @@ Deno.serve(async (req: Request) => {
       .in('race_id', Array.from(roundRaceIds));
     if (resErr) return json({ ok: false, error: resErr.message }, 400);
     const relevantResults = (allResults ?? []).filter((r: any) => r.session_type === 'race');
+    markRoundsWithResults(rounds, relevantResults);
 
     const { data: teamDrivers2, error: driversErr2 } = await supabase
       .from('drivers')

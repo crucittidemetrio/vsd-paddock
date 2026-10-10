@@ -24,6 +24,13 @@ const RACE_STATUS_LABEL = {
   cancelled: 'Annullata',
 };
 
+// has_results arriva da standings-by-championship: false = gara chiusa ma
+// risultati non ancora importati (classifica incompleta per quel round).
+function raceStatusLabel(r) {
+  if (r.status === 'completed' && r.has_results === false) return 'Disputata · risultati in attesa';
+  return RACE_STATUS_LABEL[r.status] || r.status;
+}
+
 const STATUS_LABEL = {
   active: 'In corso',
   upcoming: 'Prossimamente',
@@ -366,7 +373,7 @@ function RoundsList({ rounds }) {
               <div className={styles.roundNum}>{label}</div>
               <div className={styles.roundInfo}>
                 <div className={styles.roundName}>{first.race_name}</div>
-                <div className={styles.roundMeta}>{formatDate(first.date)} · {RACE_STATUS_LABEL[first.status] || first.status}</div>
+                <div className={styles.roundMeta}>{formatDate(first.date)} · {raceStatusLabel(first)}</div>
               </div>
             </Link>
           );
@@ -380,7 +387,7 @@ function RoundsList({ rounds }) {
                 <Link key={r.race_id} to={`/race/${r.race_id}`} className={styles.roundSubRace}>
                   <span className={styles.roundSubLabel}>Race {r.race_number}</span>
                   <span className={styles.roundSubName}>{r.race_name}</span>
-                  <span className={styles.roundSubMeta}>{formatDate(r.date)} · {RACE_STATUS_LABEL[r.status] || r.status}</span>
+                  <span className={styles.roundSubMeta}>{formatDate(r.date)} · {raceStatusLabel(r)}</span>
                 </Link>
               ))}
             </div>
