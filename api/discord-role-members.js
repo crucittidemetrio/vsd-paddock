@@ -37,7 +37,10 @@ export default async function handler(request, response) {
   }
 
   const body = request.body || {};
-  const roleName = String(body.roleName || 'Attivo del Mese').trim().toLowerCase();
+  // Confronto "normalizzato": ignora emoji, maiuscole e punteggiatura
+  // (es. "🔥 Attivo del Mese" o "attivo-del-mese" combaciano comunque).
+  const norm = (x) => String(x || '').toLowerCase().normalize('NFD').replace(/[^a-z0-9]+/g, ' ').trim();
+  const roleName = norm(body.roleName || 'Attivo del Mese');
   const discordIds = Array.isArray(body.discordIds)
     ? body.discordIds.map((x) => String(x).trim()).filter((x) => /^\d{15,22}$/.test(x)).slice(0, MAX_IDS)
     : [];
@@ -57,15 +60,20 @@ export default async function handler(request, response) {
     // Trova il primo server del bot che ha un ruolo con quel nome.
     let guildId = null;
     let role = null;
+    const allRoleNames = [];
     for (const g of guilds) {
       const rolesRes = await fetch(DISCORD_API_BASE + '/guilds/' + g.id + '/roles', { headers });
       if (!rolesRes.ok) continue;
       const roles = await rolesRes.json();
-      const match = roles.find((r) => String(r.name || '').trim().toLowerCase() === roleName);
+      const match = roles.find((r) => norm(r.name) === roleName) || roles.find((r) => norm(r.name).includes(roleName));
       if (match) { guildId = g.id; role = match; break; }
+      allRoleNames.push(...roles.map((r) => r.name).filter((n) => n !== '@everyone'));
     }
     if (!role) {
-      return response.status(200).json({ ok: false, error: 'Ruolo "' + roleName + '" non trovato nei server del bot' });
+      return response.status(200).json({
+        ok: false,
+        error: 'Ruolo "' + roleName + '" non trovato nei server del bot. Ruoli presenti: ' + allRoleNames.slice(0, 40).join(', '),
+      });
     }
 
     const withRole = [];
