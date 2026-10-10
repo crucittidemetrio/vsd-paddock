@@ -29,6 +29,33 @@ import './AdminDriverPanel.css';
  * EditProfilePanel. Stesso pattern Vercel Blob già in produzione per
  * Social Manager e galleria foto Gare (#380), via useBlobUpload.
  */
+/**
+ * #467 — stato attivo/inattivo automatico (cloud/schema/037). Solo
+ * lettura: l'override si fa con il select Status qui sotto (Inattivo
+ * manuale = pausa bloccata, Attivo manuale = sblocca e riparte da 60 gg).
+ */
+function ActivityInfo({ driver }) {
+  const [now] = useState(() => Date.now());
+  if (!driver || !('last_activity_at' in driver || 'status_locked' in driver)) return null;
+  const last = driver.last_activity_at ? new Date(driver.last_activity_at) : null;
+  const days = last ? Math.floor((now - last.getTime()) / 86400000) : null;
+  const lastLabel = last
+    ? `${last.toLocaleDateString('it-IT')} (${days} gg fa${driver.last_activity_source ? ` · ${driver.last_activity_source}` : ''})`
+    : 'nessuna attività registrata';
+  return (
+    <div className="adp-field adp-activity">
+      <span className="adp-label">Attività</span>
+      <div className="adp-activity-text">
+        Ultima: {lastLabel}
+        <br />
+        {driver.status_locked
+          ? '🔒 Stato bloccato manualmente: l\'automatismo non lo modifica.'
+          : 'Stato automatico: avviso staff a 45 gg, inattivo a 60 gg, riattivo alla prima attività. Impostando a mano “Inattivo” lo blocchi.'}
+      </div>
+    </div>
+  );
+}
+
 export default function AdminDriverPanel({ driver }) {
   const { isStaff, isAdmin } = useAuth();
   const [open, setOpen] = useState(false);
@@ -139,6 +166,8 @@ export default function AdminDriverPanel({ driver }) {
           </div>
           {uploadError && <div className="adp-error">{uploadError}</div>}
         </div>
+
+        <ActivityInfo driver={driver} />
 
         <div className="adp-field">
           <label className="adp-label" htmlFor="adp-status">Status</label>

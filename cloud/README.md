@@ -376,3 +376,10 @@ cloud/
 - Letture potenzialmente > 1000 righe: usare `fetchAllRows` (paginazione). Data API "Max rows" alzato a 10000.
 - Fix #469: `sponsors-add/update` scrivevano la colonna inesistente `value` (reale: `value_estimate`) →
   nessuno sponsor poteva essere inserito.
+
+## #467 — Stato attivo/inattivo automatico piloti (10/10/2026)
+
+- `cloud/schema/037_driver_activity_auto_status.sql`: colonne `drivers.last_activity_at/last_activity_source/discord_active_at/status_locked/status_manual_at`, funzione `refresh_driver_activity()` (pg_cron `roster-activity-daily`, 04:00 UTC), trigger `trg_drivers_manual_status`.
+- Regola: attività = risultati, best lap (anche inviati), RSVP gara/sessione, equipaggi, fuel/lap data, ruolo Statbot "Attivo del Mese". 45 gg → avviso staff, 60 gg → `inactive`, attività recente → `active`. Esclusi: ingressi < 30 gg, `trial`, ex VSD, account di sistema, `status_locked`.
+- Override staff: Inattivo manuale = lock; Attivo manuale = unlock + 60 gg pieni. Cambi automatici in `audit_log` (`roster.auto_status`).
+- Lunedì 06:00 UTC `notifications-cron?check=rosterActivity`: legge il ruolo Discord via `api/discord-role-members` (Vercel, bot token) e invia il digest al canale staff (`DISCORD_WEBHOOK_ADMIN_URL`), max 1/giorno.

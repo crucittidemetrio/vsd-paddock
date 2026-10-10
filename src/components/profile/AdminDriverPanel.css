@@ -67,6 +67,15 @@
   color: #9aa8c7;
 }
 
+.adp-activity-text {
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: #c9d3ea;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+
 .adp-select {
   background: rgba(0, 0, 0, 0.25);
   border: 1px solid rgba(154, 168, 199, 0.25);
