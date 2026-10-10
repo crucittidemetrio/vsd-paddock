@@ -1,0 +1,122 @@
+# Test di ripristino del backup (avvio solo manuale: Actions → "DB restore test" → Run workflow).
+#
+# NON tocca mai il database di produzione: non usa SUPABASE_DB_URL.
+# Scarica l'ultimo backup riuscito, lo decifra con BACKUP_PASSPHRASE e lo
+# carica in un Postgres 17 usa-e-getta che vive solo dentro questo job.
+# A fine job il container viene distrutto. Risultato: conteggio righe per
+# tabella + elenco errori di ripristino nel riepilogo dell'esecuzione.
+
+name: DB restore test
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: 'ID esecuzione "DB backup" da testare (vuoto = ultimo backup riuscito)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  restore-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      pg:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: restoretest
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: restoretest
+      PGDATABASE: postgres
+    steps:
+      - name: Client psql 17
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-17
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+
+      - name: Scarica il backup
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ inputs.run_id }}
+        run: |
+          if [ -z "$RUN_ID" ]; then
+            RUN_ID=$(gh run list -R "$GITHUB_REPOSITORY" -w db-backup.yml -s success -L 1 --json databaseId -q '.[0].databaseId')
+          fi
+          [ -n "$RUN_ID" ] || { echo "::error::Nessun backup riuscito trovato"; exit 1; }
+          echo "Backup testato: esecuzione $RUN_ID"
+          gh run download "$RUN_ID" -R "$GITHUB_REPOSITORY" -D bk
+          ls -lR bk
+
+      - name: Decifra
+        env:
+          PASS: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -o pipefail
+          ENC=$(find bk -name '*.sql.gz.enc' | head -1)
+          openssl enc -d -aes-256-cbc -pbkdf2 -iter 200000 -pass env:PASS -in "$ENC" | gunzip > dump.sql
+          echo "Dump decifrato: $(wc -c < dump.sql) byte, $(wc -l < dump.sql) righe"
+
+      - name: Prepara un ambiente simile a Supabase (ruoli + estensioni)
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          do $$ begin
+            perform 1;
+            if not exists (select 1 from pg_roles where rolname='anon') then create role anon nologin; end if;
+            if not exists (select 1 from pg_roles where rolname='authenticated') then create role authenticated nologin; end if;
+            if not exists (select 1 from pg_roles where rolname='service_role') then create role service_role nologin bypassrls; end if;
+            if not exists (select 1 from pg_roles where rolname='supabase_auth_admin') then create role supabase_auth_admin nologin; end if;
+          end $$;
+          create schema if not exists extensions;
+          create extension if not exists "uuid-ossp" schema extensions;
+          create extension if not exists pgcrypto schema extensions;
+          create extension if not exists pg_trgm schema extensions;
+          create extension if not exists unaccent schema extensions;
+          SQL
+
+      - name: Ripristina
+        run: |
+          # Senza ON_ERROR_STOP: gli oggetti legati a servizi Supabase assenti
+          # qui (pg_net, pg_cron, vault) possono dare errori attesi; contano i dati.
+          psql -q -f dump.sql > restore.log 2> restore.err || true
+          echo "Errori di ripristino: $(grep -c 'ERROR' restore.err || true)"
+          grep 'ERROR' restore.err | sed 's/^psql:dump.sql:[0-9]*: //' | sort | uniq -c | sort -rn | head -40 || true
+
+      - name: Verifica dati ripristinati
+        run: |
+          psql -q -v ON_ERROR_STOP=1 -At <<'SQL' > counts.txt
+          create or replace function pg_temp.cnt(t regclass) returns bigint language plpgsql as
+            $$ declare n bigint; begin execute format('select count(*) from %s', t) into n; return n; end $$;
+          select format('%-34s %8s', c.relname, pg_temp.cnt(c.oid))
+          from pg_class c join pg_namespace n on n.oid=c.relnamespace
+          where n.nspname='public' and c.relkind='r' order by 1;
+          SQL
+          cat counts.txt
+          {
+            echo "## Test di ripristino"
+            echo
+            echo "Errori durante il ripristino: $(grep -c 'ERROR' restore.err || true)"
+            echo
+            echo '```'
+            cat counts.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          # Le tabelle chiave devono esserci e non essere vuote.
+          for t in drivers races race_results best_laps championships tracks; do
+            n=$(psql -At -c "select count(*) from public.$t" 2>/dev/null || echo 0)
+            echo "$t: $n"
+            [ "${n:-0}" -gt 0 ] || { echo "::error::Tabella $t vuota o mancante dopo il ripristino"; exit 1; }
+          done
+          echo "Ripristino di prova OK"
