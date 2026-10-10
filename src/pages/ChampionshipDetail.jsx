@@ -228,7 +228,8 @@ export default function ChampionshipDetail() {
                         <tr key={`${s.driver_id || s.driver_name_external}__${s.car_class}`} className={rowClass}>
                           <td className={styles.colPos}>
                             <span className={styles.posBadge}>{s.position}</span>
-                            <PosDelta delta={deltas[s.driver_id || s.driver_name_external || s.display_name]} />
+                            {/* niente ▲▼ per chi non ha ancora risultati: la variazione sarebbe solo rumore */}
+                            {s.races_count > 0 && <PosDelta delta={deltas[s.driver_id || s.driver_name_external || s.display_name]} />}
                           </td>
                           <td>
                             <DriverDisplay

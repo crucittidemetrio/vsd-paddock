@@ -390,7 +390,7 @@ Deno.serve(async (req: Request) => {
 
     const { data: teamDrivers2, error: driversErr2 } = await supabase
       .from('drivers')
-      .select('id, display_name')
+      .select('id, display_name, real_name')
       .eq('team_id', me.team_id);
     if (driversErr2) return json({ ok: false, error: driversErr2.message }, 400);
     const driverMap: Record<string, any> = {};
@@ -463,6 +463,35 @@ Deno.serve(async (req: Request) => {
       if (!classesMap[agg.car_class]) classesMap[agg.car_class] = [];
       classesMap[agg.car_class].push({ ...agg, display_name });
     });
+
+    // 10/10/2026: quando il ricalcolo sostituisce uno standings_json LMU
+    // superato, gli iscritti presenti nel JSON ma senza risultati caricati
+    // (es. Demetrio C. in LMGT3 Big 6) sparivano dalla classifica. Si
+    // riaggiungono a 0 punti, in coda alla loro classe.
+    if (Array.isArray(championship.standings_json) && championship.standings_json.length > 0) {
+      const byName: Record<string, string> = {};
+      (teamDrivers2 ?? []).forEach((d: any) => {
+        [d.display_name, d.real_name].forEach((n: any) => { if (n) byName[String(n).toLowerCase().trim()] = d.id; });
+      });
+      (championship.standings_json as any[]).forEach((g: any) => {
+        const cls = String(g?.carClass || 'Unknown').trim();
+        const list = classesMap[cls] || (classesMap[cls] = []);
+        (g?.standings || []).forEach((st: any) => {
+          const name = String(st?.id || '').trim();
+          if (!name) return;
+          const vsdId = byName[name.toLowerCase()] || null;
+          const present = list.some((row: any) => vsdId
+            ? row.driver_id === vsdId
+            : String(row.driver_name_external || '').toLowerCase().trim() === name.toLowerCase());
+          if (present) return;
+          list.push({
+            driver_id: vsdId || '', driver_name_external: vsdId ? '' : name, is_vsd: !!vsdId, car_class: cls,
+            display_name: vsdId ? (driverMap[vsdId]?.display_name || name) : name,
+            total_points: 0, races_count: 0, wins: 0, podiums: 0, best_finish: null, dnfs: 0, dns_count: 0,
+          });
+        });
+      });
+    }
 
     const classes = Object.keys(classesMap)
       .sort((a, b) => {
