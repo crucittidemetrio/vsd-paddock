@@ -12,13 +12,17 @@ import LoginPrompt from './components/auth/LoginPrompt';
 import Login from './pages/Login';
 import AuthCallback from './pages/AuthCallback';
 import Landing from './pages/Landing';
-import Roster from './pages/Roster';
-import Race from './pages/Race';
-import BestLaps from './pages/BestLaps';
-import AdminRaceStints from './pages/AdminRaceStints';
-import Results from './pages/Results';
-import Calendar from './pages/Calendar';
-import ChampionshipsList from './pages/ChampionshipsList';
+
+// Prima erano eager: il bundle iniziale includeva anche i grafici
+// (recharts, ~330 KB) e le pagine admin, scaricati e interpretati a
+// ogni primo accesso — su telefono si sentiva (es. /roster lento).
+const Roster            = lazy(() => import('./pages/Roster'));
+const Race              = lazy(() => import('./pages/Race'));
+const BestLaps          = lazy(() => import('./pages/BestLaps'));
+const AdminRaceStints   = lazy(() => import('./pages/AdminRaceStints'));
+const Results           = lazy(() => import('./pages/Results'));
+const Calendar          = lazy(() => import('./pages/Calendar'));
+const ChampionshipsList = lazy(() => import('./pages/ChampionshipsList'));
 
 // ── Lazy: pagine deep, secondarie, admin ──────────────────────
 const JoinUs              = lazy(() => import('./pages/JoinUs'));

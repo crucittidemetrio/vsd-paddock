@@ -38,6 +38,10 @@ export default function Avatar({ name, driverId, size = 40, ring = false, photoU
         title={name}
         className={`avatar avatar-photo${ring ? ' avatar-ring' : ''}`}
         style={{ width: size, height: size }}
+        width={size}
+        height={size}
+        loading="lazy"
+        decoding="async"
       />
     );
   }
