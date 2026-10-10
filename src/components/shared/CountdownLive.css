@@ -55,3 +55,13 @@
   letter-spacing: 0.2em;
   text-transform: uppercase;
 }
+
+/* Mobile: il countdown grande (4 blocchi da 80px + separatori 48px)
+   superava i 390px e faceva scorrere la Home in orizzontale. */
+@media (max-width: 480px) {
+  .cd-lg { gap: var(--sp-2); }
+  .cd-lg .cd-num { font-size: 40px; }
+  .cd-lg .cd-sep { font-size: 28px; padding-top: 4px; }
+  .cd-lg .cd-unit { min-width: 52px; }
+  .cd-md .cd-unit { min-width: 44px; }
+}

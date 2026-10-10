@@ -14,8 +14,36 @@ import { api } from '../api/client';
 export function useAcademyRanking(sim) {
   return useQuery({
     queryKey: ['academy', 'ranking', sim],
-    queryFn: () => api.academy.ranking(sim),
+    queryFn: async () => {
+      const data = await api.academy.ranking(sim);
+      writeCache(sim, data);
+      return data;
+    },
     enabled: Boolean(sim),
     staleTime: 60_000,
+    // Il calcolo lato server impiega 5-8 s a freddo: si mostra subito
+    // l'ultima classifica vista su questo dispositivo (placeholder, non
+    // salvata in cache react-query) e la si sostituisce appena arriva quella
+    // aggiornata. isPlaceholderData permette alla pagina di segnalarlo.
+    placeholderData: () => readCache(sim),
   });
+}
+
+const CACHE_PREFIX = 'vsd_academy_ranking_v1:';
+
+function readCache(sim) {
+  try {
+    const raw = localStorage.getItem(CACHE_PREFIX + sim);
+    return raw ? JSON.parse(raw) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeCache(sim, data) {
+  try {
+    if (data) localStorage.setItem(CACHE_PREFIX + sim, JSON.stringify(data));
+  } catch {
+    /* quota piena o storage non disponibile: si ignora */
+  }
 }

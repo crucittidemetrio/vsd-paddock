@@ -59,7 +59,8 @@
 /* ========== GRID ========== */
 .races-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  /* min(): sotto i 380px di viewport la card sforava di qualche pixel */
+  grid-template-columns: repeat(auto-fill, minmax(min(380px, 100%), 1fr));
   gap: var(--sp-4);
 }
 

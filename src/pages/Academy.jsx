@@ -182,6 +182,9 @@ export default function Academy() {
       </div>
 
       {rankingQuery.isLoading && <div className={styles.loading}>Caricamento…</div>}
+      {rankingQuery.isPlaceholderData && (
+        <div className={styles.loading} role="status">Aggiornamento classifica in corso — mostrata l'ultima versione salvata…</div>
+      )}
       {rankingQuery.error && (
         <div className={styles.errorBox}>Errore: {rankingQuery.error.message}</div>
       )}

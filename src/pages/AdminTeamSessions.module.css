@@ -211,6 +211,9 @@
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.75rem;
   color: var(--color-text-dim);
+  /* titoli gara lunghi ("in preparazione a …") andavano a capo solo a 555px */
+  overflow-wrap: anywhere;
+  min-width: 0;
 }
 
 .rowSub {
