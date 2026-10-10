@@ -706,3 +706,32 @@
   background: var(--vsd-bg-hover);
   border-radius: var(--r-sm);
 }
+/* ========== LAYOUT A DUE COLONNE (schermi larghi) ========== */
+.mc-columns {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-7);
+}
+.mc-col-main,
+.mc-col-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-7);
+  min-width: 0;
+}
+
+@media (min-width: 1280px) {
+  .mc-columns {
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+    align-items: start;
+    gap: var(--sp-6);
+  }
+  /* Nella colonna laterale feed e staff desk vanno impilati. */
+  .mc-col-side .mc-bottom-grid { grid-template-columns: 1fr; }
+}
+
+.mc-lr-race {
+  font-size: var(--fs-sm);
+  color: var(--color-text-muted);
+}

@@ -194,6 +194,7 @@ export default function Academy() {
           <div className={styles.tableHeaderRow}>
             <span>#</span>
             <span>Pilota</span>
+            <span className={styles.barHead}>Distacco dal primo</span>
             <span>VR</span>
             <span>Gare</span>
           </div>
@@ -215,6 +216,17 @@ export default function Academy() {
                     {BADGE_LABELS[r.badge]}
                   </span>
                 )}
+              </span>
+              <span className={styles.barCell}>
+                <span className={styles.barTrack}>
+                  <span
+                    className={`${styles.barFill} ${idx < 3 ? styles.barFillTop : ''}`}
+                    style={{ width: `${Math.max(2, Math.round((Number(r.vr) || 0) / (Number(ranking[0]?.vr) || 1) * 100))}%` }}
+                  />
+                </span>
+                <span className={styles.barGap}>
+                  {idx === 0 ? 'Leader' : `−${(Number(ranking[0]?.vr) || 0) - (Number(r.vr) || 0)}`}
+                </span>
               </span>
               <span className={styles.vrCell}>
                 <span className={styles.vr}>{r.vr}</span>

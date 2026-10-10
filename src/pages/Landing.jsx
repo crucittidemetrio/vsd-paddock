@@ -206,6 +206,11 @@ const feed = useMemo(() => {
         </div>
       </section>
 
+      {/* Due colonne su schermi larghi: a sinistra "la mia gara", a destra
+          il team. Sotto i 1280px torna una colonna sola (ordine invariato). */}
+      <div className="mc-columns">
+      <div className="mc-col-main">
+
       {/* FORMA RECENTE */}
       {myRaceResults.length > 0 && (
         <FormaRecente results={myRaceResults.slice(0, 5)} racesById={racesById} tracks={tracks} />
@@ -267,12 +272,9 @@ const feed = useMemo(() => {
             <div className="mc-section-eyebrow">ULTIMO RISULTATO</div>
             <Link to={`/race/${lastResult.race_id}`} className="mc-section-link">Vedi gara →</Link>
           </div>
-          <LastResultCard result={lastResult} tracks={tracks} />
+          <LastResultCard result={lastResult} tracks={tracks} raceName={racesById?.[lastResult.race_id]?.race_name} />
         </section>
       )}
-
-      {/* LE TUE CLASSI DOMINANTI — montato dopo il caricamento aggregato così trova la cache calda */}
-      {!ldLoading && <MyDominantClassesWidget />}
 
       {/* LE MIE BEST LAPS */}
       {myUniqueLaps.length > 0 && (
@@ -309,7 +311,13 @@ const feed = useMemo(() => {
         </section>
       )}
 
-      {/* DUE COLONNE: ACTIVITY FEED + STAFF BOX */}
+      </div>
+
+      <div className="mc-col-side">
+      {/* LE TUE CLASSI DOMINANTI — montato dopo il caricamento aggregato così trova la cache calda */}
+      {!ldLoading && <MyDominantClassesWidget />}
+
+      {/* ACTIVITY FEED + STAFF BOX (colonna laterale) */}
       <div className="mc-bottom-grid">
         {/* ACTIVITY FEED */}
         <section className="mc-activity">
@@ -393,6 +401,8 @@ const feed = useMemo(() => {
           </section>
         )}
       </div>
+      </div>
+      </div>
     </div>
   );
 }
@@ -458,7 +468,7 @@ function MiniInfo({ label, value }) {
   );
 }
 
-function LastResultCard({ result, tracks }) {
+function LastResultCard({ result, tracks, raceName }) {
   const isDns = result.dns;
   const isDnf = result.dnf;
   const pos = result.finish_position;
@@ -483,7 +493,9 @@ function LastResultCard({ result, tracks }) {
           <span className="mc-lr-track">{formatTrack(result.track_id, tracks)}</span>
           {result.sim && <SimBadge sim={result.sim} size="sm" />}
         </div>
+        {raceName && <div className="mc-lr-race">{raceName}</div>}
         <div className="mc-lr-date">{formatDate(result.set_date)}</div>
+        {isDns && <div className="mc-lr-date">Non partito — nessun tempo registrato.</div>}
         {!isDns && (
           <div className="mc-lr-stats">
             <MiniInfo label="Best Lap" value={result.best_lap_display || '—'} />
