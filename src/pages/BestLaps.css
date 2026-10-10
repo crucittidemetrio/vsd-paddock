@@ -537,3 +537,8 @@
   font-weight: var(--fw-semibold);
   white-space: nowrap;
 }
+/* Filtri su telefono: i select non devono uscire dal riquadro. */
+@media (max-width: 640px) {
+  .filter-select { min-width: 0; width: 100%; max-width: 100%; }
+  .filter-group { min-width: 0; width: 100%; }
+}
