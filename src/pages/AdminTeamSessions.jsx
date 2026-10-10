@@ -32,7 +32,7 @@ function fmtDateTime(iso) {
 function EmptyForm() {
   return {
     type: 'allenamento_collettivo', title: '', datetime_start: '', duration_min: '60',
-    track_id: '', sim: '', discord_channel: '', notes: '', event_id: '',
+    track_id: '', sim: '', discord_channel: '', notes: '', event_id: '', championship_id: '',
   };
 }
 
@@ -88,6 +88,7 @@ export default function AdminTeamSessions() {
       discord_channel: form.discord_channel || undefined,
       notes: form.notes || undefined,
       event_id: form.event_id || undefined,
+      championship_id: form.championship_id || undefined,
     };
     createMutation.mutate(payload, {
       onSuccess: () => {
@@ -173,7 +174,13 @@ export default function AdminTeamSessions() {
             <select
               className={styles.select}
               value={form.sim}
-              onChange={e => setForm({ ...form, sim: e.target.value })}
+              onChange={e => {
+                const sim = e.target.value;
+                const track = (tracksQuery.data || []).find(t => t.track_id === form.track_id);
+                // Pista di un altro simulatore → si azzera (prima si poteva
+                // salvare una sessione LMU con un circuito iRacing).
+                setForm({ ...form, sim, track_id: track && sim && track.sim !== sim ? '' : form.track_id });
+              }}
             >
               {SIMS.map(s => (
                 <option key={s} value={s}>{s || 'Sim (opzionale)'}</option>
@@ -185,9 +192,13 @@ export default function AdminTeamSessions() {
               onChange={e => setForm({ ...form, track_id: e.target.value })}
             >
               <option value="">Pista (opzionale)</option>
-              {(tracksQuery.data || []).map(t => (
-                <option key={t.track_id} value={t.track_id}>{t.track_name || t.track_id}</option>
-              ))}
+              {(tracksQuery.data || [])
+                .filter(t => !form.sim || t.sim === form.sim)
+                .map(t => (
+                  <option key={t.track_id} value={t.track_id}>
+                    {t.track_name || t.track_id}{!form.sim && t.sim ? ` (${t.sim})` : ''}
+                  </option>
+                ))}
             </select>
             <input
               type="text"
@@ -199,7 +210,15 @@ export default function AdminTeamSessions() {
             <select
               className={styles.select}
               value={form.event_id}
-              onChange={e => setForm({ ...form, event_id: e.target.value })}
+              onChange={e => {
+                const race = racesById.get(e.target.value);
+                // Collegando una gara si ereditano sim, pista e campionato:
+                // la sessione compare sotto il campionato giusto e la
+                // notifica Discord riporta i dati corretti.
+                setForm(race
+                  ? { ...form, event_id: race.race_id, sim: race.sim || form.sim, track_id: race.track_id || form.track_id, championship_id: race.championship_id || '' }
+                  : { ...form, event_id: '', championship_id: '' });
+              }}
             >
               <option value="">Collegata a una gara (opzionale)</option>
               {upcomingRaces.map(r => (

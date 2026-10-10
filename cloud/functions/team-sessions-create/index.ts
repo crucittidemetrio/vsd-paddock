@@ -17,11 +17,13 @@
 // qui non permetterebbe a un driver non-staff di creare una
 // "riunione", perché il DB stesso la rifiuterebbe.
 //
-// Le notifiche Discord (Fase 3 nel sistema reale: notifyTeamSessionCreated_)
-// non sono portate in questa Edge Function — restano una differenza
-// nota rispetto al sistema reale finché non si decide come/se
-// riprodurle su questo stack (probabile Supabase Webhook o trigger
-// separato, non logica da duplicare qui).
+// Notifica Discord alla creazione (10/10/2026, segnalato da Demetrio:
+// "non dovrebbe arrivare la notifica con la richiesta di adesione?"):
+// porting di notifyTeamSessionCreated_ (TeamSessionsScheduler.js) — era
+// rimasta fuori dal cutover. Stesso canale (#gestione-gare, webhook
+// DISCORD_WEBHOOK_GESTIONE_GARE_URL già usato dai promemoria 24h/2h di
+// notifications-cron). Non bloccante: un errore Discord non annulla la
+// sessione già creata.
 //
 // FIX #331: risposta allineata allo stesso contratto di
 // team-sessions-list — session_id alias di id, created_by come
@@ -142,11 +144,65 @@ Deno.serve(async (req: Request) => {
 
     const session = data ? { ...data, session_id: data.id, created_by: me.driver_code } : data;
 
+    if (data) {
+      try { await notifySessionCreated(supabase, data, me); }
+      catch (e) { console.log('[team-sessions-create] notifica Discord fallita: ' + e); }
+    }
+
     return json({ ok: true, data: { session } });
   } catch (e) {
     return json({ ok: false, error: String(e) }, 500);
   }
 });
+
+const SESSION_TYPE_LABELS: Record<string, string> = {
+  allenamento_libero: 'Allenamento libero',
+  allenamento_collettivo: 'Allenamento collettivo',
+  qualifica: 'Qualifica/Prova campionato',
+  evento_esterno: 'Evento esterno',
+  riunione: 'Riunione team',
+};
+
+async function notifySessionCreated(supabase: any, row: any, me: any) {
+  const url = Deno.env.get('DISCORD_WEBHOOK_GESTIONE_GARE_URL');
+  if (!url) return;
+
+  const when = new Date(row.datetime_start).toLocaleString('it-IT', {
+    timeZone: 'Europe/Rome', weekday: 'short', day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+  });
+  const fields: any[] = [
+    { name: 'Tipo', value: SESSION_TYPE_LABELS[row.type] || row.type, inline: true },
+    { name: 'Quando', value: when, inline: true },
+  ];
+  if (row.duration_min) fields.push({ name: 'Durata', value: `${row.duration_min} min`, inline: true });
+  if (row.sim) fields.push({ name: 'Sim', value: String(row.sim), inline: true });
+  if (row.track_id) {
+    const { data: t } = await supabase.from('tracks').select('track_name').eq('track_id', row.track_id).maybeSingle();
+    fields.push({ name: 'Circuito', value: t?.track_name || String(row.track_id), inline: true });
+  }
+  if (row.championship_id) {
+    const { data: c } = await supabase.from('championships').select('name').eq('id', row.championship_id).maybeSingle();
+    if (c?.name) fields.push({ name: 'Campionato', value: c.name, inline: true });
+  }
+  if (row.discord_channel) fields.push({ name: 'Canale vocale', value: String(row.discord_channel), inline: true });
+
+  await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      embeds: [{
+        author: { name: `VSD Paddock — creata da ${me.display_name || me.driver_code}` },
+        title: '📅 Nuova sessione team — conferma la tua presenza',
+        description: `**${row.title}**${row.notes ? `\n${row.notes}` : ''}`,
+        color: 0x3b82f6,
+        fields,
+        timestamp: new Date().toISOString(),
+        footer: { text: 'Rispondi Ci sono / Forse / Non ci sono dal Calendario' },
+        url: 'https://vsd-paddock.vercel.app/calendar',
+      }],
+    }),
+  });
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
