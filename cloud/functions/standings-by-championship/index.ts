@@ -338,7 +338,7 @@ Deno.serve(async (req: Request) => {
         if (rounds.length > 0) {
           const { data: allResults, error: resErr } = await supabase
             .from('race_results')
-            .select('race_id, session_type, driver_id, driver_name_external, is_vsd_driver, finish_position, dnf, dns')
+            .select('race_id, session_type, driver_id, driver_name_external, is_vsd_driver, finish_position, dnf, dns, point_total')
             .in('race_id', Array.from(roundRaceIds));
           if (resErr) throw new Error(resErr.message);
           const relevantResults = (allResults ?? []).filter((r: any) => r.session_type === 'race');
@@ -346,6 +346,19 @@ Deno.serve(async (req: Request) => {
           // deve girare PRIMA dell'alias sotto, mentre classes ha ancora
           // l'uuid grezzo (vedi nota #456 più sotto sul path computed).
           if (relevantResults.length > 0) classes = mergeRaceStats(classes, relevantResults);
+
+          // 10/10/2026 (Big 6): lo standings_json importato da LMU resta
+          // fermo al round in cui è stato caricato, mentre i risultati gara
+          // continuano ad arrivare → classifica "vecchia" (es. 20 pt con 2
+          // vittorie) e ▲▼ incoerenti. Se race_results copre più round del
+          // JSON e ha punti valorizzati, il JSON è superato: si ricalcola.
+          const jsonRounds = Math.max(0, ...(championship.standings_json as any[]).flatMap((g: any) =>
+            (g.standings || []).map((st: any) => (Array.isArray(st.races) ? st.races : []).filter((r: any) => r && r.position != null).length)));
+          const resultRounds = new Set(relevantResults.map((r: any) => r.race_id)).size;
+          const hasPoints = relevantResults.some((r: any) => Number(r.point_total) > 0);
+          if (hasPoints && jsonRounds > 0 && resultRounds > jsonRounds) {
+            throw new Error(`standings_json superato: copre ${jsonRounds} round, risultati su ${resultRounds}`);
+          }
         }
 
         // #456 (30/09/2026): alias PRIMA di applyAdjustments, non dopo —

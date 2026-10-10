@@ -149,7 +149,7 @@ function RaceCard({ race, driverMap, tracks, isPast, myResult }) {
       <div className="race-card-head">
         <div className="race-card-meta">
           <SimBadge sim={race.sim} variant="solid" size="sm" />
-          <span className="race-series">{race.series}</span>
+          <span className="race-series">{race.championship_name || race.series}</span>
           {race.round > 0 && <span className="race-round">R{race.round}</span>}
         </div>
         {!isPast && race.status === 'in_progress' && (
@@ -172,7 +172,7 @@ function RaceCard({ race, driverMap, tracks, isPast, myResult }) {
         )}
       </div>
 
-      <div className="race-card-title">{race.title}</div>
+      <div className="race-card-title">{race.race_name || race.title}</div>
 
       <div className="race-info-grid">
         <InfoCell label="Tracciato" value={formatTrack(race.track_id, tracks)} />

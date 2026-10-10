@@ -229,11 +229,13 @@ const feed = useMemo(() => {
           <Link to={`/race/${nextRace.race_id}`} className="mc-next-card">
             <div className="mc-next-meta">
               <SimBadge sim={nextRace.sim} variant="solid" />
-              <span className="mc-next-series">{nextRace.series}</span>
+              <span className="mc-next-series">{nextRace.championship_name || nextRace.series}</span>
               {nextRace.round > 0 && <span className="race-round">R{nextRace.round}</span>}
             </div>
 
-            <div className="mc-next-title">{nextRace.title}</div>
+            {/* Supabase espone race_name/championship_name; title/series erano i
+                campi legacy Apps Script (la card mostrava solo "R4"). */}
+            <div className="mc-next-title">{nextRace.race_name || nextRace.title}</div>
 
             <div className="mc-next-countdown">
               <CountdownLive targetIso={nextRace.date} size="lg" />
@@ -430,7 +432,7 @@ function FormaRecente({ results, racesById, tracks }) {
           } else if (isDns || isDnf) {
             cls = 'mc-fb-dnf';
           }
-          const raceName = racesById[r.race_id]?.title || formatTrack(r.track_id, tracks) || r.race_id;
+          const raceName = racesById[r.race_id]?.race_name || racesById[r.race_id]?.title || formatTrack(r.track_id, tracks) || r.race_id;
           const shortName = raceName.length > 14 ? raceName.slice(0, 13) + '…' : raceName;
           return (
             <Link

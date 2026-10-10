@@ -49,9 +49,13 @@ export default function PointsProgressionChart({ championshipId, className, curr
     return { rows, fieldSize: (data.series || []).length };
   }, [data]);
 
+  // Solo round già disputati (almeno un punto assegnato): prima i round
+  // futuri comparivano come linee piatte fino a fine stagione.
   const chartData = useMemo(() => {
     if (!data?.rounds?.length) return [];
-    return data.rounds.map((r, i) => {
+    const { completed } = computeRoundPositions(data.series || [], data.rounds);
+    return completed.map((i) => {
+      const r = data.rounds[i];
       const row = { label: r.label, date: r.date };
       (data.series || []).forEach(s => {
         const name = s.display_name || s.driver_id || '—';
@@ -72,7 +76,7 @@ export default function PointsProgressionChart({ championshipId, className, curr
     return top;
   }, [data, currentDriverId]);
 
-  if (isLoading || !data?.rounds || data.rounds.length < 2 || shownSeries.length === 0) return null;
+  if (isLoading || !data?.rounds || chartData.length < 2 || shownSeries.length === 0) return null;
 
   return (
     <section className="ppc-section">

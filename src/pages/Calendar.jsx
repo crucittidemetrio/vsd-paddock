@@ -369,7 +369,9 @@ export default function Calendar() {
       {viewMode === 'lista' && (
         <ListView
           focusId={focusMissing ? null : focusSessionId}
-          focusReady={!focusSessionId || focusMissing || !isAuthenticated || sessionsFetched}
+          // Sessione del link sparita → nessuno scroll automatico, così l'avviso
+          // in cima resta visibile invece di saltare alla gara di oggi.
+          focusReady={!focusSessionId || !isAuthenticated || (sessionsFetched && !focusMissing)}
           groupedByMonth={groupedByMonth}
           currentDriverId={driver?.driver_id || null}
           drivers={driversRaw}
