@@ -13,7 +13,7 @@
 
 .status-label {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   font-weight: var(--fw-medium);

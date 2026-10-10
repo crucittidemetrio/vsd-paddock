@@ -71,7 +71,7 @@
 
 .kpiLabel {
   color: rgba(255, 255, 255, 0.6);
-  font-size: 11px;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 1.5px;
 }
@@ -153,7 +153,7 @@
 .skillRank {
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--color-text-dim);
   text-align: center;
 }
 
@@ -173,8 +173,8 @@
 
 .skillMeta {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
 }
 
 .skillScore {
@@ -190,7 +190,7 @@
    non un unico numero. Colore scala con la gravità, non solo testo. */
 .skillIncidents {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   font-weight: 600;
   padding: 3px 8px;
   border-radius: 10px;
@@ -199,7 +199,7 @@
 }
 
 .skillIncidentsNone {
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--color-text-dim);
   background: rgba(255, 255, 255, 0.04);
 }
 
@@ -331,7 +331,7 @@
 }
 
 .selectLabel {
-  font-size: 11px;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 1px;
   color: rgba(255, 255, 255, 0.6);
@@ -492,7 +492,7 @@
 
 .gapPct {
   display: block;
-  font-size: 11px;
+  font-size: 0.75rem;
   opacity: 0.7;
   font-weight: 400;
   margin-top: 2px;
@@ -503,7 +503,7 @@
   color: #000;
   padding: 2px 8px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 1px;
 }
@@ -520,7 +520,7 @@
 }
 
 .holderSelf {
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--color-text-dim);
 }
 
 /* ═══════════════════════════════════════ Race planner ═══════ */
@@ -584,7 +584,7 @@
 }
 
 .posBadgeFaded {
-  color: rgba(255, 255, 255, 0.25);
+  color: var(--color-text-dim);
 }
 
 .rowFaded {
@@ -595,7 +595,7 @@
   display: inline-block;
   padding: 3px 10px;
   border-radius: 12px;
-  font-size: 11px;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 1px;
   text-transform: uppercase;

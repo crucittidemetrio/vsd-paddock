@@ -21,7 +21,7 @@
 
 .eyebrow {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 3px;
   color: #00d4ff;
   text-transform: uppercase;
@@ -59,7 +59,7 @@
 
 .panelTitle {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   color: #7a8aa8;
@@ -68,7 +68,7 @@
 
 .hint {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--color-text-dim);
   font-style: italic;
 }
 
@@ -139,7 +139,7 @@
 
 .sessionLabel {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   color: #7a8aa8;
@@ -181,7 +181,7 @@
 
 .selectorLabel {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   color: #7a8aa8;
@@ -218,7 +218,7 @@
 .table th {
   text-align: left;
   padding: 5px 8px;
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   color: #7a8aa8;
@@ -264,7 +264,7 @@
 
 .pitBadge {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.5px;
   color: #f5a623;
@@ -275,7 +275,7 @@
 
 .finishTag {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 0.72rem;
   color: #4ade80;
   letter-spacing: 0.5px;
 }
@@ -308,7 +308,7 @@
   justify-content: space-between;
   gap: 8px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.7);
   padding: 2px 0;
 }
@@ -320,7 +320,7 @@
 .tireWarning {
   margin-top: 6px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 0.72rem;
   font-weight: 700;
   color: #f54f4f;
   letter-spacing: 0.5px;

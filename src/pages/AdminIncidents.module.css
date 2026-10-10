@@ -12,7 +12,7 @@
 
 .eyebrow {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 3px;
   color: #00d4ff;
   text-transform: uppercase;
@@ -88,7 +88,7 @@
 .empty {
   padding: 24px;
   text-align: center;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--color-text-dim);
   font-size: 13px;
 }
 
@@ -120,12 +120,12 @@
 }
 
 .arrow {
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--color-text-dim);
 }
 
 .vsdTag {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
+  font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   padding: 1px 6px;
@@ -136,13 +136,13 @@
 
 .meta {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
 }
 
 .typeTag {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   padding: 2px 8px;
@@ -169,10 +169,10 @@
 
 .verdictLabel {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--color-text-dim);
   margin-bottom: 4px;
 }
 
@@ -227,8 +227,8 @@
 
 .resolvedMeta {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.35);
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
 }
 
 .saveBtn {

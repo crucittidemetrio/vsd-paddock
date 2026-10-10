@@ -47,7 +47,7 @@
   border: 1px solid var(--vsd-border);
   border-radius: 999px;
   padding: 0.1rem 0.55rem;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: var(--vsd-text);
   font-weight: 600;
 }
@@ -89,7 +89,7 @@
 }
 
 .statusPill {
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   font-weight: 700;
@@ -118,7 +118,7 @@
 }
 
 .sim {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 700;
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   color: var(--vsd-text-muted);

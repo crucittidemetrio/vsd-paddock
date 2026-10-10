@@ -18,7 +18,7 @@
 
 .eyebrow {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 3px;
   color: #00d4ff;
   text-transform: uppercase;
@@ -50,7 +50,7 @@
 
 .selectorLabel {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   color: #7a8aa8;
@@ -86,7 +86,7 @@
 
 .hint {
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--color-text-dim);
   font-style: italic;
 }
 
@@ -103,7 +103,7 @@
   flex-wrap: wrap;
   gap: 12px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   color: #7a8aa8;
@@ -115,7 +115,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 0.75rem;
   text-transform: none;
   letter-spacing: normal;
   color: rgba(255, 255, 255, 0.5);
@@ -135,7 +135,7 @@
 .table th {
   text-align: left;
   padding: 6px 10px;
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   color: #7a8aa8;

@@ -49,7 +49,7 @@
 
 .driver-card-id {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.2em;
   color: var(--color-text-dim);
 }
@@ -64,7 +64,7 @@
 
 .driver-card-role {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.25em;
   color: var(--vsd-orange);
   margin-top: -4px;
@@ -74,7 +74,7 @@
   display: inline-block;
   width: fit-content;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.05em;
   padding: 2px 8px;
   border-radius: 999px;
@@ -109,7 +109,7 @@
 
 .driver-card-spec {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.05em;
   color: var(--color-text-muted);
   padding: 2px 6px;
@@ -144,7 +144,7 @@
 
 .driver-ex-badge {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 0.72rem;
   letter-spacing: 0.2em;
   color: var(--color-text-dim);
   padding: 2px 6px;
@@ -155,6 +155,6 @@
 
 .driver-ex-date {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 0.72rem;
   color: var(--color-text-muted);
 }

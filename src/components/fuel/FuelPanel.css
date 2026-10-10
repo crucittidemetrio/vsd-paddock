@@ -34,13 +34,13 @@
 }
 
 .fp-stale {
-  font-size: 11px;
+  font-size: 0.75rem;
   color: #7a8aa8;
   font-style: italic;
 }
 
 .fp-live-badge {
-  font-size: 11px;
+  font-size: 0.75rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: #4ade80;
@@ -143,7 +143,7 @@
 }
 
 .fp-stat-label {
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   color: #7a8aa8;
@@ -171,7 +171,7 @@
 }
 
 .fp-chart-title {
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   color: #7a8aa8;
@@ -185,7 +185,7 @@
 .fp-chart-caveat {
   text-transform: none;
   letter-spacing: normal;
-  font-size: 10px;
+  font-size: 0.72rem;
   font-style: italic;
   color: #5a6480;
 }
@@ -211,7 +211,7 @@
 .fp-stints-table th {
   text-align: left;
   padding: 6px 10px;
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.5px;
   text-transform: uppercase;
   color: #7a8aa8;
@@ -228,7 +228,7 @@
 
 .fp-stint-lapcount {
   color: #7a8aa8;
-  font-size: 11px;
+  font-size: 0.75rem;
 }
 
 .fp-stint-hot td {

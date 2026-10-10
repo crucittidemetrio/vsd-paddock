@@ -7,7 +7,7 @@
 .loading {
   padding: 96px;
   text-align: center;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--color-text-dim);
 }
 
 /* ═══════════════════════════════════════ HERO ═══════ */
@@ -85,10 +85,10 @@
 }
 
 .socialLabel {
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 1px;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--color-text-dim);
 }
 
 .socialLink {
@@ -133,7 +133,7 @@
 }
 
 .statLabel {
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 1.5px;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.5);

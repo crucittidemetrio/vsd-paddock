@@ -72,7 +72,7 @@
 
 .statLabel {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 1px;
   color: rgba(255, 255, 255, 0.5);
   text-transform: uppercase;
@@ -105,9 +105,9 @@
 
 .filterLabel {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 1px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--color-text-dim);
   text-transform: uppercase;
 }
 
@@ -140,7 +140,7 @@
   padding: 8px 14px;
   border-radius: 6px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 1px;
   cursor: pointer;
   text-transform: uppercase;
@@ -184,7 +184,7 @@
   text-align: left;
   padding: 12px 16px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 1.2px;
   color: rgba(255, 255, 255, 0.5);
   text-transform: uppercase;
@@ -243,7 +243,7 @@
 
 .statusPill {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 1.2px;
   padding: 3px 8px;
   border-radius: 3px;
@@ -283,7 +283,7 @@
 .actionBtnDanger {
   display: inline-block;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 1px;
   padding: 5px 10px;
   border-radius: 4px;
@@ -333,8 +333,8 @@
 .footerNote {
   margin-top: 16px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.3);
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
   text-align: center;
 }
 

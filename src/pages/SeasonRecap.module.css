@@ -12,7 +12,7 @@
 
 .eyebrow {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 3px;
   color: #00d4ff;
   text-transform: uppercase;
@@ -95,7 +95,7 @@
 
 .heroLabel {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 1px;
   color: rgba(255, 255, 255, 0.5);
   text-transform: uppercase;
@@ -117,9 +117,9 @@
 
 .statLabel {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 1px;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--color-text-dim);
   text-transform: uppercase;
   margin-bottom: 8px;
 }

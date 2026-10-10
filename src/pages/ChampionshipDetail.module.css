@@ -301,7 +301,7 @@
 .vsdBadge {
   background: var(--vsd-red);
   color: white;
-  font-size: 9px;
+  font-size: 0.72rem;
   font-weight: var(--fw-bold);
   letter-spacing: 0.08em;
   padding: 2px 6px;
@@ -385,7 +385,7 @@
   gap: var(--sp-2);
 }
 .adjBadge {
-  font-size: 9px;
+  font-size: 0.72rem;
   font-weight: var(--fw-bold);
   letter-spacing: 0.1em;
   background: var(--vsd-orange);

@@ -12,7 +12,7 @@
 
 .eyebrow {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 3px;
   color: #00d4ff;
   text-transform: uppercase;
@@ -107,14 +107,14 @@
 
 .driverId {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
   margin-left: 8px;
 }
 
 .badge {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   padding: 3px 9px;
   border-radius: 6px;
   white-space: nowrap;
@@ -141,6 +141,6 @@
 .date {
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--color-text-dim);
   white-space: nowrap;
 }

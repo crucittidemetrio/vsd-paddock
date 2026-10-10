@@ -89,7 +89,7 @@
 
 .cmp-ex-tag {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 0.72rem;
   letter-spacing: 0.2em;
   color: var(--color-text-dim);
   padding: 2px 6px;
@@ -154,7 +154,7 @@
 
 .cmp-section-title {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.25em;
   text-transform: uppercase;
   color: var(--color-text-dim);
@@ -248,7 +248,7 @@
 
 .cmp-h2h-sublabel {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 0.72rem;
   letter-spacing: 0.15em;
   color: var(--color-text-dim);
   text-transform: uppercase;
@@ -263,7 +263,7 @@
 
 .cmp-h2h-ties {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   color: var(--color-text-dim);
   letter-spacing: 0.1em;
 }
@@ -302,7 +302,7 @@
 
 .cmp-laps th {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 0.72rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--color-text-dim);
@@ -332,7 +332,7 @@ a.cmp-lap-track:hover {
 
 .cmp-lap-sim {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 0.72rem;
   letter-spacing: 0.15em;
   color: var(--color-text-dim);
   margin-top: 2px;

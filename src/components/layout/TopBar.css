@@ -29,7 +29,7 @@
 
 .status-text {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.25em;
   color: var(--color-text-dim);
 }
@@ -85,7 +85,7 @@
 
 .user-role {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.2em;
   color: var(--vsd-cyan);
 }

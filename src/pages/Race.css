@@ -44,7 +44,7 @@
 
 .race-tab-count {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   padding: 2px 6px;
   background: var(--vsd-bg-elevated);
   border-radius: var(--r-pill);
@@ -113,7 +113,7 @@
 
 .race-series {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--color-text-dim);
@@ -121,7 +121,7 @@
 
 .race-round {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   font-weight: var(--fw-bold);
   color: var(--vsd-orange);
   letter-spacing: 0.1em;
@@ -178,7 +178,7 @@
 
 .cd-label {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 0.72rem;
   letter-spacing: 0.3em;
   text-transform: uppercase;
   color: var(--color-text-dim);
@@ -187,7 +187,7 @@
 
 .race-status-tag {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--color-text-dim);
@@ -223,7 +223,7 @@
 
 .info-label {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 0.72rem;
   letter-spacing: 0.25em;
   text-transform: uppercase;
   color: var(--color-text-dim);
@@ -251,7 +251,7 @@
 
 .race-entries-label {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--color-text-dim);
@@ -316,7 +316,7 @@
   background: rgba(59, 139, 255, 0.10);
   border: 1px solid rgba(59, 139, 255, 0.3);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.1em;
   color: var(--vsd-blue);
   text-transform: uppercase;
@@ -353,7 +353,7 @@
 }
 
 .race-mine-class {
-  font-size: 9px;
+  font-size: 0.72rem;
   letter-spacing: 0.15em;
   opacity: 0.85;
 }

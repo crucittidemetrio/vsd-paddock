@@ -150,7 +150,7 @@
 
 .targetRaceCountdown {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 1px;
   color: rgba(245, 166, 35, 0.8);
   text-transform: uppercase;
@@ -168,7 +168,7 @@
 
 .statusPill {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 1.5px;
   padding: 4px 10px;
   border-radius: 4px;
@@ -240,9 +240,9 @@
 
 .infoLabel {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 1px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--color-text-dim);
   text-transform: uppercase;
 }
 
@@ -256,7 +256,7 @@
 .cardFooter {
   margin-top: auto;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 1px;
   color: #00d4ff;
   text-transform: uppercase;

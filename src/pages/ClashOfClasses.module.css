@@ -17,7 +17,7 @@
 
 .heroEyebrow {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 0.35em;
   text-transform: uppercase;
   color: var(--vsd-orange);
@@ -109,7 +109,7 @@
 
 .sectionEyebrow {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.35em;
   text-transform: uppercase;
   color: var(--vsd-cyan);
@@ -211,7 +211,7 @@
 }
 .calendarRound {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--vsd-cyan);
@@ -224,13 +224,13 @@
   border-radius: 999px;
   padding: 3px 10px;
   color: var(--vsd-cyan);
-  font-size: 11px;
+  font-size: 0.75rem;
 }
 .calendarDate { font-size: 12px; color: var(--color-text-muted); }
 
 .calendarNote {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 0.08em;
   color: var(--vsd-orange);
   margin: -16px 0 20px;
@@ -258,7 +258,7 @@
   justify-content: space-between;
   gap: 8px;
   padding-top: 8px;
-  font-size: 11px;
+  font-size: 0.75rem;
   font-family: var(--font-mono);
   color: var(--color-text-dim);
   flex-wrap: wrap;
@@ -299,11 +299,11 @@
   border: 1px solid var(--color-border);
 }
 .pointsPodium { border-color: var(--vsd-cyan); background: rgba(0,212,255,0.06); }
-.pointsPos { font-size: 10px; color: var(--color-text-muted); font-family: var(--font-mono); }
+.pointsPos { font-size: 0.72rem; color: var(--color-text-muted); font-family: var(--font-mono); }
 .pointsPts { font-family: var(--font-display); font-size: 16px; font-weight: var(--fw-bold); color: var(--color-text); }
 .bonusRow { display: flex; flex-wrap: wrap; gap: 8px; }
 .bonusBadge {
-  font-size: 11px;
+  font-size: 0.75rem;
   background: rgba(255, 149, 0, 0.08);
   border: 1px solid rgba(255, 149, 0, 0.25);
   color: var(--vsd-orange);
@@ -378,7 +378,7 @@
   text-align: center;
 }
 .countValue { font-family: var(--font-display); font-size: 26px; font-weight: var(--fw-bold); color: var(--vsd-cyan); }
-.countLabel { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); margin-top: 4px; }
+.countLabel { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-muted); margin-top: 4px; }
 
 /* ════ CLASSIFICHE ════ */
 .standingsSkeleton { display: flex; flex-direction: column; gap: 10px; }
@@ -414,7 +414,7 @@
   text-align: left;
   padding: 10px 12px;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   border-bottom: 1px solid var(--color-border);
@@ -438,7 +438,7 @@
   border-radius: 50%;
   background: var(--vsd-bg-elevated);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.75rem;
   color: var(--color-text-muted);
 }
 .stDriverLink { color: var(--vsd-cyan); text-decoration: none; }

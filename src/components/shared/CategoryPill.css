@@ -2,7 +2,7 @@
   display: inline-flex;
   align-items: center;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   font-weight: var(--fw-semibold);
   letter-spacing: 0.15em;
   text-transform: uppercase;

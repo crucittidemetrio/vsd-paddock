@@ -56,7 +56,7 @@
 
 .rlv-callout-label {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-text-dim);
@@ -75,7 +75,7 @@
   align-items: center;
   gap: 6px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.05em;
   color: var(--color-text-dim);
 }

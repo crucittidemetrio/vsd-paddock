@@ -44,7 +44,7 @@
 }
 .statMissing .statValue { color: #fbbf24; }
 .statLabel {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
   color: var(--vsd-text-muted);
@@ -125,7 +125,7 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   font-weight: 600;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
 }
 
 .urlDisplay {

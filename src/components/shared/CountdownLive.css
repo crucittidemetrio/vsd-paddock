@@ -24,7 +24,7 @@
 
 .cd-lbl {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 0.72rem;
   letter-spacing: 0.25em;
   text-transform: uppercase;
   color: var(--color-text-dim);
@@ -33,7 +33,7 @@
 
 .cd-sep {
   font-weight: var(--fw-bold);
-  color: var(--color-border-strong);
+  color: var(--color-text-dim);
   line-height: 1;
 }
 

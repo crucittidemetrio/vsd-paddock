@@ -32,7 +32,7 @@
 
 .vsd-empty-text {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 0.05em;
   color: var(--color-text-muted);
   max-width: 420px;
@@ -44,7 +44,7 @@
   padding: 2px 6px;
   border-radius: var(--r-sm);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.75rem;
 }
 
 @keyframes vsd-empty-in {

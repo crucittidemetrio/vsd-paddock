@@ -162,7 +162,7 @@
   gap: 0.3rem;
   padding: 0.18rem 0.4rem;
   border-radius: 4px;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   text-decoration: none;
   cursor: pointer;
   background: var(--vsd-bg);
@@ -180,7 +180,7 @@
 
 .chipSim {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 0.6rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: var(--vsd-text-muted);
 }
@@ -191,7 +191,7 @@
 }
 
 .raceOverflow {
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   color: var(--vsd-text-muted);
   text-align: center;
   margin-top: 0.1rem;
@@ -300,13 +300,13 @@
 }
 .weekRaceSim {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: var(--vsd-text-muted);
 }
 .weekRaceMeta .statusLive,
 .weekRaceMeta .statusCancelled {
-  font-size: 0.6rem;
+  font-size: 0.72rem;
   padding: 0.1rem 0.4rem;
 }
 
@@ -352,7 +352,7 @@
   display: inline-block;
   margin-left: 0.5rem;
   padding: 0.1rem 0.5rem;
-  font-size: 0.62rem;
+  font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -384,7 +384,7 @@
   color: var(--vsd-text);
 }
 .listTime {
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   color: var(--vsd-text-muted);
   font-family: 'JetBrains Mono', ui-monospace, monospace;
 }
@@ -402,7 +402,7 @@
 
 .listSim {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 700;
   padding: 0.1rem 0.4rem;
   border-radius: 3px;
@@ -461,7 +461,7 @@
 
 @media (max-width: 768px) {
   .dayCell { min-height: 80px; padding: 0.25rem; }
-  .raceChip { font-size: 0.6rem; padding: 0.15rem 0.3rem; }
+  .raceChip { font-size: 0.72rem; padding: 0.15rem 0.3rem; }
   .chipName { display: none; }
   .currentMonth { font-size: 0.9rem; min-width: 140px; }
   .weekGrid { grid-template-columns: repeat(7, minmax(120px, 1fr)); }

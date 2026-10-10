@@ -275,7 +275,7 @@
   top: var(--sp-2);
   right: var(--sp-3);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   color: var(--color-text-dim);
   letter-spacing: 0.2em;
 }
@@ -302,7 +302,7 @@
 
 .joinus-driver-stat {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 0.1em;
   color: var(--vsd-orange);
   margin-top: var(--sp-2);
@@ -335,7 +335,7 @@
 
 .joinus-race-sim {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   font-weight: var(--fw-bold);
   letter-spacing: 0.15em;
   background: rgba(255, 120, 40, 0.18);
@@ -420,7 +420,7 @@
 
 .joinus-lap-sim {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.15em;
   background: rgba(255, 120, 40, 0.18);
   color: #ff9c5c;
@@ -479,7 +479,7 @@
 
 .joinus-testimonial-context {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.1em;
   color: var(--color-text-dim);
   margin-top: 2px;
@@ -770,7 +770,7 @@
 
 .joinus-ue144-eyebrow {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.25em;
   text-transform: uppercase;
   color: var(--vsd-orange);

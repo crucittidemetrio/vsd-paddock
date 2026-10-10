@@ -144,7 +144,7 @@
 }
 
 .rrs-vsd-tag {
-  font-size: 0.625rem;
+  font-size: 0.72rem;
   font-weight: 700;
   padding: 2px 6px;
   border-radius: 4px;
@@ -175,7 +175,7 @@
 
 .rrs-status {
   display: inline-block;
-  font-size: 0.7rem;
+  font-size: 0.75rem;
   font-weight: 700;
   padding: 2px 8px;
   border-radius: 4px;

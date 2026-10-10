@@ -12,7 +12,7 @@
 
 .eyebrow {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 3px;
   color: #00d4ff;
   text-transform: uppercase;
@@ -53,10 +53,10 @@
 
 .summaryLabel {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 1px;
   text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--color-text-dim);
 }
 
 .summaryValue {
@@ -153,8 +153,8 @@
 
 .chartMeta {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
 }
 
 .chartLegend {
@@ -169,7 +169,7 @@
   align-items: center;
   gap: 6px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.5);
 }
 
@@ -217,7 +217,7 @@
 
 .input::placeholder,
 .textarea::placeholder {
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--color-text-dim);
 }
 
 .select {
@@ -295,7 +295,7 @@
 .empty {
   padding: 24px;
   text-align: center;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--color-text-dim);
   font-size: 13px;
 }
 
@@ -343,8 +343,8 @@
 
 .meta {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
 }
 
 .rowSub {
@@ -356,8 +356,8 @@
 
 .date {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.35);
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
 }
 
 .rowActions {
@@ -459,8 +459,8 @@
 
 .reportMeta {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
 }
 
 .reportValue {

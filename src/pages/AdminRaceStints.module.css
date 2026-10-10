@@ -137,7 +137,7 @@
 
 .crewGroupTitle {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--vsd-text-dim, #7a8aa8);
@@ -392,7 +392,7 @@
   display: inline-block;
   padding: 4px 10px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;

@@ -31,7 +31,7 @@
 
 .targetRaceLabel {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 2px;
   color: rgba(245, 166, 35, 0.8);
   text-transform: uppercase;
@@ -60,7 +60,7 @@
 
 .countdownLabel {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 1.5px;
   color: rgba(245, 166, 35, 0.7);
   text-transform: uppercase;
@@ -95,7 +95,7 @@
 
 .statusPill {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 1.5px;
   padding: 5px 12px;
   border-radius: 4px;
@@ -122,7 +122,7 @@
 }
 .pill_draft {
   background: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--color-text-dim);
 }
 
 @keyframes pulseLive {
@@ -212,9 +212,9 @@
 
 .infoLabel {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 1.2px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--color-text-dim);
   text-transform: uppercase;
 }
 
@@ -255,9 +255,9 @@
 
 .notesLabel {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 1px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--color-text-dim);
   text-transform: uppercase;
   margin-bottom: 6px;
 }
@@ -328,8 +328,8 @@
   padding-top: 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.3);
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
   text-align: center;
 }
 .footer code {
@@ -389,7 +389,7 @@
 .participantStatusBadge {
   align-self: flex-start;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 9px;
+  font-size: 0.72rem;
   letter-spacing: 1.2px;
   padding: 3px 8px;
   border-radius: 4px;
@@ -426,8 +426,8 @@
 
 .participantCardId {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.72rem;
+  color: var(--color-text-dim);
   letter-spacing: 0.5px;
 }
 

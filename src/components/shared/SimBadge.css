@@ -10,8 +10,8 @@
   flex-shrink: 0;
 }
 
-.sim-badge-md { font-size: 11px; padding: 3px 8px; }
-.sim-badge-sm { font-size: 10px; padding: 2px 6px; }
+.sim-badge-md { font-size: 0.75rem; padding: 3px 8px; }
+.sim-badge-sm { font-size: 0.72rem; padding: 2px 6px; }
 
 /* Outline (default) */
 .sim-badge-outline.sim-lmu { color: var(--sim-lmu); border: 1px solid var(--sim-lmu); background: rgba(0,180,255,0.08); }

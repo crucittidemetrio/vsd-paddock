@@ -194,7 +194,7 @@
 
 .mk-stat-label {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-text-dim);
@@ -268,7 +268,7 @@
 
 .mk-social-label {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-text-dim);
@@ -276,7 +276,7 @@
 
 .mk-social-date {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   color: var(--color-text-dim);
   opacity: 0.7;
 }
@@ -330,7 +330,7 @@
 
 .mk-driver-record {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.75rem;
   color: var(--color-text-dim);
   margin-top: 2px;
 }
@@ -389,7 +389,7 @@
   padding: var(--sp-5);
   border-top: 1px solid var(--color-border);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.75rem;
   color: var(--color-text-dim);
 }
 

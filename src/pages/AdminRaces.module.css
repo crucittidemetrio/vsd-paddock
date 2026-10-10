@@ -43,7 +43,7 @@
   font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
   padding: 0.15rem 0.5rem; border-radius: 4px; background: #131e33; color: #c5d0e6;
 }
-.enduranceDot { color: #f5a623; margin-left: 0.4rem; font-size: 0.7rem; }
+.enduranceDot { color: #f5a623; margin-left: 0.4rem; font-size: 0.75rem; }
 
 .statusTag {
   font-size: 0.72rem; font-weight: 600; padding: 0.2rem 0.55rem; border-radius: 4px;

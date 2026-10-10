@@ -12,7 +12,7 @@
 
 .eyebrow {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 3px;
   color: #00d4ff;
   text-transform: uppercase;
@@ -110,7 +110,7 @@
 
 .input::placeholder,
 .textarea::placeholder {
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--color-text-dim);
 }
 
 .select {
@@ -175,7 +175,7 @@
 .empty {
   padding: 24px;
   text-align: center;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--color-text-dim);
   font-size: 13px;
 }
 
@@ -219,13 +219,13 @@
 
 .meta {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
 }
 
 .metaSim {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   color: #00d4ff;
 }
 
@@ -237,7 +237,7 @@
 
 .sourceTag {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 0.72rem;
   text-transform: uppercase;
   letter-spacing: 0.5px;
   padding: 2px 8px;
@@ -248,8 +248,8 @@
 
 .date {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.35);
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
 }
 
 .notesInput {

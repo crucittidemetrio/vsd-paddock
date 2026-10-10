@@ -47,7 +47,7 @@
 
 .nav-section-label {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.25em;
   text-transform: uppercase;
   color: var(--color-text-dim);
@@ -172,14 +172,14 @@
   background: var(--vsd-red);
   color: #fff;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   font-weight: var(--fw-semibold);
   line-height: 1;
 }
 
 .nav-tag {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 0.72rem;
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--vsd-orange);
@@ -248,7 +248,7 @@
    competono visivamente con "Admin" sopra di loro. */
 .nav-subsection-label {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 0.72rem;
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--color-text-dim);
@@ -266,7 +266,7 @@
 
 .nav-reorder-toggle {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 0.72rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--color-text-dim);
@@ -291,7 +291,7 @@
 
 .nav-reorder-reset {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   color: var(--vsd-orange);
   background: transparent;
   border: none;
@@ -329,7 +329,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 8px;
+  font-size: 0.72rem;
   line-height: 1;
   color: var(--color-text-muted);
   background: var(--vsd-bg-hover);
@@ -359,7 +359,7 @@
 
 .staff-badge {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.25em;
   color: var(--vsd-orange);
   padding: var(--sp-2);
@@ -371,7 +371,7 @@
 
 .sidebar-privacy-link {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.1em;
   text-align: center;
   color: var(--color-text-dim);
@@ -385,7 +385,7 @@
 
 .version {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   color: var(--color-text-dim);
   text-align: center;
   letter-spacing: 0.1em;
@@ -425,7 +425,7 @@
 
 .sidebar-sponsor-label {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 0.72rem;
   letter-spacing: 0.25em;
   text-transform: uppercase;
   color: var(--color-text-dim);

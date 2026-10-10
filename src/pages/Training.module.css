@@ -12,7 +12,7 @@
 
 .eyebrow {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 3px;
   color: #00d4ff;
   text-transform: uppercase;
@@ -125,7 +125,7 @@
 
 .readinessEyebrow {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 2px;
   color: #ffbf3f;
   text-transform: uppercase;
@@ -184,9 +184,9 @@
   gap: 12px;
   padding: 0 18px 8px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 1px;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--color-text-dim);
   text-transform: uppercase;
 }
 
@@ -233,8 +233,8 @@
 }
 
 .expandIcon {
-  color: rgba(255, 255, 255, 0.35);
-  font-size: 11px;
+  color: var(--color-text-dim);
+  font-size: 0.75rem;
   width: 10px;
 }
 
@@ -249,7 +249,7 @@
   font-family: 'JetBrains Mono', monospace;
   font-size: 15px;
   font-weight: 700;
-  color: rgba(255, 255, 255, 0.25);
+  color: var(--color-text-dim);
 }
 
 .laps30d {
@@ -261,7 +261,7 @@
 .lastSession {
   font-family: 'Inter', sans-serif;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--color-text-dim);
 }
 
 /* ─── Track detail (accordion) ─── */
@@ -275,7 +275,7 @@
   padding: 10px 0;
   font-family: 'Inter', sans-serif;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--color-text-dim);
 }
 
 .trackRow {
@@ -300,7 +300,7 @@
 .trackLaps {
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.45);
+  color: var(--color-text-dim);
 }
 
 .trackBest {
@@ -326,7 +326,7 @@
 
 .toolsEyebrow {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 3px;
   color: #00d4ff;
   text-transform: uppercase;
@@ -381,9 +381,9 @@
 
 .toolMeta {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.5px;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--color-text-dim);
   text-transform: uppercase;
 }
 
@@ -412,7 +412,7 @@
   .lastSession {
     grid-column: 2 / 3;
     justify-self: end;
-    font-size: 11px;
+    font-size: 0.75rem;
   }
   .trackRow {
     grid-template-columns: 1fr 1fr;

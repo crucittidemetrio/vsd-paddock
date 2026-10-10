@@ -17,7 +17,7 @@
 
 .heroEyebrow {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 0.35em;
   text-transform: uppercase;
   color: var(--vsd-orange);
@@ -130,7 +130,7 @@
 
 .sectionEyebrow {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.35em;
   text-transform: uppercase;
   color: var(--vsd-cyan);
@@ -207,7 +207,7 @@
 .classNote {
   margin: 12px 0 0;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.1em;
   color: var(--vsd-orange);
   opacity: 0.8;
@@ -246,7 +246,7 @@
 
 .formatLabel {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.25em;
   text-transform: uppercase;
   color: var(--color-text-dim);
@@ -291,7 +291,7 @@
 
 .specLabel {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--color-text-dim);
@@ -337,7 +337,7 @@
 
 .pointsPos {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.1em;
   color: var(--color-text-dim);
   margin-bottom: 4px;
@@ -362,7 +362,7 @@
   border-radius: var(--r-sm);
   padding: 5px 12px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 0.05em;
   color: var(--vsd-orange);
 }
@@ -402,7 +402,7 @@
 /* ════ CLASS SUBLABEL ════ */
 .classSublabel {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--color-text-dim);
@@ -429,7 +429,7 @@
 
 .blueflagTitle {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.25em;
   text-transform: uppercase;
   color: var(--color-text-dim);
@@ -472,7 +472,7 @@
 /* ════ CALENDARIO ════ */
 .calendarNote {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 0.08em;
   color: var(--vsd-orange);
   margin: -16px 0 20px;
@@ -499,7 +499,7 @@
 
 .calendarRound {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 0.25em;
   text-transform: uppercase;
   color: var(--vsd-cyan);
@@ -528,7 +528,7 @@
 .calendarDate,
 .calendarTime {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 0.05em;
   color: var(--color-text-muted);
 }
@@ -550,7 +550,7 @@
 
 .weatherMult {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.75rem;
   font-weight: var(--fw-semibold);
   color: var(--vsd-orange);
   background: rgba(245,166,35,0.1);
@@ -565,7 +565,7 @@
   justify-content: space-between;
   gap: 8px;
   padding-top: 8px;
-  font-size: 11px;
+  font-size: 0.75rem;
   font-family: var(--font-mono);
   color: var(--color-text-dim);
   flex-wrap: wrap;
@@ -649,7 +649,7 @@
 
 .standingsEmptyText {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 0.05em;
   color: var(--color-text-muted);
   max-width: 400px;
@@ -692,7 +692,7 @@
   background: rgba(255,255,255,0.08);
   border-radius: 999px;
   padding: 1px 7px;
-  font-size: 10px;
+  font-size: 0.72rem;
   font-family: var(--font-mono);
   font-weight: var(--fw-normal);
   color: var(--color-text-dim);
@@ -717,7 +717,7 @@
 .standingsTable th {
   padding: 10px 14px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   font-weight: var(--fw-normal);
   letter-spacing: 0.15em;
   text-transform: uppercase;
@@ -805,7 +805,7 @@
 
 .stVsdBadge {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 0.72rem;
   letter-spacing: 0.1em;
   color: var(--vsd-cyan);
   background: rgba(0,212,255,0.1);
@@ -826,7 +826,7 @@
 
 .standingsDetailLink {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 0.1em;
   color: var(--vsd-cyan);
   text-decoration: none;

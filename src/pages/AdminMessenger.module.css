@@ -12,7 +12,7 @@
 
 .eyebrow {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 3px;
   color: #00d4ff;
   text-transform: uppercase;
@@ -104,8 +104,8 @@
 .charCount {
   align-self: flex-end;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.35);
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
 }
 
 .colorRow {
@@ -177,14 +177,14 @@
 }
 
 .driverRowDisabled {
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--color-text-dim);
   cursor: default;
 }
 
 .driverNote {
   margin-left: auto;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
+  font-size: 0.72rem;
   color: rgba(239, 51, 64, 0.7);
 }
 
@@ -252,6 +252,6 @@
   margin: 8px 0 0;
   padding-left: 18px;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.6);
 }

@@ -37,8 +37,8 @@
 
 .headerMeta {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
   letter-spacing: 0.5px;
 }
 
@@ -149,7 +149,7 @@
 
 .fieldLabel {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 1px;
   color: rgba(255, 255, 255, 0.7);
   text-transform: uppercase;
@@ -163,7 +163,7 @@
 .fieldHint {
   font-family: 'Inter', sans-serif;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--color-text-dim);
   line-height: 1.4;
 }
 
@@ -199,7 +199,7 @@
 
 .input::placeholder,
 .textarea::placeholder {
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--color-text-dim);
 }
 
 .select {
@@ -354,7 +354,7 @@
 
 .participantsListHeader {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 1.5px;
   color: rgba(255, 255, 255, 0.5);
   text-transform: uppercase;
@@ -401,8 +401,8 @@
 
 .participantDriverId {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.4);
+  font-size: 0.72rem;
+  color: var(--color-text-dim);
   letter-spacing: 0.5px;
 }
 

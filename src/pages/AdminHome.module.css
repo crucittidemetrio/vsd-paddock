@@ -12,7 +12,7 @@
 
 .eyebrow {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 3px;
   color: #00d4ff;
   text-transform: uppercase;
@@ -113,18 +113,18 @@
 
 .itemMore {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.35);
+  font-size: 0.75rem;
+  color: var(--color-text-dim);
 }
 
 .emptyText {
   font-family: 'Inter', sans-serif;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--color-text-dim);
 }
 
 .loadingText {
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.35);
+  color: var(--color-text-dim);
 }

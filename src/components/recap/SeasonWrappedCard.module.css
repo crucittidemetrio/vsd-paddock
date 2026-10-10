@@ -34,7 +34,7 @@
 }
 
 .simTag {
-  font-size: 11px;
+  font-size: 0.75rem;
   color: rgba(255, 255, 255, 0.5);
   margin-top: 2px;
 }
@@ -44,7 +44,7 @@
 }
 
 .eyebrow {
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 3px;
   color: #00d4ff;
   text-transform: uppercase;
@@ -88,8 +88,8 @@
 }
 
 .heroLabel {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.72rem;
+  color: var(--color-text-dim);
   letter-spacing: 0.5px;
   text-transform: uppercase;
   margin-top: 2px;
@@ -104,8 +104,8 @@
 }
 
 .statLabel {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.72rem;
+  color: var(--color-text-dim);
   letter-spacing: 0.5px;
   text-transform: uppercase;
 }
@@ -125,7 +125,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.3);
+  font-size: 0.72rem;
+  color: var(--color-text-dim);
   letter-spacing: 1px;
 }

@@ -85,14 +85,14 @@
 
 .mc-qs-label {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--color-text-muted);
 }
 
 .mc-qs-sub {
-  font-size: 10px;
+  font-size: 0.72rem;
   color: var(--color-text-dim);
   font-style: italic;
 }
@@ -122,7 +122,7 @@
 
 .mc-im-in {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.2em;
   color: var(--color-success);
   padding: 4px 10px;
@@ -159,7 +159,7 @@
 
 .mc-next-series {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--color-text-dim);
@@ -196,7 +196,7 @@
 
 .mini-info-label {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 0.72rem;
   letter-spacing: 0.25em;
   text-transform: uppercase;
   color: var(--color-text-dim);
@@ -218,7 +218,7 @@
 
 .mc-entries-label {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--color-text-dim);
@@ -289,7 +289,7 @@
 
 .mc-lr-pos-class {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.25em;
   text-transform: uppercase;
   color: var(--color-text-muted);
@@ -398,7 +398,7 @@
 
 .mc-lap-cond {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.15em;
   text-transform: uppercase;
   align-self: flex-start;
@@ -533,7 +533,7 @@
 
 .feed-class {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--color-text-dim);
@@ -548,7 +548,7 @@
   gap: 8px;
   flex-wrap: wrap;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 0.1em;
   color: var(--color-text-dim);
   text-transform: uppercase;
@@ -683,7 +683,7 @@
 
 .mc-fb-race {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 0.72rem;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   opacity: 0.70;

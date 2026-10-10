@@ -263,7 +263,7 @@
 .field { display: flex; flex-direction: column; gap: 6px; }
 .fieldLabel {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 1px;
   color: var(--color-text-muted);
   text-transform: uppercase;
@@ -350,7 +350,7 @@
 .postRowTop { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-wrap: wrap; }
 
 .statusBadge {
-  font-size: 11px;
+  font-size: 0.75rem;
   font-weight: var(--fw-semibold);
   padding: 3px 8px;
   border-radius: var(--r-pill);
@@ -386,7 +386,7 @@
   border: 1px solid var(--color-border-strong);
   background: rgba(255,255,255,0.04);
   color: var(--color-text);
-  font-size: 11px;
+  font-size: 0.75rem;
   font-family: var(--font-mono);
   cursor: pointer;
   white-space: nowrap;
@@ -479,18 +479,18 @@
 }
 .pillarChipTop { display: flex; align-items: center; gap: 6px; }
 .pillarChipLabel {
-  font-size: 11px;
+  font-size: 0.75rem;
   font-weight: var(--fw-semibold);
   color: var(--color-text);
   line-height: 1.2;
 }
 .pillarChipDate {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   color: var(--color-text-dim);
 }
 .pillarChipStatus {
-  font-size: 11px;
+  font-size: 0.75rem;
   font-weight: var(--fw-semibold);
   margin-top: auto;
 }
@@ -570,7 +570,7 @@
 .calendarWeekday {
   text-align: center;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--color-text-dim);
@@ -623,7 +623,7 @@
   padding: 0 4px;
   border-radius: 8px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   font-weight: var(--fw-semibold);
   display: flex;
   align-items: center;
@@ -653,7 +653,7 @@
 }
 .tableHeaderRow {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.75rem;
   letter-spacing: 1px;
   color: var(--color-text-muted);
   text-transform: uppercase;
@@ -771,7 +771,7 @@
 }
 .mediaTags { display: flex; flex-wrap: wrap; gap: 4px; }
 .mediaTag {
-  font-size: 10px;
+  font-size: 0.72rem;
   font-family: var(--font-mono);
   padding: 2px 7px;
   border-radius: var(--r-pill);
@@ -796,8 +796,8 @@
   .tableRow { grid-template-columns: 1fr; gap: 4px; }
   .mediaGrid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
   .calendarCell { min-height: 48px; }
-  .calendarCellNum { font-size: 10px; }
-  .calendarBadge { min-width: 14px; height: 14px; font-size: 9px; }
+  .calendarCellNum { font-size: 0.72rem; }
+  .calendarBadge { min-width: 14px; height: 14px; font-size: 0.72rem; }
   .calendarMonthLabel { min-width: auto; }
 }
 
@@ -846,7 +846,7 @@
 }
 .bucketCount {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 0.75rem;
   color: var(--color-text-muted);
   background: rgba(255,255,255,0.06);
   border-radius: 999px;
@@ -885,7 +885,7 @@
 }
 .timelineRel {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   color: var(--color-text-dim);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -910,7 +910,7 @@
 }
 .timelineMeta {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   color: var(--color-text-dim);
 }
 .timelineChannels {
@@ -921,7 +921,7 @@
 }
 .channelChip {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 0.72rem;
   color: var(--color-text-muted);
   background: rgba(255,255,255,0.04);
   border: 1px solid var(--color-border);
