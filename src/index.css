@@ -29,6 +29,26 @@ html {
   color-scheme: dark;
 }
 
+/* Le <option> ereditano lo sfondo del <select>: molti select del sito
+   usano uno sfondo semitrasparente (rgba), che nel menu nativo di
+   Chrome/Windows diventa un grigio chiaro con testo chiaro sopra →
+   voci illeggibili. Sfondo pieno e testo ad alto contrasto per tutte
+   le opzioni, ovunque. */
+select option,
+select optgroup {
+  background-color: #141824;
+  color: #f1f4fb;
+}
+
+select option:checked {
+  background-color: #2b3550;
+  color: #ffffff;
+}
+
+select option:disabled {
+  color: #7d879e;
+}
+
 html, body, #root {
   margin: 0;
   padding: 0;
