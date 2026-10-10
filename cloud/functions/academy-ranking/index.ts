@@ -204,67 +204,83 @@ Deno.serve(async (req: Request) => {
     // attribuiti solo ai piloti VSD (r.driver_id valorizzato).
     const { data: allResults, error: resErr } = await fetchAllRows(() => supabase
       .from('race_results')
-      .select('result_id, race_id, sim, car_class, session_type, driver_id, total_laps, best_lap_ms, finish_position, track_id, dns')
+      .select('result_id, race_id, sim, car_class, session_type, driver_id, total_laps, best_lap_ms, finish_position, track_id, dns, set_date')
       .eq('team_id', me.team_id)
       .eq('sim', sim)
       .order('result_id', { ascending: true }));
     if (resErr) return json({ ok: false, error: resErr.message }, 400);
     const results = allResults ?? [];
 
-    // Raggruppa per (race_id, car_class, session_type)
-    const groups: Record<string, any[]> = {};
-    results.forEach((r: any) => {
-      const key = [r.race_id, r.car_class, r.session_type].join('|');
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(r);
-    });
-
-    const pmByDriver: Record<string, { pm: number; races: number }> = {};
-    const paceByDriver: Record<string, { gapSum: number; races: number; bestLapMs: number | null; bestLapTrackId: string | null }> = {};
-
-    Object.keys(groups).forEach((key) => {
-      const group = groups[key];
-      const sessionType = group[0].session_type;
-      if (sessionType !== 'race') return;
-
-      const leaderLaps = Math.max(0, ...group.map((r: any) => Number(r.total_laps) || 0));
-      const validLaps = group.filter((r: any) => r.best_lap_ms != null && Number(r.best_lap_ms) > 0);
-      const fastestMs = validLaps.length ? Math.min(...validLaps.map((r: any) => Number(r.best_lap_ms))) : null;
-
-      const poleKey = [group[0].race_id, group[0].car_class, 'qualifying'].join('|');
-      const poleGroup = groups[poleKey];
-      let poleDriverId: string | null = null;
-      if (poleGroup && poleGroup.length) {
-        const poleWinner = poleGroup.slice().sort((a: any, b: any) => (Number(a.finish_position) || 999) - (Number(b.finish_position) || 999))[0];
-        poleDriverId = poleWinner ? poleWinner.driver_id : null;
-      }
-
-      group.forEach((r: any) => {
-        if (!r.driver_id) return;
-
-        let pm = pmBase(Number(r.finish_position));
-        if (fastestMs != null && Number(r.best_lap_ms) === fastestMs) pm += 1;
-        if (leaderLaps > 0 && (Number(r.total_laps) || 0) / leaderLaps >= 0.75) pm += 1;
-        if (poleDriverId && r.driver_id === poleDriverId) pm += 1;
-
-        if (!pmByDriver[r.driver_id]) pmByDriver[r.driver_id] = { pm: 0, races: 0 };
-        pmByDriver[r.driver_id].pm += pm;
-        pmByDriver[r.driver_id].races += 1;
-
-        if (fastestMs != null && r.best_lap_ms != null && Number(r.best_lap_ms) > 0) {
-          const lapMs = Number(r.best_lap_ms);
-          const gapPct = ((lapMs - fastestMs) / fastestMs) * 100;
-          if (!paceByDriver[r.driver_id]) paceByDriver[r.driver_id] = { gapSum: 0, races: 0, bestLapMs: null, bestLapTrackId: null };
-          const pace = paceByDriver[r.driver_id];
-          pace.gapSum += gapPct;
-          pace.races += 1;
-          if (pace.bestLapMs == null || lapMs < pace.bestLapMs) {
-            pace.bestLapMs = lapMs;
-            pace.bestLapTrackId = r.track_id || null;
-          }
-        }
+    // #VR-delta (10/10/2026): il calcolo è in una funzione per poterlo
+    // rifare sui soli risultati PRECEDENTI all'ultimo giorno di gara del
+    // sim → posizione "prima dell'ultima gara" e variazione ▲▼ in UI.
+    function computeScores(results: any[]) {
+      // Raggruppa per (race_id, car_class, session_type)
+      const groups: Record<string, any[]> = {};
+      results.forEach((r: any) => {
+        const key = [r.race_id, r.car_class, r.session_type].join('|');
+        if (!groups[key]) groups[key] = [];
+        groups[key].push(r);
       });
-    });
+
+      const pmByDriver: Record<string, { pm: number; races: number }> = {};
+      const paceByDriver: Record<string, { gapSum: number; races: number; bestLapMs: number | null; bestLapTrackId: string | null }> = {};
+
+      Object.keys(groups).forEach((key) => {
+        const group = groups[key];
+        const sessionType = group[0].session_type;
+        if (sessionType !== 'race') return;
+
+        const leaderLaps = Math.max(0, ...group.map((r: any) => Number(r.total_laps) || 0));
+        const validLaps = group.filter((r: any) => r.best_lap_ms != null && Number(r.best_lap_ms) > 0);
+        const fastestMs = validLaps.length ? Math.min(...validLaps.map((r: any) => Number(r.best_lap_ms))) : null;
+
+        const poleKey = [group[0].race_id, group[0].car_class, 'qualifying'].join('|');
+        const poleGroup = groups[poleKey];
+        let poleDriverId: string | null = null;
+        if (poleGroup && poleGroup.length) {
+          const poleWinner = poleGroup.slice().sort((a: any, b: any) => (Number(a.finish_position) || 999) - (Number(b.finish_position) || 999))[0];
+          poleDriverId = poleWinner ? poleWinner.driver_id : null;
+        }
+
+        group.forEach((r: any) => {
+          if (!r.driver_id) return;
+
+          let pm = pmBase(Number(r.finish_position));
+          if (fastestMs != null && Number(r.best_lap_ms) === fastestMs) pm += 1;
+          if (leaderLaps > 0 && (Number(r.total_laps) || 0) / leaderLaps >= 0.75) pm += 1;
+          if (poleDriverId && r.driver_id === poleDriverId) pm += 1;
+
+          if (!pmByDriver[r.driver_id]) pmByDriver[r.driver_id] = { pm: 0, races: 0 };
+          pmByDriver[r.driver_id].pm += pm;
+          pmByDriver[r.driver_id].races += 1;
+
+          if (fastestMs != null && r.best_lap_ms != null && Number(r.best_lap_ms) > 0) {
+            const lapMs = Number(r.best_lap_ms);
+            const gapPct = ((lapMs - fastestMs) / fastestMs) * 100;
+            if (!paceByDriver[r.driver_id]) paceByDriver[r.driver_id] = { gapSum: 0, races: 0, bestLapMs: null, bestLapTrackId: null };
+            const pace = paceByDriver[r.driver_id];
+            pace.gapSum += gapPct;
+            pace.races += 1;
+            if (pace.bestLapMs == null || lapMs < pace.bestLapMs) {
+              pace.bestLapMs = lapMs;
+              pace.bestLapTrackId = r.track_id || null;
+            }
+          }
+        });
+      });
+      return { pmByDriver, paceByDriver };
+    }
+
+    const { pmByDriver, paceByDriver } = computeScores(results);
+
+    const raceDates = results
+      .filter((r: any) => r.session_type === 'race' && r.set_date)
+      .map((r: any) => String(r.set_date).slice(0, 10));
+    const lastRaceDate = raceDates.length ? raceDates.reduce((a: string, b: string) => (a > b ? a : b)) : null;
+    const prevScores = lastRaceDate
+      ? computeScores(results.filter((r: any) => r.set_date && String(r.set_date).slice(0, 10) < lastRaceDate))
+      : null;
 
     const { data: drivers, error: driversErr } = await supabase
       .from('drivers')
@@ -371,10 +387,26 @@ Deno.serve(async (req: Request) => {
 
     assignAcademyBadges(ranking);
 
+    // Posizione prima dell'ultimo giorno di gara (stessi Punti Penalità
+    // attuali: la variazione riflette solo i risultati in pista).
+    const prevPosByCode: Record<string, number> = {};
+    if (prevScores) {
+      Object.keys(prevScores.pmByDriver)
+        .filter(isCurrentTesserato)
+        .map((driverId) => ({ code: driverCode(driverId), vr: prevScores.pmByDriver[driverId].pm + (ppByDriver[driverId]?.pp || 0) }))
+        .sort((a, b) => b.vr - a.vr)
+        .forEach((r, i) => { prevPosByCode[r.code] = i + 1; });
+    }
+    ranking.forEach((r: any, i: number) => {
+      const prev = prevPosByCode[r.driver_id];
+      r.prev_position = prev ?? null;
+      r.position_delta = prev ? prev - (i + 1) : null;
+    });
+
     return json({
       ok: true,
       data: {
-        sim, ranking, count: ranking.length, paceRanking, paceRankingMinRaces: ACADEMY_PACE_MIN_RACES,
+        sim, ranking, count: ranking.length, last_race_date: lastRaceDate, paceRanking, paceRankingMinRaces: ACADEMY_PACE_MIN_RACES,
         eloRanking, safetyRanking,
       },
     });

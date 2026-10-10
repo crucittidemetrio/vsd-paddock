@@ -198,7 +198,7 @@
 .tableHeaderRow,
 .tableRow {
   display: grid;
-  grid-template-columns: 44px minmax(180px, 1.2fr) minmax(120px, 1fr) 90px 64px;
+  grid-template-columns: 64px minmax(180px, 1.2fr) minmax(120px, 1fr) 90px 64px;
   gap: 10px;
   align-items: center;
   padding: 12px 16px;
@@ -496,7 +496,7 @@
 @media (max-width: 640px) {
   .tableHeaderRow,
   .tableRow {
-    grid-template-columns: 24px minmax(0, 1fr) 52px 32px;
+    grid-template-columns: 44px minmax(0, 1fr) 52px 32px;
     gap: 8px;
     padding: 10px 10px;
   }
@@ -506,4 +506,21 @@
   .driverCell { flex-wrap: wrap; row-gap: 4px; }
   .driverName { flex: 1 1 auto; }
   .races { text-align: right; }
+}
+
+/* Variazione posizione dopo l'ultima giornata di gara. */
+.rankCell { display: flex; align-items: baseline; gap: 6px; }
+.deltaUp, .deltaDown, .deltaNew {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.72rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.deltaUp { color: #34d399; }
+.deltaDown { color: #f87171; }
+.deltaNew { color: #a78bfa; letter-spacing: 0.04em; }
+.deltaNote {
+  margin: 4px 0 10px;
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
 }

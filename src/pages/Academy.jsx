@@ -45,6 +45,7 @@ export default function Academy() {
   const tracksQuery = useTracks(activeSim);
   const ranking = rankingQuery.data?.ranking || [];
   const paceRanking = rankingQuery.data?.paceRanking || [];
+  const lastRaceDate = rankingQuery.data?.last_race_date || null;
   const paceMinRaces = rankingQuery.data?.paceRankingMinRaces ?? 3;
   // #372: Elo (forza relativa) + Safety Rank (pulizia di guida) — vedi
   // cloud/functions/academy-ranking/index.ts (#371) per il calcolo,
@@ -189,6 +190,13 @@ export default function Academy() {
         <div className={styles.empty}>Nessun risultato di gara disponibile per questo simulatore.</div>
       )}
 
+      {ranking.length > 0 && lastRaceDate && (
+        <div className={styles.deltaNote}>
+          ▲▼ = posizioni guadagnate o perse con l&apos;ultima giornata di gara
+          ({new Date(lastRaceDate).toLocaleDateString('it-IT', { day: '2-digit', month: 'short' })}).
+        </div>
+      )}
+
       {ranking.length > 0 && (
         <div className={styles.table}>
           <div className={styles.tableHeaderRow}>
@@ -200,7 +208,10 @@ export default function Academy() {
           </div>
           {ranking.map((r, idx) => (
             <div key={r.driver_id} className={styles.tableRow}>
-              <span className={idx < 3 ? styles.rankTop3 : styles.rank}>{idx + 1}</span>
+              <span className={styles.rankCell}>
+                <span className={idx < 3 ? styles.rankTop3 : styles.rank}>{idx + 1}</span>
+                <PositionDelta delta={r.position_delta} isNew={lastRaceDate && r.prev_position == null} />
+              </span>
               <span className={styles.driverCell}>
                 {r.avatar_url ? (
                   <img className={styles.avatar} src={r.avatar_url} alt="" />
@@ -380,5 +391,19 @@ export default function Academy() {
         </>
       )}
     </div>
+  );
+}
+
+function PositionDelta({ delta, isNew }) {
+  if (isNew) return <span className={styles.deltaNew} title="Entrato in classifica con l'ultima gara">NEW</span>;
+  if (!delta) return null;
+  const up = delta > 0;
+  return (
+    <span
+      className={up ? styles.deltaUp : styles.deltaDown}
+      title={`${up ? 'Guadagnate' : 'Perse'} ${Math.abs(delta)} posizioni con l'ultima gara`}
+    >
+      {up ? '▲' : '▼'}{Math.abs(delta)}
+    </span>
   );
 }
