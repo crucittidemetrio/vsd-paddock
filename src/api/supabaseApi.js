@@ -1,3 +1,4 @@
+import { isLegacyTokenExpired, notifySessionExpired } from '../utils/legacyToken';
 import { getSupabaseSession } from './supabaseAuth';
 import { supabaseAnonKey } from './supabaseClient';
 
@@ -719,12 +720,17 @@ async function callEdgeFunction(slug, body, action) {
     if (legacyToken) finalBody = { ...finalBody, legacy_token: legacyToken };
   }
 
-  // 11/10/2026 ("torna spesso Errore: Auth richiesto" su Best Laps): con il
-  // token legacy ogni Edge Function lo verifica chiamando Apps Script
-  // (auth.verify). Quando una pagina apre molte richieste in parallelo,
-  // Apps Script ogni tanto non risponde in tempo → la function restituisce
-  // 401 "Auth richiesto" anche con un token valido. Errore transitorio:
-  // si ritenta fino a 2 volte con un piccolo ritardo prima di mostrarlo.
+  // 11/10/2026 ("torna spesso Errore: Auth richiesto" su Best Laps): causa
+  // reale = token legacy SCADUTO (TTL 7 giorni) ma ancora in localStorage,
+  // quindi il sito sembrava loggato e ogni Edge Function rispondeva 401.
+  // Ora: token scaduto → niente chiamata, si chiude la sessione e
+  // AuthContext mostra "Sessione scaduta, accedi di nuovo".
+  if (finalBody.legacy_token && isLegacyTokenExpired(finalBody.legacy_token)) {
+    notifySessionExpired();
+    return fail('Sessione scaduta: accedi di nuovo con Discord');
+  }
+  // Retry residuo per 401 isolati con token valido (verifica Apps Script
+  // lenta sotto carico): fino a 2 tentativi con piccolo ritardo.
   const RETRY_DELAYS_MS = [700, 1800];
   for (let attempt = 0; ; attempt++) {
     let response;

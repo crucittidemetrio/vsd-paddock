@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { STORAGE, TIERS, TIER_ORDER } from '../utils/constants';
 import { AuthContext } from './authContextObject';
+import { getLegacyTokenExpiry, isLegacyTokenExpired, SESSION_EXPIRED_EVENT } from '../utils/legacyToken';
 
 /**
  * Legge la sessione salvata in localStorage. Pura, nessun side-effect.
@@ -16,6 +17,9 @@ function restoreAuthFromStorage_() {
   try {
     const savedToken = localStorage.getItem(STORAGE.TOKEN);
     if (!savedToken) return null;
+    // Token scaduto (TTL 7 giorni): niente sessione "fantasma" che fa
+    // fallire ogni chiamata con "Auth richiesto" — si riparte da anonimo.
+    if (isLegacyTokenExpired(savedToken)) return null;
     const savedDriver = localStorage.getItem(STORAGE.DRIVER);
     const savedTier = localStorage.getItem(STORAGE.TIER);
     const savedSims = localStorage.getItem(STORAGE.SIMS);
@@ -52,6 +56,16 @@ export function AuthProvider({ children }) {
   // false. Costante (non useState) perché non cambia mai più — nessun
   // setter da tenere in giro.
   const loading = false;
+  // true quando la sessione è stata chiusa perché il token è scaduto:
+  // mostra l'avviso "accedi di nuovo" invece degli errori sparsi.
+  const [sessionExpired, setSessionExpired] = useState(() => {
+    try {
+      const t = localStorage.getItem(STORAGE.TOKEN);
+      return !!t && isLegacyTokenExpired(t);
+    } catch {
+      return false;
+    }
+  });
 
   // Wave 10.X: funzione login() legacy (access_code) rimossa. L'unico
   // metodo di autenticazione è ora Discord OAuth via setDiscordSession.
@@ -73,6 +87,7 @@ export function AuthProvider({ children }) {
     setDiscordAvatarUrl(authData.discord_avatar_url || null);
     setDiscordUsername(authData.discord_username || null);
 
+    setSessionExpired(false);
     localStorage.setItem(STORAGE.TOKEN, authData.token);
     localStorage.setItem(STORAGE.TIER, authData.tier);
     localStorage.setItem(STORAGE.SIMS, JSON.stringify(authData.sims || []));
@@ -107,6 +122,26 @@ export function AuthProvider({ children }) {
     localStorage.removeItem(STORAGE.DISCORD_AVATAR_URL);
     localStorage.removeItem(STORAGE.DISCORD_USERNAME);
   }
+
+  // Scadenza del token: allo scadere (pagina aperta) o quando una chiamata
+  // API lo rileva (evento da supabaseApi) → logout + avviso.
+  useEffect(() => {
+    function expire() {
+      logout();
+      setSessionExpired(true);
+    }
+    window.addEventListener(SESSION_EXPIRED_EVENT, expire);
+    let timer = null;
+    const exp = getLegacyTokenExpiry(token);
+    if (token && exp !== null) {
+      // setTimeout accetta al massimo ~24,8 giorni; il TTL è 7.
+      timer = setTimeout(expire, Math.max(0, Math.min(exp - Date.now(), 2 ** 31 - 1)));
+    }
+    return () => {
+      window.removeEventListener(SESSION_EXPIRED_EVENT, expire);
+      if (timer) clearTimeout(timer);
+    };
+  }, [token]);
 
   // ─── Helpers derivati ───
   // Wave 10 fix: prima era !!token && !!driver (rompeva guest che ha driver=null)
@@ -148,5 +183,31 @@ export function AuthProvider({ children }) {
     logout,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {sessionExpired && !token && (
+        <div role="alert" style={EXPIRED_BANNER_STYLE}>
+          <span>Sessione scaduta: per sicurezza l'accesso dura 7 giorni.</span>
+          <a href="/login" style={{ color: 'inherit', fontWeight: 700 }}>
+            Accedi di nuovo con Discord
+          </a>
+          <button type="button" onClick={() => setSessionExpired(false)} aria-label="Chiudi avviso" style={EXPIRED_CLOSE_STYLE}>
+            ×
+          </button>
+        </div>
+      )}
+      {children}
+    </AuthContext.Provider>
+  );
 }
+
+const EXPIRED_BANNER_STYLE = {
+  position: 'fixed', left: '50%', bottom: 16, transform: 'translateX(-50%)', zIndex: 1000,
+  display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', justifyContent: 'center',
+  maxWidth: 'calc(100vw - 24px)', padding: '10px 14px', borderRadius: 10,
+  background: '#3a1d0b', color: '#ffd9b3', border: '1px solid #f08c3a',
+  boxShadow: '0 6px 24px rgba(0,0,0,.45)', fontSize: 14,
+};
+const EXPIRED_CLOSE_STYLE = {
+  background: 'none', border: 0, color: 'inherit', fontSize: 18, lineHeight: 1, cursor: 'pointer', padding: '0 2px',
+};
