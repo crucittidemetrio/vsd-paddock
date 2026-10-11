@@ -719,30 +719,45 @@ async function callEdgeFunction(slug, body, action) {
     if (legacyToken) finalBody = { ...finalBody, legacy_token: legacyToken };
   }
 
-  let response;
-  try {
-    response = await fetch(`${FUNCTIONS_BASE}/${slug}`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(finalBody),
-    });
-  } catch (e) {
-    console.error('[supabaseApi] network error', slug, e);
-    return fail('Errore di rete: ' + (e.message || 'connessione fallita'));
-  }
+  // 11/10/2026 ("torna spesso Errore: Auth richiesto" su Best Laps): con il
+  // token legacy ogni Edge Function lo verifica chiamando Apps Script
+  // (auth.verify). Quando una pagina apre molte richieste in parallelo,
+  // Apps Script ogni tanto non risponde in tempo → la function restituisce
+  // 401 "Auth richiesto" anche con un token valido. Errore transitorio:
+  // si ritenta fino a 2 volte con un piccolo ritardo prima di mostrarlo.
+  const RETRY_DELAYS_MS = [700, 1800];
+  for (let attempt = 0; ; attempt++) {
+    let response;
+    try {
+      response = await fetch(`${FUNCTIONS_BASE}/${slug}`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(finalBody),
+      });
+    } catch (e) {
+      console.error('[supabaseApi] network error', slug, e);
+      return fail('Errore di rete: ' + (e.message || 'connessione fallita'));
+    }
 
-  let json;
-  try {
-    json = await response.json();
-  } catch (e) {
-    console.error('[supabaseApi] JSON parse error', slug, e);
-    return fail(`Risposta non valida dal server (HTTP ${response.status})`);
-  }
+    let json;
+    try {
+      json = await response.json();
+    } catch (e) {
+      console.error('[supabaseApi] JSON parse error', slug, e);
+      return fail(`Risposta non valida dal server (HTTP ${response.status})`);
+    }
 
-  if (json?.ok === undefined) {
-    return fail(json?.error || `HTTP ${response.status}: ${response.statusText}`);
+    const transientAuth = response.status === 401 && finalBody.legacy_token && json?.error === 'Auth richiesto';
+    if (transientAuth && attempt < RETRY_DELAYS_MS.length) {
+      await new Promise((r) => setTimeout(r, RETRY_DELAYS_MS[attempt]));
+      continue;
+    }
+
+    if (json?.ok === undefined) {
+      return fail(json?.error || `HTTP ${response.status}: ${response.statusText}`);
+    }
+    return json;
   }
-  return json;
 }
 
 /** Stesso identico contratto di realApi.js:callApi(action, payload). */
