@@ -163,13 +163,65 @@ async function handleDiscordInteraction(rawBody: string): Promise<Response> {
     if (ambito === 'gara' && evento) insertRow.race_id = evento;
     if (ambito === 'clash' && evento) insertRow.clash_round = Number(evento);
 
-    const { error } = await serviceClient.from('incident_reports').insert(insertRow);
+    const { data: saved, error } = await serviceClient.from('incident_reports').insert(insertRow).select('id').maybeSingle();
     if (error) return jsonPlain({ type: 4, data: { content: '❌ Errore durante il salvataggio: ' + error.message, flags: 64 } });
+    await notifyIncidentToStaff(serviceClient, insertRow, saved?.id);
 
     return jsonPlain({ type: 4, data: { content: `✅ Segnalazione registrata (contro **${against}**). La Direzione Gara la esaminerà entro 48h.`, flags: 64 } });
   }
 
   return jsonPlain({ error: 'unhandled_interaction_type' }, 400);
+}
+
+// ── Notifica staff su #team-principal (DISCORD_WEBHOOK_ADMIN_URL) ──
+// 12/10/2026: ogni nuova segnalazione (web o /segnala-incidente) avvisa
+// lo staff. Non bloccante, timeout 2,5 s (Discord vuole la risposta
+// all'interaction entro 3 s). Niente testo integrale della descrizione
+// nel canale: solo un estratto, il resto sta nel registro.
+async function notifyIncidentToStaff(db: any, row: Record<string, any>, reportId?: string) {
+  try {
+    const url = Deno.env.get('DISCORD_WEBHOOK_ADMIN_URL');
+    if (!url) return;
+    let evento = '—';
+    if (row.race_id) {
+      const { data } = await db.from('races').select('race_name').eq('race_id', row.race_id).maybeSingle();
+      evento = data?.race_name || String(row.race_id);
+    } else if (row.championship_id) {
+      const { data } = await db.from('championships').select('name').eq('id', row.championship_id).maybeSingle();
+      evento = data?.name || String(row.championship_id);
+    } else if (row.clash_round) {
+      evento = `Clash of Classes · Round ${row.clash_round}`;
+    }
+    const desc = String(row.description || '');
+    const fields = [
+      { name: 'Segnalato da', value: String(row.reporter_sim || '—').slice(0, 100), inline: true },
+      { name: 'Contro', value: String(row.against || '—').slice(0, 100), inline: true },
+      { name: 'Evento', value: evento.slice(0, 100), inline: true },
+    ];
+    if (row.incident_type) fields.push({ name: 'Tipologia', value: String(row.incident_type).slice(0, 100), inline: true });
+    if (row.lap || row.time_in_race) fields.push({ name: 'Giro / minuto', value: [row.lap, row.time_in_race].filter(Boolean).join(' · ').slice(0, 100), inline: true });
+    if (row.replay_url) fields.push({ name: 'Replay', value: String(row.replay_url).slice(0, 300), inline: false });
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 2500);
+    await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: ctrl.signal,
+      body: JSON.stringify({
+        embeds: [{
+          author: { name: 'VSD Paddock — Direzione Gara' },
+          title: '🚨 Nuova segnalazione incidente',
+          description: (desc.length > 300 ? desc.slice(0, 300) + '…' : desc) || undefined,
+          color: 0xf87171,
+          fields,
+          timestamp: new Date().toISOString(),
+          footer: { text: `Registro incidenti · fonte: ${row.source === 'discord' ? 'Discord' : 'sito'}${reportId ? ' · #' + String(reportId).slice(0, 8) : ''}` },
+          url: 'https://vsd-paddock.vercel.app/admin/incidents',
+        }],
+      }),
+    });
+    clearTimeout(timer);
+  } catch (_e) { /* non bloccante */ }
 }
 
 function jsonPlain(body: unknown, status = 200) {
@@ -325,6 +377,7 @@ Deno.serve(async (req: Request) => {
       .select()
       .maybeSingle();
     if (error) return json({ ok: false, error: error.message }, 400);
+    await notifyIncidentToStaff(serviceClient, insertRow, data?.id);
 
     return json({ ok: true, data: { complaint_key: data.id, submitted_at: data.created_at } });
   } catch (e) {
