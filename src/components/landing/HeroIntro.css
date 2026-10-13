@@ -1,0 +1,98 @@
+/* ── Intro cinematografica hero pubblico (vedi HeroIntro.jsx) ── */
+.hi-layers { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+
+.hi-grid {
+  position: absolute; inset: -50% -50% 0;
+  background:
+    linear-gradient(transparent 95%, rgba(0, 212, 255, 0.18) 95%) 0 0 / 100% 60px,
+    linear-gradient(90deg, transparent 95%, rgba(0, 212, 255, 0.12) 95%) 0 0 / 60px 100%;
+  transform: perspective(500px) rotateX(62deg) translateY(10%);
+  transform-origin: center bottom;
+  animation: hiGridMove 1.2s linear infinite;
+  -webkit-mask-image: linear-gradient(to top, #000 10%, transparent 70%);
+  mask-image: linear-gradient(to top, #000 10%, transparent 70%);
+  opacity: 0.45;
+}
+@keyframes hiGridMove { to { background-position: 0 60px, 0 0; } }
+
+.hi-streak {
+  position: absolute; left: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, var(--vsd-cyan, #00d4ff), transparent);
+  opacity: 0; animation: hiStreak 1.6s linear infinite;
+}
+@keyframes hiStreak {
+  0% { transform: translateX(-30vw); opacity: 0; }
+  10% { opacity: 0.8; }
+  100% { transform: translateX(130vw); opacity: 0; }
+}
+
+.hi-line { position: absolute; inset: 0; width: 100%; height: 100%; }
+.hi-line path {
+  fill: none; stroke: url(#hiLineGrad); stroke-width: 3; stroke-linecap: round;
+  filter: drop-shadow(0 0 8px #00d4ff);
+  stroke-dasharray: 2600; stroke-dashoffset: 2600;
+  animation: hiDraw 2.4s 0.3s cubic-bezier(0.6, 0.05, 0.3, 1) forwards;
+  opacity: 0.6;
+}
+@keyframes hiDraw { to { stroke-dashoffset: 0; } }
+.hi-dot { fill: #fff; filter: drop-shadow(0 0 10px #00d4ff); animation: hiDotFade 2.7s forwards; }
+@keyframes hiDotFade { 0%, 90% { opacity: 1; } 100% { opacity: 0; } }
+
+/* Comparse a tempo: ogni elemento con .hi-in usa --d come ritardo */
+.hi-full .hi-in { opacity: 0; animation: hiFadeUp 0.7s var(--d, 0s) cubic-bezier(0.2, 1, 0.3, 1) forwards; }
+@keyframes hiFadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+/* Logo: entra con un "pop" e poi un riflesso di luce limitato alla sagoma */
+.hi-logo { position: relative; display: inline-block; }
+.hi-full .hi-logo { opacity: 0; transform: scale(0.6); animation: hiPop 0.7s 2.3s cubic-bezier(0.2, 1.6, 0.4, 1) forwards; }
+@keyframes hiPop { to { opacity: 1; transform: scale(1); } }
+.hi-full .hi-logo::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.75) 50%, transparent 65%) no-repeat;
+  background-size: 250% 100%; background-position: 150% 0;
+  -webkit-mask: var(--hi-logo) left center / contain no-repeat;
+  mask: var(--hi-logo) left center / contain no-repeat;
+  animation: hiSweep 1.2s 3s ease-out forwards;
+}
+@keyframes hiSweep { to { background-position: -50% 0; } }
+
+/* Titolo lettera per lettera */
+.hi-title span { display: inline-block; text-shadow: 0 0 18px rgba(0, 212, 255, 0.25); }
+.hi-full .hi-title span { opacity: 0; transform: translateY(40px) skewX(-12deg); animation: hiLetter 0.5s var(--d) forwards; }
+@keyframes hiLetter { to { opacity: 1; transform: none; } }
+
+/* Semafori */
+.hi-start { margin-top: 28px; display: flex; flex-direction: column; align-items: center; }
+.hi-lights {
+  display: flex; gap: 12px; padding: 12px 16px; border-radius: 14px;
+  background: #03070f; border: 1px solid #1b2742; box-shadow: inset 0 0 20px #000;
+}
+.hi-light {
+  width: 28px; height: 28px; border-radius: 50%;
+  background: #2a0c10; box-shadow: inset 0 0 8px #000; transition: background 0.08s, box-shadow 0.08s;
+}
+.hi-light.is-on {
+  background: radial-gradient(circle at 40% 35%, #ff9aa2, #ff2d3d 45%, #a8000f);
+  box-shadow: 0 0 22px 6px rgba(255, 45, 61, 0.7);
+}
+.hi-lights.is-out .hi-light { background: #2a0c10; box-shadow: inset 0 0 8px #000; }
+
+.hi-next { margin-top: 18px; opacity: 0; transform: translateY(16px); transition: opacity 0.6s, transform 0.6s cubic-bezier(0.2, 1, 0.3, 1); }
+.hi-next.is-shown { opacity: 1; transform: none; }
+.hi-next-label { font-size: 0.72rem; letter-spacing: 0.3em; text-transform: uppercase; color: var(--vsd-orange, #f5a623); }
+.hi-next-name {
+  display: inline-block; margin: 6px 0 12px; font-size: clamp(18px, 3vw, 26px); font-weight: 800;
+  color: var(--color-text, #e8f1ff); text-decoration: none;
+}
+.hi-next-name:hover { color: var(--vsd-cyan, #00d4ff); }
+
+@media (max-width: 600px) {
+  .hi-light { width: 22px; height: 22px; }
+  .hi-lights { gap: 9px; padding: 10px 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hi-grid, .hi-streak, .hi-line path, .hi-dot { animation: none !important; }
+  .hi-streak, .hi-dot { display: none; }
+  .hi-line path { stroke-dashoffset: 0; }
+}

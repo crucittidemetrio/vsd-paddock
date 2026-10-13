@@ -12,6 +12,9 @@ import SimBadge from '../components/shared/SimBadge';
 import LapTime from '../components/shared/LapTime';
 import HeroBackdrop from '../components/shared/HeroBackdrop';
 import NextRaceHero from '../components/landing/NextRaceHero';
+import { IntroLayers, SplitTitle, CountUp, StartLights } from '../components/landing/HeroIntro';
+import { useIntroMode } from '../hooks/useIntroMode';
+import logoSrc from '../assets/vsd-logo.webp';
 import { useConsentSocialFlags } from '../hooks/useConsent';
 import SiteFooter from '../components/shared/SiteFooter';
 import { resolvePhotoUrl } from '../utils/driverPhotos';
@@ -55,6 +58,8 @@ function getRecentPodiums(raceResults, driverMap, limit = 5) {
 }
 
 export default function LandingPublic() {
+  const introMode = useIntroMode();
+  const play = introMode === 'full';
   const { data: drivers, isLoading: driversLoading } = useDrivers();
   const { data: races, isLoading: racesLoading } = useRaces();
   const { data: raceResultsData } = useRecentTeamRaceResults(200);
@@ -123,15 +128,18 @@ export default function LandingPublic() {
   return (
     <div className={styles.page}>
       {/* ════ HERO ════ */}
-      <section className={styles.hero}>
+      <section className={`${styles.hero} hi-${introMode}`}>
         <HeroBackdrop />
+        <IntroLayers />
         <div className={styles.heroContent}>
           <div className={styles.heroLogo}>
-            <Logo size={180} withWordmark glow />
+            <span className="hi-logo" style={{ '--hi-logo': `url(${logoSrc})` }}>
+              <Logo size={180} glow />
+            </span>
           </div>
-          <h1 className={styles.heroTitle}>Virtual Sim Driver</h1>
-          <p className={styles.heroTagline}>Italian Sim Racing Team</p>
-          <div className={styles.heroSims}>
+          <SplitTitle text="Virtual Sim Driver" className={styles.heroTitle} />
+          <p className={`${styles.heroTagline} hi-in`} style={{ '--d': '3.5s' }}>Italian Sim Racing Team</p>
+          <div className={`${styles.heroSims} hi-in`} style={{ '--d': '3.6s' }}>
             <SimBadge sim="LMU" />
             <SimBadge sim="IRC" />
             <SimBadge sim="ACE" />
@@ -145,12 +153,14 @@ export default function LandingPublic() {
               motivati") — "Unisciti al team" resta quindi l'unico bottone
               pieno, i social diventano un rigo di link secondari più
               piccolo, "Accedi" è stato rimosso da qui (resta in TopBar). */}
-          <div className={styles.heroActions}>
+          <StartLights race={nextRace} play={play} />
+
+          <div className={`${styles.heroActions} hi-in`} style={{ '--d': '7s' }}>
             <Link to="/joinus" className={`${styles.btn} ${styles.btnAccent} ${styles.btnLg}`}>
               Unisciti al team
             </Link>
           </div>
-          <div className={styles.socialRow}>
+          <div className={`${styles.socialRow} hi-in`} style={{ '--d': '7.1s' }}>
             <span className={styles.socialLabel}>Seguici:</span>
             <a href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer" className={styles.socialLink}>
               Discord
@@ -163,17 +173,17 @@ export default function LandingPublic() {
             </a>
           </div>
 
-          <div className={styles.statBand}>
+          <div className={`${styles.statBand} hi-in`} style={{ '--d': '7.2s' }}>
             <div className={styles.statItem}>
-              <span className={styles.statValue}>{activeRoster.length}</span>
+              <span className={styles.statValue}><CountUp to={activeRoster.length} delay={7.3} play={play} /></span>
               <span className={styles.statLabel}>Piloti</span>
             </div>
             <div className={styles.statItem}>
-              <span className={styles.statValue}>{completedRaces}</span>
+              <span className={styles.statValue}><CountUp to={completedRaces} delay={7.3} play={play} /></span>
               <span className={styles.statLabel}>Gare disputate</span>
             </div>
             <div className={styles.statItem}>
-              <span className={styles.statValue}>{(allLaps || []).length}</span>
+              <span className={styles.statValue}><CountUp to={(allLaps || []).length} delay={7.3} play={play} /></span>
               <span className={styles.statLabel}>Giri registrati</span>
             </div>
           </div>
