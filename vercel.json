@@ -10,6 +10,6 @@
     { "source": "/training", "destination": "/api/og?route=training" },
     { "source": "/records", "destination": "/api/og?route=records" },
     { "source": "/recap", "destination": "/api/og?route=recap" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!assets/).*)", "destination": "/index.html" }
   ]
 }

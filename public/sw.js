@@ -72,12 +72,19 @@ self.addEventListener('fetch', (event) => {
   if (url.pathname.startsWith('/assets/')) {
     event.respondWith(
       (async () => {
+        // FIX 13/10/2026: il rewrite SPA di Vercel risponde 200 + index.html
+        // anche per un asset inesistente (es. durante il cambio deploy).
+        // Quell'HTML finiva in cache al posto del CSS → sito senza stili
+        // finché non si svuotava la cache. Ora un asset in HTML non viene
+        // mai salvato e, se già in cache, viene scartato.
+        const isHtml = (r) => (r.headers.get('content-type') || '').includes('text/html');
         const cache = await caches.open(CACHE_VERSION);
         const cached = await cache.match(request);
-        if (cached) return cached;
+        if (cached && !isHtml(cached)) return cached;
+        if (cached) await cache.delete(request);
         try {
-          const fresh = await fetch(request);
-          if (fresh.ok) cache.put(request, fresh.clone());
+          const fresh = await fetch(request, { cache: 'no-cache' });
+          if (fresh.ok && !isHtml(fresh)) cache.put(request, fresh.clone());
           return fresh;
         } catch {
           return Response.error();
