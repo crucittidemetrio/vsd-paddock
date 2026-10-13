@@ -46,7 +46,17 @@
   object-fit: cover; border-radius: 50%; border: 3px solid rgba(0, 212, 255, 0.6); box-shadow: 0 0 24px rgba(0, 212, 255, 0.35);
 }
 .dcard-photo-fallback { display: grid; place-items: center; font-size: 56px; font-weight: 900; background: #0b1426; color: var(--vsd-cyan, #00d4ff); }
-.dcard-num { position: absolute; right: 12px; top: 150px; z-index: 1; font-size: 44px; font-weight: 900; font-style: italic; color: rgba(255, 255, 255, 0.08); }
+.dcard-photo-box { position: relative; z-index: 2; width: fit-content; margin: 8px auto 0; }
+.dcard-photo-box .dcard-photo { margin: 0; }
+/* Numero di gara: prima era una filigrana quasi trasparente dietro la foto
+   e non si leggeva (13/10/2026). Ora è un "adesivo" sul bordo della foto. */
+.dcard-num {
+  position: absolute; right: -10px; bottom: 2px; z-index: 3;
+  padding: 2px 9px; border-radius: 8px; transform: skewX(-8deg);
+  font-size: 18px; font-weight: 900; font-style: italic; line-height: 1.3; letter-spacing: 0.02em;
+  color: #0a1224; background: linear-gradient(90deg, #00d4ff, #ffd23f);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
 .dcard-name { position: relative; z-index: 2; margin-top: 10px; text-align: center; font-size: 22px; font-weight: 800; color: var(--color-text, #e8f1ff); }
 .dcard-meta { text-align: center; font-size: 10px; letter-spacing: 0.2em; color: var(--color-text-dim, #7d8aa6); margin-bottom: 10px; }
 .dcard-stats { position: relative; z-index: 2; display: grid; gap: 4px; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 10px; }
@@ -61,7 +71,7 @@
    resterebbe più in alto degli altri e la griglia si disallinea. */
 .dcard-grid .dcard-top { min-height: 54px; }
 .dcard-grid .dcard-photo { width: 118px; height: 118px; }
-.dcard-grid .dcard-num { top: 128px; }
+
 .dcard-grid .dcard-name { font-size: 19px; line-height: 1.15; }
 .dcard-grid .dcard-stats { margin-top: auto; }
 .dcard-grid:focus-visible { outline: 2px solid var(--vsd-cyan, #00d4ff); outline-offset: 3px; }

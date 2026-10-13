@@ -71,10 +71,12 @@ export default function DriverCard({
             <div className="dcard-tier">{tierLabel}</div>
           </div>
         </div>
-        {photoUrl
-          ? <img className="dcard-photo" src={photoUrl} alt="" loading="lazy" />
-          : <div className="dcard-photo dcard-photo-fallback">{(name || '?').slice(0, 1)}</div>}
-        {number != null && number !== '' && <div className="dcard-num" aria-hidden="true">#{number}</div>}
+        <div className="dcard-photo-box">
+          {photoUrl
+            ? <img className="dcard-photo" src={photoUrl} alt="" loading="lazy" />
+            : <div className="dcard-photo dcard-photo-fallback">{(name || '?').slice(0, 1)}</div>}
+          {number != null && number !== '' && <div className="dcard-num" aria-label={`Numero ${number}`}>#{number}</div>}
+        </div>
         <div className="dcard-name">{name}</div>
         <div className={`dcard-meta${meta ? ' dcard-meta-role' : ''}`}>{meta || 'VIRTUAL SIM DRIVER'}</div>
         {children && <div className="dcard-extra">{children}</div>}
