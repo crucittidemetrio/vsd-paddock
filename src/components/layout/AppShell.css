@@ -65,5 +65,7 @@
 @media (max-width: 767px) {
   .app-shell-content {
     padding: var(--sp-4);
+    /* spazio per la barra scorciatoie fissa in basso (BottomNav) */
+    padding-bottom: calc(var(--sp-4) + 64px + env(safe-area-inset-bottom, 0px));
   }
 }

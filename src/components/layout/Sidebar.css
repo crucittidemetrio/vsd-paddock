@@ -391,6 +391,89 @@
   letter-spacing: 0.1em;
 }
 
+/* ── Gruppi richiudibili (riorganizzazione 13/10/2026) ── */
+.nav-group { display: flex; flex-direction: column; gap: 2px; }
+
+.nav-group-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding-right: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+
+.nav-group-toggle {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  background: none;
+  border: 0;
+  padding: var(--sp-3) var(--sp-3) var(--sp-2);
+  cursor: pointer;
+  color: var(--color-text-dim);
+  border-radius: var(--r-sm);
+  text-align: left;
+}
+.nav-group-toggle:hover { color: var(--color-text-muted); }
+.nav-group-toggle:focus-visible { outline: 2px solid var(--vsd-cyan); outline-offset: 1px; }
+
+.nav-group-label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+}
+.nav-group-static { padding: var(--sp-3) var(--sp-3) var(--sp-2); color: var(--color-text-dim); }
+
+.nav-group-chevron {
+  font-size: 1rem;
+  line-height: 1;
+  transition: transform var(--t-fast);
+}
+.nav-group-chevron.is-open { transform: rotate(90deg); }
+
+.nav-group-event .nav-group-toggle { color: var(--vsd-orange); }
+.nav-group-tool .nav-group-toggle { color: #22c55e; }
+.nav-group-admin .nav-group-toggle,
+.nav-group-admin .nav-group-static { color: var(--vsd-red); }
+
+.nav-subsection-toggle {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+}
+.nav-subsection-toggle:hover { opacity: 1; }
+
+/* Prossima gara / area riservata: voce a due righe */
+.nav-sublabel {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: var(--fw-regular, 400);
+  color: var(--color-text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+.nav-item-next .nav-label { min-width: 0; }
+.nav-when {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  color: var(--vsd-cyan);
+  border: 1px solid rgba(0, 212, 255, 0.35);
+  border-radius: var(--r-sm);
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+.nav-item-locked .nav-icon { color: var(--color-text-dim); }
+
 @media (max-width: 767px) {
   .sidebar {
     position: fixed;

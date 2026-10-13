@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
+import BottomNav from './BottomNav';
 import ConsentGate from '../auth/ConsentGate';
 import { useCanonicalUrl } from '../../hooks/useCanonicalUrl';
 import { usePresenceHeartbeat } from '../../hooks/usePresence';
@@ -54,6 +55,10 @@ export default function AppShell() {
           </ConsentGate>
         </main>
       </div>
+      <BottomNav
+        isMenuOpen={isMobileMenuOpen}
+        onMenuClick={() => setIsMobileMenuOpen(v => !v)}
+      />
     </div>
   );
 }

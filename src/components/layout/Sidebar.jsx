@@ -1,86 +1,115 @@
 import { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { LABELS } from '../../utils/constants';
 import { useAuth } from '../../hooks/useAuth';
 import { usePendingLapSubmissions } from '../../hooks/useLapSubmissions';
 import { useAdminNavOrder } from '../../hooks/useAdminNavOrder';
+import { useUpcomingRaces } from '../../hooks/useRaces';
 import Logo from '../shared/Logo';
 import totalPaintLogo from '../../assets/total-paint-logo.webp';
 import './Sidebar.css';
 
-// Voci pubbliche — visibili a tutti i tier (anonymous incluso)
-const PUBLIC_ITEMS = [
-  { to: '/', label: LABELS.nav_landing, icon: '◉', exact: true },
-  { to: '/roster', label: LABELS.nav_roster, icon: '◢' },
-  { to: '/race', label: LABELS.nav_race, icon: '◤' },
-  { to: '/calendar', label: 'Calendario', icon: '▦' },
-  { to: '/championships', label: 'Campionati', icon: '♛' },
-  { to: '/laps', label: LABELS.nav_laps, icon: '◈' },
-  { to: '/results', label: LABELS.nav_results, icon: '⚑' },
-  { to: '/compare', label: 'Confronto', icon: '⚖' },
-  { to: '/endurance', label: LABELS.nav_endurance, icon: '◐' },
-  // #408 (25/09/2026): pagina pubblica community-wide, stesso spirito di
-  // Campionati/Calendario — accessibile anche a chi non ha mai fatto
-  // login, sostituisce il rimando implicito al comando Discord.
-  { to: '/reclami', label: 'Reclami', icon: '⚑' },
-  // Voce visibile a tutti (individuabile da chiunque visiti il sito),
-  // il contenuto è invece gated a pilot_vsd+ dentro Setup.jsx stesso
-  // (stesso pattern di RaceDetail.jsx: pagina pubblica, sezioni interne
-  // protette con RequireTier/LoginPrompt).
-  { to: '/setup', label: 'Setup', icon: '⚙' },
+// ═══════════════════════════════════════════════════════════
+// Navigazione riorganizzata (13/10/2026, simulazione approvata da
+// Demetrio): gruppi per "cosa vuoi fare" invece di una lista unica da
+// 21 voci. Ogni gruppo si apre/chiude, lo stato resta salvato nel
+// browser; il gruppo che contiene la pagina aperta si apre da solo.
+// Nessun indirizzo cambia: link Discord e preferiti restano validi.
+// `req`: undefined = tutti · 'pilot' = pilota VSD+ · 'staff' = staff/admin
+// ═══════════════════════════════════════════════════════════
+const NAV_GROUPS = [
+  {
+    key: 'team', label: 'Il team', defaultOpen: true,
+    items: [
+      { to: '/roster', label: LABELS.nav_roster, icon: '◢' },
+      { to: '/joinus', label: 'Unisciti a noi', icon: '⊕' },
+      { to: '/media-kit', label: 'Media Kit', icon: '▤' },
+    ],
+  },
+  {
+    key: 'gare', label: 'Gare', defaultOpen: true, accent: 'race',
+    items: [
+      { to: '/calendar', label: 'Calendario', icon: '▦' },
+      { to: '/race', label: LABELS.nav_race, icon: '◤' },
+      { to: '/results', label: LABELS.nav_results, icon: '☰' },
+      { to: '/championships', label: 'Campionati', icon: '♛' },
+      { to: '/endurance', label: LABELS.nav_endurance, icon: '◐' },
+      { to: '/reclami', label: 'Reclami', icon: '⚠' },
+    ],
+  },
+  {
+    key: 'eventi', label: 'Eventi e campionati', accent: 'event',
+    items: [
+      { to: '/ue144', label: 'UE144', icon: '⚑', cls: 'is-event' },
+      { to: '/clash-of-classes', label: 'Clash of Classes', icon: '⚔', cls: 'is-event' },
+      { to: '/era-season-3', label: 'ERA Season 3', icon: '◭', cls: 'is-external' },
+      { to: '/aci-lmgt3-challenge', label: 'ACI LMGT3 Challenge', icon: '♟', cls: 'is-external is-archived', req: 'staff' },
+    ],
+  },
+  {
+    key: 'prestazioni', label: 'Prestazioni',
+    items: [
+      { to: '/laps', label: LABELS.nav_laps, icon: '◈' },
+      { to: '/compare', label: 'Confronto piloti', icon: '⚖' },
+      { to: '/records', label: 'Muro dei Record', icon: '✪', req: 'pilot' },
+      { to: '/academy', label: 'Punti Merito', icon: '◇', req: 'pilot' },
+      { to: '/pace-analysis', label: 'Analisi di Passo', icon: '⏱', req: 'pilot' },
+      { to: '/training', label: LABELS.nav_training, icon: '◆', req: 'pilot' },
+      { to: '/recap', label: 'Season Recap', icon: '✦', req: 'pilot' },
+    ],
+  },
+  {
+    key: 'pilota', label: 'Area pilota', req: 'pilot', accent: 'pilot',
+    items: [
+      { to: '/team-sessions', label: 'Sessioni team', icon: '◔' },
+      { to: '/reports', label: LABELS.nav_reports, icon: '◣' },
+      { to: '/setup', label: 'Setup', icon: '⚙' },
+      { to: '/consenso', label: 'Il mio consenso', icon: '✎' },
+    ],
+  },
+  {
+    key: 'strumenti', label: 'Strumenti gara', req: 'pilot', accent: 'tool',
+    items: [
+      { to: '/pitwall', label: 'Pit Wall', icon: '◉', cls: 'is-tool' },
+      { to: '/pitwall-live', label: 'Pit Wall remoto', icon: '◎', cls: 'is-tool' },
+      { to: '/carburante-energia', label: 'Carburante/Energia', icon: '⛽', cls: 'is-tool' },
+    ],
+  },
 ];
 
-// Eventi VSD — formati proprietari interni (non le gare/campionati standard),
-// visibili a tutti gli utenti, evidenziati con un accento dedicato.
-const EVENTS_ITEMS = [
-  { to: '/ue144', label: 'UE144', icon: '⚑' },
-  { to: '/clash-of-classes', label: 'Clash of Classes', icon: '⚔' },
-];
+const NAV_OPEN_KEY = 'vsd_nav_groups_v1';
 
-// Campionati esterni — VSD vi partecipa con propri piloti ma non li
-// organizza (serie ufficiali di una federazione/ente terzo). Sezione
-// distinta da Eventi VSD, che sono format proprietari interni.
-// `archived: true` (richiesto 30/09/2026): il campionato non è più
-// attivo (es. ACI, ritirati — vedi #414/#416) ma la pagina resta nel
-// sito per eventuale riattivazione futura. Voce nascosta a piloti ed
-// esterni, visibile solo a staff/admin con stile attenuato (vedi
-// isStaff + is-archived più sotto) così è chiaro a colpo d'occhio che
-// non è attiva senza doverla rimuovere dal codice.
-const EXTERNAL_ITEMS = [
-  { to: '/aci-lmgt3-challenge', label: 'ACI LMGT3 Challenge', icon: '♟', archived: true },
-  { to: '/era-season-3', label: 'ERA Season 3', icon: '◈' },
-];
+function readOpenState() {
+  try {
+    return JSON.parse(localStorage.getItem(NAV_OPEN_KEY) || '{}') || {};
+  } catch {
+    return {};
+  }
+}
 
-// Pagine rivolte all'esterno (candidati, sponsor) — visibili a tutti,
-// prima erano raggiungibili solo via link diretto condiviso a mano.
-const TEAM_ITEMS = [
-  { to: '/joinus', label: 'Unisciti a noi', icon: '⊕' },
-  { to: '/media-kit', label: 'Media Kit', icon: '▤' },
-];
+function writeOpenState(state) {
+  try {
+    localStorage.setItem(NAV_OPEN_KEY, JSON.stringify(state));
+  } catch {
+    /* storage non disponibile: lo stato vale solo per questa visita */
+  }
+}
 
-// Voci pilota attive — visibili solo a pilot_vsd, staff, admin
-const PILOT_ITEMS = [
-  { to: '/reports', label: LABELS.nav_reports, icon: '◣' },
-  { to: '/academy', label: 'Punti Merito', icon: '◇' },
-  { to: '/recap', label: 'Season Recap', icon: '✦' },
-  { to: '/records', label: 'Muro dei Record', icon: '♛' },
-  { to: '/training', label: LABELS.nav_training, icon: '◆' },
-  { to: '/team-sessions', label: 'Sessioni team', icon: '◔' },
-  { to: '/pace-analysis', label: 'Analisi di Passo', icon: '⏱' },
-  { to: '/pitwall', label: 'Pit Wall', icon: '◉' },
-  { to: '/pitwall-live', label: 'Pit Wall Live (remoto)', icon: '◈' },
-  { to: '/consenso', label: 'Il mio consenso', icon: '✎' },
-];
+function pathMatches(pathname, to) {
+  return to === '/' ? pathname === '/' : (pathname === to || pathname.startsWith(to + '/'));
+}
 
-// Strumenti da usare DURANTE una sessione (gara o prova), non pagine di
-// consultazione — sezione separata coi propri accenti visivi, così è
-// chiaro a colpo d'occhio che non è "un'altra pagina di statistiche".
-const TOOLS_ITEMS = [
-  { to: '/carburante-energia', label: 'Carburante/Energia', icon: '◔' },
-];
+const RACE_TIME_FMT = new Intl.DateTimeFormat('it-IT', {
+  weekday: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Rome',
+});
 
-// Voci future "soon" — solo pilota loggato
-const FUTURE_ITEMS = [];
+function nextRaceOf(data) {
+  const list = Array.isArray(data) ? data : (data?.races || []);
+  const now = Date.now();
+  return list
+    .filter(r => r && r.date && new Date(r.date).getTime() > now - 3 * 3600 * 1000 && r.status !== 'cancelled')
+    .sort((a, b) => new Date(a.date) - new Date(b.date))[0] || null;
+}
 
 // Ogni voce ha un campo `group` usato SOLO per raggruppare la vista in
 // sola lettura (vedi groupAdminItems più sotto) — l'ordine libero via
@@ -88,18 +117,18 @@ const FUTURE_ITEMS = [];
 // non tocchiamo quel meccanismo. Admin Home non ha gruppo: resta sempre
 // la prima voce, da sola, come punto d'ingresso.
 const ADMIN_ITEMS = [
-  { to: '/admin', label: 'Admin Home', icon: '⌂', group: null },
-  { to: '/admin/best-laps', label: 'Best Laps', icon: '◷', group: 'gare' },
+  { to: '/admin', label: 'Admin Home', icon: '⚒', group: null },
+  { to: '/admin/best-laps', label: 'Validazione Best Laps', icon: '◷', group: 'gare' },
   { to: '/admin/races', label: 'Gestione Gare', icon: '⚑', group: 'gare' },
   { to: '/admin/team-dashboard', label: 'Team Dashboard', icon: '▥', group: 'piloti' },
   { to: '/admin/import-results', label: 'Import Risultati', icon: '▽', group: 'gare' },
-  { to: '/admin/import-lap-data', label: 'Import Analisi di Passo', icon: '⏱', group: 'gare' },
-  { to: '/admin/import-standings', label: 'Import Standings', icon: '♛', group: 'gare' },
-  { to: '/admin/championships', label: 'Campionati', icon: '◈', group: 'gare' },
-  { to: '/admin/garage61-sync', label: 'Sync Garage61', icon: '↻', group: 'gare' },
-  { to: '/admin/posters', label: 'Race Posters', icon: '▭', group: 'gare' },
-  { to: '/admin/endurance', label: 'Endurance Admin', icon: '◐', group: 'gare' },
-  { to: '/admin/clash-results', label: 'Clash of Classes — Risultati', icon: '⚔', group: 'gare' },
+  { to: '/admin/import-lap-data', label: 'Import Analisi di Passo', icon: '⏱', group: 'import' },
+  { to: '/admin/import-standings', label: 'Import Standings', icon: '♛', group: 'import' },
+  { to: '/admin/championships', label: 'Campionati', icon: '♛', group: 'gare' },
+  { to: '/admin/garage61-sync', label: 'Sync Garage61', icon: '↻', group: 'import' },
+  { to: '/admin/posters', label: 'Race Posters', icon: '▭', group: 'import' },
+  { to: '/admin/endurance', label: 'Endurance Admin', icon: '◐', group: 'import' },
+  { to: '/admin/clash-results', label: 'Clash of Classes — Risultati', icon: '⚔', group: 'import' },
   { to: '/admin/candidates', label: 'Candidature', icon: '◫', group: 'piloti' },
   { to: '/admin/sponsors', label: 'Sponsor', icon: '◆', group: 'finanze' },
   { to: '/admin/incidents', label: 'Registro incidenti', icon: '⚠', group: 'piloti' },
@@ -119,12 +148,13 @@ const ADMIN_ONLY_ITEMS = [
 // Un gruppo compare solo se ha almeno una voce visibile per il ruolo
 // corrente (es. Contenuti sparisce per staff non-admin, che non vede
 // Social Manager né — qui — Messaggi Discord se non ha can_message).
-const ADMIN_GROUP_ORDER = ['gare', 'piloti', 'contenuti', 'finanze', 'sistema'];
+const ADMIN_GROUP_ORDER = ['gare', 'piloti', 'contenuti', 'finanze', 'import', 'sistema'];
 const ADMIN_GROUP_LABELS = {
   gare: 'Gare & Risultati',
   piloti: 'Piloti',
   contenuti: 'Contenuti & Comunicazione',
   finanze: 'Finanze',
+  import: 'Import e strumenti',
   sistema: 'Sistema',
 };
 
@@ -207,20 +237,17 @@ function renderReorderableAdminItem(item, { move, isFirst, isLast, badgeCount = 
 }
 
 export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {} }) {
-  const { isVsdPilot, isStaff, isAdmin, canMessage } = useAuth();
+  const { isAuthenticated, isVsdPilot, isStaff, isAdmin, canMessage, driver } = useAuth();
+  const { pathname } = useLocation();
   const [adminEditMode, setAdminEditMode] = useState(false);
+  const [openState, setOpenState] = useState(readOpenState);
 
-  // Solo admin: la coda di validazione best lap è riservata a loro (vedi
-  // AdminBestLaps.jsx). Polling ogni 30s già previsto dall'hook — stessa
-  // queryKey usata lì, quindi nessuna chiamata doppia se la pagina è
-  // aperta insieme alla sidebar.
   const pendingLapsQuery = usePendingLapSubmissions(isAdmin);
   const pendingLapsCount = pendingLapsQuery.data?.length || 0;
 
-  // Ordine Admin personalizzabile ("almeno per la sezione Admin" — richiesta
-  // esplicita): combina le voci visibili in base al ruolo corrente in
-  // un'unica lista ordinabile, salvata in localStorage (preferenza di
-  // questo browser, non dato di squadra).
+  const upcomingQuery = useUpcomingRaces();
+  const nextRace = nextRaceOf(upcomingQuery.data);
+
   const effectiveAdminItems = [
     ...ADMIN_ITEMS.map(item => ({
       ...item,
@@ -230,50 +257,94 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
   ];
   const { items: orderedAdminItems, move, reset, hasCustomOrder } = useAdminNavOrder(effectiveAdminItems);
 
+  const canSee = req => !req || (req === 'pilot' ? isVsdPilot : req === 'staff' ? isStaff : true);
+
+  // Gruppo aperto se: contiene la pagina corrente, oppure scelta salvata,
+  // oppure default del gruppo.
+  function isOpen(key, defaultOpen, items) {
+    if (items && items.some(i => pathMatches(pathname, i.to))) return true;
+    return openState[key] ?? !!defaultOpen;
+  }
+  function toggle(key, current) {
+    setOpenState(prev => {
+      const next = { ...prev, [key]: !current };
+      writeOpenState(next);
+      return next;
+    });
+  }
+
+  function renderGroupHeader(key, label, open, accent, extra = null) {
+    return (
+      <div className={`nav-group-head${accent ? ' nav-group-' + accent : ''}`}>
+        <button
+          type="button"
+          className="nav-group-toggle"
+          aria-expanded={open}
+          onClick={() => toggle(key, open)}
+        >
+          <span className="nav-group-label">{label}</span>
+          <span className={`nav-group-chevron${open ? ' is-open' : ''}`} aria-hidden="true">›</span>
+        </button>
+        {extra}
+      </div>
+    );
+  }
+
+  const adminGrouped = groupAdminItems(orderedAdminItems);
+  const adminOpen = isOpen('admin', false, orderedAdminItems);
+
   return (
     <aside className={`sidebar${isMobileOpen ? ' is-mobile-open' : ''}`}>
       <div className="sidebar-brand">
         <Logo size={48} withWordmark />
       </div>
 
-      <nav className="sidebar-nav">
-        <div className="nav-section-label">Operations</div>
-        {PUBLIC_ITEMS.map(item => renderNavItem(item, onMobileClose))}
-
-        {isVsdPilot && PILOT_ITEMS.map(item => renderNavItem(item, onMobileClose))}
-
-        {/* Eventi VSD dopo le voci pilota (non dopo Operations), così il
-            blocco "azzurro" (Operations + voci pilota) resta contiguo
-            invece di essere interrotto dal blocco arancione in mezzo. */}
-        <div className="nav-section-label nav-section-label-event">Eventi VSD</div>
-        {EVENTS_ITEMS.map(item => renderNavItem(item, onMobileClose, 'is-event'))}
-
-        <div className="nav-section-label nav-section-label-external">Campionati Esterni</div>
-        {EXTERNAL_ITEMS
-          .filter(item => !item.archived || isStaff)
-          .map(item => renderNavItem(item, onMobileClose, item.archived ? 'is-external is-archived' : 'is-external'))}
-
-        <div className="nav-section-label">Team</div>
-        {TEAM_ITEMS.map(item => renderNavItem(item, onMobileClose))}
-
-        {isVsdPilot && (
-          <>
-            <div className="nav-section-label nav-section-label-tool">Strumenti Gara</div>
-            {TOOLS_ITEMS.map(item => renderNavItem(item, onMobileClose, 'is-tool'))}
-          </>
+      <nav className="sidebar-nav" aria-label="Navigazione principale">
+        {/* In evidenza: sempre visibile, niente gruppo da aprire. */}
+        {renderNavItem({ to: '/', label: LABELS.nav_landing, icon: '⌂', exact: true }, onMobileClose)}
+        {nextRace && (
+          <NavLink
+            to={`/race/${encodeURIComponent(nextRace.race_id)}`}
+            onClick={onMobileClose}
+            className={({ isActive }) => `nav-item nav-item-next${isActive ? ' is-active' : ''}`}
+            title={nextRace.race_name || nextRace.title || 'Prossima gara'}
+          >
+            <span className="nav-icon">➤</span>
+            <span className="nav-label">
+              Prossima gara
+              <span className="nav-sublabel">{nextRace.race_name || nextRace.title}</span>
+            </span>
+            <span className="nav-when">{RACE_TIME_FMT.format(new Date(nextRace.date))}</span>
+          </NavLink>
         )}
+        {isAuthenticated && driver?.driver_id &&
+          renderNavItem({ to: `/roster/${driver.driver_id}`, label: 'Il mio profilo', icon: '☺' }, onMobileClose)}
 
-        {isVsdPilot && (
-          <>
-            <div className="nav-section-label">In arrivo</div>
-            {FUTURE_ITEMS.map(item => renderNavItem(item, onMobileClose, 'is-soon'))}
-          </>
+        {NAV_GROUPS.filter(g => canSee(g.req)).map(group => {
+          const items = group.items.filter(i => canSee(i.req));
+          if (!items.length) return null;
+          const open = isOpen(group.key, group.defaultOpen, items);
+          return (
+            <div key={group.key} className="nav-group">
+              {renderGroupHeader(group.key, group.label, open, group.accent)}
+              {open && items.map(item => renderNavItem(item, onMobileClose, item.cls || ''))}
+            </div>
+          );
+        })}
+
+        {!isVsdPilot && (
+          <NavLink to="/login" onClick={onMobileClose} className="nav-item nav-item-locked">
+            <span className="nav-icon">🔒︎</span>
+            <span className="nav-label">
+              Area riservata
+              <span className="nav-sublabel">Accedi per statistiche e strumenti</span>
+            </span>
+          </NavLink>
         )}
 
         {isStaff && (
-          <>
-            <div className="nav-section-label nav-section-label-admin">
-              <span>Admin</span>
+          <div className="nav-group">
+            {renderGroupHeader('admin', 'Admin', adminOpen || adminEditMode, 'admin', (adminOpen || adminEditMode) && (
               <button
                 type="button"
                 className={`nav-reorder-toggle${adminEditMode ? ' is-active' : ''}`}
@@ -282,49 +353,54 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
               >
                 {adminEditMode ? 'Fatto' : 'Riordina'}
               </button>
-            </div>
+            ))}
             {adminEditMode && hasCustomOrder && (
               <button type="button" className="nav-reorder-reset" onClick={reset}>
                 Ripristina ordine predefinito
               </button>
             )}
             {adminEditMode ? (
-              // Modalità riordino: elenco piatto invariato, frecce su/giù
-              // operano sull'intero ordine — i sotto-gruppi sono solo un
-              // raggruppamento visivo per la lettura, non toccano questo.
               orderedAdminItems.map((item, idx) => renderReorderableAdminItem(item, {
                 move,
                 isFirst: idx === 0,
                 isLast: idx === orderedAdminItems.length - 1,
                 badgeCount: item.badgeCount,
               }))
-            ) : (
-              (() => {
-                const { home, groups } = groupAdminItems(orderedAdminItems);
-                return (
-                  <>
-                    {home && renderNavItem(home, onMobileClose, 'is-admin', home.badgeCount)}
-                    {groups.map(g => (
-                      <div key={g.key}>
-                        <div className="nav-subsection-label">{g.label}</div>
-                        {g.items.map(item => renderNavItem(item, onMobileClose, 'is-admin', item.badgeCount))}
-                      </div>
-                    ))}
-                  </>
-                );
-              })()
+            ) : adminOpen && (
+              <>
+                {adminGrouped.home && renderNavItem(adminGrouped.home, onMobileClose, 'is-admin', adminGrouped.home.badgeCount)}
+                {adminGrouped.groups.map(g => {
+                  // Il sotto-gruppo degli strumenti usati di rado parte chiuso.
+                  const subKey = 'admin_' + g.key;
+                  const subOpen = isOpen(subKey, g.key !== 'import', g.items);
+                  return (
+                    <div key={g.key}>
+                      <button
+                        type="button"
+                        className="nav-subsection-label nav-subsection-toggle"
+                        aria-expanded={subOpen}
+                        onClick={() => toggle(subKey, subOpen)}
+                      >
+                        <span>{g.label}{!subOpen ? ` (${g.items.length})` : ''}</span>
+                        <span className={`nav-group-chevron${subOpen ? ' is-open' : ''}`} aria-hidden="true">›</span>
+                      </button>
+                      {subOpen && g.items.map(item => renderNavItem(item, onMobileClose, 'is-admin', item.badgeCount))}
+                    </div>
+                  );
+                })}
+              </>
             )}
-          </>
+            {/* Badge validazioni in attesa visibile anche ad Admin chiuso. */}
+            {!adminOpen && !adminEditMode && pendingLapsCount > 0 &&
+              renderNavItem({ to: '/admin/best-laps', label: 'Best Laps da validare', icon: '◷' }, onMobileClose, 'is-admin', pendingLapsCount)}
+          </div>
         )}
 
-        {/* Permesso granulare Messenger (Task #102): un pilota può avere
-            can_message=true senza essere staff — vede solo questa voce,
-            non l'intera area Admin (già coperta sopra per chi è staff). */}
         {!isStaff && canMessage && (
-          <>
-            <div className="nav-section-label nav-section-label-admin">Comunicazione</div>
+          <div className="nav-group">
+            <div className="nav-group-head nav-group-admin"><span className="nav-group-label nav-group-static">Comunicazione</span></div>
             {renderNavItem({ to: '/admin/messenger', label: 'Messaggi Discord', icon: '✉' }, onMobileClose, 'is-admin')}
-          </>
+          </div>
         )}
       </nav>
 
