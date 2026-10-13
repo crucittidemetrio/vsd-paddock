@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import CountdownLive from '../shared/CountdownLive';
 import './HeroIntro.css';
 
 // ═══════════════════════════════════════════════════════════
@@ -102,6 +101,10 @@ export function CountUp({ to, delay = 0, play }) {
   return <>{play ? value : target}</>;
 }
 
+const RACE_WHEN_FMT = new Intl.DateTimeFormat('it-IT', {
+  weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Rome',
+});
+
 /**
  * Semafori di partenza: 5 rossi in sequenza, poi "lights out" (con la
  * pausa leggermente casuale delle partenze vere) e compare la prossima gara.
@@ -128,7 +131,9 @@ export function StartLights({ race, play }) {
           <Link to={`/race/${encodeURIComponent(race.race_id)}`} className="hi-next-name">
             {race.race_name || race.title}
           </Link>
-          <CountdownLive targetIso={race.date} size="lg" />
+          {/* Niente countdown qui: c'è già nella scheda "Prossima gara"
+              subito sotto l'hero, sarebbe un doppione. */}
+          <div className="hi-next-when">{RACE_WHEN_FMT.format(new Date(race.date))}</div>
         </div>
       )}
     </div>

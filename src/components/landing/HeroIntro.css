@@ -90,6 +90,9 @@
   color: var(--color-text, #e8f1ff); text-decoration: none;
 }
 .hi-next-name:hover { color: var(--vsd-cyan, #00d4ff); }
+.hi-next { display: flex; flex-direction: column; align-items: center; }
+.hi-next-name { margin-bottom: 4px; }
+.hi-next-when { font-family: var(--font-mono, monospace); font-size: 0.85rem; letter-spacing: 0.08em; color: var(--color-text-muted, #9fb0cc); text-transform: capitalize; margin-bottom: 8px; }
 
 @media (max-width: 600px) {
   .hi-light { width: 22px; height: 22px; }
