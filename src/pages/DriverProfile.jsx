@@ -51,7 +51,8 @@ export default function DriverProfile() {
   const { data: raceResultsData } = useMyRecentRaceResults(driverId, 200);
   const { data: champData } = useChampionshipsByDriver(driverId);
   const { data: skillIndex } = useDriverSkillIndex(driverId);
-  const raceResults = raceResultsData?.results || [];
+  // Qualifiche escluse: una pole non è una vittoria né un podio (13/10/2026).
+  const raceResults = (raceResultsData?.results || []).filter(r => r.session_type !== 'qualifying');
   const { data: allRaces } = useRaces();
 
   usePageMeta(driver ? {

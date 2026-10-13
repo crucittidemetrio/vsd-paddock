@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { Link } from 'react-router-dom';
 import './DriverCard.css';
 
 // Card pilota "da collezione" (13/10/2026, simulazione approvata):
@@ -7,7 +8,14 @@ import './DriverCard.css';
 // manca (es. Elo per un visitatore non collegato) la casella non compare.
 export const ELITE_ELO = 1540;
 
-export default function DriverCard({ name, photoUrl, number, elo, safety, races, wins, podiums, className = '' }) {
+// Varianti (13/10/2026): size="grid" per la griglia del Roster (larghezza
+// fluida, altezza libera), `to` rende la card un link, `status` va in alto a
+// destra accanto al livello, `meta` sostituisce "VIRTUAL SIM DRIVER" (es.
+// TEAM PRINCIPAL), `children` ospita badge/sim/specialità, `muted` per gli ex.
+export default function DriverCard({
+  name, photoUrl, number, elo, safety, races, wins, podiums, className = '',
+  size, to, status, meta, children, muted = false,
+}) {
   const ref = useRef(null);
   const tier = elo != null ? (elo >= ELITE_ELO ? 'elite' : 'pro') : 'base';
   const tierLabel = tier === 'elite' ? 'ELITE' : tier === 'pro' ? 'PRO' : 'VSD';
@@ -39,11 +47,13 @@ export default function DriverCard({ name, photoUrl, number, elo, safety, races,
     { label: 'Safety', value: safety != null ? Math.round(safety) : null },
   ].filter(s => s.value != null);
 
+  const Tag = to ? Link : 'div';
   return (
-    <div className={`dcard-wrap ${className}`}>
-      <div
+    <div className={`dcard-wrap${size === 'grid' ? ' dcard-wrap-grid' : ''} ${className}`}>
+      <Tag
+        {...(to ? { to } : {})}
         ref={ref}
-        className={`dcard dcard-${tier}`}
+        className={`dcard dcard-${tier}${size === 'grid' ? ' dcard-grid' : ''}${muted ? ' dcard-muted' : ''}`}
         onMouseMove={e => move(e.clientX, e.clientY)}
         onMouseLeave={reset}
         onTouchMove={e => { const t = e.touches[0]; if (t) move(t.clientX, t.clientY); }}
@@ -56,14 +66,18 @@ export default function DriverCard({ name, photoUrl, number, elo, safety, races,
           {elo != null ? (
             <div className="dcard-elo"><b>{Math.round(elo)}</b><small>ELO LMU</small></div>
           ) : <span />}
-          <div className="dcard-tier">{tierLabel}</div>
+          <div className="dcard-top-right">
+            {status}
+            <div className="dcard-tier">{tierLabel}</div>
+          </div>
         </div>
         {photoUrl
           ? <img className="dcard-photo" src={photoUrl} alt="" loading="lazy" />
           : <div className="dcard-photo dcard-photo-fallback">{(name || '?').slice(0, 1)}</div>}
         {number != null && number !== '' && <div className="dcard-num" aria-hidden="true">#{number}</div>}
         <div className="dcard-name">{name}</div>
-        <div className="dcard-meta">VIRTUAL SIM DRIVER</div>
+        <div className={`dcard-meta${meta ? ' dcard-meta-role' : ''}`}>{meta || 'VIRTUAL SIM DRIVER'}</div>
+        {children && <div className="dcard-extra">{children}</div>}
         {stats.length > 0 && (
           <div className="dcard-stats" style={{ gridTemplateColumns: `repeat(${stats.length}, 1fr)` }}>
             {stats.map(s => (
@@ -71,7 +85,7 @@ export default function DriverCard({ name, photoUrl, number, elo, safety, races,
             ))}
           </div>
         )}
-      </div>
+      </Tag>
     </div>
   );
 }

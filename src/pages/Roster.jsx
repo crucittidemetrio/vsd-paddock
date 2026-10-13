@@ -1,7 +1,10 @@
 import { useState, useMemo } from 'react';
 import { useDrivers } from '../hooks/useRoster';
 import { usePresenceOnline } from '../hooks/usePresence';
-import DriverCard from '../components/shared/DriverCard';
+import RosterCard from '../components/wow/RosterCard';
+import { useAuth } from '../hooks/useAuth';
+import { useAcademyRanking } from '../hooks/useAcademy';
+import { useRaceResults } from '../hooks/useRaceResults';
 import AddDriverPanel from '../components/profile/AddDriverPanel';
 import { SIM_LIST, DRIVER_STATUS } from '../utils/constants';
 import './Roster.css';
@@ -25,6 +28,31 @@ export default function Roster() {
 
   const { data: drivers, isLoading, error } = useDrivers({ includeRemoved: true });
   const { data: presenceData } = usePresenceOnline();
+  // Statistiche sulle card: Elo/Safety e risultati sono dati riservati ai
+  // piloti (endpoint con accesso) — i visitatori vedono le card senza numeri.
+  const { isVsdPilot } = useAuth();
+  const { data: rankingData } = useAcademyRanking(isVsdPilot ? 'LMU' : null);
+  const { data: resultsData } = useRaceResults({ enabled: isVsdPilot });
+  const statsByDriver = useMemo(() => {
+    const map = {};
+    const get = (id) => (map[id] ||= { raceIds: new Set(), wins: 0, podiums: 0 });
+    (resultsData?.results || []).forEach(r => {
+      if (!r.driver_id || r.session_type === 'qualifying') return;
+      const s = get(r.driver_id);
+      if (r.race_id) s.raceIds.add(r.race_id);
+      if (!r.dns && !r.dnf && typeof r.finish_position === 'number') {
+        if (r.finish_position === 1) s.wins += 1;
+        if (r.finish_position <= 3) s.podiums += 1;
+      }
+    });
+    const out = {};
+    Object.entries(map).forEach(([id, s]) => {
+      out[id] = { races: s.raceIds.size, wins: s.wins, podiums: s.podiums };
+    });
+    (rankingData?.eloRanking || []).forEach(e => { (out[e.driver_id] ||= {}).elo = e.elo; });
+    (rankingData?.safetyRanking || []).forEach(e => { (out[e.driver_id] ||= {}).safety = e.safety_rank; });
+    return out;
+  }, [resultsData, rankingData]);
   // undefined finché il primo poll non risponde: StatusDot lo interpreta come
   // "dato non disponibile" e mantiene il vecchio comportamento (verde fisso)
   // invece di mostrare per un istante tutti offline.
@@ -107,7 +135,7 @@ export default function Roster() {
       {isLoading && (
         <div className="roster-grid">
           {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="driver-card skeleton-card" />
+            <div key={i} className="skeleton-card roster-skeleton" />
           ))}
         </div>
       )}
@@ -131,9 +159,10 @@ export default function Roster() {
       {!isLoading && filtered.length > 0 && (
         <div className="roster-grid">
           {filtered.map(d => (
-            <DriverCard
+            <RosterCard
               key={d.driver_id}
               driver={d}
+              stats={statsByDriver[d.driver_id]}
               online={onlineSet ? onlineSet.has(d.driver_id) : undefined}
             />
           ))}
@@ -152,7 +181,7 @@ export default function Roster() {
           </button>
           {showEx && (
             <div className="roster-grid roster-ex-grid">
-              {exDrivers.map(d => <DriverCard key={d.driver_id} driver={d} />)}
+              {exDrivers.map(d => <RosterCard key={d.driver_id} driver={d} stats={statsByDriver[d.driver_id]} />)}
             </div>
           )}
         </div>

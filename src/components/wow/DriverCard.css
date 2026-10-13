@@ -54,6 +54,28 @@
 .dcard-stats b { display: block; font-size: 18px; color: var(--color-text, #e8f1ff); }
 .dcard-stats small { font-size: 9px; letter-spacing: 0.1em; color: var(--color-text-dim, #7d8aa6); text-transform: uppercase; }
 
+/* ─── Variante griglia Roster ─── */
+.dcard-wrap-grid { animation: none; height: 100%; }
+.dcard-grid { width: 100%; height: 100%; min-height: 360px; display: flex; flex-direction: column; text-decoration: none; color: inherit; cursor: pointer; }
+.dcard-grid .dcard-photo { width: 118px; height: 118px; }
+.dcard-grid .dcard-num { top: 128px; }
+.dcard-grid .dcard-name { font-size: 19px; line-height: 1.15; }
+.dcard-grid .dcard-stats { margin-top: auto; }
+.dcard-grid:focus-visible { outline: 2px solid var(--vsd-cyan, #00d4ff); outline-offset: 3px; }
+.dcard-top-right { display: flex; align-items: center; gap: 8px; }
+.dcard-meta-role { color: var(--vsd-orange, #ff8a3d); font-weight: 700; }
+.dcard-extra { position: relative; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 8px; margin-bottom: 12px; }
+.dcard-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+.dcard-chip {
+  font-size: 10px; letter-spacing: 0.04em; padding: 2px 8px; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06); border: 1px solid rgba(255, 255, 255, 0.12); color: var(--color-text-muted, #b4c0d8);
+}
+.dcard-chip-competitivo { background: rgba(255, 210, 63, 0.12); border-color: rgba(255, 210, 63, 0.4); color: #ffd23f; }
+.dcard-chip-amatoriale { background: rgba(0, 212, 255, 0.1); border-color: rgba(0, 212, 255, 0.35); color: var(--vsd-cyan, #00d4ff); }
+.dcard-chip-ex { background: rgba(255, 45, 61, 0.12); border-color: rgba(255, 45, 61, 0.45); color: #ff6b78; font-weight: 700; letter-spacing: 0.15em; }
+.dcard-muted { filter: grayscale(0.85); opacity: 0.75; }
+.dcard-muted:hover { filter: grayscale(0.3); opacity: 1; }
+
 @media (prefers-reduced-motion: reduce) {
   .dcard-wrap { animation: none; }
   .dcard { transform: none !important; transition: none; }
