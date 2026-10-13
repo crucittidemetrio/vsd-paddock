@@ -1,0 +1,60 @@
+.dcard-wrap { perspective: 1000px; animation: dcardDeal 0.8s cubic-bezier(0.2, 1.2, 0.3, 1) both; }
+@keyframes dcardDeal { from { opacity: 0; transform: translateY(30px) rotateY(-25deg); } to { opacity: 1; transform: none; } }
+
+.dcard {
+  --rx: 0deg; --ry: 0deg; --mx: 50%; --my: 50%;
+  position: relative; width: 230px; height: 340px; border-radius: 18px; padding: 14px; overflow: hidden;
+  transform: rotateX(var(--rx)) rotateY(var(--ry)); transform-style: preserve-3d;
+  transition: transform 0.15s ease-out; box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+  background: linear-gradient(155deg, #16243f, #0a1224 60%, #13203a);
+  border: 2px solid #3a5a8c; touch-action: pan-y; user-select: none;
+}
+.dcard.is-active { transform: rotateX(var(--rx)) rotateY(var(--ry)) scale(1.03); }
+.dcard-elite { background: linear-gradient(155deg, #1d2f5c 0%, #0b1630 45%, #2a1640 100%); border-color: transparent; }
+.dcard-elite::before {
+  content: ''; position: absolute; inset: 0; border-radius: 16px; padding: 2px; pointer-events: none;
+  background: linear-gradient(135deg, #1e6bff, #00d4ff, #ffd23f, #ff2d3d);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.dcard-holo {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.2s;
+  background: linear-gradient(115deg, transparent 20%, rgba(0, 212, 255, 0.25) 35%, rgba(255, 210, 63, 0.22) 50%, rgba(255, 45, 61, 0.2) 62%, transparent 80%);
+  background-size: 250% 250%; background-position: var(--mx) var(--my); mix-blend-mode: color-dodge;
+}
+.dcard-shine {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity 0.2s;
+  background: radial-gradient(circle at var(--mx) var(--my), rgba(255, 255, 255, 0.28), transparent 45%);
+}
+.dcard.is-active .dcard-holo { opacity: 0.9; }
+.dcard.is-active .dcard-shine { opacity: 1; }
+
+.dcard-top { position: relative; z-index: 2; display: flex; justify-content: space-between; align-items: flex-start; }
+.dcard-elo b {
+  display: block; font-size: 30px; font-weight: 900; line-height: 1;
+  background: linear-gradient(90deg, #00d4ff, #ffd23f); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.dcard-elo small { font-size: 9px; letter-spacing: 0.2em; color: var(--color-text-dim, #7d8aa6); }
+.dcard-tier {
+  font-size: 10px; letter-spacing: 0.25em; font-weight: 800; padding: 4px 8px; border-radius: 6px;
+  background: rgba(0, 212, 255, 0.12); color: var(--vsd-cyan, #00d4ff); border: 1px solid rgba(0, 212, 255, 0.35);
+}
+.dcard-elite .dcard-tier { background: rgba(255, 210, 63, 0.15); color: #ffd23f; border-color: rgba(255, 210, 63, 0.4); }
+
+.dcard-photo {
+  position: relative; z-index: 2; display: block; width: 140px; height: 140px; margin: 8px auto 0;
+  object-fit: cover; border-radius: 50%; border: 3px solid rgba(0, 212, 255, 0.6); box-shadow: 0 0 24px rgba(0, 212, 255, 0.35);
+}
+.dcard-photo-fallback { display: grid; place-items: center; font-size: 56px; font-weight: 900; background: #0b1426; color: var(--vsd-cyan, #00d4ff); }
+.dcard-num { position: absolute; right: 12px; top: 150px; z-index: 1; font-size: 44px; font-weight: 900; font-style: italic; color: rgba(255, 255, 255, 0.08); }
+.dcard-name { position: relative; z-index: 2; margin-top: 10px; text-align: center; font-size: 22px; font-weight: 800; color: var(--color-text, #e8f1ff); }
+.dcard-meta { text-align: center; font-size: 10px; letter-spacing: 0.2em; color: var(--color-text-dim, #7d8aa6); margin-bottom: 10px; }
+.dcard-stats { position: relative; z-index: 2; display: grid; gap: 4px; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 10px; }
+.dcard-stats div { text-align: center; }
+.dcard-stats b { display: block; font-size: 18px; color: var(--color-text, #e8f1ff); }
+.dcard-stats small { font-size: 9px; letter-spacing: 0.1em; color: var(--color-text-dim, #7d8aa6); text-transform: uppercase; }
+
+@media (prefers-reduced-motion: reduce) {
+  .dcard-wrap { animation: none; }
+  .dcard { transform: none !important; transition: none; }
+}

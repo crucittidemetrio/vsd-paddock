@@ -24,13 +24,18 @@ import EditProfilePanel from '../components/profile/EditProfilePanel';
 import AdminDriverPanel from '../components/profile/AdminDriverPanel';
 import MyIncidentsPanel from '../components/profile/MyIncidentsPanel';
 import { ROLES } from '../utils/constants';
+import DriverCard from '../components/wow/DriverCard';
+import { useAcademyRanking } from '../hooks/useAcademy';
 import { formatTrack, formatCar, formatDate } from '../utils/format';
 import './DriverProfile.css';
 import './Page.css';
 
 export default function DriverProfile() {
   const { driverId } = useParams();
-  const { driver: authDriver } = useAuth();
+  const { driver: authDriver, isVsdPilot } = useAuth();
+  // Elo/Safety per la card: dati riservati ai piloti (academy.ranking
+  // richiede l'accesso) — per i visitatori la card mostra solo le gare.
+  const { data: rankingData } = useAcademyRanking(isVsdPilot ? 'LMU' : null);
   const isOwnProfile = !!authDriver?.driver_id && authDriver.driver_id === driverId;
   const [showAllLaps, setShowAllLaps] = useState(false);
   const [showAllHistory, setShowAllHistory] = useState(false);
@@ -157,6 +162,9 @@ export default function DriverProfile() {
   const roleLabel =
     driver.role === ROLES.ADMIN ? 'Team Principal' :
     driver.role === ROLES.STAFF ? 'Staff' : 'Pilota';
+
+  const eloEntry = (rankingData?.eloRanking || []).find(r => r.driver_id === driver.driver_id);
+  const safetyEntry = (rankingData?.safetyRanking || []).find(r => r.driver_id === driver.driver_id);
 
   const totalLaps = uniqueLaps.length;
   const verifiedLaps = uniqueLaps.filter(l => !!l.verified_by).length;
@@ -371,6 +379,19 @@ export default function DriverProfile() {
               </Link>
             </div>
           </div>
+          {!isExVsd && (
+            <DriverCard
+              className="hero-driver-card"
+              name={driver.display_name}
+              photoUrl={photoUrl}
+              number={driver.race_number}
+              elo={eloEntry?.elo}
+              safety={safetyEntry?.safety_rank}
+              races={racesCount}
+              wins={wins}
+              podiums={podiums}
+            />
+          )}
         </div>
       </div>
 

@@ -19,6 +19,7 @@ import { usePageMeta } from '../hooks/usePageMeta';
 import { normalizeImageUrl } from '../utils/driveUrl';
 import { useBlobUpload } from '../hooks/useBlobUpload';
 import RaceResultsSection from '../components/race/RaceResultsSection';
+import RaceRecap from '../components/wow/RaceRecap';
 import IncidentReportSection from '../components/shared/IncidentReportSection';
 import TrackKerbBackdrop from '../components/shared/TrackKerbBackdrop';
 import './Page.css';
@@ -555,6 +556,9 @@ export default function RaceDetail() {
           />
         </RequireTier>
       )}
+
+      {/* Riepilogo animato (podio, pilota VSD della gara) — solo se ci sono risultati */}
+      <RaceRecap raceId={raceId} drivers={drivers} />
 
       {/* Risultati Ufficiali — appare solo se ci sono righe in RaceResults */}
       <RaceResultsSection raceId={raceId} drivers={drivers} />

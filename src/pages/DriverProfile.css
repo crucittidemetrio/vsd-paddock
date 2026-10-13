@@ -605,3 +605,9 @@
   color: var(--color-text-dim);
   border-color: var(--color-border);
 }
+/* Card pilota da collezione nell'hero (desktop: a destra; mobile: sotto) */
+.hero-driver-card { margin-left: auto; flex-shrink: 0; }
+@media (max-width: 900px) {
+  .hero-content { flex-wrap: wrap; }
+  .hero-driver-card { margin: var(--sp-4) auto 0; }
+}
