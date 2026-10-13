@@ -1,5 +1,10 @@
 /* ── Intro cinematografica hero pubblico (vedi HeroIntro.jsx) ── */
 .hi-layers { position: absolute; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+/* Gli effetti servono solo per l'ingresso: poi si dissolvono e lasciano
+   vedere il video di sfondo dell'hero. Alle visite successive non ci sono. */
+.hi-full .hi-layers { animation: hiLayersOut 1.6s 7.5s ease forwards; }
+.hi-skip .hi-layers { display: none; }
+@keyframes hiLayersOut { to { opacity: 0; visibility: hidden; } }
 
 .hi-grid {
   position: absolute; inset: -50% -50% 0;
@@ -11,7 +16,7 @@
   animation: hiGridMove 1.2s linear infinite;
   -webkit-mask-image: linear-gradient(to top, #000 10%, transparent 70%);
   mask-image: linear-gradient(to top, #000 10%, transparent 70%);
-  opacity: 0.45;
+  opacity: 0.3;
 }
 @keyframes hiGridMove { to { background-position: 0 60px, 0 0; } }
 
