@@ -57,6 +57,9 @@
 /* ─── Variante griglia Roster ─── */
 .dcard-wrap-grid { animation: none; height: 100%; }
 .dcard-grid { width: 100%; height: 100%; min-height: 360px; display: flex; flex-direction: column; text-decoration: none; color: inherit; cursor: pointer; }
+/* Altezza fissa della fascia alta: chi non ha l'Elo (es. nessuna gara LMU)
+   resterebbe più in alto degli altri e la griglia si disallinea. */
+.dcard-grid .dcard-top { min-height: 54px; }
 .dcard-grid .dcard-photo { width: 118px; height: 118px; }
 .dcard-grid .dcard-num { top: 128px; }
 .dcard-grid .dcard-name { font-size: 19px; line-height: 1.15; }
