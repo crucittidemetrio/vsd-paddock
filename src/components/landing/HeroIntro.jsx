@@ -123,7 +123,7 @@ export function StartLights({ race, play }) {
   return (
     <div className="hi-start">
       <div className={`hi-lights${out ? ' is-out' : ''}`} aria-hidden="true">
-        {[0, 1, 2, 3, 4].map(i => <i key={i} className={`hi-light${i < lit ? ' is-on' : ''}`} />)}
+        {[0, 1, 2, 3, 4].map(i => <i key={i} className={`hi-light${i < lit ? ' is-on' : ''}`} style={{ '--i': i }} />)}
       </div>
       {race && (
         <div className={`hi-next${out ? ' is-shown' : ''}`}>
