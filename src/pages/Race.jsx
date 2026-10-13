@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import HoloTilt from '../components/wow/HoloTilt';
 import { useAuth } from '../hooks/useAuth';
 import { useRaces } from '../hooks/useRaces';
 import { useDrivers } from '../hooks/useRoster';
@@ -136,7 +137,7 @@ function RaceCard({ race, driverMap, tracks, isPast, myResult }) {
   const socialFlags = socialFlagsData?.flags || {};
 
   return (
-    <Link to={`/race/${race.race_id}`} className="race-card">
+    <HoloTilt as={Link} to={`/race/${race.race_id}`} className="race-card" max={6}>
       {race.poster_url && (
         <div className="race-card-poster">
           <img
@@ -213,7 +214,7 @@ function RaceCard({ race, driverMap, tracks, isPast, myResult }) {
           <span className="notes-icon">›</span> {race.notes}
         </div>
       )}
-    </Link>
+    </HoloTilt>
   );
 }
 

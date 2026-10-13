@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import HoloTilt from '../components/wow/HoloTilt';
 import { useChampionships } from '../hooks/useChampionships';
 import { usePageMeta } from '../hooks/usePageMeta';
 import EmptyState from '../components/shared/EmptyState';
@@ -87,7 +88,9 @@ export default function ChampionshipsList() {
             </h2>
             <div className={styles.grid}>
               {list.map(c => (
-                <Link
+                <HoloTilt
+                  as={Link}
+                  max={7}
                   key={c.id}
                   to={`/championships/${c.id}`}
                   className={`${styles.card} ${styles[`card_${status}`]} ${c.banner_url ? styles.cardWithBanner : ''}`}
@@ -136,7 +139,7 @@ export default function ChampionshipsList() {
                   )}
 
                   <div className={styles.cardFooter}>Vedi classifica →</div>
-                </Link>
+                </HoloTilt>
               ))}
             </div>
           </section>
