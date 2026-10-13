@@ -8,10 +8,15 @@ export function useRaces(status) {
   });
 }
 
-export function useUpcomingRaces() {
+// `enabled: false` usato dalla sidebar per gli ospiti: races.upcoming
+// richiede l'accesso (per un ospite risponde lista vuota e sovrascriveva
+// in cache i dati buoni già messi da landing.data). Con enabled=false la
+// query legge solo la cache popolata da useLandingData.
+export function useUpcomingRaces({ enabled = true } = {}) {
   return useQuery({
     queryKey: ['races', 'upcoming'],
     queryFn: () => api.races.upcoming(),
+    enabled,
   });
 }
 

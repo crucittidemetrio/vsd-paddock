@@ -245,7 +245,7 @@ export default function Sidebar({ isMobileOpen = false, onMobileClose = () => {}
   const pendingLapsQuery = usePendingLapSubmissions(isAdmin);
   const pendingLapsCount = pendingLapsQuery.data?.length || 0;
 
-  const upcomingQuery = useUpcomingRaces();
+  const upcomingQuery = useUpcomingRaces({ enabled: isAuthenticated });
   const nextRace = nextRaceOf(upcomingQuery.data);
 
   const effectiveAdminItems = [
