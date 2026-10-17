@@ -1,0 +1,89 @@
+diff --git a/apps-script/SocialManager.js b/apps-script/SocialManager.js
+index 149427b..591b49e 100644
+--- a/apps-script/SocialManager.js
++++ b/apps-script/SocialManager.js
+@@ -791,8 +791,12 @@ function handleSocialPlanDismissedList(payload, ctx) {
+ //
+ // Registrazione trigger: setupTriggers() in Triggers.js (lunedì 8:00).
+ 
++// "vigilia" (T-1) aggiunto ott 2026 in coppia con SocialManager.jsx
++// PILLARS — vedi il commento lì per il motivo (post di hype/classifica
++// a ridosso del via, scoperti fuori sistema su Clash of Classes R3).
+ const SOCIAL_DIGEST_PILLARS = [
+   { id: 'anteprima', label: 'Anteprima gara', icon: '📣', offsetDays: -7 },
++  { id: 'vigilia', label: 'Vigilia gara', icon: '🔥', offsetDays: -1 },
+   { id: 'risultati', label: 'Risultati', icon: '🏆', offsetDays: 1 },
+   { id: 'highlight', label: 'Highlight/Reel', icon: '🎬', offsetDays: 3 },
+ ];
+diff --git a/src/pages/SocialManager.jsx b/src/pages/SocialManager.jsx
+index 34e6d9e..cb9abd1 100644
+--- a/src/pages/SocialManager.jsx
++++ b/src/pages/SocialManager.jsx
+@@ -57,8 +57,15 @@ const FACEBOOK_GROUP_URL = 'https://www.facebook.com/groups/38192830187030341';
+ // L'iscrizioni/entry list (T-2gg) è stato RIMOSSO consapevolmente: risultava
+ // ridondante rispetto all'anteprima nella pratica. Live/race day rimosso
+ // allo stesso modo: nella pratica non veniva mai presidiato durante la gara.
++// "Vigilia" (T-1) aggiunto ott 2026: contenuto diverso dall'Anteprima
++// (T-7, annuncio gara) — qui si ricorda la posta in palio a ridosso del
++// via (classifica aggiornata, distacchi, condizioni meteo previste).
++// Introdotto dopo che 3 post di questo tipo per Clash of Classes R3 sono
++// stati pubblicati fuori sistema (loggati a mano, senza race_id/pillar)
++// perché nessun pilastro esistente li copriva.
+ const PILLARS = [
+   { id: 'anteprima', label: 'Anteprima gara', icon: '📣', offsetDays: -7, channels: ['ig', 'fb', 'discord'] },
++  { id: 'vigilia', label: 'Vigilia gara', icon: '🔥', offsetDays: -1, channels: ['ig', 'fb_group', 'discord'] },
+   { id: 'risultati', label: 'Risultati', icon: '🏆', offsetDays: 1, channels: ['ig', 'fb', 'fb_group', 'discord'] },
+   { id: 'highlight', label: 'Highlight/Reel', icon: '🎬', offsetDays: 3, channels: ['ig', 'fb', 'fb_group', 'discord'] },
+ ];
+@@ -446,6 +453,18 @@ function IconStatCard({ badgeClass, icon, label, value, delta }) {
+ // ═══════════════════════════════════════════════════════════
+ 
+ function PostCreator({ posts, postsQuery, suggestion, onConsumeSuggestion }) {
++  // Gare per il selettore manuale "Gara collegata" qui sotto — serve a
++  // collegare a posteriori un post già pubblicato fuori sistema (copiato
++  // a mano su IG/FB/Discord) a una gara, quando non è passato dal
++  // flusso "+ Crea bozza" del Piano editoriale (che imposta race_id/
++  // pillar in automatico). Caso reale: i 3 post di hype pre-gara per
++  // Clash of Classes R3 (ott 2026), pubblicati senza passare da un
++  // pilastro — vedi pillar "vigilia" aggiunto in PILLARS più sopra.
++  const racesQuery = useRaces();
++  const races = useMemo(
++    () => [...(racesQuery.data || [])].sort((a, b) => String(b.date || '').localeCompare(String(a.date || ''))),
++    [racesQuery.data]
++  );
+   const [form, setForm] = useState(EMPTY_FORM);
+   const [editingId, setEditingId] = useState(null);
+   const [aiTopic, setAiTopic] = useState('');
+@@ -617,6 +636,24 @@ function PostCreator({ posts, postsQuery, suggestion, onConsumeSuggestion }) {
+             </div>
+           )}
+ 
++          {!form.pillar && (
++            <div className={styles.field}>
++              <label className={styles.fieldLabel}>Gara collegata (opzionale)</label>
++              <select
++                className={styles.select}
++                value={form.race_id}
++                onChange={e => update('race_id', e.target.value)}
++              >
++                <option value="">— nessuna —</option>
++                {races.map(r => (
++                  <option key={r.race_id} value={r.race_id}>
++                    {(r.race_name || r.race_id)}{r.date ? ` — ${fmtDate(r.date)}` : ''}
++                  </option>
++                ))}
++              </select>
++            </div>
++          )}
++
+           {form.media_url ? (
+             <div className={styles.mediaAttached}>
+               {form.media_url.match(/\.(mp4|mov|webm)(\?|$)/i) ? (
+@@ -854,6 +891,7 @@ function pillarTopic(race, pillarId, dateLabel) {
+   const name = race.race_name || race.race_id;
+   switch (pillarId) {
+     case 'anteprima': return `Anteprima gara ${name} (${race.sim}), in programma ${dateLabel}`;
++    case 'vigilia': return `Classifica aggiornata e condizioni meteo alla vigilia di ${name}`;
+     case 'risultati': return `Risultati e podio di ${name}`;
+     case 'highlight': return `Momento più bello di ${name} (sorpasso, incidente, onboard)`;
+     case 'chiusura_campionato': return `Recap di chiusura campionato — ultima gara ${name}`;

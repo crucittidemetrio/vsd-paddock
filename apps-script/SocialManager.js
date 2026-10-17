@@ -791,8 +791,12 @@ function handleSocialPlanDismissedList(payload, ctx) {
 //
 // Registrazione trigger: setupTriggers() in Triggers.js (lunedì 8:00).
 
+// "vigilia" (T-1) aggiunto ott 2026 in coppia con SocialManager.jsx
+// PILLARS — vedi il commento lì per il motivo (post di hype/classifica
+// a ridosso del via, scoperti fuori sistema su Clash of Classes R3).
 const SOCIAL_DIGEST_PILLARS = [
   { id: 'anteprima', label: 'Anteprima gara', icon: '📣', offsetDays: -7 },
+  { id: 'vigilia', label: 'Vigilia gara', icon: '🔥', offsetDays: -1 },
   { id: 'risultati', label: 'Risultati', icon: '🏆', offsetDays: 1 },
   { id: 'highlight', label: 'Highlight/Reel', icon: '🎬', offsetDays: 3 },
 ];
