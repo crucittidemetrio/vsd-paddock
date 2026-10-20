@@ -725,6 +725,22 @@ Deno.serve(async (req: Request) => {
       const rowsToInsert: Record<string, unknown>[] = [];
       let skippedCount = 0;
 
+      // 20/10/2026 (Clash of Classes R1-R3): l'export LMU/SimGrid non marca
+      // i ritirati. In gara chi ha un tempo totale INFERIORE a quello del
+      // vincitore assoluto non ha tagliato il traguardo (chi arriva dopo il
+      // vincitore ha per forza un tempo totale maggiore) → DNF. Così il
+      // bonus finisher e le statistiche non premiano chi si è ritirato.
+      let winnerTimeMs = 0;
+      if (meta.session_type === 'race') {
+        const all = groups.flatMap((g: any) => g.result || []).filter((r: any) => r.dns !== true);
+        const maxLaps = Math.max(0, ...all.map((r: any) => Number(r.totalLaps) || 0));
+        const leaders = all.filter((r: any) => (Number(r.totalLaps) || 0) === maxLaps && Number(r.totalTime) > 0);
+        if (maxLaps > 0 && leaders.length > 0) winnerTimeMs = Math.min(...leaders.map((r: any) => Number(r.totalTime)));
+      }
+      const inferDnf = (r: any) => r.dnf === true || (
+        winnerTimeMs > 0 && r.dns !== true && Number(r.totalTime) > 0 && Number(r.totalTime) < winnerTimeMs
+      );
+
       groups.forEach((classGroup: any, classIdx: number) => {
         const carClass = classGroup.carClass || 'Unknown';
         const results = classGroup.result || [];
@@ -733,6 +749,17 @@ Deno.serve(async (req: Request) => {
         let sortedResults;
         if (hasExplicitPosition) {
           sortedResults = [...results].sort((a: any, b: any) => (a.position ?? 999) - (b.position ?? 999));
+        } else if (meta.session_type === 'qualifying') {
+          // Qualifica: conta solo il giro migliore (reg. Clash 5, prassi
+          // comune). Prima si ordinava per giri completati → chi faceva un
+          // giro in meno finiva dietro anche col tempo migliore, e chi non
+          // aveva tempo (bestLap 0) poteva risultare P1. Senza tempo = in fondo.
+          const lap = (r: any) => (Number(r.bestLap) > 0 ? Number(r.bestLap) : Infinity);
+          sortedResults = [...results].sort((a: any, b: any) => {
+            const d = lap(a) - lap(b);
+            if (d !== 0) return d;
+            return (b.totalLaps || 0) - (a.totalLaps || 0);
+          });
         } else {
           sortedResults = [...results].sort((a: any, b: any) => {
             const aLaps = a.totalLaps || 0;
@@ -777,7 +804,7 @@ Deno.serve(async (req: Request) => {
             points_given: r.pointsGiven != null ? Number(r.pointsGiven) : null,
             penalty_points: r.penaltyPoints != null ? Number(r.penaltyPoints) : null,
             point_total: r.pointTotal != null ? Number(r.pointTotal) : null,
-            dnf: r.dnf === true,
+            dnf: inferDnf(r),
             dns: r.dns === true,
             is_vsd_driver: !!matchedDriverId,
             incidents: r.incidents != null ? Number(r.incidents) : null,
