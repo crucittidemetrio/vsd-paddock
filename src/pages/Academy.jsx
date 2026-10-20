@@ -354,11 +354,11 @@ export default function Academy() {
             <div className={styles.eyebrow}>PULIZIA DI GUIDA</div>
             <h2 className={styles.paceTitle}>Safety Rank</h2>
             <p className={styles.sub}>
-              Scala 0-100, parte da 100. Ogni gara pulita completata vale +1 (fino al
-              tetto di 100); ogni incidente chiuso dallo staff con una penalità lo
-              abbassa (da −2 per un warning a −25 per una squalifica). Non è
-              retroattivo sugli incidenti chiusi prima dell'introduzione di questo
-              campo.
+              Scala 0-100, si parte da 80. Ogni gara conclusa vale +2, un ritiro −3;
+              dove il simulatore registra gli incidenti (iRacing) il bonus scende con
+              il loro numero (−1 ogni 3, fino a −3). Ogni incidente chiuso dallo staff
+              con una penalità lo abbassa ancora (da −2 per un warning a −25 per una
+              squalifica).
             </p>
           </div>
 
