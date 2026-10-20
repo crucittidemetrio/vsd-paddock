@@ -218,6 +218,22 @@ const REPORT_REACTION_EMOJI = ['🔥', '👏', '😂', '💀', '😬'];
 // deviazione architetturale spiegato in cima al file: piano free
 // fermo a 100/100 Edge Function.
 const ELO_K_FACTOR = (racesBefore: number) => (racesBefore < 10 ? 40 : racesBefore < 30 ? 24 : 16);
+// Safety Rank v2 (20/10/2026, richiesto da Demetrio): con la v1 (partenza
+// 100, +1 a gara, tetto 100) chiunque non avesse sanzioni restava a 100 e il
+// valore non distingueva nessuno. Ora si parte da 80 e ogni gara sposta il
+// punteggio in base a come è andata: arrivo +2, ritiro −3; se il sim fornisce
+// gli incidenti (iRacing) +2 / +1 / 0 / −1… in base al numero (−1 ogni 3,
+// minimo −3). Le sanzioni dello staff restano come prima. Scala 0-100.
+const SAFETY_START = 80;
+function safetyRaceDelta(ev: { dnf?: boolean; incidents?: number | null }) {
+  if (ev.dnf) return { delta: -3, reason: 'dnf' };
+  const inc = ev.incidents;
+  if (inc != null && !isNaN(Number(inc))) {
+    const d = Math.max(-3, Math.min(2, 2 - Math.floor(Number(inc) / 3)));
+    return { delta: d, reason: d >= 2 ? 'clean_race' : (d >= 0 ? 'incidents_light' : 'incidents_heavy') };
+  }
+  return { delta: 2, reason: 'clean_race' };
+}
 const SAFETY_PENALTY: Record<string, number> = {
   'warning': -2,
   'penalità lieve': -4,
@@ -2195,7 +2211,7 @@ Deno.serve(async (req: Request) => {
 
       let resultsQuery = db
         .from('race_results')
-        .select('race_id, sim, car_class, driver_id, finish_position, total_laps, set_date, imported_at')
+        .select('race_id, sim, car_class, driver_id, finish_position, total_laps, set_date, imported_at, dnf, incidents')
         .eq('team_id', teamId)
         .eq('session_type', 'race')
         .not('driver_id', 'is', null)
@@ -2290,12 +2306,12 @@ Deno.serve(async (req: Request) => {
         });
       });
 
-      type SafetyEvent = { driverId: string; sim: string; ts: number; kind: 'race' | 'penalty'; raceId?: string; resolutionId?: string; penaltyType?: string };
+      type SafetyEvent = { driverId: string; sim: string; ts: number; kind: 'race' | 'penalty'; raceId?: string; resolutionId?: string; penaltyType?: string; dnf?: boolean; incidents?: number | null };
       const events: SafetyEvent[] = [];
 
       (results ?? []).forEach((r: any) => {
         const ts = r.set_date ? new Date(r.set_date).getTime() : new Date(r.imported_at).getTime();
-        events.push({ driverId: r.driver_id, sim: r.sim, ts, kind: 'race', raceId: r.race_id });
+        events.push({ driverId: r.driver_id, sim: r.sim, ts, kind: 'race', raceId: r.race_id, dnf: r.dnf === true, incidents: r.incidents });
       });
       (resolutions ?? []).forEach((res: any) => {
         if (!SAFETY_PENALTY[res.penalty_type]) return;
@@ -2311,14 +2327,15 @@ Deno.serve(async (req: Request) => {
 
       events.forEach((ev) => {
         const key = `${ev.driverId}|${ev.sim}`;
-        if (!safetyState[key]) safetyState[key] = { rating: 100, races: 0 };
+        if (!safetyState[key]) safetyState[key] = { rating: SAFETY_START, races: 0 };
         const before = safetyState[key].rating;
 
         let after = before;
         let reason: string;
         if (ev.kind === 'race') {
-          after = Math.min(100, before + 1);
-          reason = 'clean_race';
+          const sd = safetyRaceDelta(ev);
+          after = Math.max(0, Math.min(100, before + sd.delta));
+          reason = sd.reason;
           safetyState[key].races += 1;
         } else {
           after = Math.max(0, before + SAFETY_PENALTY[ev.penaltyType!]);
