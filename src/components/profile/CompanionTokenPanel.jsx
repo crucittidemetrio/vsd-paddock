@@ -29,6 +29,19 @@ export default function CompanionTokenPanel() {
     });
   }
 
+  // config.json pronto per il plugin SimHub: il pilota lo salva in
+  // Documenti\VSD Paddock\ sovrascrivendo quello vuoto creato dal plugin.
+  function handleDownloadConfig() {
+    if (!revealed) return;
+    const body = JSON.stringify({ device_token: revealed.token, auto_submit_sims: ['ACE'] }, null, 2) + '\n';
+    const url = URL.createObjectURL(new Blob([body], { type: 'application/json' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'config.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   const expiresLabel = revealed?.expires_at
     ? new Date(revealed.expires_at).toLocaleDateString('it-IT', {
         day: '2-digit', month: '2-digit', year: 'numeric',
@@ -38,14 +51,15 @@ export default function CompanionTokenPanel() {
   return (
     <div className="ctp-section">
       <div className="ctp-header">
-        <h2 className="ctp-title">Companion App — Carburante/Energia</h2>
+        <h2 className="ctp-title">Token dispositivo — Plugin SimHub e Companion</h2>
       </div>
       <p className="ctp-desc">
-        Token per lo script locale che legge carburante ed energia virtuale
-        da Le Mans Ultimate durante la gara e alimenta il pannello di
-        previsione rabbocchi. Valido 180 giorni, rigenerabile in qualsiasi
-        momento. Non condividerlo: chi lo ha può inviare campioni consumo a
-        tuo nome.
+        Serve al plugin SimHub VSD per inviare in automatico i tuoi best lap
+        (Assetto Corsa EVO e altri sim) e al companion carburante/energia di
+        Le Mans Ultimate. Incollalo in <code>Documenti\VSD Paddock\config.json</code>{' '}
+        alla voce <code>device_token</code>, poi riavvia SimHub. Valido 180 giorni,
+        rigenerabile in qualsiasi momento. Non condividerlo: chi lo ha può inviare
+        giri e consumi a tuo nome.
       </p>
 
       {!revealed && (
@@ -55,7 +69,7 @@ export default function CompanionTokenPanel() {
           onClick={handleGenerate}
           disabled={isPending}
         >
-          {isPending ? 'Generazione…' : '🔑 Genera token companion'}
+          {isPending ? 'Generazione…' : '🔑 Genera token'}
         </button>
       )}
 
@@ -70,6 +84,9 @@ export default function CompanionTokenPanel() {
             <button type="button" className="ctp-copy-btn" onClick={handleCopy}>
               {copied ? '✓ Copiato' : 'Copia'}
             </button>
+            <button type="button" className="ctp-copy-btn" onClick={handleDownloadConfig}>
+              ⬇ Scarica config.json
+            </button>
             <button
               type="button"
               className="ctp-regen-btn"
@@ -80,9 +97,9 @@ export default function CompanionTokenPanel() {
             </button>
           </div>
           <div className="ctp-token-meta">
-            Scade il {expiresLabel} — incollalo in <code>config.json</code>{' '}
-            nella cartella <code>companion/</code> del repo (vedi{' '}
-            <code>companion/README.md</code> per il setup completo).
+            Scade il {expiresLabel}. Plugin SimHub: salva <code>config.json</code> in{' '}
+            <code>Documenti\VSD Paddock\</code> e riavvia SimHub. Companion LMU: incollalo
+            nel <code>config.json</code> del companion.
           </div>
         </div>
       )}

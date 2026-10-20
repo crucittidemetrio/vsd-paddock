@@ -24,6 +24,30 @@ SimHub dopo l'update — è normale per un file non firmato digitalmente,
 clicca "Ulteriori informazioni" → "Esegui comunque" (stesso discorso già
 fatto per companion/vsd-pitwall-bridge, vedi i rispettivi README).
 
+## Best lap automatici (v2.0.0, 20/10/2026)
+
+Il plugin invia da solo al Paddock i giri validi di **Assetto Corsa EVO**
+(e, se abilitati, LMU/ACC/iRacing). Entra nei Best Laps solo il giro che
+migliora il tuo personale su quella pista e auto; un nuovo record di
+squadra viene annunciato su Discord.
+
+1. Sul sito: **Profilo → Token dispositivo → Genera token → Scarica config.json**
+2. Salva `config.json` in `Documenti\VSD Paddock\` (sovrascrivi quello vuoto
+   che il plugin crea al primo avvio)
+3. Riavvia SimHub
+
+Il plugin scarta i giri ai box, i giri invalidati dal gioco (track limits)
+e quelli più lenti del tuo miglior giro della sessione. Senza rete i giri
+restano in `LapData\pending_laps.jsonl` e partono al riavvio successivo.
+Esito di ogni invio in `Documenti\VSD Paddock\LapData\upload.log`.
+
+Per aggiungere altri sim: `"auto_submit_sims": ["ACE", "LMU"]` in config.json
+(iRacing è già coperto dal sync Garage61, inutile duplicarlo).
+
+Se il nome della pista o dell'auto nel gioco non corrisponde al catalogo,
+il giro resta "da abbinare" in **Admin → Best Laps → Giri SimHub**: lo
+staff lo abbina una volta e vale per sempre.
+
 ## Build (per chi modifica il plugin)
 
 Compilazione via `dotnet build`, nessun Visual Studio richiesto — vedi

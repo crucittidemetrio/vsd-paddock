@@ -53,6 +53,11 @@
     si cade sulle copie in lib/ (13 set 2026 — vedi lib/README.md per la
     provenienza e perché sono committate in un repo pubblico).
   -->
+  <!-- 20/10/2026: HttpClient per l'invio automatico dei best lap (LapUploader.cs) -->
+  <ItemGroup>
+    <Reference Include="System.Net.Http" />
+  </ItemGroup>
+
   <ItemGroup Condition="'$(SIMHUB_INSTALL_PATH)' != ''">
     <Reference Include="SimHub.Plugins">
       <HintPath>$(SIMHUB_INSTALL_PATH)SimHub.Plugins.dll</HintPath>

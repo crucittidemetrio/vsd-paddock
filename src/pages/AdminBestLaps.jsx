@@ -15,6 +15,7 @@ import { useDrivers } from '../hooks/useRoster';
 import { useAuth } from '../hooks/useAuth';
 import { SIM_LIST } from '../utils/constants';
 import { normalizeLapTimeInput } from '../utils/lapTimeInput';
+import SimHubLapsTab from '../components/admin/SimHubLapsTab';
 import styles from './AdminBestLaps.module.css';
 
 // Cancella la foto di prova da Vercel Blob dopo la decisione admin (subito
@@ -89,7 +90,7 @@ export default function AdminBestLaps() {
       <header className={styles.header}>
         <h1 className={styles.title}>Best Laps — Gestione</h1>
         <div className={styles.headerMeta}>
-          Inserimento manuale e validazione dei tempi inviati dai piloti.
+          Inserimento manuale, validazione dei tempi inviati dai piloti e giri automatici da SimHub.
         </div>
       </header>
 
@@ -110,9 +111,18 @@ export default function AdminBestLaps() {
             Da validare{pendingCount > 0 ? ` (${pendingCount})` : ''}
           </button>
         )}
+        <button
+          type="button"
+          className={`${styles.tab} ${activeTab === 'simhub' ? styles.tabActive : ''}`}
+          onClick={() => setTab('simhub')}
+        >
+          Giri SimHub
+        </button>
       </div>
 
-      {activeTab === 'manual' ? <ManualTab /> : <PendingTab />}
+      {activeTab === 'manual' && <ManualTab />}
+      {activeTab === 'pending' && <PendingTab />}
+      {activeTab === 'simhub' && <SimHubLapsTab />}
     </div>
   );
 }

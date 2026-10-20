@@ -588,3 +588,36 @@ export function useDeleteBestLap() {
     },
   });
 }
+// ─── Best lap automatici SimHub (20/10/2026) ───
+
+/** useAutoLapInbox — giri ricevuti dal plugin SimHub + alias nomi (staff). */
+export function useAutoLapInbox(enabled = true) {
+  return useQuery({
+    queryKey: ['laps', 'autoInbox'],
+    queryFn: () => api.laps.autoInboxList(),
+    enabled,
+    staleTime: 30 * 1000,
+  });
+}
+
+/** useMapAutoLapName — abbina un nome grezzo del gioco a pista/auto del catalogo. */
+export function useMapAutoLapName() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (payload) => api.laps.autoInboxMap(payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['laps'] });
+    },
+  });
+}
+
+/** useRejectAutoLap — scarta un giro SimHub (es. tempo palesemente errato). */
+export function useRejectAutoLap() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => api.laps.autoInboxReject(id),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['laps', 'autoInbox'] });
+    },
+  });
+}

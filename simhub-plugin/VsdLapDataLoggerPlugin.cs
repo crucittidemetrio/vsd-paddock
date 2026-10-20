@@ -63,9 +63,19 @@
 // SpeedKmh non ha un equivalente "min/max/avg per giro" nativo: lo
 // calcoliamo noi accumulando ad ogni tick (stesso pattern OR-accumulation
 // già usato per in_pits/yellow_flag), reset ad ogni giro completato.
+//
+// Aggiornamento 20/10/2026 — multi-sim + best lap automatici (v2.0.0):
+// il sim non è più fisso "LMU" ma letto da GameData.GameName (ACE, LMU,
+// ACC, iRacing). Nomi proprietà pista/auto/validità giro VERIFICATI sul
+// metadata reale di GameReaderCommon.dll (StatusDataBase: TrackId,
+// TrackIdWithConfig, TrackName, TrackConfig, CarModel, CarId,
+// SessionTypeName, IsLapValid, LapInvalidated, IsInPit, IsInPitLane).
+// I giri validi vengono inviati al Paddock da LapUploader.cs (device token
+// in Documenti\VSD Paddock\config.json). Il CSV resta identico.
 // ═══════════════════════════════════════════════════════════
 
 using System;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using GameReaderCommon; // GameData — confermato leggendo User.PluginSdkDemo.csproj reale (referenzia GameReaderCommon.dll)
@@ -140,6 +150,35 @@ namespace VsdLapDataLogger
         // 01/09/2026) — questo plugin è scritto solo per LMU (usa proprietà
         // specifiche NeoRed), quindi il valore è fisso. Un punto di rottura in meno.
         public const string GameNameFixed = "LMU";
+
+        // ── Core SimHub, verificate sul metadata di GameReaderCommon.dll (20/10/2026) ──
+        private const string Core = "DataCorePlugin.GameData.NewData.";
+        public const string TrackId = Core + "TrackId";
+        public const string TrackIdWithConfig = Core + "TrackIdWithConfig";
+        public const string TrackName = Core + "TrackName";
+        public const string TrackConfig = Core + "TrackConfig";
+        public const string CarModel = Core + "CarModel";
+        public const string CarId = Core + "CarId";
+        public const string SessionTypeName = Core + "SessionTypeName";
+        public const string IsLapValid = Core + "IsLapValid";
+        public const string LapInvalidated = Core + "LapInvalidated";
+        public const string IsInPitCore = Core + "IsInPit";
+        public const string IsInPitLane = Core + "IsInPitLane";
+    }
+
+    internal static class SimNames
+    {
+        // GameData.GameName → codice sim del Paddock (best_laps.sim)
+        public static string FromGameName(string gameName)
+        {
+            var g = (gameName ?? "").ToLowerInvariant().Replace(" ", "").Replace("_", "");
+            if (g.Contains("evo") && g.Contains("assetto")) return "ACE";
+            if (g.Contains("acevo")) return "ACE";
+            if (g.Contains("lmu") || g.Contains("lemans")) return "LMU";
+            if (g.Contains("competizione") || g == "acc") return "ACC";
+            if (g.Contains("iracing")) return "IRC";
+            return string.IsNullOrEmpty(gameName) ? PropertyNames.GameNameFixed : gameName;
+        }
     }
 
     // Senza questi tre attributi SimHub mostra in "Aggiungi/rimuovi funzionalità"
@@ -147,7 +186,7 @@ namespace VsdLapDataLogger
     // "PluginNameVsdLapDataLoggerPlugin" / "PluginDescription_VsdLapDataLoggerPlugin")
     // — stesso pattern usato da qualsiasi plugin community, es. TruckSimulatorPlugin.
     [PluginName("VSD Lap Data Logger")]
-    [PluginDescription("Registra un CSV per giro (tempo, settori, velocità min/max/media, temperature, carburante, pit/yellow) per l'Analisi di Passo di vsd-paddock.")]
+    [PluginDescription("CSV per giro per l'Analisi di Passo + invio automatico dei best lap a VSD Paddock (ACE, LMU, ACC, iRacing).")]
     [PluginAuthor("VSD Paddock")]
     public class VsdLapDataLoggerPlugin : IPlugin, IDataPlugin
     {
@@ -162,6 +201,13 @@ namespace VsdLapDataLogger
         private double? _speedMaxAccum;
         private double _speedSumAccum;
         private int _speedSampleCount;
+
+        // 20/10/2026 — invio automatico best lap
+        private LapUploader _uploader;
+        private string _sim = PropertyNames.GameNameFixed;
+        private bool _lapInvalidAccum;
+        private bool _sawLapValidTrue;
+        private readonly Dictionary<string, double> _sessionBest = new Dictionary<string, double>();
 
         // ─── Lifecycle ───
 
@@ -182,6 +228,16 @@ namespace VsdLapDataLogger
             _speedSumAccum = 0;
             _speedSampleCount = 0;
 
+            try
+            {
+                _uploader = new LapUploader(Path.GetDirectoryName(folder));
+                _uploader.FlushPendingInBackground();
+            }
+            catch
+            {
+                _uploader = null; // l'invio è opzionale: il CSV deve funzionare comunque
+            }
+
             var path = Path.Combine(folder, _sessionId + ".csv");
             _writer = new StreamWriter(path, append: false) { AutoFlush = true };
             _writer.WriteLine("session_id,driver_name,sim,lap_number,lap_time_ms,sector1_ms,sector2_ms,sector3_ms,speed_min_kmh,speed_max_kmh,speed_avg_kmh,in_pits,yellow_flag,track_temp_c,air_temp_c,fuel_l,timestamp_iso");
@@ -192,6 +248,8 @@ namespace VsdLapDataLogger
             _writer?.Flush();
             _writer?.Dispose();
             _writer = null;
+            _uploader?.Dispose();
+            _uploader = null;
         }
 
         // ─── Tick — chiamato ad ogni aggiornamento dati SimHub ───
@@ -206,8 +264,25 @@ namespace VsdLapDataLogger
         {
             if (data == null || !data.GameRunning || _writer == null) return;
 
-            _lapInPitsAccum |= ReadBool(pluginManager, PropertyNames.IsInPit);
+            _sim = SimNames.FromGameName(data.GameName);
+
+            _lapInPitsAccum |= ReadBool(pluginManager, PropertyNames.IsInPit)
+                            || ReadBool(pluginManager, PropertyNames.IsInPitCore)
+                            || ReadBool(pluginManager, PropertyNames.IsInPitLane);
             _lapYellowAccum |= ReadBool(pluginManager, PropertyNames.FlagYellow);
+
+            // Validità giro: LapInvalidated=true è affidabile ovunque; IsLapValid
+            // viene considerato solo se il gioco lo ha mai riportato true (alcuni
+            // reader lo lasciano sempre false → senza questa guardia nessun giro
+            // verrebbe mai inviato).
+            object validRaw = null;
+            try { validRaw = pluginManager.GetPropertyValue(PropertyNames.IsLapValid); } catch { }
+            if (validRaw is bool v)
+            {
+                if (v) _sawLapValidTrue = true;
+                else if (_sawLapValidTrue) _lapInvalidAccum = true;
+            }
+            if (ReadBool(pluginManager, PropertyNames.LapInvalidated)) _lapInvalidAccum = true;
 
             var speed = ReadDouble(pluginManager, PropertyNames.SpeedKmh);
             if (speed != null)
@@ -249,6 +324,7 @@ namespace VsdLapDataLogger
             _lastCompletedLaps = completedLaps;
             _lapInPitsAccum = false;
             _lapYellowAccum = false;
+            _lapInvalidAccum = false;
             _speedMinAccum = null;
             _speedMaxAccum = null;
             _speedSumAccum = 0;
@@ -258,7 +334,7 @@ namespace VsdLapDataLogger
         private void WriteLapRow(PluginManager pluginManager, int lapNumber, double lapTimeMs)
         {
             var driverName = ReadString(pluginManager, PropertyNames.DriverName);
-            var sim = PropertyNames.GameNameFixed;
+            var sim = _sim;
             var trackTemp = ReadDoubleWithFallback(pluginManager, PropertyNames.RoadTemperatureCore, PropertyNames.RoadTemperatureNeoRed);
             var airTemp = ReadDoubleWithFallback(pluginManager, PropertyNames.AirTemperatureCore, PropertyNames.AirTemperatureNeoRed);
             var fuel = ReadDouble(pluginManager, PropertyNames.Fuel);
@@ -298,7 +374,45 @@ namespace VsdLapDataLogger
             );
 
             _writer.WriteLine(line);
+
+            TrySubmit(pluginManager, lapTimeMs, sector1Ms, sector2Ms, sector3Ms, airTemp, trackTemp);
         }
+
+        // Invia il giro solo se: plugin configurato, giro pulito (no box, non
+        // invalidato) e migliore del best di sessione su (pista, auto) — il
+        // server confronta poi con il personale storico del pilota.
+        private void TrySubmit(PluginManager pm, double lapTimeMs, double? s1, double? s2, double? s3, double? air, double? track)
+        {
+            if (_uploader == null || !_uploader.IsConfigured) return;
+            if (_lapInPitsAccum || _lapInvalidAccum) return;
+
+            var trackId = ReadString(pm, PropertyNames.TrackId);
+            var carModel = ReadString(pm, PropertyNames.CarModel);
+            var carId = ReadString(pm, PropertyNames.CarId);
+            if (string.IsNullOrWhiteSpace(trackId) || (string.IsNullOrWhiteSpace(carModel) && string.IsNullOrWhiteSpace(carId))) return;
+
+            var key = _sim + "|" + trackId + "|" + (string.IsNullOrWhiteSpace(carModel) ? carId : carModel);
+            if (_sessionBest.TryGetValue(key, out var best) && lapTimeMs >= best) return;
+            _sessionBest[key] = lapTimeMs;
+
+            var trackName = ReadString(pm, PropertyNames.TrackName);
+            var trackConfig = ReadString(pm, PropertyNames.TrackConfig);
+            _uploader.Submit(new LapSubmission
+            {
+                Sim = _sim,
+                Track = trackId,
+                TrackAlt = NullIfEmpty(ReadString(pm, PropertyNames.TrackIdWithConfig)),
+                TrackName = NullIfEmpty((trackName + " " + trackConfig).Trim()),
+                Car = string.IsNullOrWhiteSpace(carModel) ? carId : carModel,
+                CarAlt = string.IsNullOrWhiteSpace(carModel) ? null : NullIfEmpty(carId),
+                SessionType = NullIfEmpty(ReadString(pm, PropertyNames.SessionTypeName)),
+                LapTimeMs = lapTimeMs,
+                Sector1Ms = s1, Sector2Ms = s2, Sector3Ms = s3,
+                AirTempC = air, TrackTempC = track,
+            });
+        }
+
+        private static string NullIfEmpty(string s) => string.IsNullOrWhiteSpace(s) ? null : s.Trim();
 
         // ─── Helpers lettura proprietà (tolleranti: null se assente/tipo diverso) ───
 

@@ -121,6 +121,9 @@ const SUPABASE_MIGRATED_ACTIONS = new Set([
   'laps.add',
   'laps.update',
   'laps.remove',
+  'laps.autoInbox.list',
+  'laps.autoInbox.map',
+  'laps.autoInbox.reject',
   'lapSubmissions.submit',
   'lapSubmissions.listMine',
   'lapSubmissions.listPending',
@@ -583,6 +586,9 @@ export const api = {
     add: (payload) => call('laps.add', payload),
     update: (payload) => call('laps.update', payload),
     remove: (lap_id) => call('laps.remove', { lap_id }),
+    autoInboxList: () => call('laps.autoInbox.list', {}),
+    autoInboxMap: (payload) => call('laps.autoInbox.map', payload),
+    autoInboxReject: (id) => call('laps.autoInbox.reject', { id }),
   },
 
   lapSubmissions: {

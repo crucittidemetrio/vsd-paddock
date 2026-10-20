@@ -698,6 +698,176 @@ async function runResultsMissingCheck() {
   return { ok: true, missing: missing.length, notified: toNotify.length };
 }
 
+// ─── 11) runGarage61Sync — sync automatico giri iRacing (20/10/2026) ───
+// Il trigger Apps Script ogni 4h era sospeso dal 20/09 (#361: scriveva
+// sul foglio legacy). Da allora i giri Garage61 arrivavano solo col
+// bottone manuale /admin/garage61-sync — e l'attività pilota (#467)
+// risultava ferma al 19/09 per tutti i piloti iRacing. Stessa logica
+// di laps.syncFromGarage61 (social-manager), qui senza utente: verified_by
+// null, foto record non inclusa (stessa scelta degli altri check cron).
+// Endpoint pubblico (verify_jwt off): al massimo un sync ogni 3 ore per
+// team, controllato su teams.garage61_last_sync_at.
+const GARAGE61_BASE_URL = 'https://garage61.net/api/v1';
+
+async function garage61Get(path: string): Promise<any> {
+  const token = Deno.env.get('GARAGE61_TOKEN');
+  if (!token) throw new Error('GARAGE61_TOKEN non configurato');
+  const res = await fetch(GARAGE61_BASE_URL + path, { headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' } });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error('Garage61 API error: HTTP ' + res.status);
+  return body;
+}
+
+function g61SessionType(n: unknown): string {
+  switch (Number(n)) { case 1: return 'qualifying'; case 2: return 'race'; case 3: return 'time_trial'; default: return 'practice'; }
+}
+
+function g61Slugify(name: string): string {
+  return String(name).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').replace(/-+/g, '-');
+}
+
+function isCurrentTesserato(d: any): boolean {
+  return !!d && !d.is_system_account && !d.removed_at && String(d.status).toLowerCase() === 'active';
+}
+
+async function syncTeamGarage61(supa: any, team: any) {
+  const teamId = team.id;
+  const slug = team.garage61_team_slug;
+  const [{ data: driversFull }, { data: carsRaw }, { data: tracksRaw }, { data: existingLapsRaw }, { data: allBestLaps }] = await Promise.all([
+    supa.from('drivers').select('id, display_name, iracing_id, status, is_system_account, removed_at').eq('team_id', teamId),
+    supa.from('cars').select('car_id, sim, garage61_id, active').eq('sim', 'IRC'),
+    supa.from('tracks').select('track_id, track_name, sim, garage61_id, active').eq('sim', 'IRC'),
+    supa.from('best_laps').select('garage61_lap_id').eq('team_id', teamId).not('garage61_lap_id', 'is', null),
+    supa.from('best_laps').select('driver_id, track_id, lap_time_ms, lap_time_display').eq('team_id', teamId).eq('sim', 'IRC'),
+  ]);
+
+  const driverById = new Map<string, any>((driversFull ?? []).map((d: any) => [d.id, d]));
+  const driverByIracingId = new Map<string, string>();
+  (driversFull ?? []).forEach((d: any) => { if (d.iracing_id && String(d.status).toLowerCase() === 'active') driverByIracingId.set(String(d.iracing_id), d.id); });
+  const carByG61Id = new Map<number, string>();
+  (carsRaw ?? []).forEach((c: any) => { if (c.active && c.garage61_id) carByG61Id.set(Number(c.garage61_id), c.car_id); });
+  const trackByG61Id = new Map<number, string>();
+  const trackName = new Map<string, string>();
+  (tracksRaw ?? []).forEach((t: any) => { if (t.active && t.garage61_id) trackByG61Id.set(Number(t.garage61_id), t.track_id); trackName.set(t.track_id, t.track_name); });
+  const existing = new Set((existingLapsRaw ?? []).map((l: any) => String(l.garage61_lap_id)));
+
+  const preBest = new Map<string, { ms: number; display: string }>();
+  (allBestLaps ?? []).forEach((l: any) => {
+    const ms = Number(l.lap_time_ms);
+    if (!ms || !isCurrentTesserato(driverById.get(l.driver_id))) return;
+    const cur = preBest.get(l.track_id);
+    if (!cur || ms < cur.ms) preBest.set(l.track_id, { ms, display: l.lap_time_display || msToLapDisplay(ms) });
+  });
+
+  const teamG61 = await garage61Get(`/teams/${slug}`);
+  const iracingBySlug = new Map<string, string>();
+  (teamG61.members || []).forEach((m: any) => {
+    const acc = (m.accounts || []).find((a: any) => a.platform === 'iracing');
+    if (acc) iracingBySlug.set(m.slug, String(acc.id));
+  });
+
+  const nowIso = new Date().toISOString();
+  const afterParam = team.garage61_last_sync_at ? `&after=${encodeURIComponent(team.garage61_last_sync_at)}` : '';
+  const stats = { tracks: 0, laps: 0, imported: 0, dedup: 0, quality: 0, carUnmapped: 0, driverUnmapped: 0, errors: 0 };
+  const unmappedCars = new Map<number, string>();
+  const rows: any[] = [];
+  const records = new Map<string, { ms: number; driverId: string; prev: string | null }>();
+
+  for (const [g61TrackId, vsdTrackId] of trackByG61Id) {
+    stats.tracks++;
+    let offset = 0;
+    for (let iter = 0; iter < 50; iter++) {
+      let data: any;
+      try { data = await garage61Get(`/laps?teams=${slug}&tracks=${g61TrackId}&limit=100&offset=${offset}${afterParam}`); }
+      catch (_e) { stats.errors++; break; }
+      const laps = data.items || [];
+      if (laps.length === 0) break;
+      for (const lap of laps) {
+        stats.laps++;
+        if (existing.has(String(lap.id))) { stats.dedup++; continue; }
+        if (!lap.clean || lap.incomplete || lap.offtrack || lap.pitlane || lap.pitIn || lap.pitOut || lap.missing || lap.discontinuity) { stats.quality++; continue; }
+        const g61CarId = lap.car && Number(lap.car.id);
+        const carId = carByG61Id.get(g61CarId);
+        if (!carId) { stats.carUnmapped++; if (lap.car && !unmappedCars.has(g61CarId)) unmappedCars.set(g61CarId, lap.car.name); continue; }
+        const iracingId = iracingBySlug.get(lap.driver && lap.driver.slug);
+        const driverId = iracingId && driverByIracingId.get(iracingId);
+        if (!driverId) { stats.driverUnmapped++; continue; }
+        const ms = Math.round(lap.lapTime * 1000);
+        rows.push({
+          team_id: teamId, driver_id: driverId, sim: 'IRC', track_id: vsdTrackId, car_id: carId,
+          lap_time_ms: ms, lap_time_display: msToLapDisplay(ms), set_date: String(lap.startTime).split('T')[0],
+          conditions: (lap.precipitation > 0 || lap.trackWetness > 0) ? 'wet' : 'dry',
+          session_type: g61SessionType(lap.sessionType), verified_at: nowIso,
+          notes: 'Imported from Garage61', garage61_lap_id: String(lap.id),
+        });
+        existing.add(String(lap.id));
+        stats.imported++;
+        if (isCurrentTesserato(driverById.get(driverId))) {
+          const pre = preBest.get(vsdTrackId);
+          const cand = records.get(vsdTrackId);
+          const best = cand ? cand.ms : (pre ? pre.ms : null);
+          if (best === null || ms < best) records.set(vsdTrackId, { ms, driverId, prev: pre ? pre.display : null });
+        }
+      }
+      if (laps.length < 100) break;
+      if (data.total !== undefined && offset + laps.length >= data.total) break;
+      offset += 100;
+    }
+  }
+
+  if (rows.length > 0) {
+    const { error } = await supa.from('best_laps').insert(rows);
+    if (error) throw new Error(error.message);
+  }
+  await supa.from('teams').update({ garage61_last_sync_at: nowIso }).eq('id', teamId);
+
+  if (unmappedCars.size > 0) {
+    const { data: allCars } = await supa.from('cars').select('car_id');
+    const ids = new Set((allCars ?? []).map((c: any) => c.car_id));
+    const drafts: any[] = [];
+    unmappedCars.forEach((name, g61CarId) => {
+      let id = `irc-${g61Slugify(name)}`;
+      if (ids.has(id)) { let n = 2; while (ids.has(`${id}-${n}`)) n++; id = `${id}-${n}`; }
+      ids.add(id);
+      drafts.push({ car_id: id, sim: 'IRC', car_name: name, active: true, garage61_id: String(g61CarId) });
+    });
+    if (drafts.length) await supa.from('cars').insert(drafts);
+  }
+
+  for (const [trackId, rec] of records) {
+    const name = driverById.get(rec.driverId)?.display_name || rec.driverId;
+    await postPublic({
+      embeds: [{
+        author: { name: 'VSD Paddock' },
+        title: '🏆 Nuovo record di squadra!',
+        description: `**${name}** — ${trackName.get(trackId) || trackId} (IRC)\n⏱️ **${msToLapDisplay(rec.ms)}**` +
+          (rec.prev ? ` _(precedente: ${rec.prev})_` : ' _(primo tempo registrato su questa pista)_'),
+        color: VSD_COLORS.purple,
+        timestamp: new Date().toISOString(),
+        footer: { text: 'Muro dei Record · Garage61' },
+        url: `${PADDOCK_URL}/records`,
+      }],
+    });
+  }
+  return { ...stats, newRecords: records.size, unmappedCarsDrafted: unmappedCars.size };
+}
+
+async function runGarage61Sync() {
+  const supa = db();
+  const { data: teams } = await supa.from('teams').select('id, garage61_team_slug, garage61_last_sync_at').not('garage61_team_slug', 'is', null);
+  const out: any[] = [];
+  for (const t of teams ?? []) {
+    if (t.garage61_last_sync_at && Date.now() - new Date(t.garage61_last_sync_at).getTime() < 3 * 3600 * 1000) {
+      out.push({ team: t.garage61_team_slug, skipped: 'ultimo sync < 3h' });
+      continue;
+    }
+    try { out.push({ team: t.garage61_team_slug, ...(await syncTeamGarage61(supa, t)) }); }
+    catch (e) { out.push({ team: t.garage61_team_slug, error: String((e as any)?.message || e) }); }
+  }
+  return { ok: true, teams: out };
+}
+
 const CHECKS: Record<string, () => Promise<unknown>> = {
   birthday: runBirthdayCheck,
   weeklyDigest: runWeeklyDigest,
@@ -709,6 +879,7 @@ const CHECKS: Record<string, () => Promise<unknown>> = {
   teamSessionReminder: runTeamSessionReminderCheck,
   rosterActivity: runRosterActivity,
   resultsMissing: runResultsMissingCheck,
+  garage61Sync: runGarage61Sync,
 };
 
 const corsHeaders = {

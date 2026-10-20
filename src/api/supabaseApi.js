@@ -279,6 +279,9 @@ const LEGACY_TOKEN_FALLBACK_ACTIONS = new Set([
   // "✕ Auth richiesto" sul form. Fix gemello lato Edge Function
   // (resolveLegacyDriver aggiunto in best-laps-add/index.ts).
   'laps.add',
+  // 20/10/2026: best lap automatici SimHub — token del plugin (generato
+  // dal profilo) e pannello staff "Giri SimHub" in AdminBestLaps.
+  'devices.createToken', 'laps.autoInbox.list', 'laps.autoInbox.map', 'laps.autoInbox.reject',
   'lapSubmissions.listPending', 'lapSubmissions.approve',
   'lapSubmissions.reject', 'lapSubmissions.remove',
   'social.posts.list', 'social.posts.create', 'social.posts.update', 'social.posts.remove',
@@ -696,6 +699,11 @@ function buildRequest(action, payload) {
   }
   if (SOCIAL_DIRECT_ACTIONS.has(action)) {
     return { slug: SOCIAL_MANAGER_SLUG, body: { action, ...payload } };
+  }
+  // 20/10/2026: azioni staff dell'inbox SimHub, stesso slug di laps.add
+  // (piano free a 100/100 Edge Function), smistate su body.action.
+  if (action.startsWith('laps.autoInbox.')) {
+    return { slug: 'best-laps-add', body: { ...payload, action: 'autoInbox.' + action.slice('laps.autoInbox.'.length) } };
   }
   if (ROUTING[action]) {
     return { slug: ROUTING[action], body: payload };
