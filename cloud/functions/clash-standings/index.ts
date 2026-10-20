@@ -171,6 +171,22 @@ Deno.serve(async (req: Request) => {
 
     // Posizione assoluta per round: giri desc, tempo asc (solo non-DNS con giri)
     const raceRows = rows.filter((r: any) => r.session_type === 'race');
+
+    // Giro veloce di classe (reg. 7.2): solo tra chi ha TAGLIATO IL
+    // TRAGUARDO nella top 10 di classe — deciso da Demetrio il 20/10/2026
+    // (Adone R2: giro più veloce ma ritirato → il bonus va al più veloce
+    // tra gli arrivati). Calcolato qui invece di dedurlo dai punti SimGrid.
+    const flKey: Record<string, string> = {};
+    const flBest: Record<string, number> = {};
+    raceRows.forEach((r: any) => {
+      const cls = CLASS_MAP[String(r.car_class || '').toUpperCase()];
+      const lap = Number(r.best_lap_ms) || 0;
+      const pos = Number(r.finish_position) || 0;
+      if (!cls || lap <= 0 || r.dns === true || r.dnf === true || !(Number(r.total_laps) > 0)) return;
+      if (pos < 1 || pos > 10) return;
+      const k = roundByRace[r.race_id] + '|' + cls;
+      if (flBest[k] === undefined || lap < flBest[k]) { flBest[k] = lap; flKey[k] = normName(r.driver_name_external); }
+    });
     const overallByRound: Record<number, Record<string, number>> = {};
     ROUNDS.forEach((rd) => {
       const list = raceRows
@@ -205,8 +221,7 @@ Deno.serve(async (req: Request) => {
       const posClass = Number(r.finish_position) || null;
       const posOverall = overallByRound[round]?.[nameKey] ?? null;
       const isPole = poleKey[round + '|' + cls] === nameKey;
-      const flBonus = (Number(r.point_total) || 0) - (Number(r.points_given) || 0) + (Number(r.penalty_points) || 0);
-      const isFastestLap = flBonus >= 1;
+      const isFastestLap = flKey[round + '|' + cls] === nameKey;
       const isFinisher = r.dnf !== true && Number(r.total_laps) > 0;
 
       const classPts = positionPoints(posClass)
