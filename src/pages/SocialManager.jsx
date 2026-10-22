@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { upload } from '@vercel/blob/client';
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
@@ -20,7 +20,8 @@ import {
   useDismissSocialPlan,
   useUndismissSocialPlan,
 } from '../hooks/useSocialManager';
-import { useRaces } from '../hooks/useRaces';
+import { useRaces, useReports } from '../hooks/useRaces';
+import { useDrivers } from '../hooks/useRoster';
 import { useAuth } from '../hooks/useAuth';
 // eslint-disable-next-line no-unused-vars -- storyTopic: helper per lo Story Book ACI LMGT3, non ancora renderizzato in EditorialPlanView (vedi StoryPlanView più sotto). STORY_PILLARS invece è già usato in PILLAR_BY_ID e useStoryPlan.
 import { STORY_PILLARS, storyTopic } from '../utils/storyPillars';
@@ -164,8 +165,25 @@ function fmtDate(d) {
 }
 
 export default function SocialManager() {
-  const [tab, setTab] = useState('dashboard');
-  const [suggestion, setSuggestion] = useState(null);
+  // 22/10/2026: link diretto dalla notifica "Nuovo report" in
+  // #team-principal (/admin/social-manager?race=RACEnnn) — apre subito
+  // "Nuovo post" collegato a quella gara, dove il pannello "Report
+  // piloti" mostra racconti e foto. Stato iniziale lazy: letto una volta
+  // sola al montaggio, poi il parametro viene tolto dall'URL.
+  const [searchParams, setSearchParams] = useSearchParams();
+  const raceParam = searchParams.get('race') || '';
+  const [tab, setTab] = useState(() => (raceParam ? 'post' : 'dashboard'));
+  const [suggestion, setSuggestion] = useState(() => (
+    raceParam ? { type: 'pillar', race_id: raceParam, pillar: '', topic: '' } : null
+  ));
+
+  useEffect(() => {
+    if (!raceParam) return;
+    const next = new URLSearchParams(searchParams);
+    next.delete('race');
+    setSearchParams(next, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const postsQuery = useSocialPosts();
   const metricsQuery = useSocialMetrics();
@@ -449,6 +467,112 @@ function IconStatCard({ badgeClass, icon, label, value, delta }) {
 }
 
 // ═══════════════════════════════════════════════════════════
+// REPORT PILOTI (22/10/2026) — racconti e foto inviati dai piloti
+// da /reports (reports.submitOwn) per la gara collegata al post.
+// Solo i report con "ok social" del pilota entrano nella bozza AI;
+// gli altri restano visibili ma marcati "solo interno".
+// ═══════════════════════════════════════════════════════════
+
+function buildReportsPrompt(race, items) {
+  const title = race?.race_name || race?.race_id || 'gara';
+  const when = race?.date ? ` del ${fmtDate(race.date)}` : '';
+  const lines = items.map(({ report, name }) => {
+    const pos = report.finish_position != null ? `P${report.finish_position}` : 'senza piazzamento';
+    const grid = report.grid_position != null ? `, partito P${report.grid_position}` : '';
+    const moment = report.key_moment ? ` Momento chiave: ${report.key_moment}` : '';
+    return `- ${name} (${pos}${grid}): ${report.driver_summary}${moment}`;
+  });
+  return [
+    `Scrivi un post social per il team di sim racing Virtual Sim Driver (VSD) sulla gara "${title}"${when}.`,
+    'Basati SOLO su questi racconti dei nostri piloti, senza inventare fatti, tempi o posizioni che non sono scritti qui:',
+    ...lines,
+    'Tono: da team endurance, diretto e appassionato. Cita i piloti per nome.',
+  ].join('\n');
+}
+
+function DriverReportsPanel({ raceId, race, onUsePhoto, onGenerate, generating }) {
+  const reportsQuery = useReports({ race_id: raceId });
+  const { data: drivers } = useDrivers();
+  const nameByCode = useMemo(() => {
+    const m = {};
+    (drivers || []).forEach(d => { m[d.driver_id] = d.display_name; });
+    return m;
+  }, [drivers]);
+
+  const all = reportsQuery.data || [];
+  const submitted = all
+    .filter(r => r.driver_summary)
+    .sort((a, b) => (a.finish_position ?? Infinity) - (b.finish_position ?? Infinity))
+    .map(report => ({ report, name: nameByCode[report.driver_id] || report.driver_id }));
+  const usable = submitted.filter(({ report }) => report.social_ok);
+  const missing = all.filter(r => !r.driver_summary).length;
+
+  if (reportsQuery.isLoading) {
+    return <div className={styles.mediaAttachedHint}>📝 Caricamento report piloti…</div>;
+  }
+
+  return (
+    <div className={styles.reportsPanel}>
+      <div className={styles.reportsPanelHead}>
+        <span>
+          📝 Report piloti: <strong>{submitted.length}</strong> inviati
+          {missing > 0 ? ` · ${missing} da compilare` : ''}
+        </span>
+        <span className={styles.reportsPanelActions}>
+          <a href={`/reports?race=${encodeURIComponent(raceId)}`} target="_blank" rel="noopener noreferrer" className={styles.btnMini}>
+            Apri report ↗
+          </a>
+          <button
+            type="button"
+            className={styles.btnMini}
+            disabled={usable.length === 0 || generating}
+            onClick={() => onGenerate(buildReportsPrompt(race, usable))}
+            title={usable.length === 0 ? 'Nessun report con ok social' : 'Genera il testo dai racconti con ok social'}
+          >
+            {generating ? '✨ Generazione…' : '✨ Bozza AI dai report'}
+          </button>
+        </span>
+      </div>
+
+      {submitted.length === 0 && (
+        <div className={styles.reportsEmpty}>
+          Nessun pilota ha ancora raccontato questa gara.
+        </div>
+      )}
+
+      {submitted.map(({ report, name }) => (
+        <div key={report.report_id} className={styles.reportItem}>
+          <div className={styles.reportMeta}>
+            <strong>{name}</strong>
+            {report.finish_position != null && ` · P${report.finish_position}`}
+            {' · '}
+            {report.social_ok ? '✅ ok social' : '⛔ solo interno'}
+          </div>
+          <div className={styles.reportText}>{report.driver_summary}</div>
+          {report.key_moment && <div className={styles.reportMoment}>🎯 {report.key_moment}</div>}
+          {report.media_urls?.length > 0 && (
+            <div className={styles.reportThumbs}>
+              {report.media_urls.map(url => (
+                <button
+                  key={url}
+                  type="button"
+                  className={styles.reportThumbBtn}
+                  onClick={() => onUsePhoto(url)}
+                  disabled={!report.social_ok}
+                  title={report.social_ok ? 'Usa questa foto nel post' : 'Il pilota non ha dato l\'ok social'}
+                >
+                  <img src={url} alt="" loading="lazy" />
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
 // POST CREATOR (crea + gestisce post esistenti)
 // ═══════════════════════════════════════════════════════════
 
@@ -562,6 +686,14 @@ function PostCreator({ posts, postsQuery, suggestion, onConsumeSuggestion }) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
+  function handleGenerateFromPrompt(prompt) {
+    setError('');
+    generateMutation.mutate({ prompt, provider: aiProvider }, {
+      onSuccess: (data) => update('content', data.text || ''),
+      onError: (err) => setError(err.message || 'Errore generazione AI'),
+    });
+  }
+
   function handleGenerate() {
     setError('');
     const topic = aiTopic.trim();
@@ -652,6 +784,16 @@ function PostCreator({ posts, postsQuery, suggestion, onConsumeSuggestion }) {
                 ))}
               </select>
             </div>
+          )}
+
+          {form.race_id && (
+            <DriverReportsPanel
+              raceId={form.race_id}
+              race={races.find(r => r.race_id === form.race_id)}
+              onUsePhoto={url => update('media_url', url)}
+              onGenerate={handleGenerateFromPrompt}
+              generating={generateMutation.isPending}
+            />
           )}
 
           {form.media_url ? (

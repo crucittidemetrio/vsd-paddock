@@ -1,8 +1,10 @@
-import { useState, useMemo, Fragment } from 'react';
-import { Link } from 'react-router-dom';
-import { useReports, useRaces, useUpdateReport } from '../hooks/useRaces';
+import { useState, useMemo, useEffect, useRef, Fragment } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { useReports, useRaces, useUpdateReport, useSubmitOwnReport } from '../hooks/useRaces';
 import { useDrivers } from '../hooks/useRoster';
 import { useAuth } from '../hooks/useAuth';
+import { useBlobUpload } from '../hooks/useBlobUpload';
+import { useNow } from '../hooks/useNow';
 import { useReportReactions, useToggleReportReaction } from '../hooks/useReportReactions';
 import Avatar from '../components/shared/Avatar';
 import SimBadge from '../components/shared/SimBadge';
@@ -19,10 +21,49 @@ const VIEWS = [
   { id: 'flat', label: 'Cronologico' },
 ];
 
+// Limiti allineati a reports.submitOwn (cloud/functions/social-manager).
+const SUMMARY_MIN = 20;
+const SUMMARY_MAX = 1500;
+const KEY_MOMENT_MAX = 300;
+const MEDIA_MAX = 4;
+
+// Finestra in cui una gara è proponibile al pilota per il report.
+const PENDING_WINDOW_DAYS = 60;
+const OTHER_RACES_WINDOW_DAYS = 30;
+const DAY_MS = 86_400_000;
+
+function raceTitle(race, fallback = '') {
+  return race?.race_name || race?.title || fallback;
+}
+
+function raceTime(race) {
+  const t = race?.date ? new Date(race.date).getTime() : NaN;
+  return Number.isFinite(t) ? t : 0;
+}
+
+// Arrivo null (DNF o risultati non importati) in fondo, non in testa.
+function byFinish(a, b) {
+  const fa = a.finish_position ?? Infinity;
+  const fb = b.finish_position ?? Infinity;
+  return fa - fb;
+}
+
+function positionDelta(report) {
+  if (report.grid_position == null || report.finish_position == null) return 0;
+  return report.grid_position - report.finish_position;
+}
+
+function clip(text, max) {
+  if (!text) return '';
+  return text.length > max ? text.slice(0, max - 1) + '…' : text;
+}
+
 export default function Reports() {
   const [view, setView] = useState('by-race');
   const [driverFilter, setDriverFilter] = useState('all');
-  const { isStaff, driver: myDriver } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const raceParam = searchParams.get('race') || '';
+  const { isStaff, isVsdPilot, driver: myDriver } = useAuth();
 
   const { data: reports, isLoading } = useReports();
   const { data: races } = useRaces();
@@ -54,9 +95,10 @@ export default function Reports() {
     if (!reports) return [];
     return reports.filter(r => {
       if (driverFilter !== 'all' && r.driver_id !== driverFilter) return false;
+      if (raceParam && r.race_id !== raceParam) return false;
       return true;
     });
-  }, [reports, driverFilter]);
+  }, [reports, driverFilter, raceParam]);
 
   // Raggruppa per gara
   const grouped = useMemo(() => {
@@ -65,23 +107,20 @@ export default function Reports() {
       if (!groups[r.race_id]) groups[r.race_id] = [];
       groups[r.race_id].push(r);
     });
-    // Ordina report dentro ogni gara per finish_position
-    Object.values(groups).forEach(arr => {
-      arr.sort((a, b) => a.finish_position - b.finish_position);
-    });
-    // Trasforma in array, ordina gare per data race desc
+    Object.values(groups).forEach(arr => arr.sort(byFinish));
     return Object.entries(groups)
-      .map(([race_id, rows]) => ({
-        race: raceMap[race_id],
-        race_id,
-        rows,
-      }))
-      .sort((a, b) => {
-        const da = a.race?.date ? new Date(a.race.date) : 0;
-        const db = b.race?.date ? new Date(b.race.date) : 0;
-        return db - da;
-      });
+      .map(([race_id, rows]) => ({ race: raceMap[race_id], race_id, rows }))
+      .sort((a, b) => raceTime(b.race) - raceTime(a.race));
   }, [filtered, raceMap]);
+
+  const myCode = myDriver?.driver_id || null;
+  const canSubmit = isVsdPilot && !!myCode;
+
+  function clearRaceFilter() {
+    const next = new URLSearchParams(searchParams);
+    next.delete('race');
+    setSearchParams(next, { replace: true });
+  }
 
   return (
     <div className="page">
@@ -93,6 +132,17 @@ export default function Reports() {
           {grouped.length} {grouped.length === 1 ? 'gara' : 'gare'}
         </p>
       </div>
+
+      {canSubmit && (
+        <MyReportSection
+          key={raceParam || 'default'}
+          reports={reports || []}
+          races={races || []}
+          raceMap={raceMap}
+          myCode={myCode}
+          initialRaceId={raceParam}
+        />
+      )}
 
       {/* CONTROLS */}
       <div className="reports-controls">
@@ -123,6 +173,12 @@ export default function Reports() {
             ))}
           </select>
         </div>
+
+        {raceParam && (
+          <button type="button" className="rc-edit-toggle-btn" onClick={clearRaceFilter}>
+            Mostra tutte le gare
+          </button>
+        )}
       </div>
 
       {/* CONTENT */}
@@ -135,7 +191,7 @@ export default function Reports() {
           <div className="page-stub-icon">∅</div>
           <div className="page-stub-title">Nessun report</div>
           <div className="page-stub-text">
-            {driverFilter !== 'all' ? 'Cambia filtro pilota.' : 'I report appariranno qui dopo le gare.'}
+            {driverFilter !== 'all' || raceParam ? 'Cambia filtro.' : 'I report appariranno qui dopo le gare.'}
           </div>
         </div>
       )}
@@ -154,7 +210,7 @@ export default function Reports() {
         <div className="reports-flat">
           {filtered
             .slice()
-            .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+            .sort((a, b) => new Date(b.submitted_at || b.created_at) - new Date(a.submitted_at || a.created_at))
             .map(r => (
               <ReportCard
                 key={r.report_id}
@@ -163,13 +219,301 @@ export default function Reports() {
                 driver={driverMap[r.driver_id]}
                 isStaff={isStaff}
                 reactions={reactionsByReport[r.report_id] || []}
-                myDriverId={myDriver?.driver_id}
+                myDriverId={myCode}
               />
             ))
           }
         </div>
       )}
     </div>
+  );
+}
+
+// =====================================================
+// IL TUO REPORT — il pilota completa il proprio report
+// (22/10/2026, sostituisce il Google Form "Report Gara Piloti").
+// Mostra le gare con report ancora da compilare e, sotto, le gare
+// recenti per cui l'import risultati non ha ancora creato il report.
+// =====================================================
+function MyReportSection({ reports, races, raceMap, myCode, initialRaceId }) {
+  const sectionRef = useRef(null);
+  const now = useNow(3_600_000); // basta un tick all'ora: serve solo per la finestra delle gare recenti
+
+  const myReports = useMemo(
+    () => reports.filter(r => r.driver_id === myCode),
+    [reports, myCode]
+  );
+
+  const pending = useMemo(() => {
+    return myReports
+      .filter(r => !r.submitted_at && raceMap[r.race_id])
+      .filter(r => now - raceTime(raceMap[r.race_id]) <= PENDING_WINDOW_DAYS * DAY_MS)
+      .sort((a, b) => raceTime(raceMap[b.race_id]) - raceTime(raceMap[a.race_id]));
+  }, [myReports, raceMap, now]);
+
+  const otherRaces = useMemo(() => {
+    const mine = new Set(myReports.map(r => r.race_id));
+    return races
+      .filter(r => r.status !== 'cancelled' && !mine.has(r.race_id))
+      .filter(r => {
+        const t = raceTime(r);
+        return t > 0 && t <= now && now - t <= OTHER_RACES_WINDOW_DAYS * DAY_MS;
+      })
+      .sort((a, b) => raceTime(b) - raceTime(a));
+  }, [races, myReports, now]);
+
+  const submittedForParam = initialRaceId
+    ? myReports.find(r => r.race_id === initialRaceId && r.submitted_at)
+    : null;
+
+  // Link diretto (?race=…) da Discord/annunci: preseleziona la gara e
+  // porta il form in vista, anche se il report era già stato inviato.
+  // Il componente è montato con key={raceParam}: un nuovo link rimonta
+  // e reinizializza la selezione, niente setState dentro l'effect.
+  const [selectedRaceId, setSelectedRaceId] = useState(initialRaceId || '');
+  const [doneRaceId, setDoneRaceId] = useState('');
+
+  useEffect(() => {
+    if (!initialRaceId) return;
+    sectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [initialRaceId]);
+
+  const options = useMemo(() => {
+    const list = pending.map(r => ({ race_id: r.race_id, label: raceTitle(raceMap[r.race_id], r.race_id), race: raceMap[r.race_id] }));
+    otherRaces.forEach(r => list.push({ race_id: r.race_id, label: raceTitle(r, r.race_id), race: r }));
+    if (initialRaceId && !list.some(o => o.race_id === initialRaceId) && raceMap[initialRaceId]) {
+      list.unshift({ race_id: initialRaceId, label: raceTitle(raceMap[initialRaceId], initialRaceId), race: raceMap[initialRaceId] });
+    }
+    return list;
+  }, [pending, otherRaces, raceMap, initialRaceId]);
+
+  const activeRaceId = selectedRaceId || options[0]?.race_id || '';
+  const existing = myReports.find(r => r.race_id === activeRaceId) || null;
+
+  if (options.length === 0 && !doneRaceId) {
+    return (
+      <section className="my-report" ref={sectionRef}>
+        <div className="my-report-head">
+          <div className="my-report-title">Il tuo report</div>
+          <div className="my-report-sub">Nessuna gara da raccontare negli ultimi {OTHER_RACES_WINDOW_DAYS} giorni.</div>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="my-report" ref={sectionRef}>
+      <div className="my-report-head">
+        <div className="my-report-title">Il tuo report</div>
+        <div className="my-report-sub">
+          {pending.length > 0
+            ? `${pending.length} ${pending.length === 1 ? 'gara aspetta' : 'gare aspettano'} il tuo racconto. Senza report il post non esce.`
+            : 'Racconta la tua gara: bastano 30 secondi. Senza report il post non esce.'}
+        </div>
+      </div>
+
+      {doneRaceId && (
+        <div className="my-report-done">
+          ✅ Report inviato per <strong>{raceTitle(raceMap[doneRaceId], doneRaceId)}</strong>. Lo staff è stato avvisato.
+        </div>
+      )}
+
+      {options.length > 0 && (
+        <>
+          <div className="rc-edit-field">
+            <label className="rc-edit-label" htmlFor="my-report-race">Gara</label>
+            <select
+              id="my-report-race"
+              className="filter-select"
+              value={activeRaceId}
+              onChange={e => { setSelectedRaceId(e.target.value); setDoneRaceId(''); }}
+            >
+              {pending.length > 0 && (
+                <optgroup label="Report da completare">
+                  {options.filter(o => pending.some(p => p.race_id === o.race_id)).map(o => (
+                    <option key={o.race_id} value={o.race_id}>
+                      {o.label}{o.race?.date ? ` — ${formatDate(o.race.date)}` : ''}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              <optgroup label={pending.length > 0 ? 'Altre gare recenti' : 'Gare recenti'}>
+                {options.filter(o => !pending.some(p => p.race_id === o.race_id)).map(o => (
+                  <option key={o.race_id} value={o.race_id}>
+                    {o.label}{o.race?.date ? ` — ${formatDate(o.race.date)}` : ''}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+          </div>
+
+          {submittedForParam && submittedForParam.race_id === activeRaceId && (
+            <div className="my-report-note">Hai già inviato questo report: puoi correggerlo e salvarlo di nuovo.</div>
+          )}
+
+          <DriverReportForm
+            key={activeRaceId}
+            raceId={activeRaceId}
+            existing={existing}
+            myCode={myCode}
+            onSubmitted={() => { setDoneRaceId(activeRaceId); setSelectedRaceId(''); }}
+          />
+        </>
+      )}
+    </section>
+  );
+}
+
+// =====================================================
+// DRIVER REPORT FORM — racconto, momento chiave, foto, ok social.
+// Usato in "Il tuo report" e per correggere un proprio report già
+// inviato dalla vista cronologica.
+// =====================================================
+function DriverReportForm({ raceId, existing, myCode, onSubmitted, onCancel }) {
+  const mutation = useSubmitOwnReport();
+  const { uploadFiles, uploading, progress, error: uploadError, setError: setUploadError } = useBlobUpload();
+  const { data: socialFlagsData } = useConsentSocialFlags();
+  const hasSocialConsent = !!socialFlagsData?.flags?.[myCode];
+
+  const [summary, setSummary] = useState(existing?.driver_summary || '');
+  const [keyMoment, setKeyMoment] = useState(existing?.key_moment || '');
+  const [mediaUrls, setMediaUrls] = useState(existing?.media_urls || []);
+  const [socialOk, setSocialOk] = useState(existing?.social_ok ?? true);
+  const fileInputRef = useRef(null);
+
+  const trimmedLen = summary.trim().length;
+  const tooShort = trimmedLen < SUMMARY_MIN;
+  const busy = mutation.isPending || uploading;
+
+  async function handleFiles(e) {
+    const files = Array.from(e.target.files || []);
+    e.target.value = '';
+    const room = MEDIA_MAX - mediaUrls.length;
+    if (room <= 0) {
+      setUploadError(`Massimo ${MEDIA_MAX} foto`);
+      return;
+    }
+    try {
+      const uploaded = await uploadFiles(files.slice(0, room));
+      setMediaUrls(prev => [...prev, ...uploaded.map(u => u.url)].slice(0, MEDIA_MAX));
+    } catch {
+      // errore già esposto da useBlobUpload
+    }
+  }
+
+  function removeMedia(url) {
+    setMediaUrls(prev => prev.filter(u => u !== url));
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault();
+    if (tooShort || busy) return;
+    mutation.mutate(
+      {
+        race_id: raceId,
+        driver_summary: summary.trim(),
+        key_moment: keyMoment.trim(),
+        media_urls: mediaUrls,
+        social_ok: socialOk,
+      },
+      { onSuccess: () => onSubmitted?.() }
+    );
+  }
+
+  return (
+    <form className="rc-edit my-report-form" onSubmit={handleSubmit}>
+      <div className="rc-edit-field">
+        <label className="rc-edit-label" htmlFor={`summary-${raceId}`}>
+          Com'è andata *
+        </label>
+        <textarea
+          id={`summary-${raceId}`}
+          className="rc-edit-textarea"
+          rows={4}
+          maxLength={SUMMARY_MAX}
+          value={summary}
+          onChange={e => setSummary(e.target.value)}
+          placeholder="Partenza, sorpassi, strategia, errori, come hai chiuso. Scrivi come lo racconteresti a un compagno di squadra."
+        />
+        <div className={`my-report-counter${tooShort && trimmedLen > 0 ? ' is-warn' : ''}`}>
+          {tooShort ? `Almeno ${SUMMARY_MIN} caratteri (${trimmedLen}/${SUMMARY_MIN})` : `${summary.length}/${SUMMARY_MAX}`}
+        </div>
+      </div>
+
+      <div className="rc-edit-field">
+        <label className="rc-edit-label" htmlFor={`moment-${raceId}`}>Momento chiave</label>
+        <input
+          id={`moment-${raceId}`}
+          className="rc-edit-textarea"
+          type="text"
+          maxLength={KEY_MOMENT_MAX}
+          value={keyMoment}
+          onChange={e => setKeyMoment(e.target.value)}
+          placeholder="Una riga: il sorpasso, il pit perfetto, il contatto al giro 12…"
+        />
+      </div>
+
+      <div className="rc-edit-field">
+        <span className="rc-edit-label">Foto o screenshot ({mediaUrls.length}/{MEDIA_MAX})</span>
+        <div className="my-report-media">
+          {mediaUrls.map(url => (
+            <div key={url} className="my-report-thumb">
+              <img src={url} alt="" loading="lazy" />
+              <button type="button" className="my-report-thumb-remove" onClick={() => removeMedia(url)} aria-label="Rimuovi foto" disabled={busy}>
+                ×
+              </button>
+            </div>
+          ))}
+          {mediaUrls.length < MEDIA_MAX && (
+            <button
+              type="button"
+              className="my-report-add-media"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={busy}
+            >
+              {uploading ? 'Caricamento…' : '+ Aggiungi'}
+            </button>
+          )}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            multiple
+            hidden
+            onChange={handleFiles}
+          />
+        </div>
+        {progress && <div className="my-report-counter">{progress}</div>}
+        {uploadError && <div className="rc-edit-error">{uploadError}</div>}
+        <div className="my-report-hint">Un fermo immagine dell'auto in pista vale più di dieci righe: è quello che serve per il post.</div>
+      </div>
+
+      <label className="my-report-check">
+        <input type="checkbox" checked={socialOk} onChange={e => setSocialOk(e.target.checked)} />
+        <span>Ok a usare racconto e foto sui social VSD</span>
+      </label>
+      {socialOk && !hasSocialConsent && (
+        <div className="my-report-hint is-warn">
+          Non hai ancora dato il consenso social: senza quello useremo il report solo internamente.{' '}
+          <Link to="/consenso">Compila il consenso dati</Link>
+        </div>
+      )}
+
+      {mutation.isError && (
+        <div className="rc-edit-error">Errore: {mutation.error?.message || 'invio fallito'}</div>
+      )}
+
+      <div className="rc-edit-actions">
+        {onCancel && (
+          <button type="button" className="rc-edit-cancel-btn" onClick={onCancel} disabled={busy}>
+            Annulla
+          </button>
+        )}
+        <button type="submit" className="rc-edit-save-btn" disabled={busy || tooShort}>
+          {mutation.isPending ? 'Invio…' : existing?.submitted_at ? 'Salva modifiche' : 'Invia report'}
+        </button>
+      </div>
+    </form>
   );
 }
 
@@ -181,7 +525,9 @@ function RaceGroup({ race, rows, driverMap, isStaff }) {
   const socialFlags = socialFlagsData?.flags || {};
   const [editingId, setEditingId] = useState(null);
   if (!race) return null;
-  const podiums = rows.filter(r => r.finish_position <= 3).length;
+  const podiums = rows.filter(r => r.finish_position != null && r.finish_position <= 3).length;
+  const submitted = rows.filter(r => r.submitted_at).length;
+  const columnCount = isStaff ? 8 : 6;
 
   return (
     <section className="race-group">
@@ -189,9 +535,10 @@ function RaceGroup({ race, rows, driverMap, isStaff }) {
         <div className="rg-context">
           <SimBadge sim={race.sim} variant="solid" size="sm" />
           <div className="rg-titles">
-            <div className="rg-title">{race.title}</div>
+            <div className="rg-title">{raceTitle(race, race.race_id)}</div>
             <div className="rg-meta">
-              {formatTrack(race.track_id)} · {formatDate(race.date)} · {rows.length} {rows.length === 1 ? 'report' : 'report'}
+              {formatTrack(race.track_id)} · {formatDate(race.date)} · {rows.length} report
+              {` · ${submitted}/${rows.length} raccontati`}
               {podiums > 0 && ` · ${podiums} sul podio`}
             </div>
           </div>
@@ -207,7 +554,7 @@ function RaceGroup({ race, rows, driverMap, isStaff }) {
               <th className="num">Arrivo</th>
               <th className="num">Best Lap</th>
               <th className="num">Inc.</th>
-              <th>Strategia</th>
+              <th>Racconto</th>
               {isStaff && <th className="num">Rating</th>}
               {isStaff && <th className="num">Azioni</th>}
             </tr>
@@ -215,9 +562,10 @@ function RaceGroup({ race, rows, driverMap, isStaff }) {
           <tbody>
             {rows.map(r => {
               const d = driverMap[r.driver_id];
-              const delta = r.grid_position - r.finish_position;
-              const isPodium = r.finish_position <= 3;
+              const delta = positionDelta(r);
+              const isPodium = r.finish_position != null && r.finish_position <= 3;
               const isEditing = editingId === r.report_id;
+              const story = r.driver_summary || r.strategy_notes;
               return (
                 <Fragment key={r.report_id}>
                   <tr>
@@ -229,11 +577,15 @@ function RaceGroup({ race, rows, driverMap, isStaff }) {
                         </Link>
                       ) : r.driver_id}
                     </td>
-                    <td className="num">{r.grid_position}</td>
+                    <td className="num">{r.grid_position ?? '—'}</td>
                     <td className="num">
-                      <span className={`finish-pos${isPodium ? ' is-podium' : ''}`}>
-                        P{r.finish_position}
-                      </span>
+                      {r.finish_position != null ? (
+                        <span className={`finish-pos${isPodium ? ' is-podium' : ''}`}>
+                          P{r.finish_position}
+                        </span>
+                      ) : (
+                        <span className="finish-pos">—</span>
+                      )}
                       {delta !== 0 && (
                         <span className={`pos-delta${delta > 0 ? ' is-gain' : ' is-loss'}`}>
                           {delta > 0 ? `+${delta}` : delta}
@@ -245,10 +597,13 @@ function RaceGroup({ race, rows, driverMap, isStaff }) {
                     </td>
                     <td className="num">
                       <span className={r.incidents > 0 ? 'inc-bad' : 'inc-clean'}>
-                        {r.incidents}
+                        {r.incidents ?? '—'}
                       </span>
                     </td>
-                    <td className="cell-notes">{r.strategy_notes || '—'}</td>
+                    <td className="cell-notes">
+                      {story ? clip(story, 140) : <span className="rc-missing">da compilare</span>}
+                      {r.media_urls?.length > 0 && <span className="rc-media-count"> · 📷 {r.media_urls.length}</span>}
+                    </td>
                     {isStaff && (
                       <td className="num">
                         <RatingStars value={r.staff_rating} />
@@ -268,7 +623,7 @@ function RaceGroup({ race, rows, driverMap, isStaff }) {
                   </tr>
                   {isStaff && isEditing && (
                     <tr className="rc-edit-row">
-                      <td colSpan={7}>
+                      <td colSpan={columnCount}>
                         <ReportEditForm report={r} onDone={() => setEditingId(null)} />
                       </td>
                     </tr>
@@ -289,9 +644,11 @@ function RaceGroup({ race, rows, driverMap, isStaff }) {
 function ReportCard({ report, race, driver, isStaff, reactions = [], myDriverId }) {
   const photoUrl = useConsentedDriverPhoto(driver?.driver_id);
   const [isEditing, setIsEditing] = useState(false);
+  const [isEditingOwn, setIsEditingOwn] = useState(false);
   if (!race || !driver) return null;
-  const delta = report.grid_position - report.finish_position;
-  const isPodium = report.finish_position <= 3;
+  const delta = positionDelta(report);
+  const isPodium = report.finish_position != null && report.finish_position <= 3;
+  const isMine = !!myDriverId && report.driver_id === myDriverId;
 
   return (
     <div className="report-card">
@@ -302,14 +659,14 @@ function ReportCard({ report, race, driver, isStaff, reactions = [], myDriverId 
             <div className="rc-driver-name">{driver.display_name}</div>
             <div className="rc-race-context">
               <SimBadge sim={race.sim} size="sm" />
-              <span className="rc-race-title">{race.title}</span>
+              <span className="rc-race-title">{raceTitle(race, race.race_id)}</span>
             </div>
           </div>
         </Link>
         <div className="rc-finish">
           <div className="rc-finish-row">
             <span className={`finish-pos rc-pos${isPodium ? ' is-podium' : ''}`}>
-              P{report.finish_position}
+              {report.finish_position != null ? `P${report.finish_position}` : '—'}
             </span>
             {delta !== 0 && (
               <span className={`pos-delta${delta > 0 ? ' is-gain' : ' is-loss'}`}>
@@ -317,7 +674,7 @@ function ReportCard({ report, race, driver, isStaff, reactions = [], myDriverId 
               </span>
             )}
           </div>
-          <div className="rc-grid">da P{report.grid_position}</div>
+          {report.grid_position != null && <div className="rc-grid">da P{report.grid_position}</div>}
         </div>
       </div>
 
@@ -334,12 +691,57 @@ function ReportCard({ report, race, driver, isStaff, reactions = [], myDriverId 
         <RcStat label="Best Lap" value={<LapTime ms={report.best_lap_ms} size="sm" />} />
         <RcStat label="Incidenti" value={
           <span className={report.incidents > 0 ? 'inc-bad' : 'inc-clean'}>
-            {report.incidents}
+            {report.incidents ?? '—'}
           </span>
         } />
         {isStaff && <RcStat label="Rating Staff" value={<RatingStars value={report.staff_rating} />} />}
-        <RcStat label="Data" value={<span className="cell-date">{formatDate(report.created_at)}</span>} />
+        {isStaff && report.submitted_at && (
+          <RcStat label="Social" value={<span className="cell-date">{report.social_ok ? '✅ ok' : '⛔ interno'}</span>} />
+        )}
+        <RcStat label="Data" value={<span className="cell-date">{formatDate(race.date || report.created_at)}</span>} />
       </div>
+
+      {(report.driver_summary || report.key_moment) && !isEditingOwn && (
+        <div className="rc-notes">
+          {report.driver_summary && (
+            <div className="rc-note-block">
+              <div className="rc-note-label">Racconto del pilota</div>
+              <div className="rc-note-text rc-note-text-pre">{report.driver_summary}</div>
+            </div>
+          )}
+          {report.key_moment && (
+            <div className="rc-note-block">
+              <div className="rc-note-label">Momento chiave</div>
+              <div className="rc-note-text">{report.key_moment}</div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {report.media_urls?.length > 0 && !isEditingOwn && (
+        <div className="rc-media">
+          {report.media_urls.map(url => (
+            <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="rc-media-item">
+              <img src={url} alt="" loading="lazy" />
+            </a>
+          ))}
+        </div>
+      )}
+
+      {isMine && !isEditingOwn && (
+        <button type="button" className="rc-edit-toggle-btn rc-edit-toggle-btn-card" onClick={() => setIsEditingOwn(true)}>
+          {report.submitted_at ? 'Modifica il mio racconto' : 'Racconta la tua gara'}
+        </button>
+      )}
+      {isMine && isEditingOwn && (
+        <DriverReportForm
+          raceId={report.race_id}
+          existing={report}
+          myCode={myDriverId}
+          onSubmitted={() => setIsEditingOwn(false)}
+          onCancel={() => setIsEditingOwn(false)}
+        />
+      )}
 
       {(report.strategy_notes || report.incident_notes) && (
         <div className="rc-notes">
@@ -459,6 +861,12 @@ function ReportEditForm({ report, onDone }) {
 
   return (
     <div className="rc-edit">
+      {report.driver_summary && (
+        <div className="rc-edit-field">
+          <span className="rc-edit-label">Racconto del pilota (lo modifica solo il pilota)</span>
+          <div className="rc-note-text rc-note-text-pre">{report.driver_summary}</div>
+        </div>
+      )}
       <div className="rc-edit-field">
         <label className="rc-edit-label" htmlFor={`strategy-${report.report_id}`}>Strategia</label>
         <textarea

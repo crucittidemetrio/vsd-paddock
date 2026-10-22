@@ -950,3 +950,50 @@
     justify-content: flex-end;
   }
 }
+
+/* Report piloti (22/10/2026) — racconti/foto da /reports per la gara collegata */
+.reportsPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 14px;
+  background: rgba(0, 212, 255, 0.04);
+  border: 1px solid rgba(0, 212, 255, 0.22);
+  border-radius: var(--r-md);
+}
+.reportsPanelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: var(--fs-sm);
+  color: var(--color-text);
+}
+.reportsPanelActions { display: flex; gap: 6px; flex-wrap: wrap; }
+.reportsPanelActions .btnMini:disabled { opacity: 0.5; cursor: default; }
+.reportsEmpty { font-size: var(--fs-xs); color: var(--color-text-dim); }
+.reportItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--color-border);
+}
+.reportMeta { font-size: var(--fs-xs); color: var(--color-text-muted); }
+.reportText { font-size: var(--fs-sm); color: var(--color-text); white-space: pre-line; }
+.reportMoment { font-size: var(--fs-xs); color: var(--vsd-orange); }
+.reportThumbs { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.reportThumbBtn {
+  width: 72px;
+  height: 48px;
+  padding: 0;
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: none;
+  cursor: pointer;
+}
+.reportThumbBtn:hover:not(:disabled) { border-color: var(--vsd-cyan); }
+.reportThumbBtn:disabled { opacity: 0.45; cursor: not-allowed; }
+.reportThumbBtn img { width: 100%; height: 100%; object-fit: cover; display: block; }
