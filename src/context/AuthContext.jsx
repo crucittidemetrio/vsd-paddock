@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { STORAGE, TIERS, TIER_ORDER } from '../utils/constants';
 import { AuthContext } from './authContextObject';
 import { getLegacyTokenExpiry, isLegacyTokenExpired, SESSION_EXPIRED_EVENT } from '../utils/legacyToken';
+import { signOutSupabase } from '../api/supabaseAuth';
 
 /**
  * Legge la sessione salvata in localStorage. Pura, nessun side-effect.
@@ -121,6 +122,8 @@ export function AuthProvider({ children }) {
     localStorage.removeItem(STORAGE.SIMS);
     localStorage.removeItem(STORAGE.DISCORD_AVATAR_URL);
     localStorage.removeItem(STORAGE.DISCORD_USERNAME);
+    // chiude anche la sessione Supabase ottenuta dal token legacy
+    signOutSupabase().catch(() => {});
   }
 
   // Scadenza del token: allo scadere (pagina aperta) o quando una chiamata

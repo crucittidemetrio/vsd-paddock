@@ -1,5 +1,5 @@
 import { isLegacyTokenExpired, notifySessionExpired } from '../utils/legacyToken';
-import { getSupabaseSession } from './supabaseAuth';
+import { getSupabaseSession, ensureSessionFromLegacy } from './supabaseAuth';
 import { supabaseAnonKey } from './supabaseClient';
 
 // ═══════════════════════════════════════════════════════════
@@ -714,7 +714,11 @@ function buildRequest(action, payload) {
 async function callEdgeFunction(slug, body, action) {
   if (!FUNCTIONS_BASE) return fail('VITE_SUPABASE_URL non configurato in .env.local');
 
-  const session = await getSupabaseSession();
+  // 22/10/2026: con un token legacy valido si usa (o si ottiene, una volta
+  // sola) la sessione Supabase vera — vedi ensureSessionFromLegacy.
+  const storedLegacy = typeof localStorage !== 'undefined' ? localStorage.getItem(LEGACY_TOKEN_STORAGE_KEY) : null;
+  const legacyUsable = storedLegacy && !isLegacyTokenExpired(storedLegacy);
+  const session = (legacyUsable ? await ensureSessionFromLegacy(storedLegacy) : null) || await getSupabaseSession();
   const headers = { 'Content-Type': 'application/json' };
   // Sempre un JWT valido in Authorization — vedi nota in testa al file
   // (verify_jwt=true a livello di piattaforma su ogni Edge Function).
@@ -726,9 +730,10 @@ async function callEdgeFunction(slug, body, action) {
   }
   // #334 fix regressione consenso/treasury/candidates/sponsors/prequal:
   // vedi nota su LEGACY_TOKEN_FALLBACK_ACTIONS in testa al file.
-  if (!session?.access_token && action && LEGACY_TOKEN_FALLBACK_ACTIONS.has(action) && !finalBody.legacy_token) {
-    const legacyToken = typeof localStorage !== 'undefined' ? localStorage.getItem(LEGACY_TOKEN_STORAGE_KEY) : null;
-    if (legacyToken) finalBody = { ...finalBody, legacy_token: legacyToken };
+  // Il token legacy viaggia anche quando c'è la sessione: le funzioni provano
+  // prima la sessione (veloce) e usano il legacy solo se quella non basta.
+  if (action && LEGACY_TOKEN_FALLBACK_ACTIONS.has(action) && !finalBody.legacy_token && storedLegacy) {
+    finalBody = { ...finalBody, legacy_token: storedLegacy };
   }
 
   // 11/10/2026 ("torna spesso Errore: Auth richiesto" su Best Laps): causa

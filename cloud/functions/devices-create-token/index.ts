@@ -24,6 +24,7 @@ async function resolveLegacyDriver(svc: any, legacyToken: string): Promise<{ id:
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ action: 'auth.verify', token: legacyToken, payload: {} }),
+      signal: AbortSignal.timeout(15000), // Apps Script a volte non risponde: mai bloccare 150 s
     });
     const j = await r.json();
     const code = j?.ok && j.data?.valid ? j.data?.driver?.driver_id : null;
@@ -33,6 +34,73 @@ async function resolveLegacyDriver(svc: any, legacyToken: string): Promise<{ id:
   } catch {
     return null;
   }
+}
+
+
+// ═══════════════════════════════════════════════════════════
+// 22/10/2026 — session.exchange: token legacy → sessione Supabase vera
+// ═══════════════════════════════════════════════════════════
+// Perché: ogni Edge Function verificava il token legacy chiamando Apps
+// Script (1-3 s, a volte 150 s di blocco). Con una sessione Supabase le
+// funzioni usano auth.getUser (decine di ms) e Apps Script viene
+// chiamato UNA volta per login invece che a ogni richiesta.
+// Account Supabase creato al primo scambio (email tecnica, mai usata
+// per inviare posta) e collegato a drivers.auth_user_id. Se il pilota
+// ha già un account (es. Discord OAuth Supabase) si riusa quello.
+const PILOT_EMAIL_DOMAIN = 'pilots.vsd-paddock.app';
+
+async function handleSessionExchange(legacyToken: string): Promise<Response> {
+  const svc = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const me = await resolveLegacyDriver(svc, legacyToken);
+  if (!me) return json({ ok: false, error: 'Token non valido' }, 401);
+
+  const { data: drv, error: drvErr } = await svc.from('drivers')
+    .select('id, driver_code, auth_user_id, removed_at').eq('id', me.id).maybeSingle();
+  if (drvErr || !drv) return json({ ok: false, error: 'Pilota non trovato' }, 404);
+  if (drv.removed_at) return json({ ok: false, error: 'Pilota non attivo' }, 403);
+
+  let email: string | null = null;
+  if (drv.auth_user_id) {
+    const { data: u } = await svc.auth.admin.getUserById(drv.auth_user_id);
+    email = u?.user?.email || null;
+  }
+  if (!email) {
+    email = `${String(drv.driver_code || drv.id).toLowerCase()}@${PILOT_EMAIL_DOMAIN}`;
+    const { data: created, error: cErr } = await svc.auth.admin.createUser({
+      email, email_confirm: true, app_metadata: { vsd_driver_code: drv.driver_code, via: 'legacy_exchange' },
+    });
+    let userId = created?.user?.id || null;
+    if (!userId) {
+      // già creato in un tentativo precedente ma non collegato: lo ritrovo
+      const { data: list } = await svc.auth.admin.listUsers({ page: 1, perPage: 1000 });
+      userId = list?.users?.find((u: any) => (u.email || '').toLowerCase() === email)?.id || null;
+      if (!userId) return json({ ok: false, error: 'Creazione account fallita: ' + (cErr?.message || 'sconosciuto') }, 500);
+    }
+    const { error: linkErr } = await svc.from('drivers').update({ auth_user_id: userId }).eq('id', drv.id).is('auth_user_id', null);
+    if (linkErr) return json({ ok: false, error: linkErr.message }, 500);
+  }
+
+  const { data: link, error: lErr } = await svc.auth.admin.generateLink({ type: 'magiclink', email });
+  const hashed = (link as any)?.properties?.hashed_token;
+  if (lErr || !hashed) return json({ ok: false, error: 'generateLink: ' + (lErr?.message || 'nessun token') }, 500);
+
+  const anon = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_ANON_KEY')!, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+  const { data: v, error: vErr } = await anon.auth.verifyOtp({ token_hash: hashed, type: 'magiclink' });
+  if (vErr || !v?.session) return json({ ok: false, error: 'verifyOtp: ' + (vErr?.message || 'nessuna sessione') }, 500);
+
+  return json({
+    ok: true,
+    data: {
+      access_token: v.session.access_token,
+      refresh_token: v.session.refresh_token,
+      expires_at: v.session.expires_at,
+      driver_code: drv.driver_code,
+    },
+  });
 }
 
 const DEVICE_TOKEN_TTL_MS = 180 * 24 * 60 * 60 * 1000; // 180 giorni
@@ -67,6 +135,10 @@ Deno.serve(async (req: Request) => {
 
   try {
     const payloadIn = await req.json().catch(() => ({}));
+    if (payloadIn?.action === 'session.exchange') {
+      if (!payloadIn.legacy_token) return json({ ok: false, error: 'legacy_token mancante' }, 400);
+      return await handleSessionExchange(String(payloadIn.legacy_token));
+    }
     const authHeader = req.headers.get('Authorization');
     let me: { id: string; team_id: string } | null = null;
 

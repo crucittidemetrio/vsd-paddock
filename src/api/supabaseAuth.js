@@ -56,8 +56,71 @@ export async function signInWithDiscord(redirectTo) {
 /** Termina la sessione Supabase corrente (non tocca la sessione Apps Script legacy). */
 export async function signOutSupabase() {
   const supabase = getSupabaseClient();
+  try { localStorage.removeItem(BOUND_LEGACY_KEY); } catch { /* storage non disponibile */ }
   if (!supabase) return;
-  await supabase.auth.signOut();
+  await supabase.auth.signOut({ scope: 'local' });
+}
+
+// ═══════════════════════════════════════════════════════════
+// 22/10/2026 — Sessione Supabase ottenuta dal token legacy (Discord via
+// Apps Script). Prima ogni Edge Function richiamava Apps Script per
+// verificare il token (1-3 s a richiesta, a volte 150 s di blocco).
+// Ora lo scambio avviene UNA volta (devices-create-token, action
+// session.exchange) e da lì in poi le chiamate viaggiano con la sessione
+// Supabase, rinnovata in automatico da supabase-js. Se lo scambio fallisce
+// si torna al comportamento di prima (legacy_token nel body): mai peggio.
+// ═══════════════════════════════════════════════════════════
+const BOUND_LEGACY_KEY = 'vsd_sb_bound_legacy';
+const EXCHANGE_RETRY_MS = 5 * 60 * 1000;
+let exchangePending = null;
+let exchangeFailedUntil = 0;
+
+function legacySig(token) {
+  return String(token).slice(-32);
+}
+
+export async function ensureSessionFromLegacy(legacyToken) {
+  const supabase = getSupabaseClient();
+  if (!supabase || !legacyToken) return null;
+  const { data } = await supabase.auth.getSession();
+  let bound = null;
+  try { bound = localStorage.getItem(BOUND_LEGACY_KEY); } catch { /* ignore */ }
+  if (data?.session) {
+    // sessione già valida: va bene se nata da questo token (o da un login
+    // Supabase diretto, senza vincolo). Se è di un altro login, si rifà.
+    if (!bound || bound === legacySig(legacyToken)) return data.session;
+    await supabase.auth.signOut({ scope: 'local' });
+  }
+  if (Date.now() < exchangeFailedUntil) return null;
+  if (!exchangePending) {
+    exchangePending = (async () => {
+      try {
+        const base = import.meta.env.VITE_SUPABASE_URL;
+        const res = await fetch(`${base}/functions/v1/devices-create-token`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}` },
+          body: JSON.stringify({ action: 'session.exchange', legacy_token: legacyToken }),
+          signal: AbortSignal.timeout ? AbortSignal.timeout(25000) : undefined,
+        });
+        const j = await res.json().catch(() => null);
+        if (!j?.ok || !j.data?.access_token) throw new Error(j?.error || `HTTP ${res.status}`);
+        const { data: set, error } = await supabase.auth.setSession({
+          access_token: j.data.access_token,
+          refresh_token: j.data.refresh_token,
+        });
+        if (error || !set?.session) throw error || new Error('setSession fallita');
+        try { localStorage.setItem(BOUND_LEGACY_KEY, legacySig(legacyToken)); } catch { /* ignore */ }
+        return set.session;
+      } catch (e) {
+        console.warn('[supabaseAuth] scambio sessione non riuscito, uso il token legacy', e);
+        exchangeFailedUntil = Date.now() + EXCHANGE_RETRY_MS;
+        return null;
+      } finally {
+        exchangePending = null;
+      }
+    })();
+  }
+  return exchangePending;
 }
 
 /** Ritorna la sessione Supabase corrente (o null), inclusi eventuali code PKCE nell'URL da scambiare. */
