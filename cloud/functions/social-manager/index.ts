@@ -51,6 +51,12 @@
 //     backfillare gare importate prima di questo porting. Gate:
 //     staff/admin. Il trigger automatico post-import resta comunque
 //     fedele: vedi race-results-import/index.ts.
+//   reports.submitOwn                       → 22/10/2026 (migrazione 039):
+//     il pilota compila il PROPRIO report (racconto, momento chiave,
+//     foto, ok social). Sostituisce il Google Form "Report Gara Piloti".
+//     Notifica #team-principal al primo invio, foto nella libreria media
+//     se social_ok. reports.list/recent completano in lettura griglia/
+//     arrivo/best lap mancanti (enrichReportsFromResults).
 //   reportReactions.list / reportReactions.toggle → auth: qualsiasi pilota
 //   landing.data                            → auth: qualsiasi pilota
 //   laps.raceLaps                           → auth: qualsiasi pilota.
@@ -264,7 +270,7 @@ const SOCIAL_DIGEST_PILLARS = [
 ];
 const SOCIAL_DIGEST_CLOSING_PILLAR = { id: 'chiusura_campionato', label: 'Chiusura campionato', icon: '🏁', offsetDays: 4 };
 const SOCIAL_DIGEST_EVERGREEN_PILLARS = [
-  { id: 'spotlight', label: 'Pilot spotlight', icon: '🎙️', cadenceDays: 14 },
+  { id: 'spotlight', label: 'Pilot spotlight', icon: '🎙\uFE0F', cadenceDays: 14 },
   { id: 'dietro_quinte', label: 'Dietro le quinte', icon: '🔧', cadenceDays: 14 },
   { id: 'milestone', label: 'News/milestone squadra', icon: '📰', cadenceDays: 14 },
   { id: 'community', label: 'Community engagement', icon: '💬', cadenceDays: 14 },
@@ -527,11 +533,123 @@ async function getDriverThumbnailUrl(supabase: any, teamId: string, driverId: st
   }
 }
 
+// ─── Race Reports: input pilota (22/10/2026, migrazione 039) ───
+// enrichReportsFromResults: completa IN LETTURA griglia/arrivo/best lap
+// mancanti da race_results. Copre due casi senza toccare
+// race-results-import: (1) il seeding automatico legge qual_position,
+// colonna che non esiste → griglia sempre NULL; (2) un pilota che
+// compila il report PRIMA dell'import risultati crea una riga senza
+// numeri, che il seeding successivo salta (dedup per driver).
+async function enrichReportsFromResults(db: any, teamId: string, rows: any[]): Promise<any[]> {
+  const missing = rows.filter((r: any) => r.grid_position == null || r.finish_position == null || r.best_lap_ms == null);
+  if (missing.length === 0) return rows;
+  try {
+    const raceIds = Array.from(new Set(missing.map((r: any) => r.race_id).filter(Boolean)));
+    if (raceIds.length === 0) return rows;
+    const { data: results } = await db
+      .from('race_results')
+      .select('race_id, driver_id, session_type, finish_position, best_lap_ms, dnf, dns')
+      .eq('team_id', teamId)
+      .in('race_id', raceIds)
+      .not('driver_id', 'is', null);
+    const byKey: Record<string, { quali?: number; finish?: number | null; bestLap?: number | null }> = {};
+    (results || []).forEach((rr: any) => {
+      const key = rr.race_id + '|' + rr.driver_id;
+      const slot = byKey[key] || (byKey[key] = {});
+      if (rr.session_type === 'qualifying' && rr.finish_position != null) {
+        slot.quali = slot.quali == null ? rr.finish_position : Math.min(slot.quali, rr.finish_position);
+      }
+      if ((rr.session_type || 'race') === 'race' && rr.dns !== true) {
+        slot.finish = rr.dnf === true ? null : (rr.finish_position ?? null);
+        slot.bestLap = rr.best_lap_ms ?? null;
+      }
+    });
+    return rows.map((r: any) => {
+      const slot = byKey[r.race_id + '|' + r.driver_id];
+      if (!slot) return r;
+      return {
+        ...r,
+        grid_position: r.grid_position ?? slot.quali ?? null,
+        finish_position: r.finish_position ?? slot.finish ?? null,
+        best_lap_ms: r.best_lap_ms ?? slot.bestLap ?? null,
+      };
+    });
+  } catch {
+    return rows;
+  }
+}
+
+const REPORT_SUMMARY_MIN = 20;
+const REPORT_SUMMARY_MAX = 1500;
+const REPORT_KEY_MOMENT_MAX = 300;
+const REPORT_MEDIA_MAX = 4;
+// Solo file caricati dal Paddock su Vercel Blob (useBlobUpload): niente
+// link arbitrari nella libreria media del Social Manager.
+const REPORT_MEDIA_HOST_RE = /^https:\/\/[a-z0-9-]+\.public\.blob\.vercel-storage\.com\//i;
+
+function clip(s: string, max: number) {
+  return s.length > max ? s.slice(0, max - 1) + '…' : s;
+}
+
+async function notifyDriverReportToStaff(
+  db: any,
+  teamId: string,
+  me: { id: string; display_name?: string; driver_code?: string },
+  race: { race_id: string; race_name?: string; sim?: string; date?: string },
+  report: { driver_summary: string; key_moment: string | null; media_urls: string[]; social_ok: boolean; finish_position?: number | null },
+) {
+  try {
+    const { data: consent } = await db
+      .from('consents').select('social_consent')
+      .eq('team_id', teamId).eq('driver_id', me.id).eq('consent_version', CONSENT_VERSION)
+      .maybeSingle();
+    const socialLabel = !report.social_ok
+      ? '⛔ Solo uso interno'
+      : consent?.social_consent
+        ? '✅ Ok social'
+        : '⚠\uFE0F Ok del pilota, ma consenso social mancante';
+
+    const smUrl = `${PADDOCK_URL}/admin/social-manager?race=${encodeURIComponent(race.race_id)}`;
+    const repUrl = `${PADDOCK_URL}/reports?race=${encodeURIComponent(race.race_id)}`;
+    const lines = [
+      clip(report.driver_summary, 500),
+      report.key_moment ? `\n🎯 **Momento chiave:** ${clip(report.key_moment, 200)}` : '',
+      `\n[Apri nel Social Manager](${smUrl}) · [Vedi report](${repUrl})`,
+    ];
+    const fields = [
+      { name: 'Pilota', value: String(me.display_name || me.driver_code || '—').slice(0, 100), inline: true },
+      { name: 'Arrivo', value: report.finish_position != null ? `P${report.finish_position}` : '—', inline: true },
+      { name: 'Social', value: socialLabel, inline: true },
+    ];
+    if (report.media_urls.length > 1) {
+      fields.push({ name: 'Foto', value: `${report.media_urls.length} allegate (prima in anteprima)`, inline: true });
+    }
+    await postToDiscordWebhook({
+      // Il webhook di #team-principal è stato creato col nome "VSD Paddock —
+      // Nuove Candidature": senza override ogni notifica arriva firmata così.
+      username: 'VSD Paddock — Report piloti',
+      embeds: [{
+        author: { name: 'VSD Paddock — Report piloti' },
+        title: `📝 Nuovo report: ${clip(race.race_name || race.race_id, 200)}`,
+        description: lines.join(''),
+        color: 0x00d9ff,
+        fields,
+        ...(report.media_urls[0] ? { image: { url: report.media_urls[0] } } : {}),
+        timestamp: new Date().toISOString(),
+        footer: { text: `${race.sim || ''} · ${race.race_id}`.trim() },
+        url: smUrl,
+      }],
+    }, 'DISCORD_WEBHOOK_ADMIN_URL');
+  } catch (_e) {
+    // non bloccante: il report è già salvato
+  }
+}
+
 async function notifyNewTeamRecordEmbed(supabase: any, teamId: string, driverId: string, driverName: string, trackName: string, sim: string, lapTimeDisplay: string, previousDisplay: string | null) {
   const embed: any = {
     author: { name: 'VSD Paddock' },
     title: '🏆 Nuovo record di squadra!',
-    description: `**${driverName}** — ${trackName} (${sim})\n⏱️ **${lapTimeDisplay}**` +
+    description: `**${driverName}** — ${trackName} (${sim})\n⏱\uFE0F **${lapTimeDisplay}**` +
       (previousDisplay ? ` _(precedente: ${previousDisplay})_` : ' _(primo tempo registrato su questa pista)_'),
     color: 0xa855f7,
     timestamp: new Date().toISOString(),
@@ -578,7 +696,7 @@ function garage61Slugify(name: string): string {
   return String(name)
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '')
     .replace(/-+/g, '-');
@@ -1314,7 +1432,7 @@ Deno.serve(async (req: Request) => {
       const fields: any[] = [];
       if (late.length > 0) fields.push({ name: '🔴 In ritardo (' + late.length + ')', value: late.join('\n').slice(0, 1024) });
       if (thisWeek.length > 0) fields.push({ name: '📅 Questa settimana (' + thisWeek.length + ')', value: thisWeek.join('\n').slice(0, 1024) });
-      if (evergreenDue.length > 0) fields.push({ name: '♻️ Evergreen da fare (' + evergreenDue.length + ')', value: evergreenDue.join('\n').slice(0, 1024) });
+      if (evergreenDue.length > 0) fields.push({ name: '♻\uFE0F Evergreen da fare (' + evergreenDue.length + ')', value: evergreenDue.join('\n').slice(0, 1024) });
 
       const discordPayload = {
         embeds: [{
@@ -1351,8 +1469,9 @@ Deno.serve(async (req: Request) => {
       }
       const { data, error } = await q;
       if (error) return json({ ok: false, error: error.message }, 400);
-      const driverCodeMap = await resolveDriverIdsToCodes(supabase, teamId, (data ?? []).map((r: any) => r.driver_id));
-      const reports = (data || [])
+      const enriched = await enrichReportsFromResults(supabase, teamId, data || []);
+      const driverCodeMap = await resolveDriverIdsToCodes(supabase, teamId, enriched.map((r: any) => r.driver_id));
+      const reports = enriched
         .map((r: any) => ({ ...r, driver_id: driverCodeMap[r.driver_id] || r.driver_id }))
         .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       return json({ ok: true, data: { reports, count: reports.length } });
@@ -1367,8 +1486,112 @@ Deno.serve(async (req: Request) => {
       const sorted = (data || [])
         .map((r: any) => ({ ...r, driver_id: driverCodeMap[r.driver_id] || r.driver_id }))
         .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      const top = sorted.slice(0, limit);
+      const top = await enrichReportsFromResults(supabase, teamId, sorted.slice(0, limit));
       return json({ ok: true, data: { reports: top, count: top.length } });
+    }
+
+    // ── reports.submitOwn (22/10/2026, migrazione 039) ──
+    // Il pilota compila il PROPRIO report: solo driver_summary/key_moment/
+    // media_urls/social_ok, mai i campi staff. Scrittura con service role
+    // (le policy RLS di race_reports ammettono solo staff/admin) e scoping
+    // esplicito su team_id + driver_id = me.id. Se il report non esiste
+    // ancora (risultati non importati) viene creato; griglia/arrivo li
+    // completa enrichReportsFromResults in lettura. Notifica in
+    // #team-principal solo al primo invio; con social_ok le foto entrano
+    // nella libreria media del Social Manager taggate per gara.
+    if (action === 'reports.submitOwn') {
+      const denied = requireAuth(); if (denied) return denied;
+      const raceId = String(payload?.race_id || '').trim();
+      if (!raceId) return json({ ok: false, error: 'Seleziona la gara' }, 400);
+
+      const summary = String(payload?.driver_summary || '').trim();
+      if (summary.length < REPORT_SUMMARY_MIN) return json({ ok: false, error: `Racconto troppo breve: servono almeno ${REPORT_SUMMARY_MIN} caratteri` }, 400);
+      if (summary.length > REPORT_SUMMARY_MAX) return json({ ok: false, error: `Racconto troppo lungo: massimo ${REPORT_SUMMARY_MAX} caratteri` }, 400);
+      const keyMoment = String(payload?.key_moment || '').trim();
+      if (keyMoment.length > REPORT_KEY_MOMENT_MAX) return json({ ok: false, error: `Momento chiave troppo lungo: massimo ${REPORT_KEY_MOMENT_MAX} caratteri` }, 400);
+
+      const rawMedia = Array.isArray(payload?.media_urls) ? payload.media_urls : [];
+      const mediaUrls = Array.from(new Set(rawMedia.map((u: unknown) => String(u || '').trim()).filter(Boolean))) as string[];
+      if (mediaUrls.length > REPORT_MEDIA_MAX) return json({ ok: false, error: `Massimo ${REPORT_MEDIA_MAX} foto` }, 400);
+      if (mediaUrls.some((u) => !REPORT_MEDIA_HOST_RE.test(u))) return json({ ok: false, error: 'Foto non valida: caricala dal modulo del Paddock' }, 400);
+      const socialOk = payload?.social_ok === true;
+
+      const db = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+
+      const { data: race, error: raceErr } = await db
+        .from('races').select('race_id, race_name, sim, date, status')
+        .eq('team_id', teamId).eq('race_id', raceId).maybeSingle();
+      if (raceErr) return json({ ok: false, error: raceErr.message }, 400);
+      if (!race) return json({ ok: false, error: 'Gara non trovata: ' + raceId }, 404);
+      if (race.status === 'cancelled') return json({ ok: false, error: 'Gara annullata' }, 400);
+      if (new Date(race.date).getTime() > Date.now() + 6 * 3600 * 1000) {
+        return json({ ok: false, error: 'La gara non si è ancora disputata' }, 400);
+      }
+
+      const { data: existing, error: exErr } = await db
+        .from('race_reports').select('report_id, submitted_at, finish_position')
+        .eq('team_id', teamId).eq('race_id', raceId).eq('driver_id', me.id).maybeSingle();
+      if (exErr) return json({ ok: false, error: exErr.message }, 400);
+
+      const nowIso = new Date().toISOString();
+      const fields = {
+        driver_summary: summary,
+        key_moment: keyMoment || null,
+        media_urls: mediaUrls,
+        social_ok: socialOk,
+        updated_at: nowIso,
+        updated_by: me.id,
+      };
+
+      let reportId: string;
+      let firstSubmission: boolean;
+      let finishPosition: number | null = null;
+      if (existing) {
+        firstSubmission = !existing.submitted_at;
+        const { error } = await db.from('race_reports')
+          .update({ ...fields, ...(firstSubmission ? { submitted_at: nowIso } : {}) })
+          .eq('team_id', teamId).eq('report_id', existing.report_id).eq('driver_id', me.id);
+        if (error) return json({ ok: false, error: error.message }, 400);
+        reportId = existing.report_id;
+        finishPosition = existing.finish_position ?? null;
+      } else {
+        firstSubmission = true;
+        const { data: created, error } = await db.from('race_reports')
+          .insert({ team_id: teamId, race_id: raceId, driver_id: me.id, ...fields, submitted_at: nowIso })
+          .select('report_id').maybeSingle();
+        if (error) return json({ ok: false, error: error.message }, 400);
+        if (!created) return json({ ok: false, error: 'Report non creato' }, 400);
+        reportId = created.report_id;
+      }
+
+      if (finishPosition == null) {
+        const [enriched] = await enrichReportsFromResults(db, teamId, [{ race_id: raceId, driver_id: me.id, grid_position: null, finish_position: null, best_lap_ms: null }]);
+        finishPosition = enriched?.finish_position ?? null;
+      }
+
+      if (socialOk && mediaUrls.length > 0) {
+        try {
+          const { data: already } = await db.from('social_media').select('url').eq('team_id', teamId).in('url', mediaUrls);
+          const known = new Set((already || []).map((m: any) => m.url));
+          const rows = mediaUrls.filter((u) => !known.has(u)).map((u) => ({
+            team_id: teamId,
+            url: u,
+            filename: decodeURIComponent(u.split('/').pop() || '').slice(0, 200) || null,
+            media_type: /\.(mp4|mov|webm)(\?|$)/i.test(u) ? 'video' : 'image',
+            tags: ['report', raceId, me.driver_code || ''].filter(Boolean).join(','),
+            uploaded_by: me.id,
+          }));
+          if (rows.length > 0) await db.from('social_media').insert(rows);
+        } catch (_e) { /* non bloccante */ }
+      }
+
+      if (firstSubmission) {
+        await notifyDriverReportToStaff(db, teamId, me, race, {
+          driver_summary: summary, key_moment: keyMoment || null, media_urls: mediaUrls, social_ok: socialOk, finish_position: finishPosition,
+        });
+      }
+
+      return json({ ok: true, data: { report_id: reportId, first_submission: firstSubmission } });
     }
 
     if (action === 'reports.update') {
@@ -1406,6 +1629,15 @@ Deno.serve(async (req: Request) => {
       const skipped = { dns: 0, notVsd: 0, notRace: 0, alreadyExists: 0 };
       const draftRows: any[] = [];
 
+      // 22/10/2026: race_results non ha qual_position — la griglia è la
+      // posizione della sessione di qualifica dello stesso pilota.
+      const qualiPos: Record<string, number> = {};
+      (results || []).forEach((rr: any) => {
+        if (String(rr.session_type || '').toLowerCase() !== 'qualifying' || !rr.driver_id || rr.finish_position == null) return;
+        const p = Number(rr.finish_position);
+        if (qualiPos[rr.driver_id] == null || p < qualiPos[rr.driver_id]) qualiPos[rr.driver_id] = p;
+      });
+
       (results || []).forEach((rr: any) => {
         if (rr.is_vsd_driver !== true) { skipped.notVsd++; return; }
         if (rr.dns === true) { skipped.dns++; return; }
@@ -1418,7 +1650,7 @@ Deno.serve(async (req: Request) => {
           team_id: teamId,
           race_id: raceId,
           driver_id: rr.driver_id,
-          grid_position: rr.qual_position ?? null,
+          grid_position: rr.qual_position ?? qualiPos[rr.driver_id] ?? null,
           finish_position: isDnf ? null : (rr.finish_position ?? null),
           best_lap_ms: rr.best_lap_ms ?? null,
           incident_notes: isDnf ? '⚠ DNF — investigare causa nel replay' : null,
@@ -1843,7 +2075,7 @@ Deno.serve(async (req: Request) => {
         const embed = {
           author: { name: 'VSD Paddock' },
           title: '📸 Nuovo Best Lap da validare',
-          description: `**${me.display_name || me.id}** — ${data.track_id} (${data.sim})\n⏱️ **${data.lap_time_display}**`,
+          description: `**${me.display_name || me.id}** — ${data.track_id} (${data.sim})\n⏱\uFE0F **${data.lap_time_display}**`,
           color: 0xfbbf24,
           timestamp: new Date().toISOString(),
           footer: { text: data.submission_id },
@@ -1998,7 +2230,7 @@ Deno.serve(async (req: Request) => {
           supabase.from('best_laps').select('driver_id, sim, track_id, lap_time_ms, lap_time_display').eq('team_id', teamId).eq('sim', 'IRC'),
           supabase.from('drivers').select('id, display_name, is_system_account, removed_at, status').eq('team_id', teamId),
         ]);
-        const driverFullById = new Map((driversFull || []).map((d: any) => [d.id, d]));
+        const driverFullById = new Map<string, any>((driversFull || []).map((d: any) => [d.id, d]));
         const preSyncBestByTrack = new Map<string, { ms: number; display: string }>();
         (allBestLaps || []).forEach((l: any) => {
           const ms = Number(l.lap_time_ms);
@@ -2007,7 +2239,7 @@ Deno.serve(async (req: Request) => {
           const cur = preSyncBestByTrack.get(l.track_id);
           if (!cur || ms < cur.ms) preSyncBestByTrack.set(l.track_id, { ms, display: l.lap_time_display || garage61FormatTime(ms) });
         });
-        const recordCandidatesByTrack = new Map<string, { ms: number; display: string; driverName: string; previousDisplay: string | null }>();
+        const recordCandidatesByTrack = new Map<string, { ms: number; display: string; driverId: string; driverName: string; previousDisplay: string | null }>();
 
         const now = new Date();
         const nowIso = now.toISOString();
