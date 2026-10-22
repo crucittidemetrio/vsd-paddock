@@ -718,7 +718,11 @@ async function callEdgeFunction(slug, body, action) {
   // sola) la sessione Supabase vera — vedi ensureSessionFromLegacy.
   const storedLegacy = typeof localStorage !== 'undefined' ? localStorage.getItem(LEGACY_TOKEN_STORAGE_KEY) : null;
   const legacyUsable = storedLegacy && !isLegacyTokenExpired(storedLegacy);
-  const session = (legacyUsable ? await ensureSessionFromLegacy(storedLegacy) : null) || await getSupabaseSession();
+  // Mai bloccare una chiamata per colpa della sessione: oltre 6 s si procede
+  // senza (token legacy nel body, come prima del 22/10).
+  const withTimeout = (p, ms) => Promise.race([p, new Promise((r) => setTimeout(() => r(null), ms))]).catch(() => null);
+  const session = (legacyUsable ? await withTimeout(ensureSessionFromLegacy(storedLegacy), 6000) : null)
+    || await withTimeout(getSupabaseSession(), 3000);
   const headers = { 'Content-Type': 'application/json' };
   // Sempre un JWT valido in Authorization — vedi nota in testa al file
   // (verify_jwt=true a livello di piattaforma su ogni Edge Function).
