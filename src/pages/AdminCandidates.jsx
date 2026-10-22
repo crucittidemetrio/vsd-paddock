@@ -55,18 +55,24 @@ export default function AdminCandidates() {
     });
   }
 
+  const [actionError, setActionError] = useState(null);
+  const onActionError = (err) => setActionError(err?.message || 'Operazione non riuscita');
+
   function handleStatusChange(candidate_id, status) {
-    updateMutation.mutate({ candidate_id, status });
+    setActionError(null);
+    updateMutation.mutate({ candidate_id, status }, { onError: onActionError });
   }
 
   function handleNotesBlur(candidate_id, notes, original) {
     if (notes === original) return;
-    updateMutation.mutate({ candidate_id, notes });
+    setActionError(null);
+    updateMutation.mutate({ candidate_id, notes }, { onError: onActionError });
   }
 
   function handleRemove(candidate_id, name) {
     if (!window.confirm(`Cancellare la candidatura di "${name}"? Non è reversibile.`)) return;
-    removeMutation.mutate(candidate_id);
+    setActionError(null);
+    removeMutation.mutate(candidate_id, { onError: onActionError });
   }
 
   return (
@@ -75,9 +81,8 @@ export default function AdminCandidates() {
         <div className={styles.eyebrow}>SELEZIONE</div>
         <h1 className={styles.title}>Pipeline candidature</h1>
         <p className={styles.sub}>
-          Affianca il Google Form pubblico di "Unisciti a noi" — aggiungi qui i candidati
-          promettenti visti nelle risposte del form (o arrivati via Discord, passaparola) e
-          seguine lo stato. Il form resta invariato come punto di ingresso.
+          Le candidature inviate dal form di /joinus arrivano qui in automatico. Puoi aggiungere
+          a mano chi arriva via Discord o passaparola e seguirne lo stato fino all'ingresso nel team.
         </p>
       </header>
 
@@ -163,6 +168,8 @@ export default function AdminCandidates() {
           </button>
         </form>
       )}
+
+      {actionError && <div className={styles.errorBox}>Errore: {actionError}</div>}
 
       {query.isLoading && <div className={styles.loading}>Caricamento…</div>}
       {query.error && <div className={styles.errorBox}>Errore: {query.error.message}</div>}
