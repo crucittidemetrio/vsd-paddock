@@ -48,6 +48,21 @@ export function useRecentReports(limit = 5) {
  * tutte le query 'reports' al successo (list + recent, con qualsiasi
  * combinazione di filtri/limit in cache).
  */
+/**
+ * useSubmitOwnReport — 22/10/2026: il pilota compila il PROPRIO report
+ * (racconto, momento chiave, foto, ok social). Al primo invio il backend
+ * notifica #team-principal. Invalida tutte le query 'reports'.
+ */
+export function useSubmitOwnReport() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (fields) => api.reports.submitOwn(fields),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['reports'] });
+    },
+  });
+}
+
 export function useUpdateReport() {
   const qc = useQueryClient();
   return useMutation({
