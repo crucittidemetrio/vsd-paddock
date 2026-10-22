@@ -13,7 +13,9 @@ export function useSponsors(status) {
   return useQuery({
     queryKey: ['sponsors', 'list', status || 'all'],
     queryFn: () => api.sponsors.list(status ? { status } : {}),
-    select: (data) => data?.sponsors || [],
+    // 22/10/2026: tabella `sponsors` con chiave `id`, pagina su `sponsor_id`
+    // (stesso bug delle candidature: modifiche e ✕ partivano senza id).
+    select: (data) => (data?.sponsors || []).map(s => ({ ...s, sponsor_id: s.sponsor_id ?? s.id })),
     enabled: isStaff,
     staleTime: 30_000,
   });

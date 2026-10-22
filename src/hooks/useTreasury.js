@@ -13,6 +13,13 @@ export function useTreasury(type) {
   return useQuery({
         queryKey: ['treasury', 'list', type || 'all'],
         queryFn: () => api.treasury.list(type ? { type } : {}),
+        // 22/10/2026: tabella `treasury_entries` con chiave `id`, pagina su
+        // `entry_id` (stesso bug delle candidature: modifica ed eliminazione
+        // partivano senza id).
+        select: (data) => data && {
+          ...data,
+          entries: (data.entries || []).map(e => ({ ...e, entry_id: e.entry_id ?? e.id })),
+        },
         staleTime: 30_000,
     enabled: isAdmin,
   });

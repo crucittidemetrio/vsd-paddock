@@ -14,7 +14,11 @@ export function useCandidates(status) {
   return useQuery({
     queryKey: ['candidates', 'list', status || 'all'],
     queryFn: () => api.candidates.list(status ? { status } : {}),
-    select: (data) => data?.candidates || [],
+    // 22/10/2026: la tabella Supabase `candidates` ha la chiave `id`, ma
+    // la pagina (contratto del vecchio Candidates.js) usa `candidate_id`.
+    // Senza alias, modifica stato/note e ✕ partivano con candidate_id
+    // undefined → 400 "candidate_id obbligatorio", ignorato in silenzio.
+    select: (data) => (data?.candidates || []).map(c => ({ ...c, candidate_id: c.candidate_id ?? c.id })),
     enabled: isStaff,
     staleTime: 30_000,
   });
