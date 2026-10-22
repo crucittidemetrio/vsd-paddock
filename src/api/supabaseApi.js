@@ -174,6 +174,9 @@ const LEGACY_TOKEN_FALLBACK_ACTIONS = new Set([
   // sessione Supabase vera, solo il token legacy. Aggiunto qui per
   // evitare lo stesso "Auth richiesto" già visto in #331/#358/#359/#392/#443.
   'reports.update',
+  // 22/10/2026: invio report del pilota — azione self-service, ogni
+  // pilota reale ha solo il token legacy.
+  'reports.submitOwn',
   'lapSubmissions.submit', 'lapSubmissions.listMine',
   'reports.list', 'reports.recent', 'reportReactions.list', 'reportReactions.toggle',
   'landing.data', 'laps.raceLaps',
@@ -403,7 +406,7 @@ const SOCIAL_PREFIXED_RENAME = {
 // Azioni aggiunte allo stesso slug in #261/#262/#263: il frontend le
 // chiama SENZA prefisso, già uguali al nome interno del dispatcher.
 const SOCIAL_DIRECT_ACTIONS = new Set([
-  'reports.list', 'reports.recent', 'reports.update', 'reports.seedForRace',
+  'reports.list', 'reports.recent', 'reports.update', 'reports.seedForRace', 'reports.submitOwn',
   'reportReactions.list', 'reportReactions.toggle',
   'landing.data',
   'showcase.summary', 'showcase.mediaKit',

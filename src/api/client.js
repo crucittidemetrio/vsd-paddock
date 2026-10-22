@@ -453,6 +453,11 @@ const SUPABASE_MIGRATED_ACTIONS = new Set([
   // "Action non instradata: reports.update" (bug osservato in
   // produzione, stesso giorno del fix).
   'reports.update',
+  // 22/10/2026: il pilota compila il proprio report (sostituisce il
+  // Google Form "Report Gara Piloti"). Instradata anche in
+  // supabaseApi.js (LEGACY_TOKEN_FALLBACK_ACTIONS + SOCIAL_DIRECT_ACTIONS):
+  // senza una delle tre righe → "Action non instradata" come in #446.
+  'reports.submitOwn',
   'reportReactions.list',
   'reportReactions.toggle',
   'landing.data',
@@ -793,6 +798,7 @@ export const api = {
     // backend reports.update già esistente in social-manager, mai
     // esposta lato client/UI.
     update: (reportId, fields = {}) => call('reports.update', { report_id: reportId, ...fields }),
+    submitOwn: (fields = {}) => call('reports.submitOwn', fields),
   },
 
   reportReactions: {
