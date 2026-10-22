@@ -65,8 +65,16 @@ export default function Reports() {
   const raceParam = searchParams.get('race') || '';
   const { isStaff, isVsdPilot, driver: myDriver } = useAuth();
 
-  const { data: reports, isLoading } = useReports();
-  const { data: races } = useRaces();
+  // 22/10/2026: la pagina aspetta ANCHE le gare. reports arriva spesso
+  // prima (cache di landing.data, o risposta più veloce di races-list):
+  // senza questo, per 1-3 s il pilota vedeva "Nessuna gara da
+  // raccontare" e nessun gruppo, anche se i dati c'erano.
+  const reportsQuery = useReports();
+  const racesQuery = useRaces();
+  const reports = reportsQuery.data;
+  const races = racesQuery.data;
+  const isLoading = reportsQuery.isLoading || racesQuery.isLoading;
+  const loadError = reportsQuery.error || racesQuery.error;
   const { data: drivers } = useDrivers();
   const { data: reactions } = useReportReactions();
 
@@ -133,7 +141,16 @@ export default function Reports() {
         </p>
       </div>
 
-      {canSubmit && (
+      {loadError && !isLoading && (
+        <div className="my-report-done my-report-error">
+          Non riesco a caricare {racesQuery.error ? 'le gare' : 'i report'}: {loadError.message}.{' '}
+          <button type="button" className="rc-edit-toggle-btn" onClick={() => { reportsQuery.refetch(); racesQuery.refetch(); }}>
+            Riprova
+          </button>
+        </div>
+      )}
+
+      {canSubmit && !isLoading && !racesQuery.error && (
         <MyReportSection
           key={raceParam || 'default'}
           reports={reports || []}
@@ -520,11 +537,13 @@ function DriverReportForm({ raceId, existing, myCode, onSubmitted, onCancel }) {
 // =====================================================
 // RACE GROUP — tutti i report di una gara, raggruppati
 // =====================================================
-function RaceGroup({ race, rows, driverMap, isStaff }) {
+function RaceGroup({ race: raceProp, rows, driverMap, isStaff }) {
+  // Gara non (ancora) presente in races.list: i report si mostrano lo
+  // stesso con il solo race_id, invece di sparire.
+  const race = raceProp || { race_id: rows[0]?.race_id || '—', sim: null, track_id: null, date: null };
   const { data: socialFlagsData } = useConsentSocialFlags();
   const socialFlags = socialFlagsData?.flags || {};
   const [editingId, setEditingId] = useState(null);
-  if (!race) return null;
   const podiums = rows.filter(r => r.finish_position != null && r.finish_position <= 3).length;
   const submitted = rows.filter(r => r.submitted_at).length;
   const columnCount = isStaff ? 8 : 6;
@@ -533,7 +552,7 @@ function RaceGroup({ race, rows, driverMap, isStaff }) {
     <section className="race-group">
       <div className="race-group-head">
         <div className="rg-context">
-          <SimBadge sim={race.sim} variant="solid" size="sm" />
+          {race.sim && <SimBadge sim={race.sim} variant="solid" size="sm" />}
           <div className="rg-titles">
             <div className="rg-title">{raceTitle(race, race.race_id)}</div>
             <div className="rg-meta">

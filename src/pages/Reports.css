@@ -525,3 +525,9 @@
   .my-report-thumb,
   .my-report-add-media { width: 84px; height: 56px; }
 }
+
+.my-report-error {
+  margin-bottom: var(--sp-4);
+  background: rgba(248, 113, 113, 0.1);
+  border-color: rgba(248, 113, 113, 0.35);
+}
