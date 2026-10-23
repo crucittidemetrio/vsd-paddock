@@ -41,8 +41,8 @@ const NAV_GROUPS = [
     key: 'eventi', label: 'Eventi e campionati', accent: 'event',
     items: [
       { to: '/ue144', label: 'UE144', icon: '⚑', cls: 'is-event' },
-      { to: '/clash-of-classes', label: 'Clash of Classes', icon: '⚔', cls: 'is-event' },
       { to: '/era-season-3', label: 'ERA Season 3', icon: '◭', cls: 'is-external' },
+      { to: '/clash-of-classes', label: 'Clash of Classes', icon: '⚔', cls: 'is-event is-archived', req: 'staff' },
       { to: '/aci-lmgt3-challenge', label: 'ACI LMGT3 Challenge', icon: '♟', cls: 'is-external is-archived', req: 'staff' },
     ],
   },
