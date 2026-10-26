@@ -43,7 +43,7 @@ Apertura server: **21:00 (ora reale)** per tutti i round. L'orario indicato sott
 🇫🇷 R6 — Le Mans — 22 Nov — in-game 16:00
 
 **🛞 Gomme**
-Termocoperte attive per tutte le classi. 14 pneumatici a disposizione per pilota, per round (practice + qualifica + gara) — gestione libera.
+Termocoperte disattivate per tutte le classi. 14 pneumatici a disposizione per pilota, per round (practice + qualifica + gara) — gestione libera.
 
 ━━━━━━━━━━━━━━━━━━━━
 
