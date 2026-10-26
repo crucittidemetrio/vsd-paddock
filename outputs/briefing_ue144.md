@@ -15,7 +15,6 @@ Rolling start a velocità controllata: mantenete la distanza dal pilota davanti 
 
 **🏁 Blue Flag e precedenza tra classi — la regola più importante**
 Le classi più lente (LMGT3, LMP2 in fase di doppiaggio) hanno **precedenza assoluta di traiettoria** e devono tenere una linea prevedibile. Le classi superiori (Hypercar, LMP2) hanno l'onere esclusivo di superare in sicurezza, senza dive bomb in frenata.
-⚠️ **Difendere la posizione contro chi sta doppiando è punito con Stop & Go 10 secondi.**
 
 **🤝 Contatti**
 Contatti evitabili che causano danni sono punibili: il responsabile deve cedere la posizione o accetta la penalità. Dive bomb in frenata vietato in generale, non solo tra classi diverse.
@@ -61,7 +60,6 @@ Rolling start at controlled speed: keep your distance from the car ahead until t
 
 **🏁 Blue Flag & class precedence — the most important rule**
 Slower classes (LMGT3, LMP2 while being lapped) have **absolute right of way** and must hold a predictable line. Faster classes (Hypercar, LMP2) carry the sole responsibility for a safe pass, no dive-bombing under braking.
-⚠️ **Defending your position against a car that is lapping you is punished with a 10-second Stop & Go.**
 
 **🤝 Contact**
 Avoidable contact causing damage is punishable: the at-fault driver must yield the position or accept the penalty. Dive-bombing under braking is forbidden in general, not just between classes.
