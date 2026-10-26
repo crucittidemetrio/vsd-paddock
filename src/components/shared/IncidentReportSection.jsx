@@ -195,7 +195,7 @@ export default function IncidentReportSection({
         </div>
         <div className={styles.protestRow}>
           <span className={styles.protestIcon}>🎬</span>
-          <span>Allega link a una <strong>clip video</strong> se disponibile (telemetria consigliata)</span>
+          <span>Allega <strong>obbligatoriamente</strong> il link a una <strong>clip video</strong> (telemetria consigliata): senza clip la segnalazione non viene esaminata</span>
         </div>
         <div className={styles.protestRow}>
           <span className={styles.protestIcon}>⚖️</span>
@@ -358,11 +358,11 @@ export default function IncidentReportSection({
           </div>
 
           <div className={styles.formGroup}>
-            <label className={styles.formLabel} htmlFor={`${anchorId}-replay`}>Link clip/telemetria (opzionale)</label>
+            <label className={styles.formLabel} htmlFor={`${anchorId}-replay`}>Link clip video (obbligatorio)</label>
             <input
               id={`${anchorId}-replay`} type="url" className={styles.input}
               value={replayUrl} onChange={e => setReplayUrl(e.target.value)}
-              placeholder="Twitch/YouTube/Discord…" maxLength={500}
+              placeholder="Twitch/YouTube/Discord…" maxLength={500} required
             />
           </div>
 

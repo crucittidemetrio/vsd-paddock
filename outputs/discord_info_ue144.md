@@ -24,7 +24,7 @@ Sim: Le Mans Ultimate · 6 round · Piloti singoli (no cambio pilota)
 
 Ogni round: 10' Practice (lobby aperta) → 15' Qualifiche (sessione privata) → **144' di gara** con Rolling Start.
 
-Danni 100%, Dynamic Track attivo, Virtual Energy Tank attivo, pit stop non obbligatori. Track limits: drive-through automatico LMU, da scontare entro 3 giri.
+Danni 100%, Dynamic Track attivo, Virtual Energy Tank attivo, pit stop non obbligatori. Track limits: drive-through automatico LMU, da scontare entro 3 giri, pena squalifica dalla gara.
 
 **🏎️ Classi**
 🔴 **Hypercar** — Ferrari 499P, Toyota GR010 Hybrid, Porsche 963, Peugeot 9X8 / 9X8 2024, Cadillac V-Series.R, BMW M Hybrid V8, Alpine A424, Lamborghini SC63, Aston Martin Valkyrie LMH, Genesis GMR-001
@@ -85,7 +85,7 @@ Sim: Le Mans Ultimate · 6 rounds · Solo drivers (no driver swaps)
 
 Each round: 10' Practice (open lobby) → 15' Qualifying (private session) → **144' race** with Rolling Start.
 
-100% damage, Dynamic Track active, Virtual Energy Tank active, pit stops optional. Track limits: automatic LMU drive-through, to be served within 3 laps.
+100% damage, Dynamic Track active, Virtual Energy Tank active, pit stops optional. Track limits: automatic LMU drive-through, to be served within 3 laps, otherwise DSQ from the race.
 
 **🏎️ Classes**
 🔴 **Hypercar** — Ferrari 499P, Toyota GR010 Hybrid, Porsche 963, Peugeot 9X8 / 9X8 2024, Cadillac V-Series.R, BMW M Hybrid V8, Alpine A424, Lamborghini SC63, Aston Martin Valkyrie LMH, Genesis GMR-001
@@ -104,7 +104,7 @@ Server opens: **21:00 CET (real time)** for every round. Times below are the in-
 🇫🇷 R6 — Le Mans — Nov 22 — in-game 16:00
 
 **🛞 Tyres**
-Tyre warmers active for all classes. 14 tyres per driver, per round (practice + qualifying + race) — free strategy.
+Tyre warmers disabled for all classes. 14 tyres per driver, per round (practice + qualifying + race) — free strategy.
 
 ━━━━━━━━━━━━━━━━━━━━
 

@@ -20,7 +20,7 @@ Le classi più lente (LMGT3, LMP2 in fase di doppiaggio) hanno **precedenza asso
 Contatti evitabili che causano danni sono punibili: il responsabile deve cedere la posizione o accetta la penalità. Dive bomb in frenata vietato in generale, non solo tra classi diverse.
 
 **⚠️ Track limits**
-Enforcement automatico LMU (drive-through). Scontatelo entro **3 giri** dalla notifica — oltre questa soglia rischiate una penalità aggiuntiva a discrezione staff.
+Enforcement automatico LMU (drive-through). Scontatelo entro **3 giri** dalla notifica — altrimenti scatta la squalifica dalla gara.
 
 **🔧 Danni e affidabilità**
 Danni al 100%. Dynamic Track e Virtual Energy Tank attivi. Guida pulita: un contatto di troppo può chiudervi la gara.
@@ -35,7 +35,7 @@ Se vi disconnettete nei primi 5 minuti di gara, il rientro ai box in coda alla v
 
 **📸 Dopo la gara**
 Screenshot → thread dedicato in #scatti-ue144.
-**Proteste e reclami**: entro **48 ore** dal termine della sessione, nel canale dedicato, **allegando obbligatoriamente una clip video** (telemetria consigliata). Senza clip la protesta non viene presa in considerazione.
+**Proteste e reclami**: entro **48 ore** dal termine della sessione, solo tramite il modulo di segnalazione VSD (vsd-paddock.vercel.app/reclami, link anche su Discord), **allegando obbligatoriamente una clip video** (telemetria consigliata). Senza clip la protesta non viene presa in considerazione.
 
 ━━━━━━━━━━━━━━━━━━━━
 
@@ -65,7 +65,7 @@ Slower classes (LMGT3, LMP2 while being lapped) have **absolute right of way** a
 Avoidable contact causing damage is punishable: the at-fault driver must yield the position or accept the penalty. Dive-bombing under braking is forbidden in general, not just between classes.
 
 **⚠️ Track Limits**
-Automatic LMU enforcement (drive-through). Serve it within **3 laps** of the notification — exceeding this risks an additional penalty at staff discretion.
+Automatic LMU enforcement (drive-through). Serve it within **3 laps** of the notification — otherwise you are disqualified from the race.
 
 **🔧 Damage & Reliability**
 100% damage. Dynamic Track and Virtual Energy Tank active. Clean driving matters: one contact too many can end your race.
@@ -80,7 +80,7 @@ If you disconnect within the first 5 minutes of the race, pit re-entry at the ba
 
 **📸 After the Race**
 Screenshots → dedicated thread in #scatti-ue144.
-**Protests/complaints**: within **48 hours** of the session ending, in the designated channel, with a **mandatory video clip attached** (telemetry recommended). No clip, no protest considered.
+**Protests/complaints**: within **48 hours** of the session ending, only through the VSD report form (vsd-paddock.vercel.app/reclami, also linked on Discord), with a **mandatory video clip attached** (telemetry recommended). No clip, no protest considered.
 
 ━━━━━━━━━━━━━━━━━━━━
 
