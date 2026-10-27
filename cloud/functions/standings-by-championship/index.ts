@@ -463,8 +463,13 @@ Deno.serve(async (req: Request) => {
     // nulla da scartare (comportamento identico a SimGrid: nessuna
     // barratura con un solo risultato).
     if (championship.drop_worst_round) {
+      // 27/10/2026: come SimGrid, un round saltato/DNS vale 0 ed è esso lo
+      // scarto — se il pilota non ha corso tutti i round disputati, non si
+      // toglie nulla (prima si scartava la peggiore tra le sole gare corse).
+      const heldRounds = new Set(relevantResults.map((r: any) => r.race_id)).size;
       Object.values(aggregates).forEach((agg: any) => {
         if (agg._racePoints.length < 2) return;
+        if (agg._racePoints.length < heldRounds) return;
         const worst = agg._racePoints.reduce((min: any, r: any) => (r.points < min.points ? r : min), agg._racePoints[0]);
         agg.total_points -= worst.points;
         agg.dropped_race_id = worst.race_id;
