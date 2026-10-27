@@ -208,6 +208,15 @@ function mergeRaceStats(classes: any[], relevantResults: any[]) {
 }
 
 // Porting di applyAdjustments_
+// Art. 7.3 regolamento UE144': parità → più vittorie, poi più secondi posti,
+// poi miglior risultato nell'ultimo round disputato.
+function compareStandings(a: any, b: any) {
+  if ((b.total_points || 0) !== (a.total_points || 0)) return (b.total_points || 0) - (a.total_points || 0);
+  if ((b.wins || 0) !== (a.wins || 0)) return (b.wins || 0) - (a.wins || 0);
+  if ((b.seconds || 0) !== (a.seconds || 0)) return (b.seconds || 0) - (a.seconds || 0);
+  return (a.last_round_pos || 999) - (b.last_round_pos || 999);
+}
+
 function applyAdjustments(classes: any[], adjustments: any[]) {
   if (!adjustments || adjustments.length === 0) return classes;
 
@@ -221,12 +230,7 @@ function applyAdjustments(classes: any[], adjustments: any[]) {
     });
 
     const sorted = standings
-      .sort((a: any, b: any) => {
-        if (b.total_points !== a.total_points) return b.total_points - a.total_points;
-        if ((b.wins || 0) !== (a.wins || 0)) return (b.wins || 0) - (a.wins || 0);
-        if ((b.podiums || 0) !== (a.podiums || 0)) return (b.podiums || 0) - (a.podiums || 0);
-        return (a.best_finish || 999) - (b.best_finish || 999);
-      })
+      .sort(compareStandings)
       .map((s: any, idx: number) => ({ ...s, position: idx + 1 }));
 
     return { ...cls, standings: sorted };
@@ -413,6 +417,11 @@ Deno.serve(async (req: Request) => {
     const driverMap: Record<string, any> = {};
     (teamDrivers2 ?? []).forEach((d: any) => { driverMap[d.id] = d; });
 
+    const roundIdx: Record<string, number> = {};
+    rounds.forEach((r: any, i: number) => { roundIdx[r.race_id] = i; });
+    const lastHeldRaceId = relevantResults.reduce((best: string | null, r: any) =>
+      (best === null || (roundIdx[r.race_id] ?? -1) > (roundIdx[best] ?? -1) ? r.race_id : best), null as string | null);
+
     const aggregates: Record<string, any> = {};
     relevantResults.forEach((r: any) => {
       const isVsd = !!r.is_vsd_driver;
@@ -426,7 +435,8 @@ Deno.serve(async (req: Request) => {
           driver_name_external: isVsd ? '' : r.driver_name_external,
           is_vsd: isVsd,
           car_class: carClass,
-          total_points: 0, races_count: 0, wins: 0, podiums: 0, best_finish: null, dnfs: 0, dns_count: 0,
+          total_points: 0, races_count: 0, wins: 0, seconds: 0, podiums: 0, best_finish: null, dnfs: 0, dns_count: 0,
+          last_round_pos: null,
           // #448: gare non-DNS con relativi punti, per poter individuare
           // (dopo il loop) la gara peggiore da scartare — vedi sotto.
           _racePoints: [],
@@ -445,8 +455,10 @@ Deno.serve(async (req: Request) => {
 
       if (position && !isDns && !isDnf) {
         if (position === 1) agg.wins++;
+        if (position === 2) agg.seconds++;
         if (position <= 3) agg.podiums++;
         if (agg.best_finish === null || position < agg.best_finish) agg.best_finish = position;
+        if (r.race_id === lastHeldRaceId) agg.last_round_pos = position;
       }
     });
 
@@ -526,12 +538,7 @@ Deno.serve(async (req: Request) => {
       })
       .map((className) => {
         const standings = classesMap[className]
-          .sort((a: any, b: any) => {
-            if (b.total_points !== a.total_points) return b.total_points - a.total_points;
-            if (b.wins !== a.wins) return b.wins - a.wins;
-            if (b.podiums !== a.podiums) return b.podiums - a.podiums;
-            return (a.best_finish || 999) - (b.best_finish || 999);
-          })
+          .sort(compareStandings)
           .map((s: any, idx: number) => ({ ...s, position: idx + 1 }));
         return { class_name: className, standings };
       });
