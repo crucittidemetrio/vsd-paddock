@@ -443,7 +443,7 @@ Deno.serve(async (req: Request) => {
       if (isDns) agg.dns_count++;
       agg.total_points += points;
 
-      if (position && !isDns) {
+      if (position && !isDns && !isDnf) {
         if (position === 1) agg.wins++;
         if (position <= 3) agg.podiums++;
         if (agg.best_finish === null || position < agg.best_finish) agg.best_finish = position;
