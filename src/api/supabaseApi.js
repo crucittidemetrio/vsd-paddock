@@ -133,6 +133,9 @@ const ANON_TEAM_SLUG_ACTIONS = new Set([
   // team via team_slug lato Edge Function (ramo payload.mode==='apply'
   // in candidates-add/index.ts v3).
   'candidates.apply',
+  // 27/10/2026: classifiche campionato pubbliche (link condivisi a non
+  // loggati davano "Auth richiesto"). Ramo team_slug lato Edge Function.
+  'standings.byChampionship', 'standings.progression',
 ]);
 
 // #334 FIX REGRESSIONE (19/09-20/09/2026): consent.accept spostato su

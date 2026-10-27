@@ -268,6 +268,14 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // 27/10/2026: classifiche pubbliche — visitatore anonimo via team_slug
+    // (stesso pattern di roster.list/races.list). Solo lettura.
+    if (!me && payload?.team_slug) {
+      const publicClient = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+      const { data: t } = await publicClient.from('teams').select('id').eq('slug', String(payload.team_slug)).maybeSingle();
+      if (t) { me = { id: null, team_id: t.id, role: 'public' }; supabase = publicClient; }
+    }
+
     if (!me) return json({ ok: false, error: 'Auth richiesto' }, 401);
 
     const championshipId = payload?.championship_id ? String(payload.championship_id) : '';

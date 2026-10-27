@@ -416,8 +416,12 @@ function notifyRaceImported(race: { race_id: string; race_name?: string; sim?: s
 
 async function checkAndNotifyPodiumsLmu(groups: any[], race: { race_id: string; race_name?: string; sim?: string }, driverNameMap: Record<string, string>) {
   for (const classGroup of groups) {
+    // Classificato = almeno il 50% della distanza del vincitore di classe
+    // (reg. UE144 7.3): niente podio a chi si è ritirato prima.
+    const maxLaps = Math.max(0, ...(classGroup.result || []).map((x: any) => Number(x.totalLaps) || 0));
     for (const r of (classGroup.result || [])) {
       if (!r.position || r.position > 3 || r.dnf || r.dns) continue;
+      if (maxLaps > 0 && (Number(r.totalLaps) || 0) < maxLaps * 0.5) continue;
       const matchedId = matchDriverName(r.id, driverNameMap);
       if (!matchedId) continue;
       await notifyVsdPodium(r.id, r.position, race, await driverThumb(matchedId));
@@ -442,11 +446,17 @@ function notifyVsdPodium(driverName: string, position: number, race: { race_id: 
   });
 }
 
-async function checkAndNotifyMilestones(db: any, teamId: string, driverIds: string[]) {
+// 27/10/2026 (UE144 R4, segnalato da Demetrio): i traguardi venivano
+// annunciati a OGNI import finché il contatore restava sulla soglia — chi
+// aveva già 1 podio riceveva "Primo podio!" anche senza salire sul podio,
+// e perfino chi non era partito. Ora un traguardo scatta solo se è QUESTA
+// gara a farlo raggiungere: il pilota deve averla corsa, e per podio/
+// vittoria deve averli ottenuti proprio qui.
+async function checkAndNotifyMilestones(db: any, teamId: string, driverIds: string[], raceId: string) {
   const uniqueIds = Array.from(new Set(driverIds.filter(Boolean)));
   if (uniqueIds.length === 0) return;
 
-  const { data: allResults } = await db.from('race_results').select('driver_id, session_type, dns, dnf, finish_position').eq('team_id', teamId).in('driver_id', uniqueIds);
+  const { data: allResults } = await db.from('race_results').select('driver_id, race_id, session_type, dns, dnf, finish_position').eq('team_id', teamId).in('driver_id', uniqueIds).limit(10000);
   const { data: drivers } = await db.from('drivers').select('id, display_name').eq('team_id', teamId).in('id', uniqueIds);
   const nameById = new Map<string, string>((drivers ?? []).map((d: any) => [d.id as string, d.display_name as string]));
 
@@ -457,9 +467,14 @@ async function checkAndNotifyMilestones(db: any, teamId: string, driverIds: stri
     const winsCount = rows.filter((r: any) => r.dnf !== true && Number(r.finish_position) === 1).length;
     const displayName = nameById.get(driverId) || driverId;
 
+    const thisRace = rows.find((r: any) => r.race_id === raceId);
+    if (!thisRace) continue; // non ha corso questa gara (DNS o assente): nessun traguardo
+    const podiumHere = thisRace.dnf !== true && Number(thisRace.finish_position) > 0 && Number(thisRace.finish_position) <= 3;
+    const winHere = thisRace.dnf !== true && Number(thisRace.finish_position) === 1;
+
     if (MILESTONE_THRESHOLDS.includes(racesCount)) await notifyMilestoneReached(db, driverId, displayName, MILESTONE_LABELS[racesCount] || `${racesCount} gare disputate`);
-    if (PODIUM_MILESTONE_THRESHOLDS.includes(podiumsCount)) await notifyMilestoneReached(db, driverId, displayName, PODIUM_MILESTONE_LABELS[podiumsCount]);
-    if (WIN_MILESTONE_THRESHOLDS.includes(winsCount)) await notifyMilestoneReached(db, driverId, displayName, WIN_MILESTONE_LABELS[winsCount]);
+    if (podiumHere && PODIUM_MILESTONE_THRESHOLDS.includes(podiumsCount)) await notifyMilestoneReached(db, driverId, displayName, PODIUM_MILESTONE_LABELS[podiumsCount]);
+    if (winHere && WIN_MILESTONE_THRESHOLDS.includes(winsCount)) await notifyMilestoneReached(db, driverId, displayName, WIN_MILESTONE_LABELS[winsCount]);
   }
 }
 
@@ -944,7 +959,7 @@ Deno.serve(async (req: Request) => {
           try { await recomputeEloSafetyForSim(me!.team_id, 'IRC'); } catch (_e) { /* #370: non bloccante, come seedRaceReportsForRace */ }
           try {
             await checkAndNotifyPodiumsLmu(groups, race, driverNameMap);
-            await checkAndNotifyMilestones(supabase, me!.team_id, sessionStats.matchedIds);
+            await checkAndNotifyMilestones(supabase, me!.team_id, sessionStats.matchedIds, race.race_id);
             await checkAndNotifyRaceMvp(supabase, me!.team_id, race);
           } catch (_e) { /* #24/09: notifiche non bloccanti, come seedRaceReportsForRace */ }
         }
@@ -977,7 +992,7 @@ Deno.serve(async (req: Request) => {
       try { await recomputeEloSafetyForSim(me.team_id, meta.sim); } catch (_e) { /* #370: non bloccante, come seedRaceReportsForRace */ }
       try {
         await checkAndNotifyPodiumsLmu(jsonData, race, driverNameMap);
-        await checkAndNotifyMilestones(supabase, me.team_id, stats.matchedIds);
+        await checkAndNotifyMilestones(supabase, me.team_id, stats.matchedIds, meta.race_id);
         await checkAndNotifyRaceMvp(supabase, me.team_id, race);
       } catch (_e) { /* #24/09: notifiche non bloccanti, come seedRaceReportsForRace */ }
     }
