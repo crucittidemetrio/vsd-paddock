@@ -654,6 +654,116 @@ function transformIracingResultToLMU(r: any) {
   };
 }
 
+// ─── 04/11/2026: giri veloci dai JSON → Best Laps ───────────────────────────
+// Per ogni pilota VSD con un best lap valido nella sessione importata, il giro
+// passa da auto_lap_inbox (stessa coda del plugin SimHub) e diventa un best lap
+// solo se migliora il personale su (sim, pista, auto). Auto non riconosciuta →
+// resta "Da abbinare" nella tab Giri SimHub: abbinandola, il giro si importa.
+const JSON_LAP_MIN_SCORE = 0.8;
+
+function isCurrentTesserato(d: any): boolean {
+  if (!d || d.is_system_account || d.removed_at) return false;
+  return String(d.status).toLowerCase() === 'active';
+}
+
+async function resolveCarId(svc: any, teamId: string, sim: string, raw: string): Promise<string | null> {
+  const name = String(raw || '').trim();
+  if (!name) return null;
+  const { data } = await svc.rpc('resolve_sim_name', { p_team: teamId, p_sim: sim, p_kind: 'car', p_candidates: [name] });
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row?.mapped_id) return null;
+  if (row.via === 'alias' || Number(row.score) >= JSON_LAP_MIN_SCORE) return row.mapped_id as string;
+  return null;
+}
+
+async function promoteJsonLap(svc: any, row: any, raceName: string): Promise<string> {
+  const { data: prevPb } = await svc.from('best_laps').select('lap_time_ms')
+    .eq('team_id', row.team_id).eq('driver_id', row.driver_id).eq('sim', row.sim)
+    .eq('track_id', row.track_id).eq('car_id', row.car_id)
+    .order('lap_time_ms', { ascending: true }).limit(1).maybeSingle();
+  if (prevPb && Number(prevPb.lap_time_ms) <= Number(row.lap_time_ms)) {
+    await svc.from('auto_lap_inbox').update({ status: 'not_pb', processed_at: new Date().toISOString() }).eq('id', row.id);
+    return 'not_pb';
+  }
+  const [{ data: trackLaps }, { data: driversRows }] = await Promise.all([
+    svc.from('best_laps').select('driver_id, lap_time_ms, lap_time_display').eq('team_id', row.team_id).eq('sim', row.sim).eq('track_id', row.track_id),
+    svc.from('drivers').select('id, display_name, is_system_account, removed_at, status').eq('team_id', row.team_id),
+  ]);
+  const byId = new Map((driversRows || []).map((d: any) => [d.id, d]));
+  let prevBest: number | null = null; let prevDisplay: string | null = null;
+  (trackLaps || []).forEach((l: any) => {
+    const ms = Number(l.lap_time_ms);
+    if (!ms || !isCurrentTesserato(byId.get(l.driver_id))) return;
+    if (prevBest === null || ms < prevBest) { prevBest = ms; prevDisplay = l.lap_time_display || msToLapDisplay(ms); }
+  });
+  const me: any = byId.get(row.driver_id);
+  const isTeamRecord = isCurrentTesserato(me) && (prevBest === null || Number(row.lap_time_ms) < prevBest);
+
+  const { data: lap, error } = await svc.from('best_laps').insert({
+    team_id: row.team_id, driver_id: row.driver_id, sim: row.sim, track_id: row.track_id, car_id: row.car_id,
+    lap_time_ms: row.lap_time_ms, lap_time_display: msToLapDisplay(row.lap_time_ms),
+    set_date: row.set_date || new Date().toISOString().split('T')[0],
+    conditions: 'dry', session_type: row.session_type || 'race', verified_at: new Date().toISOString(),
+    notes: 'Import risultati: ' + raceName,
+  }).select().maybeSingle();
+  if (error) throw new Error(error.message);
+  await svc.from('auto_lap_inbox').update({ status: 'imported', best_lap_id: lap.id, processed_at: new Date().toISOString() }).eq('id', row.id);
+
+  if (isTeamRecord) {
+    try {
+      const { data: tr } = await svc.from('tracks').select('track_name').eq('track_id', row.track_id).maybeSingle();
+      await postToDiscord({
+        embeds: [{
+          author: { name: 'VSD Paddock' },
+          title: '🏆 Nuovo record di squadra!',
+          description: `**${me?.display_name || 'Pilota'}** — ${tr?.track_name || row.track_id} (${row.sim})\n⏱️ **${lap.lap_time_display}**` +
+            (prevDisplay ? ` _(precedente: ${prevDisplay})_` : ' _(primo tempo registrato su questa pista)_') + `\n${raceName}`,
+          color: VSD_COLORS.purple,
+          timestamp: new Date().toISOString(),
+          footer: { text: 'Muro dei Record · risultati gara' },
+          ...(await driverThumb(row.driver_id).then((t) => (t ? { thumbnail: t } : {}))),
+          url: `${PADDOCK_URL}/records`,
+        }],
+      });
+    } catch (_e) { /* non bloccante */ }
+  }
+  return 'imported';
+}
+
+async function syncBestLapsFromResults(teamId: string, race: { race_id: string; race_name?: string; track_id?: string }, sim: string, rows: any[]) {
+  const svc = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+  const out = { imported: 0, not_pb: 0, unmapped: 0 };
+  if (!race.track_id || !sim) return out;
+  // un solo giro (il migliore) per pilota+auto
+  const best = new Map<string, any>();
+  rows.forEach((r: any) => {
+    const ms = Number(r.best_lap_ms);
+    if (!r.driver_id || r.dns || !ms || ms < 20000 || ms > 1800000) return;
+    const k = r.driver_id + '|' + String(r.car_external_name || '').trim().toLowerCase();
+    if (!best.has(k) || ms < Number(best.get(k).best_lap_ms)) best.set(k, r);
+  });
+  const carCache = new Map<string, string | null>();
+  for (const r of best.values()) {
+    const rawCar = String(r.car_external_name || '').trim();
+    if (!carCache.has(rawCar)) carCache.set(rawCar, await resolveCarId(svc, teamId, sim, rawCar));
+    const carId = carCache.get(rawCar) || null;
+    const { data: inbox, error } = await svc.from('auto_lap_inbox').insert({
+      team_id: teamId, driver_id: r.driver_id, sim,
+      raw_track: race.track_id, raw_track_alt: race.race_name || null,
+      raw_car: rawCar || '?', track_id: race.track_id, car_id: carId,
+      lap_time_ms: Math.round(Number(r.best_lap_ms)), session_type: r.session_type,
+      plugin_version: 'json ' + race.race_id, status: 'unmapped',
+    }).select().maybeSingle();
+    if (error || !inbox) continue;
+    if (!carId) { out.unmapped++; continue; }
+    try {
+      const st = await promoteJsonLap(svc, { ...inbox, set_date: r.set_date }, race.race_name || race.race_id);
+      if (st === 'imported') out.imported++; else out.not_pb++;
+    } catch (_e) { /* non bloccante */ }
+  }
+  return out;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
@@ -847,7 +957,7 @@ Deno.serve(async (req: Request) => {
       });
 
       if (rowsToInsert.length === 0) {
-        return { imported: 0, vsd_matched: 0, external: 0, dns: 0, dnf: 0, skipped_duplicates: skippedCount, session_type: meta.session_type, matchedIds: [] as string[] };
+        return { imported: 0, vsd_matched: 0, external: 0, dns: 0, dnf: 0, skipped_duplicates: skippedCount, session_type: meta.session_type, matchedIds: [] as string[], _lapRows: [] as any[] };
       }
 
       const { error: insertErr } = await supabase.from('race_results').insert(rowsToInsert);
@@ -869,6 +979,7 @@ Deno.serve(async (req: Request) => {
         skipped_duplicates: skippedCount,
         session_type: meta.session_type,
         matchedIds,
+        _lapRows: rowsToInsert.filter((r: any) => r.driver_id),
       };
     }
 
@@ -953,6 +1064,11 @@ Deno.serve(async (req: Request) => {
         aggStats.dnf += sessionStats.dnf || 0;
         aggStats.dns += sessionStats.dns || 0;
         aggStats.by_session[sessionType] = sessionStats.imported || 0;
+        try {
+          const bl = await syncBestLapsFromResults(me!.team_id, race, 'IRC', sessionStats._lapRows);
+          aggStats.best_laps = aggStats.best_laps || { imported: 0, not_pb: 0, unmapped: 0 };
+          aggStats.best_laps.imported += bl.imported; aggStats.best_laps.not_pb += bl.not_pb; aggStats.best_laps.unmapped += bl.unmapped;
+        } catch (_e) { /* non bloccante */ }
 
         if (sessionType === 'race') {
           await seedRaceReportsForRace(race.race_id);
@@ -985,7 +1101,8 @@ Deno.serve(async (req: Request) => {
       session_type: sessionType,
     };
 
-    const stats = await importGroup(jsonData, meta);
+    const stats: any = await importGroup(jsonData, meta);
+    try { stats.best_laps = await syncBestLapsFromResults(me.team_id, race, meta.sim, stats._lapRows); } catch (_e) { /* non bloccante */ }
 
     if (meta.session_type === 'race') {
       await seedRaceReportsForRace(meta.race_id);
@@ -999,6 +1116,7 @@ Deno.serve(async (req: Request) => {
 
     try { await notifyRaceImported(race, stats); } catch (_e) { /* non bloccante */ }
 
+    delete stats._lapRows;
     return json({ ok: true, data: stats });
   } catch (e) {
     return json({ ok: false, error: String(e) }, 500);
