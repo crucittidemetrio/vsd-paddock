@@ -63,6 +63,7 @@ const ConsentForm = lazy(() => import('./pages/ConsentForm'));
 const AdminConsents = lazy(() => import('./pages/AdminConsents'));
 const AdminAuditLog = lazy(() => import('./pages/AdminAuditLog'));
 const AdminHome = lazy(() => import('./pages/AdminHome'));
+const Overview = lazy(() => import('./pages/Overview'));
 const AdminCandidates = lazy(() => import('./pages/AdminCandidates'));
 const AdminSponsors = lazy(() => import('./pages/AdminSponsors'));
 const AdminChampionships = lazy(() => import('./pages/AdminChampionships'));
@@ -152,6 +153,14 @@ export default function App() {
               <Route path="/terms" element={<Terms />} />
 
               {/* ── Private: richiede pilot_vsd o superiore ── */}
+              <Route
+                path="/overview"
+                element={
+                  <RequireTier minTier="pilot_vsd" fallback={<LoginPrompt feature="la Panoramica" />}>
+                    <Overview />
+                  </RequireTier>
+                }
+              />
               <Route
                 path="/reports"
                 element={

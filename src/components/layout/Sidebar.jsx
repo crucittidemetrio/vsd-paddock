@@ -29,6 +29,7 @@ const NAV_GROUPS = [
   {
     key: 'gare', label: 'Gare', defaultOpen: true, accent: 'race',
     items: [
+      { to: '/overview', label: 'Panoramica', icon: '▣', req: 'pilot' },
       { to: '/calendar', label: 'Calendario', icon: '▦' },
       { to: '/race', label: LABELS.nav_race, icon: '◤' },
       { to: '/results', label: LABELS.nav_results, icon: '☰' },
