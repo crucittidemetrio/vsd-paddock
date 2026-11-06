@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import styles from './LoginPrompt.module.css';
+import { withPrepositionA } from '../../utils/italian';
 
 /**
  * Fallback standard per sezioni gated dentro pagine pubbliche.
@@ -16,7 +17,7 @@ export default function LoginPrompt({ feature = 'questa sezione', compact = fals
       <div className={styles.body}>
         <h3 className={styles.title}>Accesso riservato</h3>
         <p className={styles.message}>
-          Per accedere a {feature} effettua il login con il tuo account Discord.
+          Per accedere {withPrepositionA(feature)} effettua il login con il tuo account Discord.
         </p>
         <Link to="/login" className={styles.button}>
           Accedi con Discord
