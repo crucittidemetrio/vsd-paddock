@@ -8,18 +8,28 @@
  * Regole equipaggio (decise da Demetrio, 6/11/2026):
  *   - gara fino a 120 minuti: si corre da soli o con un compagno (1-2 piloti)
  *   - gara oltre 120 minuti: da 2 a 6 piloti
+ *   - eccezione: i campionati "solitari" (SOLO_SERIES, oggi UE144) si corrono
+ *     sempre da soli, anche se superano i 120 minuti: 1 pilota per vettura,
+ *     nessuno stint da pianificare. Più piloti VSD possono iscriversi, ognuno
+ *     con la propria vettura.
  * Nessuna soglia dipende dal numero di piloti in squadra: funziona uguale
  * con 14 tesserati o con 4.
  */
 
 export const SPRINT_MAX_MIN = 120;
+
+/** Serie (championships.series) che si corrono in solitaria per regolamento. */
+export const SOLO_SERIES = ['ue144'];
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /**
  * @param {number|string|null} durationMin - durata gara in minuti
- * @returns {{ min: number, max: number, kind: 'sprint'|'endurance' }}
+ * @param {boolean} [solo=false] - gara di un campionato solitario (vedi isSoloRace)
+ * @returns {{ min: number, max: number, kind: 'sprint'|'endurance'|'solo' }}
  */
-export function crewRule(durationMin) {
+export function crewRule(durationMin, solo = false) {
+  // Il formato del campionato prevale sulla durata.
+  if (solo) return { min: 1, max: 1, kind: 'solo' };
   const d = Number(durationMin);
   // Durata mancante o non valida: trattata come sprint (regola più permissiva).
   if (!Number.isFinite(d) || d <= SPRINT_MAX_MIN) {
@@ -34,10 +44,10 @@ export function crewRule(durationMin) {
  *   risk = non bastano, ma con i "forse" si arriva al minimo
  *   ko   = anche con i "forse" non si arriva al minimo
  *
- * @param {{ confirmed: number, tentative: number, durationMin: number|string|null }} p
+ * @param {{ confirmed: number, tentative: number, durationMin: number|string|null, solo?: boolean }} p
  */
-export function crewStatus({ confirmed, tentative, durationMin }) {
-  const rule = crewRule(durationMin);
+export function crewStatus({ confirmed, tentative, durationMin, solo = false }) {
+  const rule = crewRule(durationMin, solo);
   const c = Math.max(0, Number(confirmed) || 0);
   const t = Math.max(0, Number(tentative) || 0);
   let level;
@@ -52,8 +62,9 @@ export function crewStatus({ confirmed, tentative, durationMin }) {
     max: rule.max,
     kind: rule.kind,
     // Ci sono più confermati di quanti ne stiano in una vettura: non è un
-    // errore (possono essere più vetture), ma va segnalato.
-    overMax: c > rule.max,
+    // errore (possono essere più vetture), ma va segnalato. Nelle gare
+    // solitarie ognuno ha la propria vettura, quindi non c'è un massimo.
+    overMax: rule.kind !== 'solo' && c > rule.max,
     missing: Math.max(0, rule.min - c),
   };
 }
@@ -105,16 +116,18 @@ export function plannedStintMinutes(stints) {
  * @param {Array} p.rsvps
  * @param {Array} p.crews - assegnazioni pilota→vettura
  * @param {Array} p.stints
+ * @param {boolean} [p.solo=false] - gara di un campionato solitario
  */
-export function buildReadiness({ race, activeDrivers, rsvps, crews, stints }) {
+export function buildReadiness({ race, activeDrivers, rsvps, crews, stints, solo = false }) {
   const duration = race?.duration_minutes;
-  const rule = crewRule(duration);
+  const rule = crewRule(duration, solo);
   const activeIds = new Set((activeDrivers || []).map(d => d.driver_id));
   const counts = countRsvps(rsvps, activeIds);
   const crew = crewStatus({
     confirmed: counts.confirmed,
     tentative: counts.tentative,
     durationMin: duration,
+    solo,
   });
 
   const items = [];
@@ -222,4 +235,28 @@ export function activePilotTrend(results, activeIds, nowMs = Date.now(), windowD
     else if (t >= prevFrom && t < curFrom) prev.add(r.driver_id);
   });
   return { current: cur.size, previous: prev.size, delta: cur.size - prev.size };
+}
+
+/**
+ * Id dei campionati che si corrono in solitaria, ricavati da
+ * championships.series. Una nuova serie solitaria si aggiunge a SOLO_SERIES.
+ *
+ * @param {Array<{id: string, series?: string|null}>} championships
+ * @param {string[]} soloSeries
+ * @returns {Set<string>}
+ */
+export function soloChampionshipIds(championships, soloSeries = SOLO_SERIES) {
+  const ids = new Set();
+  (championships || []).forEach(c => {
+    if (c && c.id && soloSeries.includes(c.series)) ids.add(c.id);
+  });
+  return ids;
+}
+
+/**
+ * @param {{ championship_id?: string|null }} race
+ * @param {Set<string>} soloIds - risultato di soloChampionshipIds
+ */
+export function isSoloRace(race, soloIds) {
+  return Boolean(race?.championship_id) && soloIds.has(race.championship_id);
 }
