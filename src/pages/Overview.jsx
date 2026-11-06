@@ -6,6 +6,7 @@ import { useRaceRSVP } from '../hooks/useRaceRSVP';
 import { useRaceCrews } from '../hooks/useRaceCrews';
 import { useStints } from '../hooks/useEnduranceStints';
 import { useDrivers } from '../hooks/useRoster';
+import { useChampionships } from '../hooks/useChampionships';
 import { useNow } from '../hooks/useNow';
 import { useTreasury } from '../hooks/useTreasury';
 import { useRecentTeamRaceResults } from '../hooks/useRaceResults';
@@ -17,6 +18,8 @@ import {
   countRsvps,
   crewRule,
   crewStatus,
+  isSoloRace,
+  soloChampionshipIds,
   treasuryRunway,
 } from '../utils/overview';
 import SimBadge from '../components/shared/SimBadge';
@@ -39,6 +42,11 @@ function toStints(data) {
 }
 
 const eur = new Intl.NumberFormat('it-IT', { style: 'currency', currency: 'EUR' });
+
+function ruleText(rule) {
+  if (rule.kind === 'solo') return 'regola solitaria: 1 pilota per vettura';
+  return `regola ${rule.kind}: ${rule.min}–${rule.max} piloti`;
+}
 
 const LEVEL_TEXT = {
   ok: 'Equipaggio coperto',
@@ -81,9 +89,9 @@ function Ring({ percent }) {
   );
 }
 
-function NextRaceCard({ race, activeDrivers }) {
+function NextRaceCard({ race, activeDrivers, solo }) {
   const raceId = race.race_id;
-  const rule = crewRule(race.duration_minutes);
+  const rule = crewRule(race.duration_minutes, solo);
   const { data: rsvps = [], isLoading: rsvpLoading } = useRaceRSVP(raceId);
   const { data: crews = [] } = useRaceCrews(raceId);
   const { data: stintsData } = useStints(rule.kind === 'endurance' ? raceId : undefined);
@@ -95,8 +103,9 @@ function NextRaceCard({ race, activeDrivers }) {
       rsvps,
       crews,
       stints: toStints(stintsData),
+      solo,
     }),
-    [race, activeDrivers, rsvps, crews, stintsData],
+    [race, activeDrivers, rsvps, crews, stintsData, solo],
   );
 
   const names = useMemo(() => {
@@ -145,9 +154,7 @@ function NextRaceCard({ race, activeDrivers }) {
       <div className={styles.crewLine}>
         <strong>{crew.confirmed}</strong> confermati
         {crew.tentative > 0 && <> · <strong>{crew.tentative}</strong> forse</>}
-        <span className={styles.muted}>
-          {' '}· regola {rule.kind === 'sprint' ? 'sprint' : 'endurance'}: {rule.min}–{rule.max} piloti
-        </span>
+        <span className={styles.muted}> · {ruleText(rule)}</span>
         {crew.overMax && (
           <span className={styles.note}> · oltre il massimo per una vettura: serve una seconda macchina</span>
         )}
@@ -165,7 +172,7 @@ function NextRaceCard({ race, activeDrivers }) {
   );
 }
 
-function UpcomingRow({ race, activeIds }) {
+function UpcomingRow({ race, activeIds, solo }) {
   const { data: rsvps = [] } = useRaceRSVP(race.race_id);
   const status = useMemo(() => {
     const counts = countRsvps(rsvps, activeIds);
@@ -173,8 +180,9 @@ function UpcomingRow({ race, activeIds }) {
       confirmed: counts.confirmed,
       tentative: counts.tentative,
       durationMin: race.duration_minutes,
+      solo,
     });
-  }, [rsvps, activeIds, race.duration_minutes]);
+  }, [rsvps, activeIds, race.duration_minutes, solo]);
 
   const duration = Number(race.duration_minutes);
 
@@ -198,7 +206,7 @@ function UpcomingRow({ race, activeIds }) {
   );
 }
 
-function UpcomingCard({ races, activeIds }) {
+function UpcomingCard({ races, activeIds, soloIds }) {
   return (
     <section className={styles.card}>
       <div className={styles.eyebrow}>Copertura equipaggio</div>
@@ -207,7 +215,14 @@ function UpcomingCard({ races, activeIds }) {
         <p className={styles.muted}>Nessuna gara in programma.</p>
       ) : (
         <ul className={styles.list}>
-          {races.map(r => <UpcomingRow key={r.race_id} race={r} activeIds={activeIds} />)}
+          {races.map(r => (
+            <UpcomingRow
+              key={r.race_id}
+              race={r}
+              activeIds={activeIds}
+              solo={isSoloRace(r, soloIds)}
+            />
+          ))}
         </ul>
       )}
     </section>
@@ -280,6 +295,7 @@ export default function Overview() {
   const { isAdmin } = useAuth();
   const { data: upcomingData, isLoading: racesLoading } = useUpcomingRaces();
   const { data: driversData, isLoading: driversLoading } = useDrivers({});
+  const { data: champsData } = useChampionships();
 
   const activeDrivers = useMemo(
     () => toList(driversData, 'drivers').filter(isActiveDriver),
@@ -288,6 +304,11 @@ export default function Overview() {
   const activeIds = useMemo(
     () => new Set(activeDrivers.map(d => d.driver_id)),
     [activeDrivers],
+  );
+  // Campionati che si corrono in solitaria (UE144): ignorano la regola per durata.
+  const soloIds = useMemo(
+    () => soloChampionshipIds(toList(champsData, 'championships')),
+    [champsData],
   );
 
   // Aggiornato ogni minuto: una gara appena partita esce da "prossima" da sola.
@@ -319,14 +340,18 @@ export default function Overview() {
       ) : (
         <div className={styles.grid}>
           {nextRace ? (
-            <NextRaceCard race={nextRace} activeDrivers={activeDrivers} />
+            <NextRaceCard
+              race={nextRace}
+              activeDrivers={activeDrivers}
+              solo={isSoloRace(nextRace, soloIds)}
+            />
           ) : (
             <section className={`${styles.card} ${styles.cardWide}`}>
               <div className={styles.eyebrow}>Prossima gara</div>
               <p className={styles.muted}>Nessuna gara in programma.</p>
             </section>
           )}
-          <UpcomingCard races={races.slice(0, UPCOMING_ROWS)} activeIds={activeIds} />
+          <UpcomingCard races={races.slice(0, UPCOMING_ROWS)} activeIds={activeIds} soloIds={soloIds} />
           <PilotsCard activeDrivers={activeDrivers} activeIds={activeIds} />
           {isAdmin && <TreasuryCard />}
         </div>

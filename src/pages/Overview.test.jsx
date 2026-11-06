@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   auth: { isAdmin: false },
   upcoming: { data: null, isLoading: false },
   drivers: { data: null, isLoading: false },
+  champs: { data: null },
   rsvp: { data: [] },
   crews: { data: [] },
   stints: { data: null },
@@ -19,6 +20,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../hooks/useAuth', () => ({ useAuth: () => mocks.auth }));
 vi.mock('../hooks/useRaces', () => ({ useUpcomingRaces: () => mocks.upcoming }));
 vi.mock('../hooks/useRoster', () => ({ useDrivers: () => mocks.drivers }));
+vi.mock('../hooks/useChampionships', () => ({ useChampionships: () => mocks.champs }));
 vi.mock('../hooks/useRaceRSVP', () => ({ useRaceRSVP: () => mocks.rsvp }));
 vi.mock('../hooks/useRaceCrews', () => ({ useRaceCrews: () => mocks.crews }));
 vi.mock('../hooks/useEnduranceStints', () => ({ useStints: () => mocks.stints }));
@@ -42,6 +44,7 @@ beforeEach(() => {
   mocks.auth = { isAdmin: false };
   mocks.upcoming = { data: null, isLoading: false };
   mocks.drivers = { data: null, isLoading: false };
+  mocks.champs = { data: null };
   mocks.rsvp = { data: [] };
   mocks.crews = { data: [] };
   mocks.stints = { data: null };
@@ -92,6 +95,53 @@ describe('Overview', () => {
     expect(screen.queryByText('Stint pianificati')).not.toBeInTheDocument();
     expect(screen.getByText(/regola sprint: 1–2 piloti/)).toBeInTheDocument();
     expect(screen.getByText(/Senza risposta: Anna R\., Bruno C\./)).toBeInTheDocument();
+  });
+
+  it('UE144 (144\' ma solitario): regola solitaria, niente stint, coperta con un confermato', () => {
+    mocks.upcoming = {
+      data: {
+        races: [{
+          race_id: 'RACE017',
+          race_name: 'UE144 R5 — Monza',
+          sim: 'LMU',
+          date: inDays(2),
+          duration_minutes: 144,
+          championship_id: 'chmp-ue144',
+        }],
+      },
+      isLoading: false,
+    };
+    mocks.champs = { data: [{ id: 'chmp-ue144', series: 'ue144' }] };
+    mocks.drivers = { data: { drivers: [driver('a', 'Anna R.'), driver('b', 'Bruno C.')] }, isLoading: false };
+    mocks.rsvp = { data: [{ driver_id: 'a', status: 'confirmed' }] };
+    renderPage();
+    expect(screen.getAllByText('Equipaggio coperto').length).toBeGreaterThan(0);
+    expect(screen.getByText(/regola solitaria: 1 pilota per vettura/)).toBeInTheDocument();
+    expect(screen.queryByText('Stint pianificati')).not.toBeInTheDocument();
+  });
+
+  it('la stessa gara senza campionato solitario resta endurance con stint', () => {
+    mocks.upcoming = {
+      data: {
+        races: [{
+          race_id: 'RACE099',
+          race_name: 'Endurance libera',
+          sim: 'LMU',
+          date: inDays(2),
+          duration_minutes: 144,
+          championship_id: 'chmp-altro',
+        }],
+      },
+      isLoading: false,
+    };
+    mocks.champs = { data: [{ id: 'chmp-ue144', series: 'ue144' }] };
+    mocks.drivers = { data: { drivers: [driver('a', 'Anna R.')] }, isLoading: false };
+    mocks.rsvp = { data: [{ driver_id: 'a', status: 'confirmed' }] };
+    renderPage();
+    expect(screen.getByText(/regola endurance: 2–6 piloti/)).toBeInTheDocument();
+    expect(screen.getByText('Stint pianificati')).toBeInTheDocument();
+    // 1 confermato su minimo 2 e nessun "forse": scoperto, non "da confermare".
+    expect(screen.getAllByText('Equipaggio scoperto').length).toBeGreaterThan(0);
   });
 
   it('admin vede la cassa con saldo e autonomia', () => {

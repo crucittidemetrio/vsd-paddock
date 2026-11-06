@@ -7,6 +7,8 @@ import {
   buildReadiness,
   treasuryRunway,
   activePilotTrend,
+  isSoloRace,
+  soloChampionshipIds,
 } from './overview';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -195,5 +197,76 @@ describe('activePilotTrend', () => {
       { driver_id: 'a' },
     ], active, NOW, 30);
     expect(t.current).toBe(0);
+  });
+});
+
+describe('campionati solitari (UE144)', () => {
+  it('crewRule: il formato solitario prevale sulla durata', () => {
+    expect(crewRule(144, true)).toEqual({ min: 1, max: 1, kind: 'solo' });
+    expect(crewRule(40, true)).toEqual({ min: 1, max: 1, kind: 'solo' });
+    expect(crewRule(144, false).kind).toBe('endurance');
+  });
+
+  it('crewStatus: basta un confermato, e molti confermati non sono un eccesso', () => {
+    expect(crewStatus({ confirmed: 1, tentative: 0, durationMin: 144, solo: true }).level).toBe('ok');
+    const many = crewStatus({ confirmed: 12, tentative: 0, durationMin: 144, solo: true });
+    expect(many.level).toBe('ok');
+    expect(many.overMax).toBe(false);
+  });
+
+  it('crewStatus: senza confermati ma con un forse è "da confermare"', () => {
+    expect(crewStatus({ confirmed: 0, tentative: 1, durationMin: 144, solo: true }).level).toBe('risk');
+    expect(crewStatus({ confirmed: 0, tentative: 0, durationMin: 144, solo: true }).level).toBe('ko');
+  });
+
+  it('buildReadiness: nessuno stint da pianificare e 100% con un confermato assegnato', () => {
+    const r = buildReadiness({
+      race: { duration_minutes: 144 },
+      activeDrivers: [{ driver_id: 'a' }],
+      rsvps: [{ driver_id: 'a', status: 'confirmed' }],
+      crews: [{ driver_id: 'a' }],
+      stints: [],
+      solo: true,
+    });
+    expect(r.items.map(i => i.key)).toEqual(['crew', 'rsvp', 'assign']);
+    expect(r.percent).toBe(100);
+    expect(r.crew.kind).toBe('solo');
+  });
+
+  it('la stessa gara senza il flag resta una endurance da 2 piloti e con stint', () => {
+    const r = buildReadiness({
+      race: { duration_minutes: 144 },
+      activeDrivers: [{ driver_id: 'a' }],
+      rsvps: [{ driver_id: 'a', status: 'confirmed' }],
+      crews: [{ driver_id: 'a' }],
+      stints: [],
+    });
+    expect(r.items.map(i => i.key)).toContain('stints');
+    expect(r.crew.min).toBe(2);
+  });
+
+  it('soloChampionshipIds: seleziona solo le serie solitarie', () => {
+    const ids = soloChampionshipIds([
+      { id: 'chmp-ue', series: 'ue144' },
+      { id: 'chmp-clash', series: 'clash-of-classes' },
+      { id: 'era-s3', series: null },
+      { id: 'chmp-big6' },
+      null,
+    ]);
+    expect([...ids]).toEqual(['chmp-ue']);
+  });
+
+  it('soloChampionshipIds: accetta una lista di serie personalizzata', () => {
+    const ids = soloChampionshipIds([{ id: 'x', series: 'altra' }], ['altra']);
+    expect(ids.has('x')).toBe(true);
+  });
+
+  it('isSoloRace: legge championship_id e gestisce gare senza campionato', () => {
+    const solo = new Set(['chmp-ue']);
+    expect(isSoloRace({ championship_id: 'chmp-ue' }, solo)).toBe(true);
+    expect(isSoloRace({ championship_id: 'chmp-big6' }, solo)).toBe(false);
+    expect(isSoloRace({ championship_id: null }, solo)).toBe(false);
+    expect(isSoloRace({}, solo)).toBe(false);
+    expect(isSoloRace(null, solo)).toBe(false);
   });
 });
