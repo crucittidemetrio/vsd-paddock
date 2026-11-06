@@ -19,8 +19,10 @@ export default function AdminGarage61Sync() {
         <p className={styles.subtitle}>
           Importa i best lap iRacing puliti del team VSD da Garage61.
           Operazione idempotente: i lap già presenti vengono saltati via dedup.
-          Le auto non ancora a catalogo vengono aggiunte come bozza nel sheet.
-          Può richiedere fino a 60 secondi.
+          Le auto non ancora a catalogo vengono aggiunte come bozza nel catalogo.
+          Garage61 limita le chiamate: se il giro non si chiude in una volta,
+          riprende dal punto salvato. Gira anche in automatico ogni 15 minuti.
+          Può richiedere fino a 2 minuti.
         </p>
       </header>
 
@@ -42,14 +44,14 @@ export default function AdminGarage61Sync() {
             onClick={handleSync}
             disabled={syncMutation.isPending}
           >
-            {syncMutation.isPending ? 'Sync in corso… (fino a 60 sec)' : 'Avvia Sync Garage61'}
+            {syncMutation.isPending ? 'Sync in corso… (fino a 2 min)' : 'Avvia Sync Garage61'}
           </button>
         </div>
       </section>
 
       {syncMutation.isSuccess && (
         <section className={styles.cardSuccess}>
-          <h2>✅ Sync completato</h2>
+          <h2>{syncMutation.data.cycleComplete ? '✅ Sync completato' : `⏳ Sync parziale — piste ${syncMutation.data.tracksProcessed}/${syncMutation.data.totalTracks}`}</h2>
           <div className={styles.statsRow}>
             <div className={styles.stat}>
               <div className={styles.statValue}>{syncMutation.data.imported ?? 0}</div>
@@ -65,7 +67,11 @@ export default function AdminGarage61Sync() {
             </div>
             <div className={styles.stat}>
               <div className={styles.statValue}>{syncMutation.data.tracksProcessed ?? 0}</div>
-              <div className={styles.statLabel}>Tracks elaborati</div>
+              <div className={styles.statLabel}>Piste lette</div>
+            </div>
+            <div className={styles.stat}>
+              <div className={styles.statValue}>{syncMutation.data.newRecords ?? 0}</div>
+              <div className={styles.statLabel}>Nuovi record</div>
             </div>
           </div>
 
@@ -152,10 +158,17 @@ export default function AdminGarage61Sync() {
             </div>
           )}
 
-          {syncMutation.data.errors > 0 && (
+          {!syncMutation.data.cycleComplete && syncMutation.data.rateLimited && (
+            <p className={styles.muted}>
+              ⏸ Garage61 ha messo in pausa le richieste (limite di chiamate).
+              Il punto raggiunto è salvato: il sync automatico (ogni 15 min) riprende
+              da lì, oppure rilancia tu tra 2 minuti.
+            </p>
+          )}
+          {syncMutation.data.errors > 0 && !syncMutation.data.rateLimited && (
             <div className={styles.error}>
-              ⚠ {syncMutation.data.errors} errori transient (network glitch lato Apps Script → Garage61).
-              Esegui di nuovo per recuperare i lap mancanti.
+              ⚠ Sync interrotto: {syncMutation.data.firstError || 'errore sconosciuto'}.
+              Il punto raggiunto è salvato, al prossimo giro riprende da lì.
             </div>
           )}
         </section>

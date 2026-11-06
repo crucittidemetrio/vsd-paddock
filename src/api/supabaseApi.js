@@ -829,6 +829,31 @@ export async function callApi(action, payload = {}) {
       return ok(applyLapsListFilters(res.data?.laps, filters, limit));
     }
 
+    if (action === 'laps.syncFromGarage61') {
+      // 06/11/2026: il pulsante manuale usa lo stesso sync del cron
+      // (notifications-cron, cursore progressivo + gestione rate limit
+      // Garage61) invece della vecchia logica per-pista in social-manager.
+      const res = await callEdgeFunction('notifications-cron?check=garage61Sync&force=1', {}, action);
+      if (!res.ok) return res;
+      const t = (res.result?.teams || [])[0] || {};
+      if (t.error) return fail(t.error);
+      return ok({
+        imported: t.imported ?? 0,
+        skippedDedup: t.dedup ?? 0,
+        unmappedCarsDrafted: t.unmappedCarsDrafted ?? 0,
+        tracksProcessed: t.startPos != null && t.totalTracks != null
+          ? (t.cycle === 'completo' ? t.totalTracks : Number(String(t.cycle || '').match(/piste (\d+)/)?.[1] ?? t.startPos))
+          : 0,
+        totalTracks: t.totalTracks ?? 0,
+        newRecords: t.newRecords ?? 0,
+        cycleComplete: t.cycle === 'completo',
+        cycle: t.cycle || '',
+        firstError: t.firstError || null,
+        rateLimited: /HTTP 429/.test(t.firstError || ''),
+        errors: t.errors ?? 0,
+      });
+    }
+
     const request = buildRequest(action, payload);
     if (!request) return fail(`Action non instradata verso Supabase: ${action}`);
 
