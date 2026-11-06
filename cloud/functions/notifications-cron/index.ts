@@ -713,9 +713,13 @@ async function garage61Get(path: string): Promise<any> {
   const token = Deno.env.get('GARAGE61_TOKEN');
   if (!token) throw new Error('GARAGE61_TOKEN non configurato');
   const res = await fetch(GARAGE61_BASE_URL + path, { headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' } });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error('Garage61 API error: HTTP ' + res.status);
-  return body;
+  if (res.ok) return await res.json().catch(() => ({}));
+  const text = await res.text().catch(() => '');
+  let retryAfter = Number(res.headers.get('retry-after')) || 0;
+  try { retryAfter = Number(JSON.parse(text)?.details?.retryAfterSeconds) || retryAfter; } catch { /* corpo non JSON */ }
+  const err: any = new Error('Garage61 API error: HTTP ' + res.status + (text ? ' — ' + text.slice(0, 160) : ''));
+  err.status = res.status; err.retryAfter = retryAfter;
+  throw err;
 }
 
 function g61SessionType(n: unknown): string {
@@ -769,58 +773,95 @@ async function syncTeamGarage61(supa: any, team: any) {
 
   const nowIso = new Date().toISOString();
   const afterParam = team.garage61_last_sync_at ? `&after=${encodeURIComponent(team.garage61_last_sync_at)}` : '';
-  const stats = { tracks: 0, laps: 0, imported: 0, dedup: 0, quality: 0, carUnmapped: 0, driverUnmapped: 0, errors: 0 };
+  const stats: any = { tracks: 0, laps: 0, imported: 0, dedup: 0, quality: 0, carUnmapped: 0, driverUnmapped: 0, errors: 0, firstError: null };
   const unmappedCars = new Map<number, string>();
   const rows: any[] = [];
   const records = new Map<string, { ms: number; driverId: string; prev: string | null }>();
 
-  for (const [g61TrackId, vsdTrackId] of trackByG61Id) {
-    stats.tracks++;
-    let offset = 0;
-    for (let iter = 0; iter < 50; iter++) {
-      let data: any;
-      try { data = await garage61Get(`/laps?teams=${slug}&tracks=${g61TrackId}&limit=100&offset=${offset}${afterParam}`); }
-      catch (_e) { stats.errors++; break; }
-      const laps = data.items || [];
-      if (laps.length === 0) break;
-      for (const lap of laps) {
-        stats.laps++;
-        if (existing.has(String(lap.id))) { stats.dedup++; continue; }
-        if (!lap.clean || lap.incomplete || lap.offtrack || lap.pitlane || lap.pitIn || lap.pitOut || lap.missing || lap.discontinuity) { stats.quality++; continue; }
-        const g61CarId = lap.car && Number(lap.car.id);
-        const carId = carByG61Id.get(g61CarId);
-        if (!carId) { stats.carUnmapped++; if (lap.car && !unmappedCars.has(g61CarId)) unmappedCars.set(g61CarId, lap.car.name); continue; }
-        const iracingId = iracingBySlug.get(lap.driver && lap.driver.slug);
-        const driverId = iracingId && driverByIracingId.get(iracingId);
-        if (!driverId) { stats.driverUnmapped++; continue; }
-        const ms = Math.round(lap.lapTime * 1000);
-        rows.push({
-          team_id: teamId, driver_id: driverId, sim: 'IRC', track_id: vsdTrackId, car_id: carId,
-          lap_time_ms: ms, lap_time_display: msToLapDisplay(ms), set_date: String(lap.startTime).split('T')[0],
-          conditions: (lap.precipitation > 0 || lap.trackWetness > 0) ? 'wet' : 'dry',
-          session_type: g61SessionType(lap.sessionType), verified_at: nowIso,
-          notes: 'Imported from Garage61', garage61_lap_id: String(lap.id),
-        });
-        existing.add(String(lap.id));
-        stats.imported++;
-        if (isCurrentTesserato(driverById.get(driverId))) {
-          const pre = preBest.get(vsdTrackId);
-          const cand = records.get(vsdTrackId);
-          const best = cand ? cand.ms : (pre ? pre.ms : null);
-          if (best === null || ms < best) records.set(vsdTrackId, { ms, driverId, prev: pre ? pre.display : null });
-        }
+  // 06/11/2026: Garage61 ora limita le richieste (HTTP 429 dopo poche
+  // chiamate). Prima si faceva una query per ognuna delle 123 piste → tutte
+  // fallivano. Ora UNA query per il team (tutte le piste), paginata; la pista
+  // si ricava da lap.track.id. Sul 429 si aspetta retryAfter (se c'è tempo).
+  const t0 = Date.now();
+  const BUDGET_MS = 120000;
+  // il parametro tracks è obbligatorio ma accetta più valori: piste a blocchi
+  // Garage61 accetta max 10 piste per chiamata e ~9 chiamate per finestra di
+  // rate limit: il giro completo si spalma su più esecuzioni del cron, con la
+  // posizione salvata in teams.garage61_sync_track_pos.
+  const allG61Tracks = Array.from(trackByG61Id.keys()).sort((a, b) => a - b);
+  const CHUNK = Math.min(10, G61_CHUNK);
+  const startPos = Math.max(0, Math.min(Number(team.garage61_sync_track_pos) || 0, allG61Tracks.length));
+  const cycleAt = startPos === 0 ? nowIso : (team.garage61_sync_cycle_at || nowIso);
+  let stopPos = -1;
+  stats.startPos = startPos; stats.totalTracks = allG61Tracks.length;
+  for (let c = startPos; c < allG61Tracks.length; c += CHUNK) {
+  const ids = allG61Tracks.slice(c, c + CHUNK);
+  const tracksParam = G61_TFMT === 'repeat' ? ids.map((id) => `tracks=${id}`).join('&') : `tracks=${ids.join(',')}`;
+  let offset = 0;
+  for (let iter = 0; iter < 60; iter++) {
+    let data: any = null;
+    for (let tryN = 0; tryN < 3 && data === null; tryN++) {
+      try { data = await garage61Get(`/laps?teams=${slug}&${tracksParam}&limit=100&offset=${offset}${afterParam}`); }
+      catch (e: any) {
+        const wait = (Number(e?.retryAfter) || 0) * 1000 + 1000;
+        if (e?.status === 429 && Date.now() - t0 + wait < BUDGET_MS) { await new Promise((r) => setTimeout(r, wait)); continue; }
+        stats.errors++; stats.firstError = String(e?.message || e); break;
       }
-      if (laps.length < 100) break;
-      if (data.total !== undefined && offset + laps.length >= data.total) break;
-      offset += 100;
     }
+    if (data === null) break;
+    stats.tracks++; // pagine lette
+    const laps = data.items || [];
+    if (laps.length === 0) break;
+    for (const lap of laps) {
+      stats.laps++;
+      const vsdTrackId = trackByG61Id.get(Number(lap.track && lap.track.id));
+      if (!vsdTrackId) { stats.trackUnmapped = (stats.trackUnmapped || 0) + 1; continue; }
+      if (existing.has(String(lap.id))) { stats.dedup++; continue; }
+      if (!lap.clean || lap.incomplete || lap.offtrack || lap.pitlane || lap.pitIn || lap.pitOut || lap.missing || lap.discontinuity) { stats.quality++; continue; }
+      const g61CarId = lap.car && Number(lap.car.id);
+      const carId = carByG61Id.get(g61CarId);
+      if (!carId) { stats.carUnmapped++; if (lap.car && !unmappedCars.has(g61CarId)) unmappedCars.set(g61CarId, lap.car.name); continue; }
+      const iracingId = iracingBySlug.get(lap.driver && lap.driver.slug);
+      const driverId = iracingId && driverByIracingId.get(iracingId);
+      if (!driverId) { stats.driverUnmapped++; continue; }
+      const ms = Math.round(lap.lapTime * 1000);
+      rows.push({
+        team_id: teamId, driver_id: driverId, sim: 'IRC', track_id: vsdTrackId, car_id: carId,
+        lap_time_ms: ms, lap_time_display: msToLapDisplay(ms), set_date: String(lap.startTime).split('T')[0],
+        conditions: (lap.precipitation > 0 || lap.trackWetness > 0) ? 'wet' : 'dry',
+        session_type: g61SessionType(lap.sessionType), verified_at: nowIso,
+        notes: 'Imported from Garage61', garage61_lap_id: String(lap.id),
+      });
+      existing.add(String(lap.id));
+      stats.imported++;
+      if (isCurrentTesserato(driverById.get(driverId))) {
+        const pre = preBest.get(vsdTrackId);
+        const cand = records.get(vsdTrackId);
+        const best = cand ? cand.ms : (pre ? pre.ms : null);
+        if (best === null || ms < best) records.set(vsdTrackId, { ms, driverId, prev: pre ? pre.display : null });
+      }
+    }
+    if (laps.length < 100) break;
+    if (data.total !== undefined && offset + laps.length >= data.total) break;
+    offset += 100;
+    if (Date.now() - t0 > BUDGET_MS) { stats.errors++; stats.firstError = 'tempo esaurito: sync parziale, riprende al prossimo giro'; break; }
+  }
+  if (stats.errors > 0) { stopPos = c; break; }
   }
 
   if (rows.length > 0) {
     const { error } = await supa.from('best_laps').insert(rows);
     if (error) throw new Error(error.message);
   }
-  await supa.from('teams').update({ garage61_last_sync_at: nowIso }).eq('id', teamId);
+  // Il cursore avanza solo se TUTTE le piste sono state lette: altrimenti al
+  // prossimo giro si riprova dallo stesso punto (dedup evita i doppioni).
+  if (stopPos < 0) {
+    await supa.from('teams').update({ garage61_last_sync_at: cycleAt, garage61_sync_track_pos: 0, garage61_sync_cycle_at: null }).eq('id', teamId);
+    stats.cycle = 'completo';
+  } else {
+    await supa.from('teams').update({ garage61_sync_track_pos: stopPos, garage61_sync_cycle_at: cycleAt }).eq('id', teamId);
+    stats.cycle = `parziale: piste ${stopPos}/${allG61Tracks.length}, riprende al prossimo giro`;
+  }
 
   if (unmappedCars.size > 0) {
     const { data: allCars } = await supa.from('cars').select('car_id');
@@ -853,12 +894,16 @@ async function syncTeamGarage61(supa: any, team: any) {
   return { ...stats, newRecords: records.size, unmappedCarsDrafted: unmappedCars.size };
 }
 
+let G61_FORCE = false;
+let G61_CHUNK = 10;
+let G61_TFMT = 'comma';
 async function runGarage61Sync() {
   const supa = db();
-  const { data: teams } = await supa.from('teams').select('id, garage61_team_slug, garage61_last_sync_at').not('garage61_team_slug', 'is', null);
+  const { data: teams } = await supa.from('teams').select('id, garage61_team_slug, garage61_last_sync_at, garage61_sync_track_pos, garage61_sync_cycle_at').not('garage61_team_slug', 'is', null);
   const out: any[] = [];
   for (const t of teams ?? []) {
-    if (t.garage61_last_sync_at && Date.now() - new Date(t.garage61_last_sync_at).getTime() < 3 * 3600 * 1000) {
+    // a giro in corso (track_pos > 0) si prosegue sempre; a giro chiuso, al massimo ogni 3h
+    if (!G61_FORCE && !(Number(t.garage61_sync_track_pos) > 0) && t.garage61_last_sync_at && Date.now() - new Date(t.garage61_last_sync_at).getTime() < 3 * 3600 * 1000) {
       out.push({ team: t.garage61_team_slug, skipped: 'ultimo sync < 3h' });
       continue;
     }
@@ -897,6 +942,9 @@ Deno.serve(async (req: Request) => {
     if (!check || !CHECKS[check]) {
       return new Response(JSON.stringify({ ok: false, error: 'check mancante o sconosciuto: ' + check + '. Validi: ' + Object.keys(CHECKS).join(', ') }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
+    G61_FORCE = url.searchParams.get('force') === '1';
+    G61_CHUNK = Math.max(1, Math.min(200, Number(url.searchParams.get('chunk')) || 10));
+    G61_TFMT = url.searchParams.get('tfmt') === 'repeat' ? 'repeat' : 'comma';
     const result = await CHECKS[check]();
     return new Response(JSON.stringify({ ok: true, check, result }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (e) {

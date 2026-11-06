@@ -156,6 +156,14 @@ Deno.serve(async (req: Request) => {
       }
     }
 
+    // Verifica staff (06/11/2026): verify:true firma il giro con chi verifica,
+    // verify:false lo rimette "da verificare". Unico modo per toccare verified_*.
+    if (payload && 'verify' in payload) {
+      const on = payload.verify === true || payload.verify === 'TRUE';
+      updates.verified_by = on ? me.id : null;
+      updates.verified_at = on ? new Date().toISOString() : null;
+    }
+
     if (Object.keys(updates).length === 0) {
       return json({ ok: false, error: 'Nessun campo valido da aggiornare' }, 400);
     }

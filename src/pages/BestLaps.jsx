@@ -6,7 +6,9 @@ import {
   useMyBestLaps,
   useTracks,
   useCars,
+  useUpdateBestLap,
 } from '../hooks/useBestLaps';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   useMyLapSubmissions,
   useSubmitLap,
@@ -291,10 +293,7 @@ function LeaderboardView({ filters, driverMap, tracks, cars, isStaff }) {
               <td><Sparkline values={rec.lastLaps} /></td>
               {isStaff && (
                 <td>
-                  {rec.verified_by
-                    ? <span className="lap-verified">✓ verificato</span>
-                    : <span className="lap-pending">⏳ da verificare</span>
-                  }
+                  <VerifyToggle lap={rec} />
                 </td>
               )}
             </tr>
@@ -302,6 +301,46 @@ function LeaderboardView({ filters, driverMap, tracks, cars, isStaff }) {
         })}
       </tbody>
     </table>
+  );
+}
+
+
+// Verifica staff: click su "da verificare" firma il giro (verified_by = chi
+// clicca); click su "verificato" lo rimette in attesa, con conferma.
+function VerifyToggle({ lap }) {
+  const update = useUpdateBestLap();
+  const qc = useQueryClient();
+  const verified = !!lap.verified_by;
+  const lapId = lap.lap_id || lap.id;
+
+  function toggle(e) {
+    e.stopPropagation();
+    if (!lapId || update.isPending) return;
+    if (verified && !window.confirm('Rimettere questo giro "da verificare"?')) return;
+    update.mutate(
+      { lap_id: lapId, verify: !verified },
+      {
+        onSuccess: (res) => {
+          if (res && res.ok === false) { window.alert('Verifica non riuscita: ' + (res.error || 'errore')); return; }
+          qc.invalidateQueries({ queryKey: ['laps'] });
+        },
+        onError: (err) => window.alert('Verifica non riuscita: ' + (err?.message || 'errore')),
+      },
+    );
+  }
+
+  const title = verified
+    ? `Verificato${lap.verified_at ? ' il ' + new Date(lap.verified_at).toLocaleDateString('it-IT') : ''}${lap.notes ? ' — ' + lap.notes : ''}. Clicca per annullare.`
+    : `Clicca per verificare${lap.notes ? ' — ' + lap.notes : ''}`;
+
+  return (
+    <button type="button" className="lap-verify-btn" onClick={toggle} disabled={update.isPending} title={title}>
+      {update.isPending
+        ? <span className="lap-pending">…</span>
+        : verified
+          ? <span className="lap-verified">✓ verificato</span>
+          : <span className="lap-pending">⏳ verifica</span>}
+    </button>
   );
 }
 

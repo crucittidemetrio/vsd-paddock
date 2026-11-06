@@ -592,3 +592,8 @@
   .filter-select { min-width: 0; width: 100%; max-width: 100%; }
   .filter-group { min-width: 0; width: 100%; }
 }
+
+/* Verifica staff cliccabile (06/11/2026) */
+.lap-verify-btn { background: none; border: 1px solid transparent; border-radius: 6px; padding: 2px 6px; cursor: pointer; font: inherit; }
+.lap-verify-btn:hover:not(:disabled) { border-color: currentColor; background: rgba(255,255,255,0.04); }
+.lap-verify-btn:disabled { cursor: wait; opacity: .6; }
