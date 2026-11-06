@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { upload } from '@vercel/blob/client';
 import {
   useTeamLeaderboard,
@@ -7,6 +7,7 @@ import {
   useTracks,
   useCars,
   useUpdateBestLap,
+  useBestLaps,
 } from '../hooks/useBestLaps';
 import { useQueryClient } from '@tanstack/react-query';
 import {
@@ -32,6 +33,7 @@ import './Page.css';
 const VIEW_MODES = [
   { id: 'leaderboard', label: 'Leaderboard' },
   { id: 'mine', label: 'I miei tempi' },
+  { id: 'pending', label: 'Da verificare', staffOnly: true },
 ];
 
 const SEASON_OPTIONS = [
@@ -41,7 +43,10 @@ const SEASON_OPTIONS = [
 
 export default function BestLaps() {
   const { driver, isVsdPilot, isStaff, isAdmin } = useAuth();
-  const [viewMode, setViewMode] = useState('leaderboard');
+  const [searchParams] = useSearchParams();
+  const [viewMode, setViewMode] = useState(
+    searchParams.get('view') === 'pending' ? 'pending' : 'leaderboard'
+  );
   const [seasonFilter, setSeasonFilter] = useState('season2026');
   const [simFilter, setSimFilter] = useState('LMU'); // LMU sim primario — vedi richiesta team
   const [trackFilter, setTrackFilter] = useState('all');
@@ -119,7 +124,7 @@ export default function BestLaps() {
 
       <div className="laps-top-bar">
         <div className="view-switch">
-          {VIEW_MODES.filter(v => v.id !== 'mine' || isVsdPilot).map(v => (
+          {VIEW_MODES.filter(v => (v.id !== 'mine' || isVsdPilot) && (!v.staffOnly || isStaff)).map(v => (
             <button
               key={v.id}
               className={`view-switch-btn ${viewMode === v.id ? 'is-active' : ''}`}
@@ -207,6 +212,15 @@ export default function BestLaps() {
           tracks={tracks}
           cars={cars}
           isStaff={isStaff}
+        />
+      )}
+
+      {viewMode === 'pending' && isStaff && (
+        <PendingView
+          filters={filters}
+          driverMap={driverMap}
+          tracks={tracks}
+          cars={cars}
         />
       )}
 
@@ -301,6 +315,103 @@ function LeaderboardView({ filters, driverMap, tracks, cars, isStaff }) {
         })}
       </tbody>
     </table>
+  );
+}
+
+
+// Coda "Da verificare" (staff): TUTTI i giri non verificati, non solo i
+// record mostrati in Leaderboard. Rispetta i filtri Sim/Classe/Tracciato
+// (non la stagione: un giro da verificare resta da verificare).
+function PendingView({ filters, driverMap, tracks, cars }) {
+  const { data, isLoading, isError, error } = useBestLaps();
+  const update = useUpdateBestLap();
+  const qc = useQueryClient();
+  const [bulk, setBulk] = useState(null); // { done, total, failed }
+
+  const carClass = useMemo(() => {
+    const m = {};
+    (cars || []).forEach(c => { m[c.car_id] = (c.race_class && String(c.race_class).trim()) || ''; });
+    return m;
+  }, [cars]);
+
+  const rows = useMemo(() => {
+    return (data || [])
+      .filter(l => l.source === 'manual' && !l.verified_by && (l.lap_id || l.id))
+      .filter(l => !filters.sim || filters.sim === 'all' || l.sim === filters.sim)
+      .filter(l => !filters.track_id || filters.track_id === 'all' || l.track_id === filters.track_id)
+      .filter(l => !filters.race_class || filters.race_class === 'all' || carClass[l.car_id] === filters.race_class)
+      .sort((a, b) => String(b.set_date || '').localeCompare(String(a.set_date || '')));
+  }, [data, filters.sim, filters.track_id, filters.race_class, carClass]);
+
+  async function verifyAll() {
+    if (!rows.length) return;
+    if (!window.confirm(`Verificare tutti i ${rows.length} giri in elenco (filtri attuali)?`)) return;
+    let done = 0; let failed = 0;
+    setBulk({ done, total: rows.length, failed });
+    for (const l of rows) {
+      try {
+        const res = await update.mutateAsync({ lap_id: l.lap_id || l.id, verify: true });
+        if (res && res.ok === false) failed++;
+      } catch { failed++; }
+      done++;
+      setBulk({ done, total: rows.length, failed });
+    }
+    qc.invalidateQueries({ queryKey: ['laps'] });
+  }
+
+  if (isLoading) return <Prompt text="Caricamento…" />;
+  if (isError) return <Prompt text={`Errore: ${error?.message || 'sconosciuto'}`} />;
+  if (!rows.length) {
+    return <Prompt icon="✓" title="Niente da verificare" text="Nessun giro in attesa per i filtri selezionati." />;
+  }
+
+  return (
+    <>
+      <div className="pending-bar">
+        <span>{rows.length} {rows.length === 1 ? 'giro da verificare' : 'giri da verificare'}</span>
+        <button type="button" className="season-btn" onClick={verifyAll} disabled={!!bulk && bulk.done < bulk.total}>
+          {bulk && bulk.done < bulk.total
+            ? `Verifica in corso… ${bulk.done}/${bulk.total}`
+            : '✓ Verifica tutti quelli in elenco'}
+        </button>
+        {bulk && bulk.done === bulk.total && bulk.failed > 0 && (
+          <span className="lap-pending">{bulk.failed} non riusciti</span>
+        )}
+      </div>
+      <table className="laps-table">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Sim</th>
+            <th>Tracciato</th>
+            <th>Classe</th>
+            <th>Auto</th>
+            <th>Pilota</th>
+            <th>Tempo</th>
+            <th>Origine</th>
+            <th>Stato</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map(l => {
+            const d = driverMap[l.driver_id];
+            return (
+              <tr key={l.lap_id || l.id}>
+                <td>{l.set_date ? new Date(l.set_date).toLocaleDateString('it-IT') : '—'}</td>
+                <td><SimBadge sim={l.sim} /></td>
+                <td>{formatTrack(l.track_id, tracks)}</td>
+                <td>{carClass[l.car_id] ? <span className="lap-badge-record">{carClass[l.car_id]}</span> : '—'}</td>
+                <td>{formatCar(l.car_id, cars)}</td>
+                <td>{d ? d.display_name : l.driver_id}</td>
+                <td><LapTime ms={l.lap_time_ms} /></td>
+                <td className="pending-source">{l.notes || '—'}</td>
+                <td><VerifyToggle lap={l} /></td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </>
   );
 }
 

@@ -355,7 +355,7 @@ const feed = useMemo(() => {
             </div>
 
             <Link
-              to="/laps"
+              to="/laps?view=pending"
               className={`staff-action${pendingLaps.length > 0 ? ' has-action' : ''}`}
             >
               <div className="staff-action-icon">⏳</div>
